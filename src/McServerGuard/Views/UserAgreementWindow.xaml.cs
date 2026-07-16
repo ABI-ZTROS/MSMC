@@ -11,7 +11,7 @@ public partial class UserAgreementWindow : Window
     private readonly DispatcherTimer _countdownTimer;
     private int _remainingSeconds = 120;
     private bool _hasScrolledToBottom = false;
-    private const string AgreementVersion = "1.0.0";
+    private const string AgreementVersion = "2.0.0";
 
     public UserAgreementWindow()
     {

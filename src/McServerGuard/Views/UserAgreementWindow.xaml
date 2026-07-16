@@ -4,45 +4,65 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
         Title="用户协议与法律声明"
-        Width="720" Height="640"
+        Width="760" Height="720"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanMinimize"
-        Background="{DynamicResource MaterialDesignPaper}"
+        Background="#1a0000"
         FontFamily="{DynamicResource MaterialDesignFont}">
 
     <Window.Resources>
+        <SolidColorBrush x:Key="BloodRed" Color="#8B0000" />
+        <SolidColorBrush x:Key="BloodRedDark" Color="#5c0000" />
+        <SolidColorBrush x:Key="BloodRedLight" Color="#b22222" />
+        <SolidColorBrush x:Key="BloodRedBright" Color="#dc143c" />
+        <SolidColorBrush x:Key="BloodBackground" Color="#1a0000" />
+        <SolidColorBrush x:Key="BloodPanel" Color="#2d0a0a" />
+        <SolidColorBrush x:Key="BloodBorder" Color="#660000" />
+        <SolidColorBrush x:Key="BloodText" Color="#ffcccc" />
+        <SolidColorBrush x:Key="BloodTextDim" Color="#cc9999" />
+        <SolidColorBrush x:Key="BloodTextBright" Color="#ffffff" />
+
         <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="16" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
-            <Setter Property="Margin" Value="0,16,0,8" />
+            <Setter Property="Foreground" Value="#dc143c" />
+            <Setter Property="Margin" Value="0,18,0,8" />
         </Style>
 
         <Style x:Key="SubSectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
-            <Setter Property="Margin" Value="0,10,0,4" />
+            <Setter Property="Foreground" Value="#ff6666" />
+            <Setter Property="Margin" Value="0,12,0,4" />
         </Style>
 
         <Style x:Key="ArticleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
+            <Setter Property="Foreground" Value="#ffcccc" />
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="Margin" Value="12,2,0,4" />
-            <Setter Property="LineHeight" Value="20" />
+            <Setter Property="LineHeight" Value="22" />
         </Style>
 
         <Style x:Key="LawRefStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11" />
-            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
-            <Setter Property="Opacity" Value="0.7" />
+            <Setter Property="Foreground" Value="#cc9999" />
+            <Setter Property="Opacity" Value="0.8" />
             <Setter Property="FontStyle" Value="Italic" />
             <Setter Property="Margin" Value="16,2,0,4" />
         </Style>
+
+        <Style x:Key="WarningBoxStyle" TargetType="Border">
+            <Setter Property="Margin" Value="0,16,0,0" />
+            <Setter Property="Padding" Value="16,14" />
+            <Setter Property="Background" Value="#3d0a0a" />
+            <Setter Property="BorderBrush" Value="#8B0000" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
     </Window.Resources>
 
-    <Grid>
+    <Grid Background="#1a0000">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -51,42 +71,43 @@
 
         <!-- 顶部标题栏 -->
         <Border Grid.Row="0"
-                Background="{DynamicResource AccentGradientBrush}"
-                Padding="24,20">
+                Background="#8B0000"
+                Padding="24,22">
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
-                    <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
-                                            Width="28" Height="28"
+                    <iconPacks:PackIconFontAwesome6 Kind="TriangleExclamationSolid"
+                                            Width="32" Height="32"
                                             VerticalAlignment="Center"
-                                            Margin="0,0,12,0"
-                                            Foreground="White" />
+                                            Margin="0,0,14,0"
+                                            Foreground="#ff4444" />
                     <TextBlock Text="MSMC 用户协议与法律声明"
-                               FontSize="18"
+                               FontSize="20"
                                FontWeight="Bold"
                                Foreground="White"
                                VerticalAlignment="Center" />
                 </StackPanel>
                 <TextBlock x:Name="CountdownText"
-                           Text="请仔细阅读协议（02:00）"
+                           Text="请务必仔细阅读协议（02:00）"
                            FontSize="12"
-                           Foreground="White"
-                           Opacity="0.9"
-                           Margin="0,8,0,0" />
+                           Foreground="#ffaaaa"
+                           Opacity="0.95"
+                           Margin="0,10,0,0"
+                           FontWeight="SemiBold" />
                 <TextBlock x:Name="ScrollHintText"
-                           Text="请滚动至协议底部"
+                           Text="请滚动至协议最底部"
                            FontSize="11"
-                           Foreground="White"
-                           Opacity="0.7"
-                           Margin="0,2,0,0" />
+                           Foreground="#ff8888"
+                           Opacity="0.8"
+                           Margin="0,4,0,0" />
             </StackPanel>
         </Border>
 
         <!-- 协议内容区 -->
         <ScrollViewer Grid.Row="1"
                       x:Name="AgreementContent"
-                      Padding="24,16"
+                      Padding="28,18"
                       VerticalScrollBarVisibility="Auto"
-                      Background="Transparent">
+                      Background="#1a0000">
             <StackPanel>
 
                 <!-- 前言 -->
@@ -100,6 +121,25 @@
                     本软件依据中华人民共和国相关法律法规开发，所有用户均需遵守中国法律、法规及相关司法解释的规定。
                 </TextBlock>
 
+                <Border Style="{StaticResource WarningBoxStyle}">
+                    <StackPanel>
+                        <TextBlock Text="⚠️ 重要声明：本软件不是开源软件"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   Foreground="#ff4444" />
+                        <TextBlock Text="尽管本软件的源代码在 GitHub 上公开可见，但这并不意味着本软件遵循任何开源协议。"
+                                   FontSize="12"
+                                   Foreground="#ffcccc"
+                                   Margin="0,6,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="源代码公开仅用于学习交流和透明度展示，您不因此获得任何开源许可下的权利。"
+                                   FontSize="12"
+                                   Foreground="#ffaaaa"
+                                   Margin="0,2,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
                 <!-- 知识产权声明 -->
                 <TextBlock Style="{StaticResource SectionTitleStyle}" Text="二、知识产权声明" />
 
@@ -112,7 +152,19 @@
                     法律依据：《中华人民共和国著作权法》第三条、第十条、第五十三条
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.2 用户使用限制" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.2 开源状态特别说明" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本软件的源代码虽在 GitHub 等平台上公开展示，但
+                    <Bold Foreground="#ff4444">本软件不是开源软件</Bold>
+                    ，不遵循任何开源协议（包括但不限于 MIT、GPL、Apache、BSD 等）。
+                    源代码的公开仅出于技术交流、学习研究和透明度展示之目的，并不构成对任何权利的放弃或许可。
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    您无权以任何方式使用、复制、修改、合并、发布、分发、再许可或销售本软件的副本，除非获得软件开发者的明确书面授权。
+                    任何未经授权的使用均构成对著作权的侵犯，开发者保留追究法律责任的权利。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.3 用户使用限制" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
                     用户不得实施下列行为：
                 </TextBlock>
@@ -132,7 +184,56 @@
                     法律依据：《中华人民共和国著作权法》第四十九条、第五十三条
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.3 第三方资源" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.4 禁止盗版与二改收费" />
+                <Border Style="{StaticResource WarningBoxStyle}">
+                    <StackPanel>
+                        <TextBlock Text="🚫 作者严正声明：对盗版和二改收费深恶痛绝"
+                                   FontSize="13"
+                                   FontWeight="Bold"
+                                   Foreground="#ff3333" />
+                        <TextBlock Text="以下行为均属于严重侵权，必将追究到底："
+                                   FontSize="12"
+                                   Foreground="#ffcccc"
+                                   Margin="0,6,0,0" />
+                        <TextBlock Text="• 将本软件以任何形式进行售卖、收费下载、会员制获取等牟利行为"
+                                   FontSize="12"
+                                   Foreground="#ffaaaa"
+                                   Margin="12,4,0,0" />
+                        <TextBlock Text="• 对本软件进行修改、二次开发（二改）后，以任何形式收费或牟利"
+                                   FontSize="12"
+                                   Foreground="#ffaaaa"
+                                   Margin="12,2,0,0" />
+                        <TextBlock Text="• 将本软件打包进任何收费产品、服务或套餐中"
+                                   FontSize="12"
+                                   Foreground="#ffaaaa"
+                                   Margin="12,2,0,0" />
+                        <TextBlock Text="• 移除、修改或遮挡本软件的版权声明、作者信息、软件标识"
+                                   FontSize="12"
+                                   Foreground="#ffaaaa"
+                                   Margin="12,2,0,0" />
+                        <TextBlock Text="• 谎称自己是本软件的作者或开发者，进行任何形式的欺诈"
+                                   FontSize="12"
+                                   Foreground="#ffaaaa"
+                                   Margin="12,2,0,0" />
+                    </StackPanel>
+                </Border>
+                <TextBlock Style="{StaticResource ArticleStyle}" Margin="12,8,0,4">
+                    作者对上述行为持零容忍态度。一经发现，将立即采取包括但不限于以下措施：
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （一）公开曝光侵权者的身份信息和侵权行为；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （二）向相关平台（GitHub、应用商店、社交平台等）投诉举报，要求下架处理；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （三）通过法律途径追究侵权者的民事责任，要求赔偿损失；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （四）侵权情节严重、涉嫌犯罪的，将向公安机关报案，追究刑事责任。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.5 第三方资源" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
                     本软件可能使用的第三方库、图标、字体等资源，其著作权归各自权利人所有，
                     用户使用时须同时遵守相关许可协议的规定。
@@ -318,48 +419,51 @@
 
                 <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="9.3 协议版本" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    本协议版本：v1.0.0
+                    本协议版本：v2.0.0
                     最后更新日期：2025年
                 </TextBlock>
 
-                <!-- 底部提示 -->
-                <Border Margin="0,24,0,0"
-                        Padding="16,12"
-                        Background="{DynamicResource PrimarySubtleBorderBrush}"
-                        CornerRadius="8">
+                <!-- 底部警示 -->
+                <Border Style="{StaticResource WarningBoxStyle}" Margin="0,28,0,0">
                     <StackPanel>
-                        <TextBlock Text="⚠️ 重要提示"
-                                   FontSize="13"
+                        <TextBlock Text="⛔ 请您务必注意"
+                                   FontSize="14"
                                    FontWeight="Bold"
-                                   Foreground="{DynamicResource MaterialDesignBody}" />
-                        <TextBlock Text="请您在点击「同意」前，确保已完整阅读并充分理解上述全部条款。"
+                                   Foreground="#ff3333" />
+                        <TextBlock Text="本软件不是开源软件，源代码公开不等于开源。"
                                    FontSize="12"
-                                   Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                   Foreground="#ffcccc"
+                                   Margin="0,6,0,0"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="盗版、二改收费、移除版权信息等行为必将被追究法律责任，绝不姑息。"
+                                   FontSize="12"
+                                   Foreground="#ffaaaa"
                                    Margin="0,4,0,0"
                                    TextWrapping="Wrap" />
                         <TextBlock Text="如您有任何疑问，请咨询专业法律人士。"
                                    FontSize="12"
-                                   Foreground="{DynamicResource MaterialDesignBodyLight}"
-                                   Margin="0,2,0,0" />
+                                   Foreground="#cc9999"
+                                   Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>
 
                 <TextBlock Text="—— 协议内容结束 ——"
                            FontSize="12"
-                           Foreground="{DynamicResource MaterialDesignBodyLight}"
-                           Opacity="0.5"
+                           Foreground="#996666"
+                           Opacity="0.6"
                            HorizontalAlignment="Center"
-                           Margin="0,20,0,10" />
+                           Margin="0,24,0,12" />
 
             </StackPanel>
         </ScrollViewer>
 
         <!-- 底部按钮栏 -->
         <Border Grid.Row="2"
-                BorderThickness="0,1,0,0"
-                BorderBrush="{DynamicResource CardSubtleBorderBrush}"
-                Background="{DynamicResource CardBackgroundBrush}"
-                Padding="24,16">
+                BorderThickness="0,2,0,0"
+                BorderBrush="#660000"
+                Background="#2d0a0a"
+                Padding="24,18">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -370,27 +474,69 @@
                 <TextBlock Grid.Column="0"
                            VerticalAlignment="Center"
                            FontSize="11"
-                           Foreground="{DynamicResource MaterialDesignBodyLight}"
-                           Opacity="0.6"
+                           Foreground="#cc9999"
+                           Opacity="0.8"
                            Text="点击「同意」即表示您已阅读并接受以上全部条款" />
 
                 <Button Grid.Column="1"
                         x:Name="DisagreeButton"
                         Content="不同意"
                         Click="DisagreeButton_Click"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        Width="100" Height="36"
-                        Margin="0,0,12,0" />
+                        Width="100" Height="40"
+                        Margin="0,0,12,0"
+                        Background="#3d1a1a"
+                        Foreground="#ff8888"
+                        BorderBrush="#8B0000"
+                        BorderThickness="1"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Cursor="Hand" />
 
                 <Button Grid.Column="2"
                         x:Name="AgreeButton"
                         Content="同意并继续"
                         Click="AgreeButton_Click"
                         IsEnabled="False"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
-                        Background="{DynamicResource AccentGradientBrush}"
+                        Width="120" Height="40"
+                        Background="#8B0000"
                         Foreground="White"
-                        Width="120" Height="36" />
+                        BorderBrush="#b22222"
+                        BorderThickness="1"
+                        FontSize="12"
+                        FontWeight="Bold"
+                        Cursor="Hand">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="border"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="4">
+                                            <ContentPresenter HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              TextBlock.Foreground="{TemplateBinding Foreground}" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="border" Property="Background" Value="#3d1a1a" />
+                                                <Setter TargetName="border" Property="Opacity" Value="0.5" />
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="border" Property="Background" Value="#a52a2a" />
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="border" Property="Background" Value="#5c0000" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                </Button>
             </Grid>
         </Border>
     </Grid>
