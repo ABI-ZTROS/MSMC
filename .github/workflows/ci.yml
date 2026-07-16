@@ -1,0 +1,188 @@
+name: MSMC CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: 🏗️ 编译 + 测试 + 发布
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build main project (relaxed)
+        run: dotnet build src/McServerGuard/McServerGuard.csproj --configuration Release --no-restore
+
+      - name: Build main project (strict - warnings as errors)
+        id: strict_build
+        continue-on-error: true
+        run: dotnet build src/McServerGuard/McServerGuard.csproj --configuration Release --no-restore -p:TreatWarningsAsErrors=true -p:CodeAnalysisTreatWarningsAsErrors=true -p:AnalysisMode=All
+
+      - name: Build test project
+        run: dotnet build src/McServerGuard.Tests/McServerGuard.Tests.csproj --configuration Release --no-restore
+
+      - name: Test
+        id: test
+        continue-on-error: true
+        run: |
+          dotnet test src/McServerGuard.Tests/McServerGuard.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: src/McServerGuard.Tests/TestResults/
+
+      - name: Publish (single-file)
+        if: success() || failure()
+        run: |
+          dotnet publish src/McServerGuard/McServerGuard.csproj `
+            --configuration Release `
+            -p:RuntimeIdentifier=win-x64 `
+            -p:SelfContained=true `
+            -p:PublishSingleFile=true `
+            -p:EnableCompressionInSingleFile=true `
+            -o publish/win-x64
+        shell: pwsh
+
+      - name: Verify Artifact
+        if: success() || failure()
+        shell: pwsh
+        run: |
+          $exe = "publish/win-x64/McServerGuard.exe"
+          if (-not (Test-Path $exe)) {
+            echo "❌ 发布产物中找不到 McServerGuard.exe！"
+            exit 1
+          }
+          $size = (Get-Item $exe).Length
+          echo "📦 McServerGuard.exe 大小: $([math]::Round($size/1MB, 2)) MB"
+          if ($size -lt 1MB) {
+            echo "❌ EXE 文件太小（$([math]::Round($size/1KB, 2)) KB），可能发布失败！"
+            exit 1
+          }
+          echo "✅ 发布产物检查通过！"
+
+      - name: Upload Artifact
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSMC-win-x64-singlefile
+          path: publish/win-x64/
+          retention-days: 30
+
+      - name: Final status check
+        if: steps.test.outcome != 'success'
+        shell: pwsh
+        run: |
+          echo "❌ 测试未通过，请查看 test-results 产物中的详细报告"
+          exit 1
+
+  audit:
+    name: 🔍 代码质量检查
+    runs-on: windows-latest
+    needs: build
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Code Format Check
+        continue-on-error: true
+        run: |
+          dotnet format --verify-no-changes --verbosity diagnostic
+          if ($LASTEXITCODE -ne 0) {
+            echo "⚠️ 代码格式有差异，建议运行 dotnet format 修复（不阻断构建）"
+          } else {
+            echo "✅ 代码格式检查通过"
+          }
+        shell: pwsh
+
+      - name: Code Quality Scan
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $issues = @()
+
+          $notImpl = Get-ChildItem -Path "src/McServerGuard" -Filter "*.cs" -Recurse | Select-String -Pattern "throw new NotImplementedException"
+          if ($notImpl) {
+            Write-Host "⚠️ 发现 NotImplementedException（空壳代码）："
+            $notImpl | ForEach-Object { Write-Host "  $($_.FileName):$($_.LineNumber)" }
+            $issues += "NotImplementedException: $($notImpl.Count) 处"
+          }
+
+          $todos = Get-ChildItem -Path "src/McServerGuard" -Filter "*.cs" -Recurse | Select-String -Pattern "//\s*TODO"
+          if ($todos) {
+            Write-Host "ℹ️ 发现 TODO 注释："
+            $todos | ForEach-Object { Write-Host "  $($_.FileName):$($_.LineNumber) - $($_.Line.Trim())" }
+            $issues += "TODO: $($todos.Count) 处"
+          }
+
+          $emptyCatch = 0
+          Get-ChildItem -Path "src/McServerGuard" -Filter "*.cs" -Recurse | ForEach-Object {
+            $content = Get-Content $_.FullName -Raw
+            if ($content -match 'catch\s*\([^)]*\)\s*\{\s*(?:\/\/[^\n]*\s*)*\}') {
+              Write-Host "⚠️ 发现空 catch 块: $($_.FullName)"
+              $emptyCatch++
+            }
+          }
+          if ($emptyCatch -gt 0) { $issues += "空 catch 块: $emptyCatch 处" }
+
+          if ($issues.Count -eq 0) {
+            Write-Host "✅ 代码质量扫描通过！"
+          } else {
+            Write-Host "📊 扫描发现：$($issues -join ', ')"
+          }
+
+      - name: Security Vulnerability Scan (direct)
+        continue-on-error: true
+        run: |
+          $direct = dotnet list package --vulnerable 2>$null | Out-String
+          echo $direct
+          if ($direct -match "has the following vulnerable packages") {
+            echo "⚠️ 直接依赖中发现安全漏洞（不阻断 CI）"
+          } else {
+            echo "✅ 直接依赖安全扫描通过！"
+          }
+        shell: pwsh
+
+      - name: Security Vulnerability Scan (transitive)
+        continue-on-error: true
+        run: |
+          $transitive = dotnet list package --vulnerable --include-transitive 2>$null | Out-String
+          echo $transitive
+          if ($transitive -match "has the following vulnerable packages") {
+            echo "⚠️ 传递依赖中发现安全漏洞（不阻断 CI）"
+          } else {
+            echo "✅ 传递依赖安全扫描通过！"
+          }
+        shell: pwsh

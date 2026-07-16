@@ -1,0 +1,13 @@
+# This is the help configuration file for Bukkit.
+
+general:
+  command-prefix: ''
+  admin-topic: 'Server Commands'
+  user-topic: 'Commands'
+  list-of-commands-at-spawn: true
+  display-aliases-on-command-match: true
+default-topic-name: 'General'
+amendments:
+  /version:
+    short-description: 'Shows the version of the server'
+    full-description: 'Shows the version of the server you are running.'

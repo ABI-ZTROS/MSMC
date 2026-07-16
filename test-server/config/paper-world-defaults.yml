@@ -1,0 +1,43 @@
+# This is the world defaults configuration file for Paper.
+_version: 2
+anticheat:
+  anti-xray:
+    enabled: false
+    engine-mode: 1
+    hidden-blocks:
+      - copper_ore
+      - deepslate_copper_ore
+    max-block-height: 64
+    replacement-block: stone
+    use-permission: false
+chunks:
+  auto-save-interval: 6000
+  delay-chunk-unloads-by: 10s
+  entity-activation-range:
+    animals: 32
+    monsters: 32
+    misc: 16
+collisions:
+  max-entity-collisions: 8
+entities:
+  armor-stands:
+    tick: true
+  spawning:
+    count-all-mobs-for-spawning: false
+    despawn-ranges:
+      ambient: 32
+      axolotls: 32
+      creature: 32
+      misc: 32
+      monster: 32
+      underground_water_creature: 32
+      water_ambient: 32
+      water_creature: 32
+fixes:
+  disable-unloaded-chunk-entity-portal-teleportation: false
+  fix-curing-zombie-villager-discount-exploit: true
+  fix-items-merging-when-worlds-are-different: false
+hopper:
+  cooldown-when-full: true
+  disable-move-event: false
+  ignore-occluding-blocks: false

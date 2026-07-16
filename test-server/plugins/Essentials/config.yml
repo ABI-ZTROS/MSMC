@@ -1,0 +1,14 @@
+# Essentials Configuration
+
+teleport-cooldown: 0
+teleport-delay: 0
+heal-cooldown: 60
+starting-balance: 0.0
+currency-symbol: '$'
+max-money: 10000000000000
+min-money: -10000000000000
+commands:
+  rest:
+    aliases: [rest, relax]
+  feed:
+    aliases: [feed, eat]

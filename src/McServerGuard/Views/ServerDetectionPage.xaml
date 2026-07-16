@@ -1,0 +1,556 @@
+<!-- 🎮 服务器管理页面 —— 检测、导入、启动一站式搞定 -->
+<UserControl x:Class="McServerGuard.Views.ServerDetectionPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+             xmlns:controls="clr-namespace:McServerGuard.Views.Controls"
+             xmlns:converters="clr-namespace:McServerGuard.Converters">
+
+    <UserControl.Resources>
+        <CubicEase x:Key="ServerCardEase" EasingMode="EaseOut" />
+
+        <Style x:Key="ServerCardStyle" TargetType="Border">
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <TranslateTransform X="-20" />
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Opacity)"
+                                             From="0" To="1"
+                                             Duration="0:0:0.25"
+                                             EasingFunction="{StaticResource ServerCardEase}" />
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                             From="-20" To="0"
+                                             Duration="0:0:0.3"
+                                             EasingFunction="{StaticResource ServerCardEase}" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="KnownServerCardStyle" TargetType="Border">
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <TranslateTransform Y="10" />
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Opacity" Value="0" />
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Opacity)"
+                                             From="0" To="1"
+                                             Duration="0:0:0.3"
+                                             EasingFunction="{StaticResource ServerCardEase}" />
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                             From="10" To="0"
+                                             Duration="0:0:0.35"
+                                             EasingFunction="{StaticResource ServerCardEase}" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="EmptyStateStyle" TargetType="StackPanel">
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Opacity)"
+                                             From="0" To="1"
+                                             Duration="0:0:0.2"
+                                             EasingFunction="{StaticResource ServerCardEase}" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="4,8,4,4" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+        </Style>
+
+        <Style x:Key="PresetButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="340" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- 📋 左栏：服务器列表 -->
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="0,8,4,8">
+            <StackPanel>
+
+                <!-- 🎮 操作按钮：导入 + 检测 -->
+                <materialDesign:Card Margin="0,0,0,8" Padding="12">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Command="{Binding BrowseAndImportServerCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="{DynamicResource AccentGradientBrush}"
+                                Foreground="White"
+                                Padding="12,8"
+                                Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <iconPacks:PackIconFontAwesome6 Kind="PlusSolid" Width="14" Height="14" />
+                                <TextBlock Text="导入" Margin="6,0,0,0" FontSize="12" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding DetectCommand}"
+                                IsEnabled="{Binding CanDetect}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="12,8">
+                            <StackPanel Orientation="Horizontal">
+                                <iconPacks:PackIconFontAwesome6 Kind="MagnifyingGlassSolid" Width="14" Height="14" />
+                                <TextBlock Text="检测" Margin="6,0,0,0" FontSize="12" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- 🖥️ 检测到的运行中服务器 -->
+                <materialDesign:Card Margin="0,0,0,8" Padding="12">
+                    <StackPanel>
+                        <TextBlock Text="运行中" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,8" />
+                        <ItemsControl ItemsSource="{Binding DetectionResult.Servers}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource ServerCardStyle}" Margin="0,0,0,6">
+                                        <materialDesign:Card Padding="10" Cursor="Hand">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <iconPacks:PackIconFontAwesome6 Grid.Column="0"
+                                                                        Kind="ServerSolid"
+                                                                        Width="20" Height="20"
+                                                                        VerticalAlignment="Center"
+                                                                        Margin="0,0,8,0" />
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding DisplayName}"
+                                                               FontSize="12" FontWeight="Medium"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding FormattedMaxMemory}"
+                                                               FontSize="10" Opacity="0.7" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </materialDesign:Card>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Style="{StaticResource EmptyStateStyle}"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,12,0,0"
+                                    Visibility="{Binding DetectionResult.IsDetected, Converter={StaticResource InvertBoolToVisibilityConverter}}">
+                            <TextBlock Text="点击检测扫描服务器"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                        </StackPanel>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- 📚 已知服务器 -->
+                <materialDesign:Card Margin="0,0,0,8" Padding="12">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="已知服务器" FontWeight="SemiBold" FontSize="13" />
+                            <TextBlock Text="{Binding KnownServers.Count}"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource AccentTextBrush}"
+                                       Margin="6,2,0,0" />
+                        </StackPanel>
+
+                        <ItemsControl ItemsSource="{Binding KnownServers}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource KnownServerCardStyle}" Margin="0,0,0,6">
+                                        <materialDesign:Card Padding="10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <iconPacks:PackIconFontAwesome6 Grid.Column="0"
+                                                                        Kind="DatabaseSolid"
+                                                                        Width="20" Height="20"
+                                                                        VerticalAlignment="Center"
+                                                                        Margin="0,0,8,0"
+                                                                        Foreground="{DynamicResource AccentTextBrush}" />
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontSize="12" FontWeight="Medium"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding Port, StringFormat='端口 {0}'}"
+                                                               FontSize="10" Opacity="0.7" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                    <Button Command="{Binding DataContext.StartKnownServerCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                            ToolTip="启动"
+                                                            Margin="0,0,2,0"
+                                                            Padding="4">
+                                                        <iconPacks:PackIconFontAwesome6 Kind="PlaySolid" Width="14" Height="14" Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                                                    </Button>
+                                                    <Button Command="{Binding DataContext.RemoveKnownServerCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                            ToolTip="移除"
+                                                            Padding="4">
+                                                        <iconPacks:PackIconFontAwesome6 Kind="TrashCanSolid" Width="14" Height="14" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </materialDesign:Card>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel HorizontalAlignment="Center"
+                                    Margin="0,12,0,0"
+                                    Visibility="{Binding HasKnownServers, Converter={StaticResource InvertBoolToVisibilityConverter}}">
+                            <TextBlock Text="暂无已知服务器"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                        </StackPanel>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- 📝 检测日志 -->
+                <materialDesign:Card Padding="12">
+                    <StackPanel>
+                        <TextBlock Text="检测日志" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,8" />
+                        <Border Background="{DynamicResource TerminalBackgroundBrush}"
+                                CornerRadius="6"
+                                Padding="4">
+                            <TextBox Text="{Binding DetectionLog, Mode=OneWay}"
+                                     IsReadOnly="True"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     MinHeight="100"
+                                     MaxHeight="180"
+                                     FontFamily="Consolas"
+                                     FontSize="11"
+                                     Foreground="{DynamicResource SuccessInputForegroundBrush}"
+                                     Background="Transparent"
+                                     BorderThickness="0" />
+                        </Border>
+                    </StackPanel>
+                </materialDesign:Card>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ⚙️ 右栏：详情 + 参数编辑 + 启动 -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="4,8,0,8">
+            <StackPanel>
+
+                <!-- 🚀 操作栏：启动/停止 -->
+                <materialDesign:Card Margin="0,0,0,8" Padding="16">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Command="{Binding StartCurrentServerCommand}"
+                                IsEnabled="{Binding CanStartCurrent}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="{DynamicResource PrimaryHueMidBrush}"
+                                Foreground="White"
+                                Padding="20,10"
+                                Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <iconPacks:PackIconFontAwesome6 Kind="PlaySolid" Width="16" Height="16" />
+                                <TextBlock Text="启动服务器" Margin="8,0,0,0" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding StopCurrentServerCommand}"
+                                IsEnabled="{Binding CanStopCurrent}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="#E53935"
+                                Foreground="White"
+                                Padding="20,10"
+                                Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <iconPacks:PackIconFontAwesome6 Kind="StopSolid" Width="16" Height="16" />
+                                <TextBlock Text="停止服务器" Margin="8,0,0,0" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="{Binding OperationMessage}"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Margin="8,0,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- 📊 服务器详情 -->
+                <materialDesign:Card Margin="0,0,0,8" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="服务器详情" FontSize="16" FontWeight="Bold" Margin="0,0,0,12" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="工作路径" FontWeight="Medium" FontSize="12" Margin="0,0,8,8" />
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{Binding SelectedServer.WorkingDirectory}"
+                                       FontSize="12"
+                                       TextTrimming="CharacterEllipsis"
+                                       Margin="0,0,0,8" />
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="JAR 路径" FontWeight="Medium" FontSize="12" Margin="0,0,8,8" />
+                            <TextBlock Grid.Row="1" Grid.Column="1"
+                                       Text="{Binding SelectedServer.ServerJarPath}"
+                                       FontSize="12"
+                                       TextTrimming="CharacterEllipsis"
+                                       Margin="0,0,0,8" />
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Java" FontWeight="Medium" FontSize="12" Margin="0,0,8,0" />
+                            <TextBlock Grid.Row="2" Grid.Column="1"
+                                       Text="{Binding SelectedServer.JavaPath}"
+                                       FontSize="12"
+                                       TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- 🧠 JVM 参数设置 -->
+                <materialDesign:Card Margin="0,0,0,8" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="JVM 参数设置" FontSize="16" FontWeight="Bold" Margin="0,0,0,12" />
+
+                        <!-- 💾 内存设置 -->
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="内存设置" />
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="初始堆内存 (-Xms)" FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,0,0,4" />
+                                <TextBox Text="{Binding InitialMemory, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="初始堆内存"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="最大堆内存 (-Xmx)" FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,0,0,4" />
+                                <TextBox Text="{Binding MaxMemory, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="最大堆内存"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 🎯 预设按钮 -->
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="快速预设" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button Command="{Binding ApplyAikarPresetCommand}" Style="{StaticResource PresetButtonStyle}">
+                                <StackPanel Orientation="Horizontal">
+                                    <iconPacks:PackIconFontAwesome6 Kind="RocketSolid" Width="12" Height="12" />
+                                    <TextBlock Text="Aikar" Margin="4,0,0,0" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding ApplyG1GCPresetCommand}" Style="{StaticResource PresetButtonStyle}">
+                                <StackPanel Orientation="Horizontal">
+                                    <iconPacks:PackIconFontAwesome6 Kind="GaugeHighSolid" Width="12" Height="12" />
+                                    <TextBlock Text="G1GC" Margin="4,0,0,0" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding ApplyZgcPresetCommand}" Style="{StaticResource PresetButtonStyle}">
+                                <StackPanel Orientation="Horizontal">
+                                    <iconPacks:PackIconFontAwesome6 Kind="BoltSolid" Width="12" Height="12" />
+                                    <TextBlock Text="ZGC" Margin="4,0,0,0" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- 📂 参数分类 -->
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="参数分类" />
+                        <ItemsControl ItemsSource="{Binding AllArgumentCategories}" Margin="0,0,0,8">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding DataContext.SelectCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                                            Padding="10,4"
+                                            Margin="0,0,6,6"
+                                            FontSize="11">
+                                        <TextBlock Text="{Binding}" />
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- ➕ 可选参数 -->
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="可选参数（点击添加）" />
+                        <ItemsControl ItemsSource="{Binding FilteredArguments}" Margin="0,0,0,8">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding DataContext.AddArgumentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding Flag}"
+                                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                                            Padding="10,4"
+                                            Margin="0,0,6,6"
+                                            FontSize="11"
+                                            ToolTip="{Binding Description}">
+                                        <TextBlock Text="{Binding Flag}" />
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- ✏️ 自定义参数 -->
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="自定义参数" />
+                        <DockPanel Margin="0,0,0,8">
+                            <Button DockPanel.Dock="Right"
+                                    Command="{Binding AddCustomArgumentCommand}"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Padding="12,6"
+                                    Margin="8,0,0,0">
+                                <TextBlock Text="添加" FontSize="11" />
+                            </Button>
+                            <TextBox Text="{Binding CustomArgument, UpdateSourceTrigger=PropertyChanged}"
+                                     materialDesign:HintAssist.Hint="输入自定义 JVM 参数"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                        </DockPanel>
+
+                        <!-- 📋 已选参数列表 -->
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="已选参数" />
+                        <ItemsControl ItemsSource="{Binding SelectedArguments}" Margin="0,0,0,8">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource MaterialDesignCardBackgroundBrush}"
+                                            CornerRadius="6"
+                                            Padding="8,6"
+                                            Margin="0,0,0,4">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding}"
+                                                       FontSize="11"
+                                                       FontFamily="Consolas"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <Button Command="{Binding DataContext.StartEditArgumentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                        Padding="4"
+                                                        ToolTip="编辑">
+                                                    <iconPacks:PackIconFontAwesome6 Kind="PenSolid" Width="12" Height="12" />
+                                                </Button>
+                                                <Button Command="{Binding DataContext.RemoveArgumentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                        Padding="4"
+                                                        ToolTip="移除">
+                                                    <iconPacks:PackIconFontAwesome6 Kind="XmarkSolid" Width="12" Height="12" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- 🔍 启动命令预览 -->
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="启动命令预览" />
+                        <Border Background="{DynamicResource TerminalBackgroundBrush}"
+                                CornerRadius="6"
+                                Padding="10">
+                            <TextBlock Text="{Binding StartupCommandPreview}"
+                                       FontFamily="Consolas"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource SuccessInputForegroundBrush}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- 💾 保存按钮 -->
+                <Button Command="{Binding SaveAsKnownServerCommand}"
+                        IsEnabled="{Binding CanSaveAsKnown}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Background="{DynamicResource AccentGradientBrush}"
+                        Foreground="White"
+                        Padding="16,10"
+                        HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal">
+                        <iconPacks:PackIconFontAwesome6 Kind="FloppyDiskSolid" Width="14" Height="14" />
+                        <TextBlock Text="保存为已知服务器" Margin="8,0,0,0" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 🔄 检测中遮罩 -->
+        <Border Grid.ColumnSpan="2"
+                Background="{DynamicResource LoadingOverlayBrush}"
+                CornerRadius="12"
+                Visibility="{Binding IsDetecting, Converter={StaticResource BoolToVisibilityConverter}}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <materialDesign:PackIcon Kind="Loading"
+                                        Width="48" Height="48"
+                                        HorizontalAlignment="Center"
+                                        Margin="0,0,0,12"
+                                        Foreground="White">
+                    <materialDesign:PackIcon.RenderTransform>
+                        <RotateTransform x:Name="LoadingIconRotate" CenterX="24" CenterY="24" />
+                    </materialDesign:PackIcon.RenderTransform>
+                    <materialDesign:PackIcon.Triggers>
+                        <EventTrigger RoutedEvent="Loaded">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="LoadingIconRotate"
+                                                     Storyboard.TargetProperty="Angle"
+                                                     From="0" To="360" Duration="0:0:1"
+                                                     RepeatBehavior="Forever" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </materialDesign:PackIcon.Triggers>
+                </materialDesign:PackIcon>
+                <TextBlock Text="正在识别和分析服务器..."
+                           FontSize="14"
+                           Foreground="White"
+                           HorizontalAlignment="Center"
+                           Opacity="0.8" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

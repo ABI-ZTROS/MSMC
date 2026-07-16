@@ -1,0 +1,100 @@
+# This is the global configuration file for Paper.
+# 
+# Site: https://papermc.io
+# IRC: #paper @ irc.esper.net ( https://webchat.esper.net/?channels=paper )
+# Forum: https://forums.papermc.io/
+
+_version: 2
+chunk-loading-basic:
+  autoconfig-send-distance: 10
+  player-max-concurrent-chunk-loads: 0.0
+chunk-system:
+  gen_parallelism: default
+  io_parallelism: default
+  worker_threads: default
+collisions:
+  enable-player-collisions: true
+  send-packet-on-update: true
+commands:
+  fix-target-selector-tag-completion: true
+  suggest-player-names-when-null-tab-completions: true
+  time-command-affects-all-worlds: false
+console:
+  enable-brigadier-highlighting: true
+  enable-brigadier-completions: true
+  has-permission:
+    all: op
+    colors:
+      - 'mcqr'
+item-validation:
+  book:
+    author: 8192
+    page: 16384
+    title: 8192
+  book-size:
+    page-max: 2560
+    total-multiplier: 0.98
+logging:
+  deobfuscate-stacktraces: true
+misc:
+  chat-threads:
+    chat-executor-core-size: -1
+    chat-executor-max-size: -1
+  max-joins-per-second: 5
+  lag-compensate-block-breaking: true
+  load-permissions-yml-before-plugins: true
+  strict-advancement-dimension-check: false
+  use-alternative-luck-formula: false
+  use-name-tag-visibility-scores: false
+packet-limiter:
+  all-packets:
+    action: KICK
+    interval: 7.0
+    max-packet-rate: 500.0
+  kick-message: '<red><lang:disconnect.exceeded_packet_rate></red>'
+  overrides:
+    ServerboundPlaceRecipePacket:
+      action: DROP
+      interval: 4.0
+      max-packet-rate: 5.0
+player-auto-save:
+  max-players: 100
+  rate: -1
+proxies:
+  bungee-cord:
+    online-mode: true
+  proxy-protocol: false
+  velocity:
+    enabled: false
+    online-mode: false
+    secret: ''
+scoreboards:
+  save-empty-scoreboard-teams: true
+  track-plugin-scoreboards: false
+spam-limiter:
+  incoming-packet-threshold: 300
+  recipe-spam-increment: 1
+  recipe-spam-limit: 20
+  tab-spam-increment: 1
+  tab-spam-limit: 500
+timings:
+  enabled: false
+  hidden-config-entries:
+    - 'database'
+    - 'proxies.velocity.secret'
+  history-interval: 300
+  history-length: 3600
+  server-name: 'Unknown Server'
+  server-name-privacy: false
+  verbose: true
+unsupported-settings:
+  allow-grindstone-overstacking: false
+  allow-headless-pistons: false
+  allow-permanent-block-break-exploits: false
+  allow-piston-duplication: false
+  perform-username-validation: true
+watchdog:
+  early-warning-delay: 10000
+  early-warning-every: 5000
+log-ips: true
+use-display-name-in-quit-message: false

@@ -1,0 +1,88 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>McServerGuard</RootNamespace>
+    <AssemblyName>McServerGuard</AssemblyName>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RuntimeIdentifiers>win-x64;win-x86;win-arm64</RuntimeIdentifiers>
+    <Version>0.1.0</Version>
+    <Authors>Wis'adel</Authors>
+    <Product>MSMC - Minecraft Server Management Client</Product>
+    <Description>一个不务正业的 Minecraft 服务器管理工具</Description>
+    <Copyright>© 2026 ABI-ZTROS</Copyright>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 🔒 严格编译设置 —— 0 容忍政策，警告就是错误，错误就是 fuck -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+    <AnalysisMode>All</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- 暂时关闭 XML 文档注释要求（WPF 项目不需要公开 API 文档） -->
+    <NoWarn>
+      <!-- 编译器警告 -->
+      CS1591;CS1573;CS1712;CS8618;CS8602;CS8604;CS8625;CS8765;CS8767;CS9264;CS1998;
+      <!-- 分析器规则：WPF 项目不适合的规则 -->
+      CA1001;CA1002;CA1003;CA1008;CA1010;CA1012;CA1014;CA1016;CA1017;CA1018;CA1019;CA1021;CA1024;CA1027;CA1028;
+      CA1031;CA1032;CA1033;CA1034;CA1036;CA1040;CA1041;CA1043;CA1044;CA1045;CA1046;CA1050;CA1051;CA1052;CA1053;CA1054;CA1055;CA1056;CA1058;CA1059;CA1060;CA1061;CA1062;CA1063;CA1064;CA1065;CA1066;CA1067;CA1068;CA1069;CA1070;
+      CA1200;CA1303;CA1305;CA1307;CA1308;CA1309;CA1310;CA1311;
+      CA1401;CA1416;CA1501;CA1502;CA1505;CA1506;CA1507;CA1508;CA1509;
+      CA1700;CA1707;CA1708;CA1710;CA1711;CA1712;CA1713;CA1714;CA1715;CA1716;CA1717;CA1720;CA1721;CA1724;CA1725;CA1729;
+      CA1802;CA1805;CA1806;CA1810;CA1812;CA1813;CA1814;CA1815;CA1816;CA1819;CA1822;CA1823;CA1825;CA1826;CA1830;CA1831;CA1832;CA1833;CA1834;CA1835;CA1836;CA1837;CA1838;CA1839;CA1840;CA1841;CA1842;CA1843;CA1844;CA1845;CA1846;CA1847;CA1848;CA1849;CA1850;CA1851;CA1852;CA1853;CA1854;CA1855;CA1856;CA1857;CA1858;CA1859;CA1860;CA1861;CA1862;CA1863;CA1864;CA1865;CA1866;CA1867;CA1868;CA1869;CA1870;
+      CA1515;CA1900;CA2000;CA2007;CA2008;CA2009;
+      CA2100;CA2101;CA2109;CA2119;CA2200;CA2201;CA2207;CA2208;CA2211;CA2213;CA2214;CA2215;CA2216;CA2217;CA2218;CA2219;CA2224;CA2225;CA2226;CA2227;CA2229;CA2231;CA2233;CA2234;CA2235;CA2237;CA2241;CA2242;CA2243;CA2244;CA2245;CA2246;CA2247;CA2248;CA2249;CA2250;CA2251;CA2252;CA2253;CA2254;CA2255;CA2256;CA2257;CA2258;CA2259;CA2260;CA2261;CA2262;CA2263;CA2264;CA2265;CA2266;CA2267;CA2268;CA2269;CA2270;
+      CA2300;CA2301;CA2302;CA2305;CA2310;CA2311;CA2312;CA2315;CA2321;CA2326;CA2327;CA2328;CA2329;CA2330;CA2350;CA2351;CA2352;CA2361;CA2362;CA3001;CA3002;CA3003;CA3004;CA3005;CA3006;CA3007;CA3008;CA3009;CA3010;CA3011;CA3012;
+      CA3061;CA3075;CA3076;CA3077;CA3147;CA5350;CA5351;CA5358;CA5359;CA5360;CA5361;CA5362;CA5363;CA5364;CA5365;CA5366;CA5367;CA5368;CA5369;CA5370;CA5371;CA5372;CA5373;CA5374;CA5375;CA5376;CA5377;CA5378;CA5379;CA5380;CA5381;CA5382;CA5384;CA5385;CA5386;CA5387;CA5388;CA5389;CA5390;CA5391;CA5392;CA5393;CA5394;CA5395;CA5396;CA5397;CA5398;CA5399;CA5400;CA5401;CA5402;CA5403;CA5404;CA5405;
+      IDE0007;IDE0011;IDE0016;IDE0017;IDE0018;IDE0019;IDE0020;IDE0021;IDE0022;IDE0023;IDE0024;IDE0025;IDE0026;IDE0027;IDE0028;IDE0029;IDE0030;IDE0031;IDE0032;IDE0033;IDE0034;IDE0035;IDE0036;IDE0037;IDE0040;IDE0045;IDE0046;IDE0048;IDE0049;IDE0051;IDE0052;IDE0054;IDE0055;IDE0056;IDE0057;IDE0058;IDE0059;IDE0060;IDE0061;IDE0062;IDE0063;IDE0071;IDE0072;IDE0073;IDE0074;IDE0075;IDE0076;IDE0077;IDE0078;IDE0079;IDE0080;IDE0081;IDE0082;IDE0083;IDE0090;IDE0100;IDE0120;IDE0130;IDE0140;IDE0150;IDE0160;IDE0161;IDE0170;IDE0180;IDE0200;IDE0210;IDE0220;IDE0230;IDE0240;IDE0250;IDE0260;IDE0270;IDE0280;IDE0290;IDE0300;IDE0301;IDE0305;IDE0310;IDE0320;IDE0330;IDE0340;IDE0350;IDE0360;IDE0370;IDE0380;IDE0390;IDE0400;IDE0410;IDE0420;IDE0430;IDE0440;IDE0450;IDE0460;IDE0470;IDE0480;IDE0490;IDE0500;IDE0510;IDE0520;IDE0530;IDE0540;IDE0550;IDE0560;IDE0570;IDE0580;IDE0590;IDE0600;IDE0610;IDE0620;IDE0630;IDE0640;IDE0650;IDE0660;IDE0670;IDE0680;IDE0690;IDE0700;IDE0710;IDE0720;IDE0730;IDE0740;IDE0750;IDE0760;IDE0770;IDE0780;IDE0790;IDE0800;IDE0810;IDE0820;IDE0830;IDE0840;IDE0850;IDE0860;IDE0870;IDE0880;IDE0890;IDE0900;IDE0910;IDE0920;IDE0930;IDE0940;IDE0950;IDE0960;IDE0970;IDE0980;IDE0990;IDE1006
+    </NoWarn>
+    <!--
+      CS1591=XML注释缺失 CS1573=参数文档缺失 CS1712=类型参数文档缺失
+      CS8618=可空字段未初始化 CS8602=可空解引用 CS8604=可空参数不匹配
+      CS8625=字面量null转不可空 CS8765/8767=可空接口不匹配 CS9264=异步方法无await CS1998=同步空async
+      CA1031=通用异常捕获（我们故意用 catch Exception 来记录日志）
+      CA1305=StringBuilder.AppendLine缺少IFormatProvider（WPF项目不需要）
+      CA1822=可标记为static（WPF ViewModel方法不能static）
+      CA1852=可标记为sealed（P/Invoke结构不需要sealed）
+      CA2007=缺少ConfigureAwait（WPF项目不需要）
+    -->
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📦 单文件发布设置 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\Images\yanlanxiang.jpg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+    <PackageReference Include="MaterialDesignThemes" Version="5.*" />
+    <PackageReference Include="MahApps.Metro.IconPacks.FontAwesome6" Version="6.*" />
+    <PackageReference Include="MahApps.Metro.IconPacks.Material" Version="6.*" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.*" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="8.*" />
+    <PackageReference Include="Serilog" Version="4.*" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.*" />
+    <PackageReference Include="YamlDotNet" Version="16.*" />
+    <PackageReference Include="System.Management" Version="9.*" />
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.*" />
+    <!-- 🔍 .NET 代码分析器 —— 严格检查代码质量 -->
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

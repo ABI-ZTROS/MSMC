@@ -1,0 +1,292 @@
+<!-- 🏠 主窗口 —— McServerGuard 的大本营 -->
+<!-- 改造重点：汉堡菜单 + 可折叠导航面板 + Material Design 深度定制 -->
+<Window x:Class="McServerGuard.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+        xmlns:local="clr-namespace:McServerGuard.Views"
+        xmlns:vm="clr-namespace:McServerGuard.ViewModels"
+        xmlns:converters="clr-namespace:McServerGuard.Converters"
+        Title="MSMC - Minecraft Server Management Console"
+        Width="1200" Height="800"
+        MinWidth="900" MinHeight="600"
+        Background="{DynamicResource MaterialDesignPaper}"
+        WindowStartupLocation="CenterScreen"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="Auto"
+        FontFamily="{DynamicResource MaterialDesignFont}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/McServerGuard;component/Themes/AppResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+            <converters:BoolStringConverter x:Key="BoolStringConverter" />
+            <converters:InvertBoolToVisibilityConverter x:Key="InvertBoolToVisibilityConverter" />
+            <converters:IndexToBoolConverter x:Key="IndexToBoolConverter" />
+            <converters:BoolToPackIconConverter x:Key="BoolToPackIconConverter" />
+            <converters:BoolToTextConverter x:Key="BoolToTextConverter" />
+            <converters:BooleanToBrushConverter x:Key="BooleanToBrushConverter" />
+            <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+            <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+            <converters:InvertBoolConverter x:Key="InvertBoolConverter" />
+            <converters:ValueTypeToVisibilityConverter x:Key="ValueTypeToVisibilityConverter" />
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📐 整体布局：两列（导航 | 内容）+ 顶部标题栏 + 底部状态栏 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />  <!-- 🎨 顶部标题栏 -->
+            <RowDefinition Height="*" />     <!-- 📑 中间内容区 -->
+            <RowDefinition Height="Auto" />  <!-- 📊 底部状态栏 -->
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" /> <!-- 🧭 导航面板（可折叠） -->
+            <ColumnDefinition Width="*" />    <!-- 📄 主内容区 -->
+        </Grid.ColumnDefinitions>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- 🎨 顶部标题栏 —— 覆盖两列 -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <materialDesign:ColorZone Grid.Row="0" Grid.ColumnSpan="2"
+                                  Mode="PrimaryMid"
+                                  Padding="8,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 🍔 汉堡/收起按钮 -->
+                <ToggleButton Grid.Column="0"
+                              Style="{StaticResource MaterialDesignHamburgerToggleButton}"
+                              VerticalAlignment="Center"
+                              Margin="4,0,8,0"
+                              IsChecked="{Binding IsNavOpen, Mode=TwoWay}" />
+
+                <!-- 🛡️ 标题 -->
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
+                                            Width="32" Height="32"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,12,0" />
+                    <StackPanel>
+                        <TextBlock Text="MSMC"
+                                   FontSize="22" FontWeight="Bold"
+                                   Foreground="{DynamicResource MaterialDesignBody}" />
+                        <TextBlock Text="Minecraft Server Management Console"
+                                   FontSize="12" Opacity="0.8"
+                                   Foreground="{DynamicResource MaterialDesignBody}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- 🔍 检测按钮 -->
+                <Button Grid.Column="2"
+                        Content="开始检测"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Command="{Binding DetectServersCommand}"
+                        IsEnabled="{Binding IsDetecting, Converter={StaticResource InvertBoolConverter}}"
+                        Margin="8,0,4,0"
+                        VerticalAlignment="Center" />
+            </Grid>
+        </materialDesign:ColorZone>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- 🧭 左侧导航面板 —— 现代化深空蓝风格，展开 240px / 收起模式 -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="1" Grid.Column="0"
+                x:Name="NavSidebar"
+                BorderThickness="0,0,1,0"
+                BorderBrush="{DynamicResource CardSubtleBorderBrush}"
+                Background="{DynamicResource CardBackgroundBrush}"
+                Visibility="{Binding IsNavOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid Width="240">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- 🏷️ 导航头部 - 现代化渐变 -->
+                <Border Grid.Row="0" Padding="16,20,16,16">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#1A3B82F6" Offset="0" />
+                            <GradientStop Color="Transparent" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="40" Height="40"
+                                    CornerRadius="10"
+                                    Background="{DynamicResource PrimarySubtleBorderBrush}">
+                                <Viewbox Width="24" Height="24"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center">
+                                    <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
+                                                            Foreground="{DynamicResource NavItemSelectedBrush}" />
+                                </Viewbox>
+                            </Border>
+                            <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="MSMC"
+                                           FontSize="15"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource MaterialDesignBody}" />
+                                <TextBlock Text="Minecraft Server Management Console"
+                                           FontSize="11"
+                                           Opacity="0.6"
+                                           Foreground="{DynamicResource MaterialDesignBody}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 📋 导航列表 -->
+                <ListBox Grid.Row="1"
+                         x:Name="NavListBox"
+                         SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+                         VerticalAlignment="Top"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Foreground="{DynamicResource MaterialDesignBody}"
+                         Style="{StaticResource ModernNavListBoxStyle}"
+                         ItemContainerStyle="{StaticResource ModernNavListBoxItemStyle}">
+
+                    <ListBoxItem>
+                        <StackPanel Orientation="Horizontal" Margin="8,6">
+                            <iconPacks:PackIconFontAwesome6 Kind="ServerSolid" Width="24" Height="24" Margin="0,0,12,0" />
+                            <TextBlock Text="服务器检测" FontSize="14" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem>
+                        <StackPanel Orientation="Horizontal" Margin="8,6">
+                            <iconPacks:PackIconFontAwesome6 Kind="FilePenSolid" Width="24" Height="24" Margin="0,0,12,0" />
+                            <TextBlock Text="配置编辑" FontSize="14" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem>
+                        <StackPanel Orientation="Horizontal" Margin="8,6">
+                            <iconPacks:PackIconFontAwesome6 Kind="GaugeHighSolid" Width="24" Height="24" Margin="0,0,12,0" />
+                            <TextBlock Text="系统监控" FontSize="14" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem>
+                        <StackPanel Orientation="Horizontal" Margin="8,6">
+                            <iconPacks:PackIconFontAwesome6 Kind="ShieldHalvedSolid" Width="24" Height="24" Margin="0,0,12,0" />
+                            <TextBlock Text="AI 守护" FontSize="14" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem>
+                        <StackPanel Orientation="Horizontal" Margin="8,6">
+                            <iconPacks:PackIconFontAwesome6 Kind="GearSolid" Width="24" Height="24" Margin="0,0,12,0" />
+                            <TextBlock Text="设置" FontSize="14" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ListBoxItem>
+                </ListBox>
+
+                <!-- 🔻 底部信息 -->
+                <Border Grid.Row="2"
+                        Padding="16,12"
+                        BorderThickness="0,1,0,0"
+                        BorderBrush="{DynamicResource CardSubtleBorderBrush}">
+                    <StackPanel>
+                        <Border Background="{DynamicResource PrimarySubtleBorderBrush}"
+                                CornerRadius="8"
+                                Padding="10,8">
+                            <StackPanel Orientation="Horizontal">
+                                <iconPacks:PackIconFontAwesome6 Kind="CircleInfoSolid"
+                                                        Width="16" Height="16"
+                                                        VerticalAlignment="Center"
+                                                        Margin="0,0,8,0"
+                                                        Foreground="{DynamicResource NavItemSelectedBrush}" />
+                                <StackPanel>
+                                    <TextBlock Text="MSMC"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource MaterialDesignBody}" />
+                                    <TextBlock Text="v0.1.0"
+                                               FontSize="10"
+                                               Opacity="0.5"
+                                               Foreground="{DynamicResource MaterialDesignBody}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- 📑 中间 ContentControl —— 六大页面切换（带动画） -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <ContentControl Grid.Row="1" Grid.Column="1" Margin="8"
+                        Content="{Binding CurrentPage}"
+                        Opacity="0"
+                        x:Name="MainContent">
+            <ContentControl.Resources>
+                <DataTemplate DataType="{x:Type vm:ServerDetectionViewModel}">
+                    <local:ServerDetectionPage />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:ConfigEditorViewModel}">
+                    <local:ConfigEditorPage />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:SystemMonitorViewModel}">
+                    <local:SystemMonitorPage />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:AIGuardViewModel}">
+                    <local:AIGuardPage />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+                    <local:SettingsPage />
+                </DataTemplate>
+            </ContentControl.Resources>
+        </ContentControl>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- 📊 底部状态栏 —— 覆盖两列 -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <materialDesign:ColorZone Grid.Row="2" Grid.ColumnSpan="2"
+                                  Mode="PrimaryDark"
+                                  Padding="16,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <iconPacks:PackIconFontAwesome6 Kind="CircleInfoSolid"
+                                            Width="16" Height="16"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,6,0" />
+                    <TextBlock Text="{Binding StatusMessage}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource MaterialDesignBody}" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="2"
+                           Text="{Binding CurrentTime}"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource MaterialDesignBody}"
+                           Opacity="0.7" />
+            </Grid>
+        </materialDesign:ColorZone>
+
+        <!-- 📢 Snackbar 弹出通知 -->
+        <materialDesign:Snackbar MessageQueue="{Binding SnackbarMessages}"
+                                 Grid.Row="2" Grid.ColumnSpan="2" />
+    </Grid>
+
+</Window>

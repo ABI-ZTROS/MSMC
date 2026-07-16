@@ -1,0 +1,397 @@
+<Window x:Class="McServerGuard.Views.UserAgreementWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+        Title="用户协议与法律声明"
+        Width="720" Height="640"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanMinimize"
+        Background="{DynamicResource MaterialDesignPaper}"
+        FontFamily="{DynamicResource MaterialDesignFont}">
+
+    <Window.Resources>
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
+            <Setter Property="Margin" Value="0,16,0,8" />
+        </Style>
+
+        <Style x:Key="SubSectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="Margin" Value="0,10,0,4" />
+        </Style>
+
+        <Style x:Key="ArticleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="12,2,0,4" />
+            <Setter Property="LineHeight" Value="20" />
+        </Style>
+
+        <Style x:Key="LawRefStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
+            <Setter Property="Opacity" Value="0.7" />
+            <Setter Property="FontStyle" Value="Italic" />
+            <Setter Property="Margin" Value="16,2,0,4" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 顶部标题栏 -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource AccentGradientBrush}"
+                Padding="24,20">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
+                                            Width="28" Height="28"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,12,0"
+                                            Foreground="White" />
+                    <TextBlock Text="MSMC 用户协议与法律声明"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock x:Name="CountdownText"
+                           Text="请仔细阅读协议（02:00）"
+                           FontSize="12"
+                           Foreground="White"
+                           Opacity="0.9"
+                           Margin="0,8,0,0" />
+                <TextBlock x:Name="ScrollHintText"
+                           Text="请滚动至协议底部"
+                           FontSize="11"
+                           Foreground="White"
+                           Opacity="0.7"
+                           Margin="0,2,0,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- 协议内容区 -->
+        <ScrollViewer Grid.Row="1"
+                      x:Name="AgreementContent"
+                      Padding="24,16"
+                      VerticalScrollBarVisibility="Auto"
+                      Background="Transparent">
+            <StackPanel>
+
+                <!-- 前言 -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="一、协议前言" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    欢迎使用 MSMC（Minecraft Server Management Console，以下简称"本软件"）。在使用本软件前，请您仔细阅读以下全部条款。
+                    一旦您点击"同意"按钮，即表示您已充分阅读、理解并接受本协议的全部内容。
+                    如果您不同意本协议的任何条款，请不要使用本软件。
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本软件依据中华人民共和国相关法律法规开发，所有用户均需遵守中国法律、法规及相关司法解释的规定。
+                </TextBlock>
+
+                <!-- 知识产权声明 -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="二、知识产权声明" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.1 软件著作权" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本软件的所有版权、专利权、商标权、商业秘密及其他知识产权，均归软件开发者所有。
+                    受《中华人民共和国著作权法》第三条第（八）项保护，计算机软件属于著作权法所称的作品。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国著作权法》第三条、第十条、第五十三条
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.2 用户使用限制" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    用户不得实施下列行为：
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （一）未经授权复制、发行、出租、展览、表演、放映、广播、信息网络传播本软件；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （二）对本软件进行反向工程、反编译、反汇编或者以其他方式尝试发现源代码；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （三）故意避开或者破坏权利人为保护著作权而采取的技术措施；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （四）故意删除或者改变本软件的权利管理电子信息。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国著作权法》第四十九条、第五十三条
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.3 第三方资源" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本软件可能使用的第三方库、图标、字体等资源，其著作权归各自权利人所有，
+                    用户使用时须同时遵守相关许可协议的规定。
+                </TextBlock>
+
+                <!-- 网络安全 -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="三、网络安全与合规" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="3.1 遵守网络安全法" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    用户使用本软件应当遵守《中华人民共和国网络安全法》及相关法规，不得利用本软件从事任何危害网络安全的活动。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国网络安全法》第十二条、第二十七条
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="3.2 禁止行为" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    用户不得利用本软件实施下列行为：
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （一）非法侵入他人计算机信息系统，窃取、非法获取他人数据；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （二）提供专门用于侵入、非法控制计算机信息系统的程序、工具；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （三）从事危害网络安全的活动，或者为他人从事危害网络安全的活动提供技术支持、广告推广、支付结算等帮助；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （四）传播病毒、木马、蠕虫、恶意代码等破坏性程序；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （五）对他人网站、服务器进行 DDoS 攻击、端口扫描等网络攻击行为；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （六）窃取、非法买卖、非法提供公民个人信息。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国网络安全法》第二十七条、第六十三条、第六十四条；《中华人民共和国刑法》第二百八十五条、第二百八十六条
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="3.3 网络运营者义务提示" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本软件开发者作为网络服务提供者，将依法履行网络安全保护义务，采取技术措施和其他必要措施，
+                    保障网络安全、稳定运行，有效应对网络安全事件，防范网络违法犯罪活动。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国网络安全法》第十条、第二十一条、第二十二条
+                </TextBlock>
+
+                <!-- 用户数据与隐私 -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="四、用户数据与隐私保护" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="4.1 数据收集原则" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本软件尊重并保护用户的个人信息。除法律规定的情形外，未经用户同意，
+                    本软件不会收集、使用、存储、传输或向第三方提供用户的个人信息。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国网络安全法》第四十一条、第四十二条、第四十四条
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="4.2 本地数据存储" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本软件的配置文件、服务器信息等数据默认存储在用户本地设备上。
+                    用户应当妥善保管自己的数据，定期进行备份。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="4.3 数据安全责任" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    用户应对其使用本软件过程中产生的所有数据和操作负责。
+                    因用户自身操作不当、计算机病毒、网络攻击等不可抗力因素导致的数据丢失或泄露，
+                    软件开发者不承担责任，但将依法提供必要协助。
+                </TextBlock>
+
+                <!-- 刑事法律风险提示 -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="五、刑事法律风险提示" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="5.1 侵犯知识产权犯罪" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    以营利为目的，未经著作权人许可，复制发行、通过信息网络向公众传播其文字作品、音乐、
+                    美术、视听作品、计算机软件及法律、行政法规规定的其他作品，违法所得数额较大或者有其他严重情节的，
+                    将依法追究刑事责任。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国刑法》第二百一十七条（侵犯著作权罪）；
+                    最高人民法院、最高人民检察院《关于办理侵犯知识产权刑事案件适用法律若干问题的解释》
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="5.2 危害计算机信息系统安全犯罪" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    违反国家规定，侵入国家事务、国防建设、尖端科学技术领域的计算机信息系统的；
+                    或者违反国家规定，侵入前款规定以外的计算机信息系统或者采用其他技术手段，
+                    获取该计算机信息系统中存储、处理或者传输的数据，或者对该计算机信息系统实施非法控制，
+                    情节严重的，将依法追究刑事责任。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国刑法》第二百八十五条、第二百八十六条；
+                    最高人民法院、最高人民检察院、公安部《关于办理信息网络犯罪案件适用刑事诉讼程序若干问题的意见》
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="5.3 帮助信息网络犯罪活动罪" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    明知他人利用信息网络实施犯罪，为其犯罪提供互联网接入、服务器托管、网络存储、
+                    通讯传输等技术支持，或者提供广告推广、支付结算等帮助，情节严重的，将依法追究刑事责任。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国刑法》第二百八十七条之二
+                </TextBlock>
+
+                <!-- 软件使用规范 -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="六、软件使用规范" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="6.1 合法使用" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    用户应当在法律允许的范围内使用本软件，仅用于管理自己合法所有或获得授权的 Minecraft 服务器。
+                    不得将本软件用于任何非法用途。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="6.2 免责声明" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本软件按"现状"提供，软件开发者不对软件的适用性、可靠性、完整性作出明示或暗示的保证。
+                    在法律允许的最大范围内，软件开发者不对因使用或无法使用本软件而导致的任何直接或间接损失承担责任。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="6.3 协议修改" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    软件开发者有权根据需要修改本协议内容。修改后的协议将在软件更新时告知用户，
+                    继续使用本软件即表示您接受修改后的协议。
+                </TextBlock>
+
+                <!-- 争议解决 -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="七、争议解决与法律适用" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="7.1 法律适用" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本协议的订立、执行、解释及争议解决均适用中华人民共和国法律。
+                    如本协议的任何条款与中华人民共和国法律相抵触，则这些条款将按法律规定重新解释，
+                    其他条款仍保持对用户的法律效力。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="7.2 争议解决" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    因本协议引起的或与本协议有关的任何争议，双方应友好协商解决；协商不成的，
+                    任何一方均有权向软件开发者所在地有管辖权的人民法院提起诉讼。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="7.3 网络侵权处理" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    权利人认为本软件或通过本软件提供的内容侵犯其著作权、商标权等合法权益的，
+                    可以向软件开发者发出权利通知，软件开发者将依照相关法律法规采取必要措施。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：最高人民法院《关于涉网络知识产权侵权纠纷几个法律适用问题的批复》；
+                    最高人民法院《关于审理涉及计算机网络著作权纠纷案件适用法律若干问题的解释》
+                </TextBlock>
+
+                <!-- 未成年人保护 -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="八、未成年人保护" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    国家支持研究开发有利于未成年人健康成长的网络产品和服务，
+                    依法惩治利用网络从事危害未成年人身心健康的活动。
+                    未成年人使用本软件应在监护人的指导和监督下进行。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国网络安全法》第十三条；《中华人民共和国未成年人保护法》
+                </TextBlock>
+
+                <!-- 其他 -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="九、其他条款" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="9.1 条款独立性" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本协议任何条款被有权机关认定为无效或不可执行的，不影响其他条款的效力。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="9.2 通知与送达" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    软件开发者向用户发送的通知，可以通过软件弹窗、官方网站公告等方式送达。
+                    通知自发布之日起视为已送达。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="9.3 协议版本" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本协议版本：v1.0.0
+                    最后更新日期：2025年
+                </TextBlock>
+
+                <!-- 底部提示 -->
+                <Border Margin="0,24,0,0"
+                        Padding="16,12"
+                        Background="{DynamicResource PrimarySubtleBorderBrush}"
+                        CornerRadius="8">
+                    <StackPanel>
+                        <TextBlock Text="⚠️ 重要提示"
+                                   FontSize="13"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource MaterialDesignBody}" />
+                        <TextBlock Text="请您在点击「同意」前，确保已完整阅读并充分理解上述全部条款。"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                   Margin="0,4,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="如您有任何疑问，请咨询专业法律人士。"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="—— 协议内容结束 ——"
+                           FontSize="12"
+                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                           Opacity="0.5"
+                           HorizontalAlignment="Center"
+                           Margin="0,20,0,10" />
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 底部按钮栏 -->
+        <Border Grid.Row="2"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource CardSubtleBorderBrush}"
+                Background="{DynamicResource CardBackgroundBrush}"
+                Padding="24,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           VerticalAlignment="Center"
+                           FontSize="11"
+                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                           Opacity="0.6"
+                           Text="点击「同意」即表示您已阅读并接受以上全部条款" />
+
+                <Button Grid.Column="1"
+                        x:Name="DisagreeButton"
+                        Content="不同意"
+                        Click="DisagreeButton_Click"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Width="100" Height="36"
+                        Margin="0,0,12,0" />
+
+                <Button Grid.Column="2"
+                        x:Name="AgreeButton"
+                        Content="同意并继续"
+                        Click="AgreeButton_Click"
+                        IsEnabled="False"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Background="{DynamicResource AccentGradientBrush}"
+                        Foreground="White"
+                        Width="120" Height="36" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

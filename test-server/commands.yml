@@ -1,0 +1,9 @@
+# This is the commands configuration file for Bukkit.
+# For a reference for any variable inside this file, check out the Bukkit wiki at
+# https://bukkit.fandom.com/wiki/Commands.yml
+
+command-block-overrides: []
+ignore-vanilla-permissions: false
+aliases:
+  icanhasbukkit:
+  - version

@@ -1,0 +1,7 @@
+# This is the permissions configuration file for Bukkit.
+# For a reference for any variable inside this file, check out the Bukkit wiki at
+# https://bukkit.fandom.com/wiki/Permissions.yml
+
+default: op
+groups: {}
+users: {}
