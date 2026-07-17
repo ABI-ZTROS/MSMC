@@ -1,4 +1,12 @@
-// 🪟 主窗口 Code-Behind —— 自定义标题栏 + 鼠标悬停侧边栏 + 关闭确认
+// -----------------------------------------------------------------------------
+// 文件名: MainWindow.xaml.cs
+// 命名空间: McServerGuard.Views
+// 功能描述: 主窗口代码隐藏类，实现自定义标题栏交互、鼠标悬停侧边栏展开/折叠动画、
+//           页面切换过渡动画及关闭确认逻辑。
+// 依赖组件: PresentationFramework, MaterialDesignThemes,
+//           MahApps.Metro.IconPacks, System.Windows.Media
+// 设计模式: 代码隐藏模式, 依赖属性
+// -----------------------------------------------------------------------------
 using System;
 using System.ComponentModel;
 using System.Windows;
@@ -15,6 +23,11 @@ using Serilog;
 
 namespace McServerGuard.Views;
 
+/// <summary>
+/// 主窗口代码隐藏类。
+/// 负责自定义标题栏拖动与最大化交互、侧边栏悬停展开/折叠动画、
+/// 页面切换过渡效果以及关闭前服务器运行状态确认。
+/// </summary>
 public partial class MainWindow : Window
 {
     private readonly IThemeService _themeService;
@@ -43,6 +56,7 @@ public partial class MainWindow : Window
         Log.Information("✅ MainWindow 初始化完成");
     }
 
+    // 窗口 Loaded 事件处理：初始化侧边栏折叠状态与文本透明度
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         _isSidebarExpanded = false;
@@ -51,6 +65,7 @@ public partial class MainWindow : Window
         MainContent.Opacity = 1;
     }
 
+    // DataContext 变更事件处理：订阅/取消订阅 ViewModel 的 PropertyChanged 事件
     private void MainWindow_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (_vm is not null)
@@ -62,6 +77,7 @@ public partial class MainWindow : Window
             _vm.PropertyChanged += Vm_PropertyChanged;
     }
 
+    // ViewModel 属性变更事件处理：当前页面切换时触发过渡动画
     private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.CurrentPage))
@@ -70,6 +86,10 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// 执行页面切换过渡动画，包含淡入与位移动画。
+    /// 动画参数（时长、缓动函数）由主题服务统一配置。
+    /// </summary>
     private void AnimatePageTransition()
     {
         if (!_themeService.EnableAnimations)
@@ -103,9 +123,11 @@ public partial class MainWindow : Window
             tt.BeginAnimation(TranslateTransform.XProperty, slideIn);
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🎨 自定义标题栏 —— 拖动 + 双击最大化
-    // ═══════════════════════════════════════════════════════════════
+    // ─────────────────────────────────────────────────────────────────────
+    // 自定义标题栏交互：拖动移动 + 双击最大化/还原
+    // ─────────────────────────────────────────────────────────────────────
+
+    // 标题栏鼠标左键按下事件处理：双击切换最大化状态，单击拖动窗口
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2)
@@ -118,26 +140,33 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// 切换窗口最大化与正常状态。
+    /// </summary>
     private void ToggleMaximize()
     {
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     }
 
+    // 最小化按钮点击事件处理
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
     {
         WindowState = WindowState.Minimized;
     }
 
+    // 最大化按钮点击事件处理
     private void MaximizeButton_Click(object sender, RoutedEventArgs e)
     {
         ToggleMaximize();
     }
 
+    // 关闭按钮点击事件处理
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Close();
     }
 
+    // 窗口状态变更事件处理：同步最大化按钮图标
     private void MainWindow_StateChanged(object? sender, EventArgs e)
     {
         if (MaximizeIcon != null)
@@ -148,21 +177,25 @@ public partial class MainWindow : Window
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🧭 侧边栏 —— 鼠标悬停自动展开/折叠
-    // ═══════════════════════════════════════════════════════════════
+    // ─────────────────────────────────────────────────────────────────────
+    // 侧边栏交互：鼠标悬停自动展开，延迟自动折叠
+    // ─────────────────────────────────────────────────────────────────────
+
+    // 侧边栏鼠标进入事件处理：停止折叠计时器并展开侧边栏
     private void NavSidebar_MouseEnter(object sender, MouseEventArgs e)
     {
         _collapseTimer.Stop();
         ExpandSidebar();
     }
 
+    // 侧边栏鼠标离开事件处理：启动折叠计时器
     private void NavSidebar_MouseLeave(object sender, MouseEventArgs e)
     {
         _collapseTimer.Stop();
         _collapseTimer.Start();
     }
 
+    // 折叠计时器 Tick 事件处理：延迟后若鼠标已离开则折叠侧边栏
     private void CollapseTimer_Tick(object? sender, EventArgs e)
     {
         _collapseTimer.Stop();
@@ -172,6 +205,10 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// 展开侧边栏动画。使用 DoubleAnimation 驱动 Width 属性，
+    /// 同时配合文本透明度渐变实现平滑过渡效果。
+    /// </summary>
     private void ExpandSidebar()
     {
         if (_isSidebarExpanded) return;
@@ -203,6 +240,9 @@ public partial class MainWindow : Window
         });
     }
 
+    /// <summary>
+    /// 折叠侧边栏动画。与展开动画对称，宽度收缩至图标模式。
+    /// </summary>
     private void CollapseSidebar()
     {
         if (!_isSidebarExpanded) return;
@@ -234,6 +274,10 @@ public partial class MainWindow : Window
         });
     }
 
+    /// <summary>
+    /// 直接设置侧边栏所有文本元素的不透明度。
+    /// </summary>
+    /// <param name="opacity">目标不透明度值（0.0 - 1.0）</param>
     private void SetTextElementsOpacity(double opacity)
     {
         NavHeaderText.Opacity = opacity;
@@ -244,6 +288,12 @@ public partial class MainWindow : Window
         NavItemText5.Opacity = opacity;
     }
 
+    /// <summary>
+    /// 以动画形式过渡侧边栏文本元素的不透明度。
+    /// 使用 CubicEase 缓动函数实现自然的加速-减速曲线。
+    /// </summary>
+    /// <param name="toOpacity">目标不透明度</param>
+    /// <param name="durationMs">动画时长（毫秒）</param>
     private void AnimateTextOpacity(double toOpacity, int durationMs)
     {
         var duration = TimeSpan.FromMilliseconds(durationMs);
@@ -263,9 +313,11 @@ public partial class MainWindow : Window
         Animate(NavItemText5);
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // ⚠️ 关闭确认 —— 若有服务器在运行则弹窗警告
-    // ═══════════════════════════════════════════════════════════════
+    // ─────────────────────────────────────────────────────────────────────
+    // 关闭确认：检测服务器运行状态，必要时弹出确认对话框
+    // ─────────────────────────────────────────────────────────────────────
+
+    // 窗口 Closing 事件处理：若存在运行中的服务器则弹出确认提示
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
         if (_serverManager.AnyServerRunning())

@@ -1,6 +1,12 @@
-// 🔵 GaugeRingControl —— 圆环仪表盘
-// 纯 DrawingVisual 自绘，零外部依赖，就是这么硬核 💪
-// ⚡ 性能优化：所有 Brush/Pen/Typeface 全部 Freeze 缓存为静态字段，消除每帧 GC
+// -----------------------------------------------------------------------------
+// 文件名: GaugeRingControl.cs
+// 命名空间: McServerGuard.Views.Controls
+// 功能描述: 圆环仪表盘自定义控件，基于 DrawingVisual 自绘实现。
+//           以 270 度圆弧展示 0-100 的百分比值，颜色随数值档位变化。
+//           采用静态 Brush/Pen/Typeface Freeze 缓存优化渲染性能。
+// 依赖组件: PresentationFramework, System.Windows.Media
+// 设计模式: 自定义控件 (DependencyProperty), WPF 可视化树
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Views.Controls;
 
 using System.Globalization;
@@ -8,17 +14,20 @@ using System.Windows;
 using System.Windows.Media;
 
 /// <summary>
-/// 圆环仪表盘控件 —— 用弧线展示 0-100 的百分比值
-/// 270度圆弧（底部留缺口），颜色随值变化（绿→黄→红）
+/// 圆环仪表盘自定义控件。
+/// 继承自 FrameworkElement，通过 DrawingVisual 进行低开销自绘。
+/// 使用 270 度圆弧（底部留有缺口）展示百分比数值，
+/// 数值在 0-60%、60-85%、85-100% 三档分别对应绿、黄、红语义色。
+/// 所有静态画笔与字体均在构造前 Freeze 缓存，以消除每帧 GC 分配。
 /// </summary>
 public class GaugeRingControl : FrameworkElement
 {
     private readonly DrawingVisual _visual = new();
 
     // ─── 静态缓存：语义色 Brush/Pen/Typeface 只创建一次并 Freeze，避免每帧 GC ───
-    // 语义色（绿/黄/红）不随主题变，保持静态；中性色（轨道/标签/白字）改为动态读取主题资源
+    // 语义色（绿/黄/红）不随主题变化，保持静态；中性色（轨道/标签/白字）动态读取主题资源
 
-    // 三档语义色（不跟随主题，合理静态）
+    // 三档语义色（不跟随主题，静态缓存）
     private static readonly Brush GreenBrush = CreateFrozenBrush(Color.FromArgb(255, 76, 175, 80));   // #4CAF50
     private static readonly Brush YellowBrush = CreateFrozenBrush(Color.FromArgb(255, 255, 193, 7));  // #FFC107
     private static readonly Brush RedBrush = CreateFrozenBrush(Color.FromArgb(255, 244, 67, 54));     // #F44336
@@ -55,7 +64,7 @@ public class GaugeRingControl : FrameworkElement
     }
 
     /// <summary>
-    /// 从主题资源读取笔刷，读不到则回退到静态默认值
+    /// 从主题资源字典读取轨道画笔，读取失败时回退到静态默认值。
     /// </summary>
     private Brush GetTrackBrush() => TryFindResource("CardHoverBrush") as Brush ?? FallbackTrackBrush;
     private Brush GetLabelBrush() => TryFindResource("MaterialDesignBodyLight") as Brush ?? FallbackLabelBrush;
@@ -63,18 +72,31 @@ public class GaugeRingControl : FrameworkElement
 
     // ─── 依赖属性 ──────────────────────────────────────────────────────
 
+    /// <summary>
+    /// 数值依赖属性。取值范围 0-100，超出部分在绘制时自动截断。
+    /// 值变更时自动触发重绘。
+    /// </summary>
     public static readonly DependencyProperty ValueProperty =
         DependencyProperty.Register(nameof(Value), typeof(double), typeof(GaugeRingControl),
             new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>
+    /// 标签文本依赖属性。显示在仪表盘底部的说明文字。
+    /// </summary>
     public static readonly DependencyProperty LabelProperty =
         DependencyProperty.Register(nameof(Label), typeof(string), typeof(GaugeRingControl),
             new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>
+    /// 单位文本依赖属性。显示在数值右侧，默认值为 "%"。
+    /// </summary>
     public static readonly DependencyProperty UnitProperty =
         DependencyProperty.Register(nameof(Unit), typeof(string), typeof(GaugeRingControl),
             new FrameworkPropertyMetadata("%", FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>
+    /// 圆弧线宽依赖属性。控制进度弧与轨道弧的绘制厚度。
+    /// </summary>
     public static readonly DependencyProperty ArcThicknessProperty =
         DependencyProperty.Register(nameof(ArcThickness), typeof(double), typeof(GaugeRingControl),
             new FrameworkPropertyMetadata(12.0, FrameworkPropertyMetadataOptions.AffectsRender));
@@ -84,7 +106,7 @@ public class GaugeRingControl : FrameworkElement
     public string Unit { get => (string)GetValue(UnitProperty); set => SetValue(UnitProperty, value); }
     public double ArcThickness { get => (double)GetValue(ArcThicknessProperty); set => SetValue(ArcThicknessProperty, value); }
 
-    // ─── 尺寸 ──────────────────────────────────────────────────────────
+    // ─── 构造与可视化子元素 ────────────────────────────────────────────
 
     public GaugeRingControl()
     {
@@ -101,24 +123,37 @@ public class GaugeRingControl : FrameworkElement
 
     protected override Visual GetVisualChild(int index) => _visual;
 
-    // ─── 颜色档位 → 对应 Pen ───────────────────────────────────────────
+    // ─── 颜色档位映射 ─────────────────────────────────────────────────
 
+    /// <summary>
+    /// 根据数值获取对应档位的 Pen。
+    /// 0-60% 绿色，60-85% 黄色，85-100% 红色。
+    /// </summary>
+    /// <param name="v">数值（0-100）</param>
+    /// <returns>对应颜色的 Pen 实例</returns>
     private static Pen GetPenForValue(double v)
     {
-        // 0-60% 绿，60-85% 黄，85-100% 红
         if (v < 60) return GreenPen;
         if (v < 85) return YellowPen;
         return RedPen;
     }
 
-    // ─── 绘制 ──────────────────────────────────────────────────────────
+    // ─── 绘制 ─────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// OnRender 重写：调用 DrawGauge 完成仪表盘绘制。
+    /// </summary>
+    /// <param name="dc">绘制上下文</param>
     protected override void OnRender(DrawingContext dc)
     {
         DrawGauge();
         base.OnRender(dc);
     }
 
+    /// <summary>
+    /// 绘制完整仪表盘：背景轨道弧、进度弧、中心数值文本与底部标签。
+    /// 轨道色动态读取主题资源，进度色按数值档位取自静态缓存。
+    /// </summary>
     private void DrawGauge()
     {
         var w = RenderSize.Width;
@@ -134,7 +169,7 @@ public class GaugeRingControl : FrameworkElement
 
         using var drawing = _visual.RenderOpen();
 
-        // 🎨 动态读取轨道色（跟随主题），每次创建 TrackPen（Pen 轻量）
+        // 动态读取轨道色（跟随主题），每次创建 TrackPen（Pen 对象为轻量级）
         var trackBrush = GetTrackBrush();
         var trackPen = new Pen(trackBrush, TrackPenThickness)
         {
@@ -142,7 +177,7 @@ public class GaugeRingControl : FrameworkElement
             EndLineCap = PenLineCap.Round,
         };
 
-        // 1️⃣ 灰色背景轨道（270度弧）—— 使用动态 TrackPen
+        // 第一步：绘制灰色背景轨道（270 度弧）
         var bgGeom = new StreamGeometry();
         using (var ctx = bgGeom.Open())
         {
@@ -158,7 +193,7 @@ public class GaugeRingControl : FrameworkElement
         bgGeom.Freeze();
         drawing.DrawGeometry(null, trackPen, bgGeom);
 
-        // 2️⃣ 彩色进度弧 —— 使用缓存的三档 Pen
+        // 第二步：绘制彩色进度弧（使用三档缓存 Pen）
         var clampedValue = Math.Clamp(Value, 0, 100);
         if (clampedValue > 0.1)
         {
@@ -180,8 +215,8 @@ public class GaugeRingControl : FrameworkElement
             drawing.DrawGeometry(null, fgPen, fgGeom);
         }
 
-        // 3️⃣ 中心数字 —— FormattedText 必须每次创建（值会变），但 Typeface 已缓存
-        // 颜色动态读取主题（跟随主色变化）
+        // 第三步：绘制中心数字（FormattedText 需每次创建，但 Typeface 已静态缓存）
+        // 颜色动态读取主题资源
         var valueText = clampedValue.ToString("F1", CultureInfo.CurrentCulture);
         var unitText = Unit ?? "%";
         var labelText = Label ?? "";
@@ -199,7 +234,7 @@ public class GaugeRingControl : FrameworkElement
         drawing.DrawText(numFormatted,
             new Point(cx - numFormatted.Width / 2, cy - numFormatted.Height / 2 - 4));
 
-        // 标签（底部小字）—— 同样用缓存的 Typeface + 动态 LabelBrush
+        // 底部标签文本（使用缓存 Typeface + 动态 LabelBrush）
         if (!string.IsNullOrEmpty(labelText))
         {
             var labelFontSize = Math.Min(12, radius * 0.22);

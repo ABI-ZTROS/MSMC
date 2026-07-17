@@ -1,3 +1,10 @@
+// -----------------------------------------------------------------------------
+// 文件名: JavaFinder.cs
+// 命名空间: McServerGuard.Services.ServerDetection
+// 功能描述: Java 运行时查找器，多策略扫描系统中的 Java 安装并验证版本信息
+// 依赖组件: System.Diagnostics, System.IO, Microsoft.Win32, Serilog
+// 设计模式: 策略模式（多源查找）、验证器模式、收集器模式
+// -----------------------------------------------------------------------------
 using System.Diagnostics;
 using System.IO;
 using Microsoft.Win32;
@@ -5,55 +12,74 @@ using Serilog;
 
 namespace McServerGuard.Services.ServerDetection;
 
-/// <summary>☕ Java 查找器 —— Windows 平台专用，各种姿势挖 Java 安装路径</summary>
+/// <summary>
+/// Java 运行时查找器 —— Windows 平台专用
+/// </summary>
 /// <remarks>
-/// 有人装在 C:\Program Files\Java，有人装在 C:\Program Files\Eclipse Adoptium，
-/// 有人用 JAVA_HOME，有人直接扔 PATH 里，还有人用 SDKMAN...
-/// 我们的目标是：不管藏在哪儿，都给它挖出来 🔍
+/// <para>采用多策略扫描方案，从多种来源发现系统中的 Java 安装实例，
+/// 确保在各种部署环境下均能可靠定位 Java 运行时。</para>
+/// <para>查找来源（按优先级排序）：
+///   1. JAVA_HOME 环境变量（用户显式配置）
+///   2. Windows 注册表（安装器写入，最可靠）
+///   3. PATH 环境变量
+///   4. where 命令查找
+///   5. 常见安装目录扫描（Program Files、用户目录等）
+/// </para>
 /// </remarks>
 public static class JavaFinder
 {
-    /// <summary>☕ 找到的 Java 安装信息</summary>
+    /// <summary>
+    /// Java 安装信息实体
+    /// </summary>
     public class JavaInstallation
     {
+        /// <summary>java.exe 可执行文件完整路径</summary>
         public string JavaPath { get; init; } = string.Empty;
+        /// <summary>JAVA_HOME 根目录路径</summary>
         public string JavaHome { get; init; } = string.Empty;
+        /// <summary>版本号对象</summary>
         public Version? Version { get; init; }
+        /// <summary>版本字符串</summary>
         public string VersionString { get; init; } = string.Empty;
+        /// <summary>是否为 64 位架构</summary>
         public bool Is64Bit { get; init; }
+        /// <summary>发行厂商名称</summary>
         public string Vendor { get; init; } = string.Empty;
     }
 
-    /// <summary>🎯 查找系统中可用的 Java —— 找到第一个能用的就返回</summary>
+    /// <summary>
+    /// 查找系统中第一个可用的 Java 运行时
+    /// </summary>
+    /// <returns>java.exe 路径；未找到返回 null</returns>
     public static string? FindJava()
     {
         var all = FindAllJavaInstallations();
         return all.FirstOrDefault()?.JavaPath;
     }
 
-    /// <summary>📋 查找系统中所有的 Java 安装 —— 按版本从高到低排序</summary>
+    /// <summary>
+    /// 查找系统中所有的 Java 安装实例
+    /// </summary>
+    /// <returns>Java 安装信息列表，按版本号从高到低排序</returns>
     public static List<JavaInstallation> FindAllJavaInstallations()
     {
-        Log.Debug("🔍 开始在系统中查找 Java 安装...");
+        Log.Debug("开始在系统中查找 Java 安装...");
 
         var found = new Dictionary<string, JavaInstallation>(StringComparer.OrdinalIgnoreCase);
         var candidates = new List<string>();
 
-        // 1️⃣ JAVA_HOME 环境变量（最优先，用户明确配置的）
         var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
         if (!string.IsNullOrEmpty(javaHome))
         {
             var javaExe = GetJavaExecutable(javaHome);
             if (javaExe != null) candidates.Add(javaExe);
-            Log.Debug("📝 JAVA_HOME: {Path}", javaHome);
+            Log.Debug("JAVA_HOME: {Path}", javaHome);
         }
 
-        // 2️⃣ Windows 注册表查询（最靠谱，安装器一定会写）
         var registryJava = FindJavaViaRegistry();
         candidates.AddRange(registryJava);
-        Log.Debug("📝 注册表查询完成，找到 {Count} 个", registryJava.Count);
+        Log.Debug("注册表查询完成，找到 {Count} 个", registryJava.Count);
 
-        // 3️⃣ PATH 环境变量
         var pathEnv = Environment.GetEnvironmentVariable("PATH");
         if (!string.IsNullOrEmpty(pathEnv))
         {
@@ -65,19 +91,16 @@ public static class JavaFinder
                     candidates.Add(javaExe);
                 }
             }
-            Log.Debug("📝 PATH 环境变量已扫描");
+            Log.Debug("PATH 环境变量已扫描");
         }
 
-        // 4️⃣ where 命令查找
         var whereResults = FindJavaViaWhereCommand();
         candidates.AddRange(whereResults);
-        Log.Debug("📝 where 命令查找完成");
+        Log.Debug("where 命令查找完成");
 
-        // 5️⃣ 常见安装路径扫描
         candidates.AddRange(ScanCommonInstallPaths());
-        Log.Debug("📝 常见路径扫描完成");
+        Log.Debug("常见路径扫描完成");
 
-        // 🔍 去重 + 验证每个候选
         foreach (var candidate in candidates)
         {
             var normalized = Path.GetFullPath(candidate);
@@ -91,7 +114,7 @@ public static class JavaFinder
             if (info != null)
             {
                 found[normalized] = info;
-                Log.Debug("✅ 找到 Java: {Path} (版本: {Version})", info.JavaPath, info.VersionString);
+                Log.Debug("找到 Java: {Path} (版本: {Version})", info.JavaPath, info.VersionString);
             }
         }
 
@@ -100,11 +123,15 @@ public static class JavaFinder
             .ThenBy(j => j.JavaPath)
             .ToList();
 
-        Log.Information("🔍 共找到 {Count} 个 Java 安装", result.Count);
+        Log.Information("共找到 {Count} 个 Java 安装", result.Count);
         return result;
     }
 
-    /// <summary>📦 从 Java 安装目录获取 java.exe 路径</summary>
+    /// <summary>
+    /// 从 Java 安装目录获取 java.exe 可执行文件路径
+    /// </summary>
+    /// <param name="directory">Java 安装根目录</param>
+    /// <returns>java.exe 完整路径；未找到返回 null</returns>
     private static string? GetJavaExecutable(string directory)
     {
         if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
@@ -125,10 +152,14 @@ public static class JavaFinder
         return null;
     }
 
-    /// <summary>🪟 通过 Windows 注册表查找 Java 安装路径</summary>
+    /// <summary>
+    /// 通过 Windows 注册表查找 Java 安装路径
+    /// </summary>
+    /// <returns>java.exe 路径列表</returns>
     /// <remarks>
-    /// Java 安装器（Oracle、Temurin、Microsoft 等）都会往注册表里写安装路径，
-    /// 这是最靠谱的查找方式，比扫描目录快多了。
+    /// 扫描多个注册表路径，包括新版 JDK/JRE、旧版 JDK/JRE 及 32 位兼容节点。
+    /// Java 安装器（Oracle、Temurin、Microsoft 等）均会写入注册表，
+    /// 因此这是最可靠的查找方式。
     /// </remarks>
     private static List<string> FindJavaViaRegistry()
     {
@@ -136,13 +167,10 @@ public static class JavaFinder
 
         var registryPaths = new[]
         {
-            // 新版 JDK/JRE
             @"SOFTWARE\JavaSoft\JDK",
             @"SOFTWARE\JavaSoft\JRE",
-            // 旧版 JDK/JRE
             @"SOFTWARE\JavaSoft\Java Development Kit",
             @"SOFTWARE\JavaSoft\Java Runtime Environment",
-            // 32 位兼容
             @"SOFTWARE\WOW6432Node\JavaSoft\JDK",
             @"SOFTWARE\WOW6432Node\JavaSoft\JRE",
             @"SOFTWARE\WOW6432Node\JavaSoft\Java Development Kit",
@@ -178,7 +206,7 @@ public static class JavaFinder
                 }
                 catch (Exception ex)
                 {
-                    Log.Debug("⚠️ 读取注册表 {Hive}\\{Key} 失败: {Msg}", hive.Name, keyPath, ex.Message);
+                    Log.Debug("读取注册表 {Hive}\\{Key} 失败: {Msg}", hive.Name, keyPath, ex.Message);
                 }
             }
         }
@@ -186,7 +214,10 @@ public static class JavaFinder
         return results;
     }
 
-    /// <summary>💻 用 where 命令查找 Java</summary>
+    /// <summary>
+    /// 使用 where 命令查找 Java
+    /// </summary>
+    /// <returns>java.exe 路径列表</returns>
     private static List<string> FindJavaViaWhereCommand()
     {
         var results = new List<string>();
@@ -218,13 +249,16 @@ public static class JavaFinder
         }
         catch (Exception ex)
         {
-            Log.Debug("⚠️ where 命令查找 Java 失败: {Msg}", ex.Message);
+            Log.Debug("where 命令查找 Java 失败: {Msg}", ex.Message);
         }
 
         return results;
     }
 
-    /// <summary>📂 扫描常见的 Java 安装目录</summary>
+    /// <summary>
+    /// 扫描常见的 Java 安装目录
+    /// </summary>
+    /// <returns>java.exe 路径列表</returns>
     private static List<string> ScanCommonInstallPaths()
     {
         var results = new List<string>();
@@ -236,7 +270,6 @@ public static class JavaFinder
 
         var basePaths = new[]
         {
-            // Program Files 下的各种发行版
             Path.Combine(programFiles, "Java"),
             Path.Combine(programFiles, "Eclipse Adoptium"),
             Path.Combine(programFiles, "Microsoft"),
@@ -246,11 +279,9 @@ public static class JavaFinder
             Path.Combine(programFiles, "SapMachine"),
             Path.Combine(programFiles, "OpenLogic"),
             Path.Combine(programFiles, "GraalVM"),
-            // Program Files (x86)
             Path.Combine(programFilesX86, "Java"),
             Path.Combine(programFilesX86, "Eclipse Adoptium"),
             Path.Combine(programFilesX86, "BellSoft"),
-            // 用户目录
             Path.Combine(userProfile, ".jdks"),
             Path.Combine(userProfile, ".sdkman", "candidates", "java"),
             Path.Combine(localAppData, "Programs", "Eclipse Adoptium"),
@@ -275,14 +306,17 @@ public static class JavaFinder
             }
             catch
             {
-                // 权限不足什么的，跳过就好
             }
         }
 
         return results;
     }
 
-    /// <summary>✅ 验证 Java 是否真的能用，顺便扒出版本信息</summary>
+    /// <summary>
+    /// 验证 Java 可执行文件的有效性，并提取版本与厂商信息
+    /// </summary>
+    /// <param name="javaPath">java.exe 完整路径</param>
+    /// <returns>Java 安装信息对象；验证失败返回 null</returns>
     public static JavaInstallation? VerifyJava(string javaPath)
     {
         if (string.IsNullOrEmpty(javaPath) || !File.Exists(javaPath))
@@ -325,12 +359,21 @@ public static class JavaFinder
         }
         catch (Exception ex)
         {
-            Log.Debug("⚠️ 验证 Java 失败 {Path}: {Msg}", javaPath, ex.Message);
+            Log.Debug("验证 Java 失败 {Path}: {Msg}", javaPath, ex.Message);
             return null;
         }
     }
 
-    /// <summary>📝 从 java -version 输出中解析版本号</summary>
+    /// <summary>
+    /// 从 java -version 输出中解析版本号
+    /// </summary>
+    /// <param name="versionOutput">java -version 命令输出</param>
+    /// <returns>版本号对象；解析失败返回 null</returns>
+    /// <remarks>
+    /// 兼容两种版本格式：
+    ///   - Java 9+：major.minor.build（如 17.0.1）
+    ///   - Java 8 及以前：1.major.minor_build（如 1.8.0_301 → 主版本为 8）
+    /// </remarks>
     private static Version? ParseVersion(string versionOutput)
     {
         if (string.IsNullOrWhiteSpace(versionOutput))
@@ -350,7 +393,6 @@ public static class JavaFinder
             int minor = match.Groups[2].Success ? int.Parse(match.Groups[2].Value) : 0;
             int build = match.Groups[3].Success ? int.Parse(match.Groups[3].Value) : 0;
 
-            // Java 8 及以前的格式: 1.8.0_301 → 主版本是 8
             if (major == 1 && match.Groups[2].Success)
             {
                 major = int.Parse(match.Groups[2].Value);
@@ -366,7 +408,11 @@ public static class JavaFinder
         }
     }
 
-    /// <summary>🏭 从 java -version 输出中解析厂商</summary>
+    /// <summary>
+    /// 从 java -version 输出中解析发行厂商
+    /// </summary>
+    /// <param name="versionOutput">java -version 命令输出</param>
+    /// <returns>厂商名称字符串</returns>
     private static string ParseVendor(string versionOutput)
     {
         if (string.IsNullOrWhiteSpace(versionOutput))
@@ -405,7 +451,11 @@ public static class JavaFinder
         return "Unknown";
     }
 
-    /// <summary>🏠 从 java.exe 路径反推 JAVA_HOME</summary>
+    /// <summary>
+    /// 从 java.exe 路径反推 JAVA_HOME 根目录
+    /// </summary>
+    /// <param name="javaPath">java.exe 完整路径</param>
+    /// <returns>JAVA_HOME 路径；推导失败返回 null</returns>
     private static string? GetJavaHomeFromExecutable(string javaPath)
     {
         try

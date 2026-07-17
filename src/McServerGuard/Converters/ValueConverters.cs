@@ -1,5 +1,12 @@
-// 🔄 值转换器三人组 —— XAML 绑定时的"翻译官"
-// WPF 绑定说："这个 bool 我不能直接用"，转换器说："交给我" ✨
+// -----------------------------------------------------------------------------
+// 文件名: ValueConverters.cs
+// 命名空间: McServerGuard.Converters
+// 功能描述: 通用值转换器集合，实现 IValueConverter 接口，
+//           用于 XAML 数据绑定时的类型转换与条件映射。
+//           包含布尔取反、空值可见性、索引匹配、字符串转换等常用转换器。
+// 依赖组件: PresentationFramework, System.Windows.Data
+// 设计模式: 值转换器 (IValueConverter)
+// -----------------------------------------------------------------------------
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
@@ -7,9 +14,9 @@ using System.Windows.Data;
 namespace McServerGuard.Converters;
 
 /// <summary>
-/// InvertBoolConverter —— bool 取反器
-/// true → false, false → true
-/// 就像 Minecraft 里的红石火把，有信号就没信号，没信号就有信号 🔴
+/// 布尔取反值转换器。
+/// 将 bool 值取反后返回，true 变 false，false 变 true。
+/// 支持双向转换，Convert 与 ConvertBack 逻辑一致。
 /// </summary>
 public class InvertBoolConverter : IValueConverter
 {
@@ -21,10 +28,9 @@ public class InvertBoolConverter : IValueConverter
 }
 
 /// <summary>
-/// NullToVisibilityConverter —— "你有东西就显示，没东西就消失"
-/// null → Collapsed（藏起来）
-/// 非 null → Visible（亮出来）
-/// 就像苦力怕看你的时候突然消失一样 🟩
+/// 空值可见性值转换器。
+/// 当绑定值为 null 时返回 Visibility.Collapsed，非 null 时返回 Visibility.Visible。
+/// 单向绑定使用，ConvertBack 返回 Binding.DoNothing。
 /// </summary>
 public class NullToVisibilityConverter : IValueConverter
 {
@@ -32,15 +38,14 @@ public class NullToVisibilityConverter : IValueConverter
         => value is null ? Visibility.Collapsed : Visibility.Visible;
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        // 这货是单向绑定用的，ConvertBack 理论上不会被调用，但以防万一返回个 Binding.DoNothing
+        // 单向绑定用途，ConvertBack 理论上不会被调用，返回 Binding.DoNothing 确保安全
         => Binding.DoNothing;
 }
 
 /// <summary>
-/// BoolToVisibilityConverter —— "true 就让你看，false 就让你猜"
-/// true → Visible
-/// false → Collapsed
-/// 最经典的 WPF 转换器，出场率比僵尸还高 🧟
+/// 布尔可见性值转换器。
+/// true 时返回 Visibility.Visible，false 时返回 Visibility.Collapsed。
+/// 支持双向转换。
 /// </summary>
 public class BoolToVisibilityConverter : IValueConverter
 {
@@ -56,11 +61,10 @@ public class BoolToVisibilityConverter : IValueConverter
 }
 
 /// <summary>
-/// IndexToBoolConverter —— 通用索引→bool 转换器
-/// ConverterParameter 传入字符串形式的索引（如 "0", "1", "2", "3"）
-/// 当 value 等于该索引时返回 true，否则返回 false
-/// ConvertBack: true 时返回 parameter 的值
-/// 就像抽奖号码对对碰，对上了就中奖 🎰
+/// 索引布尔值转换器。
+/// ConverterParameter 传入字符串形式的目标索引（如 "0"、"1"、"2"、"3"），
+/// 当绑定值与该索引相等时返回 true，否则返回 false。
+/// ConvertBack：值为 true 时返回 parameter 对应的字符串。
 /// </summary>
 public class IndexToBoolConverter : IValueConverter
 {
@@ -76,7 +80,7 @@ public class IndexToBoolConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        // true 时返回 parameter 的值，false 时返回 Binding.DoNothing
+        // 值为 true 时返回 parameter 的值，值为 false 时返回 Binding.DoNothing
         if (value is true && parameter != null)
             return parameter.ToString() ?? string.Empty;
 
@@ -85,10 +89,10 @@ public class IndexToBoolConverter : IValueConverter
 }
 
 /// <summary>
-/// BoolStringConverter —— "true"/"false" 字符串 ↔ bool? 互转
-/// Convert: string → bool?（"true" → true, 其他 → false, 非string → Binding.DoNothing）
-/// ConvertBack: bool? → string（true → "true", false → "false", null → Binding.DoNothing）
-/// 容错设计：值不合法时返回 Binding.DoNothing，避免产生绑定错误
+/// 布尔字符串互转值转换器。
+/// Convert：string → bool?（"true" → true，其他 → false，非字符串 → Binding.DoNothing）
+/// ConvertBack：bool? → string（true → "true"，false → "false"，null → Binding.DoNothing）
+/// 容错设计：值不合法时返回 Binding.DoNothing，避免产生绑定错误。
 /// </summary>
 public class BoolStringConverter : IValueConverter
 {
@@ -110,10 +114,10 @@ public class BoolStringConverter : IValueConverter
 }
 
 /// <summary>
-/// ValueTypeToVisibilityConverter —— 根据 ValueType 字符串控制 Visibility
-/// ConverterParameter 传入期望的类型（如 "bool", "int", "enum", "string"）
-/// 当 value（字符串类型）等于 parameter 时返回 Visible，否则 Collapsed
-/// 就像门禁卡，名字对上了才让进 🚪
+/// 值类型可见性值转换器。
+/// ConverterParameter 传入期望的类型字符串（如 "bool"、"int"、"enum"、"string"），
+/// 当绑定值（字符串）与 parameter 相等时返回 Visible，否则返回 Collapsed。
+/// 大小写不敏感比较。
 /// </summary>
 public class ValueTypeToVisibilityConverter : IValueConverter
 {
@@ -130,16 +134,15 @@ public class ValueTypeToVisibilityConverter : IValueConverter
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        // 同样是单向绑定，ConvertBack 不会被调用，返回 Binding.DoNothing 安全又优雅
+        // 单向绑定用途，ConvertBack 不会被调用，返回 Binding.DoNothing
         => Binding.DoNothing;
 }
 
 /// <summary>
-/// BoolToPackIconConverter —— bool 转 MaterialDesign PackIcon Kind 名称
-/// true → "CheckCircle"（绿色，一切正常 ✅）
-/// false → "AlertCircle"（黄色/警告，要注意啦 ⚠️）
-/// 返回 string 类型，PackIcon 的 Kind 属性接受 string
-/// 状态好不好，图标告诉你 👀
+/// 布尔转图标名称值转换器。
+/// 将 bool 值转换为 MaterialDesign PackIcon 的 Kind 名称字符串。
+/// true → "Check"，false → "Alert"。
+/// 支持双向转换。
 /// </summary>
 public class BoolToPackIconConverter : IValueConverter
 {
@@ -147,15 +150,14 @@ public class BoolToPackIconConverter : IValueConverter
         => value is true ? "Check" : "Alert";
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        // 单向绑定不需要 ConvertBack，但还是给个合理的实现吧：CheckCircle=true，其余=false
+        // 单向绑定不需要 ConvertBack，仍提供合理实现：Check → true，其余 → false
         => value is string s && s == "Check";
 }
 
 /// <summary>
-/// BoolToTextConverter —— bool 转 "是"/"否"
-/// true → "是"
-/// false → "否"
-/// 简简单单，清清爽爽，不整那些花里胡哨的 🌸
+/// 布尔转文本值转换器。
+/// true → "是"，false → "否"。
+/// 支持双向转换。
 /// </summary>
 public class BoolToTextConverter : IValueConverter
 {
@@ -172,11 +174,9 @@ public class BoolToTextConverter : IValueConverter
 }
 
 /// <summary>
-/// InvertBoolToVisibilityConverter —— bool 取反后转 Visibility
-/// true → Collapsed
-/// false → Visible
-/// 专门用于显示"未检测"提示——当 IsDetected 为 false 时亮出提示
-/// 和 BoolToVisibilityConverter 刚好反过来，就像互为镜像的末影人 🪞
+/// 布尔取反可见性值转换器。
+/// true → Collapsed，false → Visible。
+/// 与 BoolToVisibilityConverter 逻辑相反，适用于"未检测"等否定性提示的显示控制。
 /// </summary>
 public class InvertBoolToVisibilityConverter : IValueConverter
 {
@@ -192,10 +192,9 @@ public class InvertBoolToVisibilityConverter : IValueConverter
 }
 
 /// <summary>
-/// BooleanToBrushConverter —— bool 转 Brush
-/// true → PrimaryHueLightBrush（按下状态）
-/// false → 默认透明
-/// 用于按钮按下效果
+/// 布尔转画笔值转换器。
+/// true → LightBlue（按下状态），false → Transparent。
+/// 用于按钮按下等视觉反馈效果。
 /// </summary>
 public class BooleanToBrushConverter : IValueConverter
 {
@@ -213,10 +212,9 @@ public class BooleanToBrushConverter : IValueConverter
 }
 
 /// <summary>
-/// StringToVisibilityConverter —— 字符串转 Visibility
-/// 非空且非空白 → Visible
-/// 空或空白 → Collapsed
-/// 用于显示警告文本
+/// 字符串可见性值转换器。
+/// 非空且非空白 → Visible，空或空白 → Collapsed。
+/// 用于警告文本等条件显示场景。
 /// </summary>
 public class StringToVisibilityConverter : IValueConverter
 {
@@ -228,7 +226,8 @@ public class StringToVisibilityConverter : IValueConverter
 }
 
 /// <summary>
-/// NullToBoolConverter —— null → false, 非 null → true
+/// 空值布尔值转换器。
+/// null → false，非 null → true。
 /// </summary>
 public class NullToBoolConverter : IValueConverter
 {

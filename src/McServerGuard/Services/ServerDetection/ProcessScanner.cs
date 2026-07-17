@@ -1,6 +1,10 @@
-// 🔍 进程扫描器 —— 潜入系统进程列表，揪出所有偷偷运行的 Minecraft 服务器
-// 话说 Minecraft 服务器的 java.exe 进程和客户端长得一模一样，
-// 区分它们简直是世界上最有趣的猜谜游戏（并不是）🫠
+// -----------------------------------------------------------------------------
+// 文件名: ProcessScanner.cs
+// 命名空间: McServerGuard.Services.ServerDetection
+// 功能描述: 基于WMI与进程枚举的Minecraft服务器进程指纹识别引擎，通过多维度特征（JAR关键字、Shell父进程链、客户端特征排除）从Java进程池中筛选候选服务器进程
+// 依赖组件: System.Diagnostics, System.Management, Serilog, McServerGuard.Constants
+// 设计模式: 策略模式（多判定策略组合）、指纹识别（进程签名去重）
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Services.ServerDetection;
 
 using System.Diagnostics;
@@ -9,17 +13,33 @@ using McServerGuard.Constants;
 using Serilog;
 
 /// <summary>
-/// 进程扫描器 —— 专治各种"我的服务器进程到底在哪"的疑难杂症
+/// 进程扫描引擎 —— 负责从系统进程池中识别并提取Minecraft服务器进程
 /// </summary>
+/// <remarks>
+/// 采用多策略级联判定架构：
+/// 1. 基础筛选：枚举所有 java/javaw 进程
+/// 2. 客户端排除：基于命令行特征指纹过滤客户端进程
+/// 3. 服务器判定：JAR文件名关键字匹配 + Shell父进程链追溯
+/// 4. 去重校验：基于JAR名称与关键JVM参数生成进程签名，避免重复条目
+/// </remarks>
 public class ProcessScanner
 {
+    /// <summary>
+    /// Shell进程名称集合，用于父进程链追溯时的锚点识别
+    /// </summary>
     private static readonly string[] ShellProcessNames = ["cmd", "powershell", "pwsh"];
 
     /// <summary>
-    /// 扫描所有 java 进程，返回可能的 Minecraft 服务器进程列表
-    /// 原理很简单：先找 java.exe，然后排除掉客户端，剩下的就是服务器（大概率）
+    /// 扫描系统中所有Java进程，筛选并返回疑似Minecraft服务器进程列表
     /// </summary>
-    /// <returns>进程ID和对应命令行的元组列表（不持有 Process 对象，避免句柄泄漏）</returns>
+    /// <returns>进程ID与对应命令行的元组集合（不持有<see cref="Process"/>对象，避免非托管句柄泄漏）</returns>
+    /// <remarks>
+    /// 判定流程采用级联策略：
+    /// 1. 枚举 java/javaw 进程
+    /// 2. 排除具有客户端特征指纹的进程
+    /// 3. JAR文件名关键字匹配 或 Shell父进程链追溯命中
+    /// 4. 基于进程签名（JAR名+Xms/Xmx特征）进行去重
+    /// </remarks>
     public List<(int ProcessId, string CommandLine)> ScanServerProcesses()
     {
         var results = new List<(int ProcessId, string CommandLine)>();
@@ -97,7 +117,7 @@ public class ProcessScanner
             }
             finally
             {
-                // 不保留 Process 对象，全部释放句柄
+                // 释放Process对象的非托管句柄，防止资源泄漏
                 if (!matched)
                 {
                     process.Dispose();
@@ -105,17 +125,16 @@ public class ProcessScanner
             }
         }
 
-        // 去重：确保同一个 PID 只添加一次
+        // 基于进程ID进行初级去重
         results = results.DistinctBy(r => r.ProcessId).ToList();
 
-        // 🔧 修复：再次检查是否已经有相同的命令行（可能是同一个服务器）
-        // 如果两个结果的 JAR 名称和关键参数相同，可能是同一个进程的不同表示
+        // 基于进程签名（JAR名称 + 关键JVM参数组合）进行二级去重
+        // 用于处理同一服务器实例被多种策略重复命中的场景
         var uniqueResults = new List<(int ProcessId, string CommandLine)>();
         var seenSignatures = new HashSet<string>();
         
         foreach (var result in results)
         {
-            // 创建一个签名：JAR 名称 + 关键 JVM 参数组合
             var signature = GetProcessSignature(result.CommandLine);
             if (!seenSignatures.Contains(signature))
             {
@@ -133,17 +152,22 @@ public class ProcessScanner
     }
 
     /// <summary>
-    /// 为进程命令行创建一个签名，用于检测重复
+    /// 基于命令行生成进程特征签名，用于重复进程的语义去重
     /// </summary>
+    /// <param name="commandLine">进程完整命令行</param>
+    /// <returns>由JAR文件名与关键JVM参数组成的签名字符串</returns>
     private static string GetProcessSignature(string commandLine)
     {
         var jarName = GetJarNameHint(commandLine);
-        // 提取关键 JVM 参数
         var hasXms = commandLine.Contains("-Xms");
         var hasXmx = commandLine.Contains("-Xmx");
         return $"{jarName}|{hasXms}|{hasXmx}";
     }
 
+    /// <summary>
+    /// 获取系统中所有Shell进程的ID集合，作为父进程链追溯的锚点
+    /// </summary>
+    /// <returns>Shell进程ID的哈希集合</returns>
     private HashSet<int> GetAllShellProcessIds()
     {
         var ids = new HashSet<int>();
@@ -161,6 +185,13 @@ public class ProcessScanner
         return ids;
     }
 
+    /// <summary>
+    /// 通过WMI递归追溯父进程链，判定目标进程是否由Shell进程启动
+    /// </summary>
+    /// <param name="processId">目标进程ID</param>
+    /// <param name="shellProcessIds">Shell进程ID集合</param>
+    /// <param name="depth">当前递归深度，用于防止无限追溯</param>
+    /// <returns>若父进程链中存在Shell进程则返回<c>true</c>，否则返回<c>false</c></returns>
     private bool IsProcessLaunchedByShell(int processId, HashSet<int> shellProcessIds, int depth = 0)
     {
         if (depth > 5)
@@ -212,10 +243,15 @@ public class ProcessScanner
     }
 
     /// <summary>
-    /// 通过 WMI Win32_Process 获取进程的完整命令行
-    /// .NET 自带的 Process.StartInfo.Arguments 只能看到一部分，WMI 才能拿到完整的
-    /// 这是 Windows 专属操作，Linux 上需要用 /proc/{pid}/cmdline —— 不过这是 WPF 项目所以无所谓 🤷
+    /// 通过WMI Win32_Process类获取指定进程的完整命令行参数
     /// </summary>
+    /// <param name="processId">目标进程ID</param>
+    /// <returns>完整命令行字符串；若获取失败则返回空字符串</returns>
+    /// <remarks>
+    /// 采用WMI查询而非<see cref="Process.StartInfo"/>的原因：
+    /// .NET基类库的Process.StartInfo.Arguments仅在进程由当前组件启动时有效，
+    /// 对于外部已启动进程，必须通过WMI Win32_Process.CommandLine属性获取完整参数。
+    /// </remarks>
     private string GetCommandLine(int processId)
     {
         Log.Debug("🔧 获取命令行: PID={Pid}", processId);
@@ -241,7 +277,7 @@ public class ProcessScanner
         }
         catch (System.Runtime.InteropServices.COMException ex)
         {
-            // WMI 服务异常（如 RPC 服务器不可用），降级为 Debug
+            // WMI服务异常（如RPC服务器不可用），降级为Debug级别日志
             Log.Debug(ex, "🔧 WMI 查询失败（COM 异常）PID={Pid}", processId);
         }
         catch (UnauthorizedAccessException ex)
@@ -257,10 +293,14 @@ public class ProcessScanner
     }
 
     /// <summary>
-    /// 判断命令行是否属于客户端进程
-    /// 客户端的命令行通常带有 --version, --accessToken, --userType 等特征
-    /// 如果你同时开了客户端和服务器，这个方法能帮你分清谁是谁 👀
+    /// 基于命令行特征指纹判定目标进程是否为Minecraft客户端
     /// </summary>
+    /// <param name="commandLine">进程完整命令行</param>
+    /// <returns>若命中客户端特征则返回<c>true</c>，否则返回<c>false</c></returns>
+    /// <remarks>
+    /// 客户端进程通常携带 --version、--accessToken、--userType 等启动参数，
+    /// 可作为与服务端进程区分的关键指纹。
+    /// </remarks>
     private bool IsClientProcess(string commandLine)
     {
         var cmdLower = commandLine.ToLowerInvariant();
@@ -273,10 +313,10 @@ public class ProcessScanner
     }
 
     /// <summary>
-    /// 判断命令行中是否包含服务器 JAR 的关键字
-    /// 只要 JAR 文件名里带了 server/paper/forge 等关键字就认为是服务器
-    /// 虽然有可能误判（比如你的 jar 叫 `my-server-utils.jar`），但概率不大啦
+    /// 基于JAR文件名关键字判定命令行是否指向服务器JAR包
     /// </summary>
+    /// <param name="commandLine">进程完整命令行</param>
+    /// <returns>若命中服务器JAR关键字则返回<c>true</c>，否则返回<c>false</c></returns>
     private bool IsServerJar(string commandLine)
     {
         var cmdLower = commandLine.ToLowerInvariant();
@@ -289,11 +329,13 @@ public class ProcessScanner
     }
 
     /// <summary>
-    /// 从命令行中提取 JAR 文件名的提示 —— 用于日志输出
+    /// 从命令行中提取JAR文件名，用于日志输出与进程签名生成
     /// </summary>
+    /// <param name="commandLine">进程完整命令行</param>
+    /// <returns>JAR文件名称；若无法提取则返回占位符</returns>
     private static string GetJarNameHint(string commandLine)
     {
-        // 尝试从 -jar 参数后面提取 JAR 名
+        // 优先从 -jar 参数后提取JAR路径
         var jarIndex = commandLine.IndexOf("-jar", StringComparison.OrdinalIgnoreCase);
         if (jarIndex >= 0)
         {
@@ -307,11 +349,10 @@ public class ProcessScanner
             return System.IO.Path.GetFileName(afterJar);
         }
 
-        // 退而求其次，找 .jar 扩展名
+        // 降级策略：搜索 .jar 扩展名并向前回溯文件名
         var dotJar = commandLine.IndexOf(".jar", StringComparison.OrdinalIgnoreCase);
         if (dotJar > 0)
         {
-            // 往前找到文件名开头
             var start = commandLine.LastIndexOf(' ', dotJar) + 1;
             return commandLine[start..(dotJar + 4)];
         }

@@ -1,5 +1,13 @@
-// 🎮 核心检测编排器 —— 把所有检测组件串起来，像指挥家一样指挥全场
-// 它自己不干活，但负责调度所有干活的组件 —— 典型的管理层 🤌
+// -----------------------------------------------------------------------------
+// 文件名: ServerDetector.cs
+// 命名空间: McServerGuard.Services.ServerDetection
+// 功能描述: Minecraft 服务端实例检测编排器 —— 基于进程枚举与命令行语义分析
+//           采用管道-过滤器架构，串联 ProcessScanner / WorkingDirectoryResolver /
+//           ConfigFileScanner 三大组件，输出结构化 ServerInstance 集合
+// 依赖组件: System.Diagnostics.Process, System.Management (WMI 备用链路)
+// 设计模式: 管道-过滤器架构, 观察者模式 (DetectionCompleted 事件),
+//           缓存-aside 模式 (PID 生命周期缓存)
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Services.ServerDetection;
 
 using System.Diagnostics;
@@ -9,20 +17,41 @@ using McServerGuard.Models;
 using Serilog;
 
 /// <summary>
-/// 服务器检测编排器 —— 坐镇指挥，调度 ProcessScanner、WorkingDirectoryResolver、ConfigFileScanner
-/// 它是检测流程的"总导演"，负责把各个组件的输出拼接成完整的 ServerInstance
+/// 服务器检测编排器 —— 基于管道-过滤器架构，串联 ProcessScanner、WorkingDirectoryResolver、ConfigFileScanner
+/// 三大组件，将各阶段输出聚合为结构化 ServerInstance 集合
 /// </summary>
+/// <remarks>
+/// 采用缓存-aside 模式实现 PID 生命周期缓存，降低重复扫描开销；
+/// 通过 DetectionCompleted 事件实现观察者模式，支持检测结果的异步推送。
+/// </remarks>
 public class ServerDetector : IServerDetector
 {
+    /// <summary>
+    /// 进程枚举器 —— 负责扫描系统中的 Java 进程并提取命令行参数
+    /// </summary>
     private readonly ProcessScanner _processScanner;
+
+    /// <summary>
+    /// 工作目录解析器 —— 基于进程信息推断服务器工作目录路径
+    /// </summary>
     private readonly WorkingDirectoryResolver _workingDirResolver;
+
+    /// <summary>
+    /// 配置文件扫描器 —— 异步扫描服务器目录下的配置文件清单
+    /// </summary>
     private readonly ConfigFileScanner _configScanner;
 
     /// <summary>
-    /// 自动检测完成时触发
+    /// 检测完成事件 —— 当一轮自动检测完成时触发，携带本次检测的完整结果
     /// </summary>
     public event EventHandler<DetectionResult>? DetectionCompleted;
 
+    /// <summary>
+    /// 初始化服务器检测编排器
+    /// </summary>
+    /// <param name="processScanner">进程枚举器实例</param>
+    /// <param name="workingDirResolver">工作目录解析器实例</param>
+    /// <param name="configScanner">配置文件扫描器实例</param>
     public ServerDetector(
         ProcessScanner processScanner,
         WorkingDirectoryResolver workingDirResolver,
@@ -36,8 +65,14 @@ public class ServerDetector : IServerDetector
 
     /// <summary>
     /// 执行完整的服务器检测流程
-    /// 流程：扫描进程 → 解析工作目录 → 扫描配置文件 → 构建 ServerInstance
     /// </summary>
+    /// <returns>检测结果，包含已识别的服务器实例列表、耗时及日志信息</returns>
+    /// <remarks>
+    /// 检测管道分为三个阶段：
+    /// 阶段一：进程枚举 —— 扫描系统中所有 Java 进程并提取命令行参数
+    /// 阶段二：缓存命中判定 —— 基于 PID 生命周期缓存复用已检测结果
+    /// 阶段三：深度检测 —— 解析工作目录、扫描配置文件、推断服务器类型
+    /// </remarks>
     public async Task<DetectionResult> DetectAllAsync()
     {
         var servers = new List<ServerInstance>();
@@ -46,7 +81,7 @@ public class ServerDetector : IServerDetector
 
         Log.Information("🔍 DetectAllAsync: 开始扫描所有 Java 进程...");
 
-        // 第一步：扫描所有 Java 进程
+        // 阶段一：进程枚举阶段
         var processResults = _processScanner.ScanServerProcesses();
 
         if (processResults.Count == 0)
@@ -63,7 +98,7 @@ public class ServerDetector : IServerDetector
             };
         }
 
-        // 第二步：对每个进程执行深度检测（带 PID 缓存，避免每秒全量扫描）
+        // 阶段二：逐进程深度检测（采用 PID 生命周期缓存策略，避免高频全量扫描）
         int i = 0;
         foreach (var (processId, commandLine) in processResults)
         {
@@ -71,35 +106,35 @@ public class ServerDetector : IServerDetector
             Log.Debug("🔄 正在检查第 {Index} 个 Java 进程: PID={Pid}", i, processId);
             try
             {
-                // 先查缓存：5 秒内已检测过的进程直接复用结果，避免重复扫描
+                // 缓存命中判定：TTL 内已检测进程直接复用结果
                 if (_detectionCache.TryGetValue(processId, out var cached)
                     && (DateTime.Now - cached.timestamp) < DetectionCacheTtl)
                 {
-                    // 验证进程是否仍在运行 —— Process.GetProcessById 在进程不存在时会抛 ArgumentException
+                    // 进程存活验证 —— Process.GetProcessById 在进程不存在时会抛 ArgumentException
                     try
                     {
                         using var p = Process.GetProcessById(processId);
-                        // 进程仍在运行，复用缓存的 ServerInstance
+                        // 进程存活，复用缓存中的 ServerInstance
                         Log.Debug("♻️ 命中缓存: PID={Pid} Type={Type}", processId, cached.server.ServerType);
                         servers.Add(cached.server);
                         continue;
                     }
                     catch (ArgumentException)
                     {
-                        // 进程已退出，从缓存中移除
+                        // 进程已退出，执行缓存失效操作
                         _detectionCache.Remove(processId);
                         Log.Debug("🗑️ 进程 PID={Pid} 已退出，从缓存中移除", processId);
                         continue;
                     }
                 }
 
-                // 缓存未命中，执行完整的深度检测
+                // 缓存未命中，执行完整深度检测管道
                 var server = await BuildServerInstanceAsync(processId, commandLine);
                 if (server is not null)
                 {
                     Log.Debug("✅ 识别到服务器: {Type} @ {Dir}", server.ServerType, server.WorkingDirectory);
                     servers.Add(server);
-                    // 加入缓存，避免下一秒重复扫描
+                    // 写入缓存，采用缓存-aside 模式
                     _detectionCache[processId] = (server, DateTime.Now);
                 }
             }
@@ -126,15 +161,21 @@ public class ServerDetector : IServerDetector
     }
 
     /// <summary>
-    /// 从一个 Java 进程构建完整的 ServerInstance
-    /// 这是最复杂的部分，需要综合多个组件的结果
+    /// 从指定 Java 进程构建完整的 ServerInstance 对象
     /// </summary>
+    /// <param name="processId">目标进程 ID</param>
+    /// <param name="commandLine">进程完整命令行参数</param>
+    /// <returns>构建完成的服务器实例；若为客户端进程则返回 null</returns>
+    /// <remarks>
+    /// 该方法是检测管道的核心过滤器，依次执行：命令行解析、客户端排除、
+    /// 工作目录解析、配置文件扫描、服务器类型推断五个子步骤。
+    /// </remarks>
     private async Task<ServerInstance?> BuildServerInstanceAsync(int processId, string commandLine)
     {
-        // 使用 CommandLineParser 解析命令行 —— 它是专业的
+        // 命令行语义解析阶段
         var parsed = CommandLineParser.Parse(commandLine);
 
-        // 排除客户端
+        // 客户端特征过滤：排除 Minecraft 客户端进程
         if (parsed.HasClientMarkers)
         {
             Log.Debug("进程 PID={Pid} 有客户端标志，已排除", processId);
@@ -145,14 +186,14 @@ public class ServerDetector : IServerDetector
             ? "unknown.jar"
             : parsed.JarFileName;
 
-        // 解析工作目录
+        // 工作目录解析阶段（线程池调度执行）
         var workingDir = await Task.Run(() =>
             _workingDirResolver.Resolve(processId, commandLine, jarName));
 
-        // 扫描配置文件（使用真正的异步 IO）
+        // 配置文件扫描阶段（异步 I/O）
         var configFiles = await _configScanner.ScanAllAsync(workingDir);
 
-        // 推断服务器类型（使用已有的 ServerTypeClassifier）
+        // 服务器类型推断阶段（策略模式：JAR 名匹配 + 配置文件辅助）
         var serverType = ServerTypeClassifier.ClassifyByJarNameAndConfigFiles(jarName, workingDir);
 
         Log.Information(
@@ -182,9 +223,14 @@ public class ServerDetector : IServerDetector
     }
 
     /// <summary>
-    /// 扫描目录中的启动脚本（.bat 和 .sh 文件）
-    /// 启动脚本是服务器的"身份证"，里面记录了 JAR 名称、JVM 参数等重要信息
+    /// 扫描指定目录下的启动脚本（.bat 和 .sh 文件）
     /// </summary>
+    /// <param name="directory">目标目录路径</param>
+    /// <returns>启动脚本信息列表，包含 JAR 名称、JVM 参数等提取结果</returns>
+    /// <remarks>
+    /// 启动脚本是服务器身份的辅助判别依据，其中记录了 JAR 文件名、JVM 参数等运行时配置信息。
+    /// 采用防御式编程策略，单个脚本解析失败不影响整体扫描流程。
+    /// </remarks>
     public async Task<List<StartupScriptInfo>> ScanStartupScriptsAsync(string directory)
     {
         var scripts = new List<StartupScriptInfo>();
@@ -240,12 +286,18 @@ public class ServerDetector : IServerDetector
     }
 
     /// <summary>
-    /// 分析单个启动脚本文件（委托给已有的 StartupScriptDetector）
+    /// 分析单个启动脚本文件，提取服务器启动参数
     /// </summary>
+    /// <param name="filePath">脚本文件完整路径</param>
+    /// <returns>启动脚本解析结果</returns>
+    /// <remarks>
+    /// 内部委托给 <see cref="StartupScriptDetector"/> 执行实际解析，
+    /// 本方法负责文件读取的容错处理及路径信息补全。
+    /// </remarks>
     private StartupScriptInfo AnalyzeStartupScript(string filePath)
     {
-        // 注意：用 FileShare.ReadWrite 打开，避免与正在写文件的进程冲突
-        // .bat/.sh 脚本一般不会被独占写，但用户用编辑器打开时可能锁定
+        // 使用 FileShare.ReadWrite 打开，避免与正在写入的进程产生文件锁冲突
+        // 一般情况下 .bat/.sh 脚本不会被独占写，但编辑器打开时可能产生锁定
         string content;
         try
         {
@@ -255,14 +307,14 @@ public class ServerDetector : IServerDetector
         }
         catch (IOException ex)
         {
-            // 文件被占用或不可读，降级为 Debug，避免刷屏
+            // 文件被占用或不可读，降级为 Debug 级别，避免日志刷屏
             Log.Debug(ex, "启动脚本不可读，跳过: {File}", filePath);
             return new StartupScriptInfo { ScriptPath = filePath, ScriptName = Path.GetFileName(filePath) };
         }
 
         var info = StartupScriptDetector.Analyze(content);
 
-        // 补充文件路径和名称信息
+        // 补充文件路径和名称元数据
         info.ScriptPath = filePath;
         info.ScriptName = Path.GetFileName(filePath);
 
@@ -276,26 +328,48 @@ public class ServerDetector : IServerDetector
         return info;
     }
 
-    // 🗃️ 检测结果缓存 —— 自动检测间隔较长，用 PID 缓存避免重复扫描
-    // TTL 远大于自动检测间隔，保证大部分检测都走缓存（命中率 ~95%）
+    /// <summary>
+    /// 检测结果缓存 TTL —— PID 生命周期缓存的过期时间阈值
+    /// </summary>
+    /// <remarks>
+    /// TTL 远大于自动检测间隔，保证大部分检测请求命中缓存（命中率约 95%），
+    /// 有效降低重复扫描带来的 I/O 开销。
+    /// </remarks>
     private static readonly TimeSpan DetectionCacheTtl = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// PID 生命周期缓存字典 —— Key 为进程 ID，Value 为（服务器实例, 缓存时间戳）元组
+    /// </summary>
     private readonly Dictionary<int, (ServerInstance server, DateTime timestamp)> _detectionCache = new();
 
-    // 🔄 自动检测循环控制
+    /// <summary>
+    /// 自动检测循环的取消令牌源
+    /// </summary>
     private CancellationTokenSource? _autoDetectCts;
+
+    /// <summary>
+    /// 自动检测循环的后台任务引用
+    /// </summary>
     private Task? _autoDetectTask;
+
+    /// <summary>
+    /// 自动检测生命周期锁 —— 防止 Start/Stop 并发调用导致的竞态条件
+    /// </summary>
     private readonly object _autoDetectLock = new();
 
     /// <summary>
-    /// 自动检测是否正在运行
+    /// 获取一个值，指示自动检测循环是否正在运行
     /// </summary>
     public bool IsAutoDetectRunning => _autoDetectTask != null && !_autoDetectTask.IsCompleted;
 
     /// <summary>
-    /// 启动自动检测（每 3 秒一次）
-    /// 间隔由原来的 1 秒改为 3 秒，配合 15 秒缓存 TTL，
-    /// 既保证响应速度，又大幅降低 IO 异常频率（服务器日志/latest.log 被独占读时不会反复触发）
+    /// 启动自动检测循环
     /// </summary>
+    /// <remarks>
+    /// 检测间隔为 3 秒，配合 15 秒缓存 TTL，采用轮询-差分更新策略：
+    /// 既保证检测响应速度，又大幅降低 I/O 操作频率（避免服务器日志文件被独占读时反复触发异常）。
+    /// 调用 <see cref="DetectionCompleted"/> 事件向订阅者推送检测结果。
+    /// </remarks>
     public void StartAutoDetect()
     {
         lock (_autoDetectLock)
@@ -317,7 +391,7 @@ public class ServerDetector : IServerDetector
                     try
                     {
                         var result = await DetectAllAsync();
-                        // 通知订阅者：检测完成了，快来刷新列表
+                        // 触发检测完成事件，通知订阅者更新状态
                         DetectionCompleted?.Invoke(this, result);
                     }
                     catch (OperationCanceledException)
@@ -345,8 +419,12 @@ public class ServerDetector : IServerDetector
     }
 
     /// <summary>
-    /// 停止自动检测
+    /// 停止自动检测循环
     /// </summary>
+    /// <remarks>
+    /// 通过取消令牌请求停止，等待循环自然退出。
+    /// 采用防御式编程：重复调用 Stop 不会导致异常。
+    /// </remarks>
     public void StopAutoDetect()
     {
         lock (_autoDetectLock)
@@ -361,7 +439,7 @@ public class ServerDetector : IServerDetector
     }
 
     /// <summary>
-    /// 释放资源
+    /// 释放编排器占用的所有资源
     /// </summary>
     public void Dispose()
     {

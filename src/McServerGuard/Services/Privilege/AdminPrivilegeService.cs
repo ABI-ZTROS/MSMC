@@ -1,4 +1,10 @@
-// 🔐 管理员权限服务 —— 检查当前是否以管理员身份运行，以及UAC提权重启
+// -----------------------------------------------------------------------------
+// 文件名: AdminPrivilegeService.cs
+// 命名空间: McServerGuard.Services.Privilege
+// 功能描述: 提供管理员权限检测与 UAC 提权重启服务
+// 依赖组件: System.Diagnostics, System.Security.Principal, System.Runtime.InteropServices
+// 设计模式: 单例模式（DI容器注册）
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Services.Privilege;
 
 using System.Diagnostics;
@@ -8,16 +14,20 @@ using Serilog;
 
 /// <summary>
 /// 管理员权限服务
-/// 提供管理员权限检查、UAC提权重启等功能
+/// 提供管理员权限检测、UAC 提权重启、Windows 版本识别等功能
 /// </summary>
 public class AdminPrivilegeService
 {
+    /// <summary>
+    /// 当前操作系统是否为 Windows
+    /// </summary>
     private static bool IsWindows =>
         RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
     /// <summary>
-    /// 检查当前进程是否以管理员身份运行
+    /// 检测当前进程是否以管理员身份运行
     /// </summary>
+    /// <returns>是否为管理员权限</returns>
     public bool IsRunningAsAdmin()
     {
         if (!IsWindows)
@@ -44,7 +54,7 @@ public class AdminPrivilegeService
     /// <summary>
     /// 以管理员身份重启当前程序
     /// </summary>
-    /// <returns>是否成功发起重启（注意：此方法返回后当前进程会退出）</returns>
+    /// <returns>是否成功发起重启请求</returns>
     public bool RestartAsAdmin()
     {
         if (!IsWindows)
@@ -76,7 +86,7 @@ public class AdminPrivilegeService
 
             Log.Information("🔐 UAC 提权请求已发起，当前进程即将退出");
 
-            // 延迟一点退出，让日志写入
+            // 延迟退出，确保日志写入完成
             Task.Delay(500).ContinueWith(_ =>
             {
                 try
@@ -99,6 +109,7 @@ public class AdminPrivilegeService
     /// <summary>
     /// 获取 Windows 版本信息
     /// </summary>
+    /// <returns>Windows 版本描述字符串</returns>
     public static string GetWindowsVersion()
     {
         if (!IsWindows)
@@ -135,8 +146,9 @@ public class AdminPrivilegeService
     }
 
     /// <summary>
-    /// 检查是否是 Windows 11
+    /// 检测当前系统是否为 Windows 11
     /// </summary>
+    /// <returns>是否为 Windows 11</returns>
     public static bool IsWindows11()
     {
         if (!IsWindows) return false;

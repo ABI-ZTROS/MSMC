@@ -1,3 +1,10 @@
+// -----------------------------------------------------------------------------
+// 文件名: PrivilegeService.cs
+// 命名空间: McServerGuard.Services
+// 功能描述: 提供应用权限提升与管理员身份检测服务，支持 UAC 提权重启
+// 依赖组件: System.Security.Principal, System.Diagnostics, System.Runtime.InteropServices
+// 设计模式: 单例模式（DI容器注册）、事件通知模式
+// -----------------------------------------------------------------------------
 using System.Diagnostics;
 using System.Security.Principal;
 using System.Runtime.InteropServices;
@@ -5,19 +12,55 @@ using Serilog;
 
 namespace McServerGuard.Services;
 
+/// <summary>
+/// 权限服务接口
+/// 定义管理员权限检测与提升操作契约
+/// </summary>
 public interface IPrivilegeService
 {
+    /// <summary>
+    /// 当前进程是否以管理员身份运行
+    /// </summary>
     bool IsRunningAsAdmin { get; }
+
+    /// <summary>
+    /// 当前操作系统是否为 Windows
+    /// </summary>
     bool IsWindows { get; }
+
+    /// <summary>
+    /// 请求 UAC 权限提升
+    /// 成功后当前进程将退出，以管理员权限重启新实例
+    /// </summary>
+    /// <returns>是否成功发起提权请求</returns>
     bool RequestElevation();
+
+    /// <summary>
+    /// 确保当前具有管理员权限
+    /// 若权限不足则记录警告（不主动提权）
+    /// </summary>
+    /// <param name="reason">权限不足的原因说明</param>
+    /// <returns>是否具有管理员权限</returns>
     bool EnsureAdminPrivileges(string? reason = null);
+
+    /// <summary>
+    /// 权限状态变更事件
+    /// </summary>
     event EventHandler<bool>? PrivilegeChanged;
 }
 
+/// <summary>
+/// 权限提升服务
+/// 负责检测当前进程的管理员权限状态，并提供 UAC 提权重启能力
+/// </summary>
 public class PrivilegeService : IPrivilegeService
 {
+    /// <summary>
+    /// 管理员权限状态缓存
+    /// </summary>
     private bool _isRunningAsAdmin;
 
+    /// <inheritdoc />
     public bool IsRunningAsAdmin
     {
         get
@@ -27,18 +70,25 @@ public class PrivilegeService : IPrivilegeService
         }
     }
 
+    /// <inheritdoc />
     public bool IsWindows => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
+    /// <inheritdoc />
     public event EventHandler<bool>? PrivilegeChanged;
 
     /// <summary>
-    /// 触发权限变更事件（保留接口契约，实际运行时权限不会动态变化）
+    /// 触发权限变更事件
     /// </summary>
+    /// <param name="isAdmin">是否为管理员权限</param>
     private void OnPrivilegeChanged(bool isAdmin)
     {
         PrivilegeChanged?.Invoke(this, isAdmin);
     }
 
+    /// <summary>
+    /// 初始化权限服务
+    /// 构造时检测当前进程的管理员权限状态
+    /// </summary>
     public PrivilegeService()
     {
         _isRunningAsAdmin = CheckIsAdmin();
@@ -46,6 +96,10 @@ public class PrivilegeService : IPrivilegeService
             _isRunningAsAdmin ? "管理员" : "普通用户");
     }
 
+    /// <summary>
+    /// 检测当前进程是否以管理员身份运行
+    /// </summary>
+    /// <returns>是否为管理员权限</returns>
     private static bool CheckIsAdmin()
     {
         try
@@ -61,6 +115,11 @@ public class PrivilegeService : IPrivilegeService
         }
     }
 
+    /// <summary>
+    /// 请求 UAC 权限提升
+    /// 以管理员身份重启当前进程，原进程延迟退出
+    /// </summary>
+    /// <returns>是否成功发起提权请求</returns>
     public bool RequestElevation()
     {
         if (!IsWindows)
@@ -113,6 +172,12 @@ public class PrivilegeService : IPrivilegeService
         }
     }
 
+    /// <summary>
+    /// 确保当前具有管理员权限
+    /// 仅进行权限校验与日志记录，不主动触发提权流程
+    /// </summary>
+    /// <param name="reason">权限不足的原因说明</param>
+    /// <returns>是否具有管理员权限</returns>
     public bool EnsureAdminPrivileges(string? reason = null)
     {
         if (IsRunningAsAdmin) return true;
@@ -125,6 +190,10 @@ public class PrivilegeService : IPrivilegeService
         return false;
     }
 
+    /// <summary>
+    /// 退出当前应用程序
+    /// 优先使用 WPF 关闭机制，失败时回退到环境退出
+    /// </summary>
     private static void ApplicationExit()
     {
         try

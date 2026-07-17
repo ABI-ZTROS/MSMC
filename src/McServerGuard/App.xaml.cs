@@ -1,4 +1,10 @@
-// 🚀 应用程序入口 —— 一切从这里开始，像 Minecraft 一样加载世界 🌍
+// -----------------------------------------------------------------------------
+// 文件名: App.xaml.cs
+// 命名空间: McServerGuard
+// 功能描述: WPF 应用程序入口，负责 DI 容器构建、服务注册、全局异常处理与启动流程编排
+// 依赖组件: Microsoft.Extensions.DependencyInjection, Serilog, System.Windows
+// 设计模式: 依赖注入模式、单例模式、观察者模式（全局异常监听）
+// -----------------------------------------------------------------------------
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
@@ -15,11 +21,21 @@ using Serilog;
 
 namespace McServerGuard;
 
+/// <summary>
+/// WPF 应用程序入口类
+/// 负责应用程序生命周期管理、依赖注入容器构建、全局异常处理与启动流程编排
+/// </summary>
 public partial class App : Application
 {
+    /// <summary>
+    /// 依赖注入服务提供器
+    /// </summary>
     private ServiceProvider? _serviceProvider;
 
-    /// <summary>全局 DI 容器 —— 供 View 层按需解析服务（如 IThemeService）</summary>
+    /// <summary>
+    /// 全局 DI 容器访问点
+    /// 供 View 层按需解析服务实例
+    /// </summary>
     public static IServiceProvider Services
     {
         get
@@ -30,17 +46,19 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 应用启动 —— 搭好舞台，请好演员，然后开演 🎬
+    /// 应用程序启动入口
+    /// 执行日志初始化、全局异常配置、DI 容器构建、服务注册与主窗口显示
     /// </summary>
+    /// <param name="e">启动事件参数</param>
     protected override void OnStartup(StartupEventArgs e)
     {
-        // 📝 先把日志系统安排上 —— 出了问题得有人记录现场
+        // 初始化日志系统
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .WriteTo.File("logs/mcserverguard-.log", rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
-        // ⚠️ 再挂全局异常钩子 —— 后面出啥事都有人兜着
+        // 挂载全局异常处理
         SetupGlobalExceptionHandling();
 
         // 注：之前曾尝试 RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly
@@ -52,11 +70,11 @@ public partial class App : Application
             base.OnStartup(e);
             Log.Information("🚀 McServerGuard 正在启动...");
 
-            // 🏗️ 搭建 DI 容器 —— 各位服务请排队注册，一个一个来 🎫
+            // 构建 DI 容器并注册服务
             Log.Information("🏗️ 开始搭建 DI 容器...");
             var services = new ServiceCollection();
 
-        // 🎯 服务器检测服务 —— "让我看看你电脑上藏了几个服务器"
+        // 服务器检测服务组
         Log.Information("🎯 注册服务器检测服务组...");
         services.AddSingleton<IServerDetector, ServerDetector>();
         services.AddSingleton<IServerImporterService, ServerImporterService>();
@@ -65,57 +83,57 @@ public partial class App : Application
         services.AddSingleton<WorkingDirectoryResolver>();
         services.AddSingleton<ConfigFileScanner>();
 
-        // 🔐 管理员权限服务 —— "你有权限这么做吗？"
+        // 管理员权限服务
         Log.Information("🔐 注册管理员权限服务...");
         services.AddSingleton<AdminPrivilegeService>();
 
-        // 📋 配置管理服务 —— "server.properties？spigot.yml？通通给我拿来"
+        // 配置管理服务组
         Log.Information("📋 注册配置管理服务组...");
         services.AddSingleton<IConfigManager, ConfigManager>();
         services.AddSingleton<ConfigDescriptorRegistry>();
 
-        // 📊 系统监控服务 —— "你的 CPU 在燃烧你知道吗"
+        // 系统监控服务组
         Log.Information("📊 注册系统监控服务组...");
         services.AddSingleton<ISystemMonitor, SystemMonitor>();
         services.AddSingleton<DiskSpaceMonitor>();
         services.AddSingleton<MemoryMonitor>();
         services.AddSingleton<ThreadAnalyzer>();
 
-        // 🎨 主题服务 —— "换个皮肤，换个心情"
+        // 主题服务
         Log.Information("🎨 注册主题服务...");
         services.AddSingleton<IThemeService, ThemeService>();
 
-        // 📜 用户协议服务 —— "先看协议再用软件"
+        // 用户协议服务
         Log.Information("📜 注册用户协议服务...");
         services.AddSingleton<IUserAgreementService, UserAgreementService>();
 
-        // 📁 全局配置服务 —— "保存已知服务器和应用配置"
+        // 全局配置服务
         Log.Information("📁 注册全局配置服务...");
         services.AddSingleton<IAppConfigService, AppConfigService>();
 
-        // 🔔 通知服务 —— "嘿，服务器炸了！"
+        // 通知服务
         Log.Information("🔔 注册通知服务...");
         services.AddSingleton<IToastNotificationService, ToastNotificationService>();
 
-        // 🔐 权限服务 —— "你是管理员吗？请出示证件 🪪"
+        // 权限服务
         Log.Information("🔐 注册权限服务...");
         services.AddSingleton<IPrivilegeService, PrivilegeService>();
 
-        // 🧹 内存优化服务 —— "定期打扫卫生，让程序轻装上阵"
+        // 内存优化服务
         Log.Information("🧹 注册内存优化服务...");
         services.AddSingleton<MemoryOptimizerService>();
 
-        // 🧠 MainViewModel —— 指挥官当然要注册进 DI 啦！
-        // 之前忘了注册它，结果把 DI 容器本身当 DataContext 了，绑定全炸 💥
+        // MainViewModel
+        // 之前曾遗忘注册，导致将 DI 容器本身作为 DataContext，绑定全部失效
         Log.Information("🧠 注册 MainViewModel...");
         services.AddSingleton<MainViewModel>();
 
         _serviceProvider = services.BuildServiceProvider();
 
-        // 🎨 渲染管线优化 —— WPF 性能调优
+        // 配置 WPF 渲染管线优化
         ConfigureRenderOptimizations();
 
-        // 🔐 检查管理员权限
+        // 检查管理员权限
         Log.Information("🔐 检查管理员权限...");
         var privilegeService = _serviceProvider.GetRequiredService<IPrivilegeService>();
         if (!privilegeService.IsRunningAsAdmin && privilegeService.IsWindows)
@@ -139,20 +157,20 @@ public partial class App : Application
             }
         }
 
-        // 📂 加载全局配置（已知服务器等）
+        // 加载全局配置（已知服务器等）
         Log.Information("📂 加载全局配置...");
         _serviceProvider.GetRequiredService<IAppConfigService>().Load();
 
-        // 🎨 加载主题设置（颜色、动画等）
+        // 加载主题设置（颜色、动画等）
         Log.Information("🎨 加载主题设置...");
         _serviceProvider.GetRequiredService<IThemeService>().LoadSettings();
 
-        // 📜 加载用户协议状态
+        // 加载用户协议状态
         Log.Information("📜 加载用户协议状态...");
         var userAgreementService = _serviceProvider.GetRequiredService<IUserAgreementService>();
         userAgreementService.Load();
 
-        // 📜 如果未同意协议，先显示用户协议窗口
+        // 首次使用显示用户协议窗口
         if (!userAgreementService.IsAgreed)
         {
             Log.Information("📜 首次使用，显示用户协议窗口...");
@@ -169,7 +187,7 @@ public partial class App : Application
             Log.Information("✅ 用户已同意协议");
         }
 
-        // 🪟 创建主窗口，从 DI 获取真正的 MainViewModel 作为 DataContext
+        // 创建主窗口并注入 ViewModel
         Log.Information("🪟 创建主窗口并注入 DI 服务...");
         var mainWindow = new MainWindow
         {
@@ -178,7 +196,7 @@ public partial class App : Application
 
         mainWindow.Show();
 
-        // 🧹 启动内存优化服务
+        // 启动内存优化服务
         Log.Information("🧹 启动内存优化服务...");
         _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start();
 
@@ -196,8 +214,8 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 三层全局异常防护网：UI线程 / 非UI线程 / Task未观察异常
-    /// 就像 Minecraft 的盾，挡得住的挡，挡不住的也留个全尸 🛡️
+    /// 配置三层全局异常防护机制
+    /// 覆盖 UI 线程异常、非 UI 线程未处理异常、Task 未观察异常三个层级
     /// </summary>
     private void SetupGlobalExceptionHandling()
     {
@@ -219,17 +237,19 @@ public partial class App : Application
             }
         };
 
-        // 第三层：Task 未观察异常（fire-and-forget 任务崩了）
+        // 第三层：Task 未观察异常（fire-and-forget 任务异常）
         TaskScheduler.UnobservedTaskException += (sender, e) =>
         {
             Log.Error(e.Exception, "⚠️ Task未观察异常（火忘了灭）");
-            e.SetObserved(); // 标记已观察，不让进程崩
+            e.SetObserved(); // 标记已观察，防止进程终止
         };
     }
 
     /// <summary>
-    /// 崩溃报告 —— 温柔地告诉用户"程序跪了"，而不是直接消失
+    /// 显示崩溃报告对话框
+    /// 向用户展示异常信息并提供崩溃转储文件路径
     /// </summary>
+    /// <param name="ex">异常对象</param>
     private static void ShowCrashReport(Exception ex)
     {
         try
@@ -251,14 +271,14 @@ public partial class App : Application
         }
         catch
         {
-            // 连崩溃报告都崩了... 那就安静地走吧
+            // 崩溃报告本身失败时静默处理
             Log.Fatal(ex, "连崩溃报告都崩了，我尽力了...");
         }
     }
 
     /// <summary>
     /// 配置 WPF 渲染管线优化
-    /// 包括硬件渲染、字体渲染、多线程优化等
+    /// 包括硬件渲染、字体渲染、多线程优化等配置
     /// </summary>
     private static void ConfigureRenderOptimizations()
     {
@@ -295,8 +315,11 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 写崩溃转储文件 —— 留个现场，方便事后验尸 🔍
+    /// 写入崩溃转储文件
+    /// 记录异常详情、系统信息与版本号
     /// </summary>
+    /// <param name="ex">异常对象</param>
+    /// <returns>转储文件路径</returns>
     private static string WriteCrashDump(Exception ex)
     {
         try
@@ -323,8 +346,10 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 应用退出 —— 记得关灯锁门 🔒
+    /// 应用程序退出处理
+    /// 释放资源、关闭日志、销毁 DI 容器
     /// </summary>
+    /// <param name="e">退出事件参数</param>
     protected override void OnExit(ExitEventArgs e)
     {
         Log.Information("👋 McServerGuard 正在退出，拜拜~");

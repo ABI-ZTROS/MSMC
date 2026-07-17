@@ -1,42 +1,132 @@
+// -----------------------------------------------------------------------------
+// 文件名: ServerInstance.cs
+// 命名空间: McServerGuard.Models
+// 功能描述: 服务器实例数据契约，表示运行中或已识别的 Minecraft 服务器进程
+// 依赖组件: CommunityToolkit.Mvvm, ServerConstants, ServerType
+// 设计模式: 贫血模型 + ObservableObject 属性变更通知
+// -----------------------------------------------------------------------------
 using CommunityToolkit.Mvvm.ComponentModel;
 using McServerGuard.Constants;
 
 namespace McServerGuard.Models;
 
-/// <summary>🎯 一个被检测到的 Minecraft 服务器实例 —— 我们的"猎物"档案</summary>
+/// <summary>
+/// 服务器实例数据契约，承载被检测到的 Minecraft 服务器进程的完整元数据。
+/// 作为进程检测模块与 UI 层之间的 DTO，支持属性变更通知以驱动绑定更新。
+/// </summary>
 public partial class ServerInstance : ObservableObject
 {
+    /// <summary>
+    /// 操作系统进程标识符。
+    /// 仅在服务器运行时有效，已知服务器未运行时为默认值 0。
+    /// </summary>
     public int ProcessId { get; set; }
 
+    /// <summary>
+    /// 服务器类型枚举值，标识服务端核心品牌。
+    /// 初始值为 Unknown，经检测逻辑判定后更新。
+    /// </summary>
     [ObservableProperty] private ServerType _serverType = ServerType.Unknown;
+
+    /// <summary>
+    /// 服务器工作目录绝对路径，即 server.properties 所在目录。
+    /// </summary>
     [ObservableProperty] private string _workingDirectory = string.Empty;
+
+    /// <summary>
+    /// Java 虚拟机可执行文件的绝对路径。
+    /// </summary>
     [ObservableProperty] private string _javaPath = string.Empty;
+
+    /// <summary>
+    /// 服务器核心 JAR 文件的绝对路径。
+    /// </summary>
     [ObservableProperty] private string _serverJarPath = string.Empty;
+
+    /// <summary>
+    /// 服务器核心 JAR 文件名（含扩展名）。
+    /// </summary>
     [ObservableProperty] private string _serverJarName = string.Empty;
+
+    /// <summary>
+    /// 启动脚本文件的绝对路径。
+    /// 若未检测到启动脚本则为 null。
+    /// </summary>
     [ObservableProperty] private string? _startupScriptPath;
+
+    /// <summary>
+    /// 进程完整命令行字符串，用于追溯原始启动参数。
+    /// </summary>
     [ObservableProperty] private string _fullCommandLine = string.Empty;
+
+    /// <summary>
+    /// 从命令行解析得到的 JVM 参数列表。
+    /// 集合初始化后为只读，通过集合初始化器赋值。
+    /// </summary>
     public List<string> JvmArguments { get; init; } = [];
 
+    /// <summary>
+    /// 初始堆内存大小，单位为字节。
+    /// 对应 JVM 参数 -Xms。
+    /// </summary>
     [ObservableProperty] private long _initialHeapMemoryBytes;
+
+    /// <summary>
+    /// 最大堆内存大小，单位为字节。
+    /// 对应 JVM 参数 -Xmx。
+    /// </summary>
     [ObservableProperty] private long _maxHeapMemoryBytes;
+
+    /// <summary>
+    /// 服务器目录下检测到的配置文件路径列表。
+    /// 包含 server.properties 及各服务端特有的配置文件。
+    /// </summary>
     [ObservableProperty] private List<string> _configFiles = [];
+
+    /// <summary>
+    /// 指示是否使用 Aikar 推荐的 JVM 参数集。
+    /// 基于命令行中是否包含 aikars.flags 标识判定。
+    /// </summary>
     [ObservableProperty] private bool _usesAikarFlags;
+
+    /// <summary>
+    /// 垃圾回收器类型名称。
+    /// 可能值包括 G1、ZGC、Shenandoah、Parallel 等。
+    /// </summary>
     [ObservableProperty] private string _gcType = string.Empty;
+
+    /// <summary>
+    /// 服务器监听端口号。
+    /// 默认值取自 ServerConstants.DefaultServerPort（25565）。
+    /// </summary>
     [ObservableProperty] private int _serverPort = ServerConstants.DefaultServerPort;
 
+    /// <summary>
+    /// 实例检测时间戳，即对象创建的时刻。
+    /// </summary>
     public DateTime DetectedAt { get; init; } = DateTime.Now;
 
-    // 📛 显示名称 —— 在 UI 上让玩家一眼认出自己的服务器
-    // 注意：ProcessId 只在服务器实际运行时才有意义。
-    // 已知服务器（未运行）从 KnownServer 构造时 ProcessId 为默认值 0，
-    // 此时不应该显示 "PID: 0"，否则新手会误以为有幽灵进程。
+    /// <summary>
+    /// 用于 UI 展示的格式化显示名称。
+    /// 运行中的实例包含 PID，未运行实例仅显示类型与目录。
+    /// 当 ProcessId 为 0 时不显示 PID，避免误导用户以为存在幽灵进程。
+    /// </summary>
     public string DisplayName => ProcessId > 0
         ? $"{ServerType} @ {System.IO.Path.GetFileName(WorkingDirectory)} (PID: {ProcessId})"
         : $"{ServerType} @ {System.IO.Path.GetFileName(WorkingDirectory)}";
 
-    // 📊 格式化内存 —— 把字节变成人类能看懂的东西
+    /// <summary>
+    /// 以人类可读格式表示的最大堆内存字符串。
+    /// 自动将字节数转换为 GB/MB/KB 单位。
+    /// </summary>
     public string FormattedMaxMemory => FormatBytes(MaxHeapMemoryBytes);
 
+    /// <summary>
+    /// 将字节数格式化为人类可读的内存大小字符串。
+    /// 采用二进制换算（1 GB = 1024 MB），向下取整显示整数。
+    /// </summary>
+    /// <param name="bytes">字节数</param>
+    /// <returns>格式化后的内存大小字符串</returns>
     private static string FormatBytes(long bytes)
     {
         if (bytes >= 1L << 30)
@@ -46,13 +136,21 @@ public partial class ServerInstance : ObservableObject
         return $"{bytes} KB";
     }
 
-    // 当 ServerType 或 WorkingDirectory 变化时，通知 DisplayName 刷新
+    /// <summary>
+    /// ServerType 属性变更回调，同步触发 DisplayName 的属性变更通知。
+    /// </summary>
     partial void OnServerTypeChanged(ServerType value)
         => OnPropertyChanged(nameof(DisplayName));
 
+    /// <summary>
+    /// WorkingDirectory 属性变更回调，同步触发 DisplayName 的属性变更通知。
+    /// </summary>
     partial void OnWorkingDirectoryChanged(string value)
         => OnPropertyChanged(nameof(DisplayName));
 
+    /// <summary>
+    /// MaxHeapMemoryBytes 属性变更回调，同步触发 FormattedMaxMemory 的属性变更通知。
+    /// </summary>
     partial void OnMaxHeapMemoryBytesChanged(long value)
         => OnPropertyChanged(nameof(FormattedMaxMemory));
 }

@@ -1,6 +1,10 @@
-// 🏷️ 配置项中文描述注册表
-// Minecraft 配置文件里全是英文，对中文用户来说简直是"天书"
-// 这个注册表就是给每个配置项贴上中文"名牌"，让大家一眼看懂 🏅
+// -----------------------------------------------------------------------------
+// 文件名: ConfigDescriptorRegistry.cs
+// 命名空间: McServerGuard.Services.ConfigManagement
+// 功能描述: 配置描述符注册表，集中管理 Minecraft 服务器各配置文件的配置项元数据
+// 依赖组件: System.IO, System.Text.RegularExpressions, Serilog
+// 设计模式: 注册表模式、键控查找、多维哈希映射
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Services.ConfigManagement;
 
 using System.IO;
@@ -8,56 +12,59 @@ using System.Text.RegularExpressions;
 using Serilog;
 
 /// <summary>
-/// 配置项描述符 —— 每个配置项的"身份证" 🪪
-/// 
-/// 包含了配置项的中文显示名、描述、默认值、取值范围约束等信息。
-/// 相当于给每个英文明文的配置项配了个中文翻译官 🫶
+/// 服务器配置描述符
 /// </summary>
+/// <remarks>
+/// 封装单个配置项的完整元数据，包括键名、显示名、描述、分类、
+/// 默认值、取值范围约束、正则验证模式及重启要求等属性。
+/// 作为配置描述符注册表中的基本数据单元。
+/// </remarks>
 public sealed class ServerConfigDescriptor
 {
-    /// <summary>配置项的键名，如 "server-port"、"entity-activation-range.animals"</summary>
+    /// <summary>配置项的键名标识</summary>
     public required string Key { get; init; }
 
-    /// <summary>所属的配置文件名，如 "server.properties"、"spigot.yml"</summary>
+    /// <summary>所属配置文件的名称</summary>
     public required string ConfigFileName { get; init; }
 
-    /// <summary>中文显示名，如 "服务器端口"</summary>
+    /// <summary>配置项的中文显示名称</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>中文详细描述</summary>
+    /// <summary>配置项的中文详细描述</summary>
     public required string Description { get; init; }
 
-    /// <summary>配置分类，如 "网络"、"世界"、"游戏机制"</summary>
+    /// <summary>配置项所属的功能分类</summary>
     public required string Category { get; init; }
 
-    /// <summary>默认值（字符串形式）</summary>
+    /// <summary>配置项的默认值（字符串表示形式）</summary>
     public string? DefaultValue { get; init; }
 
-    /// <summary>最小值约束（数值类型时有效）</summary>
+    /// <summary>数值类型配置项的最小值约束</summary>
     public int? MinValue { get; init; }
 
-    /// <summary>最大值约束（数值类型时有效）</summary>
+    /// <summary>数值类型配置项的最大值约束</summary>
     public int? MaxValue { get; init; }
 
-    /// <summary>允许的枚举值列表（如 difficulty 的 peaceful/easy/normal/hard）</summary>
+    /// <summary>枚举类型配置项的允许值集合</summary>
     public string[]? AllowedValues { get; init; }
 
-    /// <summary>正则验证模式（如 server-ip 的 IP 地址格式）</summary>
+    /// <summary>字符串类型配置项的正则验证模式</summary>
     public string? RegexPattern { get; init; }
 
-    /// <summary>值类型（如 "string", "int", "bool", "enum"）</summary>
+    /// <summary>配置项的值类型标识</summary>
     public string ValueType { get; init; } = "string";
 
-    /// <summary>修改后是否需要重启服务器才能生效</summary>
+    /// <summary>指示配置项修改后是否需要重启服务器方能生效</summary>
     public bool RequiresRestart { get; init; }
 
-    /// <summary>预编译的正则表达式（内部使用，懒加载）</summary>
+    /// <summary>预编译正则表达式实例，采用延迟初始化策略</summary>
     private Regex? _compiledRegex;
 
     /// <summary>
-    /// 获取预编译的正则表达式实例 🪄
-    /// 没有正则约束时返回 null
+    /// 获取预编译的正则表达式实例
     /// </summary>
+    /// <returns>预编译的 Regex 实例；若无正则约束则返回 null</returns>
+    /// <remarks>采用懒加载模式，首次调用时进行编译并缓存</remarks>
     public Regex? GetCompiledRegex()
     {
         if (RegexPattern is null)
@@ -68,44 +75,42 @@ public sealed class ServerConfigDescriptor
 }
 
 /// <summary>
-/// 配置项描述注册表 —— 所有配置项中文信息的集中管理中心 📋
-/// 
-/// 在这里注册 server.properties、spigot.yml、paper-global.yml 的所有关键配置项。
-/// 支持按文件名查询、按键名查询、按分类查询。
-/// 
-/// 使用方式：
-///   var registry = new ConfigDescriptorRegistry();
-///   var desc = registry.GetDescriptor("server-port", "server.properties");
-///   // desc.DisplayName == "服务器端口"
+/// 配置描述符注册表
 /// </summary>
+/// <remarks>
+/// 集中管理 Minecraft 服务器各配置文件的配置项元数据，
+/// 包括 server.properties、bukkit.yml、spigot.yml、paper-global.yml 等
+/// 配置文件的关键配置项描述信息。支持多级键控查找策略：
+/// 精确匹配、纯文件名匹配、后缀模糊匹配。
+/// </remarks>
 public sealed class ConfigDescriptorRegistry
 {
-    // 内部存储：(configFileName, key) -> descriptor
+    /// <summary>
+    /// 内部存储结构：以 (配置文件名, 配置键名) 复合键为索引的多维哈希映射
+    /// </summary>
     private readonly Dictionary<(string ConfigFileName, string Key), ServerConfigDescriptor> _descriptors = new();
 
     /// <summary>
-    /// 初始化注册表，注册所有已知的配置项描述 🏗️
-    /// 构造时就全部注册好，后面只读查询
+    /// 初始化配置描述符注册表
     /// </summary>
+    /// <remarks>构造函数中完成所有预置配置项的注册，构建完成后仅提供只读查询</remarks>
     public ConfigDescriptorRegistry()
     {
-        // 日志：初始化注册表
-        Log.Information("📋 ConfigDescriptorRegistry 初始化，注册配置描述符...");
+        Log.Information("ConfigDescriptorRegistry 初始化，注册配置描述符...");
         RegisterServerProperties();
         RegisterServerPropertiesExtras();
         RegisterBukkitYml();
         RegisterSpigotYml();
         RegisterPaperGlobalYml();
         RegisterPaperWorldDefaultsYml();
-        // 日志：注册完成
-        Log.Information("✅ 注册表构建完成，共 {Count} 个描述符", _descriptors.Count);
+        Log.Information("注册表构建完成，共 {Count} 个描述符", _descriptors.Count);
     }
 
     /// <summary>
-    /// 注册一个配置项描述符（内部辅助方法）🪧
+    /// 向注册表中注册单个配置描述符
     /// </summary>
-    /// <param name="descriptor">要注册的描述符</param>
-    /// <exception cref="ArgumentNullException">descriptor 为 null</exception>
+    /// <param name="descriptor">待注册的配置描述符实例</param>
+    /// <exception cref="ArgumentNullException">当 descriptor 为 null 时抛出</exception>
     private void Register(ServerConfigDescriptor descriptor)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
@@ -113,29 +118,31 @@ public sealed class ConfigDescriptorRegistry
         var key = (descriptor.ConfigFileName, descriptor.Key);
         _descriptors[key] = descriptor;
 
-        // 日志：注册每个描述符
-        Log.Debug("📝 注册配置描述符: {Key} → {Name}", descriptor.Key, descriptor.DisplayName);
+        Log.Debug("注册配置描述符: {Key} → {Name}", descriptor.Key, descriptor.DisplayName);
     }
 
     /// <summary>
-    /// 根据键名和配置文件名获取描述符 🔍
-    /// 
-    /// 智能匹配策略：
-    ///   1. 精确匹配 (configFileName, key)
-    ///   2. 纯文件名匹配（去掉目录前缀，如 config/paper-global.yml → paper-global.yml）
-    ///   3. 后缀匹配（YAML 压平后的键可能带 world-settings.default. 前缀，
-    ///      用注册键作为后缀来匹配）
+    /// 根据配置键名和配置文件名获取对应的配置描述符
     /// </summary>
+    /// <param name="key">配置项键名</param>
+    /// <param name="configFileName">配置文件名称（可包含路径）</param>
+    /// <returns>匹配的配置描述符；未找到则返回 null</returns>
+    /// <remarks>
+    /// 采用三级匹配策略：
+    /// 1. 精确匹配：使用 (configFileName, key) 复合键进行精确查找
+    /// 2. 纯文件名匹配：去除目录前缀后进行匹配（如 config/paper-global.yml → paper-global.yml）
+    /// 3. 后缀匹配：针对 YAML 压平后的层级键，用注册键作为后缀进行模糊匹配
+    /// </remarks>
     public ServerConfigDescriptor? GetDescriptor(string key, string configFileName)
     {
         if (key is null || configFileName is null)
             return null;
 
-        // 1. 精确匹配
+        // 第一级：精确匹配
         if (_descriptors.TryGetValue((configFileName, key), out var desc))
             return desc;
 
-        // 2. 纯文件名匹配（去掉目录前缀）
+        // 第二级：纯文件名匹配（去除目录前缀）
         var pureFileName = Path.GetFileName(configFileName);
         if (!string.IsNullOrEmpty(pureFileName) && pureFileName != configFileName)
         {
@@ -143,8 +150,8 @@ public sealed class ConfigDescriptorRegistry
                 return desc;
         }
 
-        // 3. 后缀匹配 —— YAML 压平后的键如 "world-settings.default.mob-spawn-range"
-        //    注册表中可能只注册了 "mob-spawn-range"
+        // 第三级：后缀匹配 —— 处理 YAML 层级压平场景
+        // 例如键 "world-settings.default.mob-spawn-range" 可匹配注册键 "mob-spawn-range"
         foreach (var kvp in _descriptors)
         {
             if (!kvp.Key.ConfigFileName.Equals(configFileName, StringComparison.OrdinalIgnoreCase) &&
@@ -152,7 +159,6 @@ public sealed class ConfigDescriptorRegistry
                 continue;
 
             var registeredKey = kvp.Key.Key;
-            // 精确匹配已经试过了，这里只做后缀匹配
             if (key.Length > registeredKey.Length &&
                 key.EndsWith(registeredKey, StringComparison.OrdinalIgnoreCase) &&
                 key[key.Length - registeredKey.Length - 1] == '.')
@@ -165,9 +171,11 @@ public sealed class ConfigDescriptorRegistry
     }
 
     /// <summary>
-    /// 获取某个配置文件的所有已注册描述符 📂
-    /// 同时匹配完整路径和纯文件名
+    /// 获取指定配置文件的所有已注册配置描述符
     /// </summary>
+    /// <param name="configFileName">配置文件名称（可包含路径）</param>
+    /// <returns>匹配的配置描述符列表</returns>
+    /// <remarks>同时支持完整路径匹配和纯文件名匹配</remarks>
     public List<ServerConfigDescriptor> GetDescriptorsForFile(string configFileName)
     {
         if (configFileName is null)
@@ -185,8 +193,9 @@ public sealed class ConfigDescriptorRegistry
     }
 
     /// <summary>
-    /// 生成翻译覆盖率报告 —— 检查哪些配置文件、哪些 key 还缺描述符
+    /// 生成配置描述符覆盖率报告
     /// </summary>
+    /// <returns>包含总描述符数量和各文件统计的覆盖率报告</returns>
     public CoverageReport GetCoverageReport()
     {
         var fileStats = _descriptors
@@ -202,8 +211,12 @@ public sealed class ConfigDescriptorRegistry
     }
 
     /// <summary>
-    /// 找出给定 key 列表中没有对应描述符的 key —— 用于诊断翻译覆盖率
+    /// 查找指定键名列表中未匹配描述符的键
     /// </summary>
+    /// <param name="keys">待检查的配置键名列表</param>
+    /// <param name="configFileName">配置文件名称</param>
+    /// <returns>未找到对应描述符的键名列表</returns>
+    /// <remarks>用于诊断配置描述符的覆盖范围</remarks>
     public List<string> FindUnmatchedKeys(List<string> keys, string configFileName)
     {
         var pureName = Path.GetFileName(configFileName);
@@ -212,17 +225,28 @@ public sealed class ConfigDescriptorRegistry
             .ToList();
     }
 
-    /// <summary>覆盖率报告</summary>
+    /// <summary>
+    /// 配置描述符覆盖率报告
+    /// </summary>
+    /// <param name="TotalDescriptors">已注册描述符总数</param>
+    /// <param name="FileStats">各配置文件的覆盖率统计列表</param>
     public sealed record CoverageReport(int TotalDescriptors, List<FileCoverageStat> FileStats);
 
-    /// <summary>单文件覆盖率统计</summary>
+    /// <summary>
+    /// 单文件覆盖率统计信息
+    /// </summary>
+    /// <param name="ConfigFileName">配置文件名称</param>
+    /// <param name="DescriptorCount">该文件已注册的描述符数量</param>
     public sealed record FileCoverageStat(string ConfigFileName, int DescriptorCount);
 
     /// <summary>
-    /// 注册 server.properties 的所有关键配置项 🏠
-    /// 这可是 Minecraft 服务器的"基本盘"，搞不好服务器都启动不了
-    /// 数据来源：Minecraft Wiki + Folia 26.1.2 默认配置
+    /// 注册 server.properties 配置文件的所有关键配置项
     /// </summary>
+    /// <remarks>
+    /// server.properties 是 Minecraft 服务器的核心配置文件，
+    /// 包含网络、玩家、世界、游戏机制、性能优化等核心配置项。
+    /// 数据来源：Minecraft Wiki + Folia 26.1.2 默认配置
+    /// </remarks>
     private void RegisterServerProperties()
     {
         const string file = "server.properties";
@@ -1056,8 +1080,9 @@ public sealed class ConfigDescriptorRegistry
     }
 
     /// <summary>
-    /// 补齐：server.properties 中常见但可能遗漏的配置项
+    /// 注册 server.properties 配置文件的补充配置项
     /// </summary>
+    /// <remarks>补充注册主方法中可能遗漏的常见配置项</remarks>
     private void RegisterServerPropertiesExtras()
     {
         const string file = "server.properties";
@@ -1101,10 +1126,12 @@ public sealed class ConfigDescriptorRegistry
     }
 
     /// <summary>
-    /// 注册 bukkit.yml 的关键配置项 📜
-    /// Bukkit API 层的配置，所有 Bukkit 系核心都共享
-    /// 数据来源：Bukkit 官方文档 + Spigot 默认配置
+    /// 注册 bukkit.yml 配置文件的关键配置项
     /// </summary>
+    /// <remarks>
+    /// Bukkit API 层的基础配置，所有 Bukkit 系服务端核心共享此配置文件。
+    /// 数据来源：Bukkit 官方文档 + Spigot 默认配置
+    /// </remarks>
     private void RegisterBukkitYml()
     {
         const string file = "bukkit.yml";
@@ -1350,9 +1377,12 @@ public sealed class ConfigDescriptorRegistry
     }
 
     /// <summary>
-    /// 注册 spigot.yml 的关键配置项 ⚡
-    /// Spigot 是 CraftBukkit 的增强版，性能优化靠的就是这些参数
+    /// 注册 spigot.yml 配置文件的关键配置项
     /// </summary>
+    /// <remarks>
+    /// Spigot 是 CraftBukkit 的增强版，提供性能优化和功能扩展配置。
+    /// 包含实体激活范围、物品合并、世界设置等性能关键参数。
+    /// </remarks>
     private void RegisterSpigotYml()
     {
         const string file = "spigot.yml";
@@ -1944,10 +1974,13 @@ public sealed class ConfigDescriptorRegistry
     }
 
     /// <summary>
-    /// 注册 config/paper-global.yml 的关键配置项 📜
-    /// Paper/Folia 的全局配置，各种高级优化都在这里
-    /// 数据来源：PaperMC 官方文档 + Folia 26.1.2 默认配置
+    /// 注册 config/paper-global.yml 配置文件的关键配置项
     /// </summary>
+    /// <remarks>
+    /// Paper/Folia 的全局配置文件，包含区域化多线程、方块更新控制、
+    /// 区块系统、命令、控制台、物品验证等高级优化配置。
+    /// 数据来源：PaperMC 官方文档 + Folia 26.1.2 默认配置
+    /// </remarks>
     private void RegisterPaperGlobalYml()
     {
         const string file = "config/paper-global.yml";
@@ -2705,10 +2738,13 @@ public sealed class ConfigDescriptorRegistry
     }
 
     /// <summary>
-    /// 注册 config/paper-world-defaults.yml 的关键配置项 🌍
-    /// Paper/Folia 的世界默认配置，每个世界的个性化设置模板
-    /// 数据来源：PaperMC 官方文档 + Folia 26.1.2 默认配置
+    /// 注册 config/paper-world-defaults.yml 配置文件的关键配置项
     /// </summary>
+    /// <remarks>
+    /// Paper/Folia 的世界默认配置文件，作为各世界个性化配置的模板。
+    /// 包含实体、世界生成、杂项等世界级配置项。
+    /// 数据来源：PaperMC 官方文档 + Folia 26.1.2 默认配置
+    /// </remarks>
     private void RegisterPaperWorldDefaultsYml()
     {
         const string file = "config/paper-world-defaults.yml";

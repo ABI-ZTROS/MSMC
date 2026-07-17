@@ -6,22 +6,111 @@ using Serilog;
 
 namespace McServerGuard.Services.ServerDetection;
 
+/// <summary>
+/// 服务器管理服务契约 —— 定义 Minecraft 服务器进程的生命周期管理接口
+/// </summary>
+/// <remarks>
+/// 涵盖服务器运行状态检测、启动、停止、进程查找、资源指标查询等核心操作。
+/// 采用防御式编程策略，所有操作均处理进程退出的竞态条件。
+/// </remarks>
 public interface IServerManagerService
 {
+    /// <summary>
+    /// 检测指定服务器实例是否正在运行
+    /// </summary>
+    /// <param name="server">服务器实例</param>
+    /// <returns>true 表示服务器进程处于运行状态</returns>
     public bool IsServerRunning(ServerInstance server);
+
+    /// <summary>
+    /// 通过 JAR 文件路径检测对应服务器是否正在运行
+    /// </summary>
+    /// <param name="jarFilePath">JAR 文件完整路径</param>
+    /// <returns>true 表示对应服务器进程处于运行状态</returns>
     public bool IsServerRunningByJarPath(string jarFilePath);
+
+    /// <summary>
+    /// 启动指定的 Minecraft 服务器实例
+    /// </summary>
+    /// <param name="server">服务器实例，包含启动所需的全部配置</param>
+    /// <returns>启动后的进程对象；启动失败返回 null</returns>
     public Process? StartServer(ServerInstance server);
+
+    /// <summary>
+    /// 停止指定的 Minecraft 服务器实例
+    /// </summary>
+    /// <param name="server">服务器实例</param>
+    /// <returns>true 表示停止操作执行成功（或进程本就未运行）</returns>
     public bool StopServer(ServerInstance server);
+
+    /// <summary>
+    /// 通过进程 ID 停止服务器进程及其子进程树
+    /// </summary>
+    /// <param name="processId">父进程 ID</param>
+    /// <returns>true 表示停止操作执行成功</returns>
     public bool StopServerByProcessId(int processId);
+
+    /// <summary>
+    /// 查找与指定服务器实例匹配的运行中进程
+    /// </summary>
+    /// <param name="server">服务器实例</param>
+    /// <returns>匹配的进程对象；未找到返回 null</returns>
     public Process? FindServerProcess(ServerInstance server);
+
+    /// <summary>
+    /// 获取指定 JAR 文件对应的服务器进程 ID
+    /// </summary>
+    /// <param name="jarFilePath">JAR 文件完整路径</param>
+    /// <returns>进程 ID；未找到返回 null</returns>
     public int? GetServerProcessId(string jarFilePath);
+
+    /// <summary>
+    /// 检测是否有任何 Minecraft 服务器正在运行
+    /// </summary>
+    /// <returns>true 表示至少有一台服务器在运行</returns>
     public bool AnyServerRunning();
+
+    /// <summary>
+    /// 获取指定进程的内存使用量
+    /// </summary>
+    /// <param name="processId">进程 ID</param>
+    /// <returns>工作集内存字节数；进程不存在或读取失败返回 null</returns>
     public long? GetProcessMemoryUsage(int processId);
+
+    /// <summary>
+    /// 获取指定进程的 CPU 使用率
+    /// </summary>
+    /// <param name="processId">进程 ID</param>
+    /// <returns>CPU 使用率百分比近似值；进程不存在或读取失败返回 null</returns>
+    /// <remarks>
+    /// 注意：准确的 CPU 使用率需要两次采样计算，此处基于内存占比返回近似参考值。
+    /// </remarks>
     public double? GetProcessCpuUsage(int processId);
 }
 
+/// <summary>
+/// 服务器管理服务实现 —— 提供 Minecraft 服务器进程的生命周期管理能力
+/// </summary>
+/// <remarks>
+/// 核心能力包括：
+/// 1. 运行状态检测 —— 基于 JAR 文件锁 + 进程枚举的双重校验机制
+/// 2. 进程生命周期管理 —— 启动、停止（含子进程树终止）
+/// 3. 资源指标查询 —— 内存、CPU 使用率采集
+/// 所有操作均处理进程枚举过程中的竞态条件，遵循防御式编程原则。
+/// </remarks>
 public class ServerManagerService : IServerManagerService
 {
+    /// <summary>
+    /// 检测指定服务器实例是否正在运行
+    /// </summary>
+    /// <param name="server">服务器实例</param>
+    /// <returns>true 表示服务器进程处于运行状态</returns>
+    /// <remarks>
+    /// 采用双重校验策略：
+    /// 1. JAR 文件锁定检测 —— 快速判断文件是否被进程独占
+    /// 2. 进程枚举验证 —— 通过命令行匹配确认对应进程存在
+    /// 若 JAR 路径不可用，则降级为 PID 直接检测。
+    /// </remarks>
     public bool IsServerRunning(ServerInstance server)
     {
         if (!string.IsNullOrEmpty(server.ServerJarPath))
@@ -102,6 +191,15 @@ public class ServerManagerService : IServerManagerService
         return false;
     }
 
+    /// <summary>
+    /// 通过 JAR 文件路径检测对应服务器是否正在运行
+    /// </summary>
+    /// <param name="jarFilePath">JAR 文件完整路径</param>
+    /// <returns>true 表示对应服务器进程处于运行状态</returns>
+    /// <remarks>
+    /// 采用 JAR 文件锁定 + 进程匹配的双重检测机制，
+    /// 优先通过文件锁快速判定，再通过进程枚举进行确认。
+    /// </remarks>
     public bool IsServerRunningByJarPath(string jarFilePath)
     {
         if (!File.Exists(jarFilePath))
@@ -123,6 +221,19 @@ public class ServerManagerService : IServerManagerService
         return false;
     }
 
+    /// <summary>
+    /// 启动指定的 Minecraft 服务器实例
+    /// </summary>
+    /// <param name="server">服务器实例，包含启动所需的全部配置</param>
+    /// <returns>启动后的进程对象；启动失败返回 null</returns>
+    /// <remarks>
+    /// 启动流程：
+    /// 1. 前置校验 —— 服务器未运行、JAR 文件存在、工作目录存在
+    /// 2. Java 环境检测 —— 查找并验证 Java 可执行文件
+    /// 3. JVM 参数规范化 —— 校验并标准化启动参数
+    /// 4. 进程启动 —— 以指定工作目录启动 Java 进程
+    /// 所有异常均被捕获并记录，确保方法不会向上抛出异常。
+    /// </remarks>
     public Process? StartServer(ServerInstance server)
     {
         Log.Information("🚀 尝试启动服务器: {JarName}", server.ServerJarName);
@@ -233,29 +344,48 @@ public class ServerManagerService : IServerManagerService
         }
     }
 
+    /// <summary>
+    /// 停止指定的 Minecraft 服务器实例
+    /// </summary>
+    /// <param name="server">服务器实例</param>
+    /// <returns>true 表示停止操作执行成功（或进程本就未运行）</returns>
+    /// <remarks>
+    /// 停止策略：
+    /// 1. 优先通过 JAR 文件名匹配查找当前运行进程并终止
+    /// 2. 匹配失败时，使用记录的 PID 直接终止
+    /// 3. 若两者均无效，视为目标状态已达成（进程已停止），返回成功
+    /// </remarks>
     public bool StopServer(ServerInstance server)
     {
         Log.Information("🛑 尝试停止服务器: {JarName}", server.ServerJarName);
 
-        // 优先用 jar 名匹配当前运行中的进程
+        // 优先通过 JAR 名匹配当前运行中的进程
         var process = FindServerProcess(server);
         if (process != null)
         {
             return StopProcessTree(process.Id);
         }
 
-        // jar 名匹配不到，再尝试用记录的 PID 直接终止
+        // JAR 名匹配失败，降级为 PID 直接终止
         if (server.ProcessId > 0)
         {
             return StopServerByProcessId(server.ProcessId);
         }
 
-        // 既匹配不到 jar 名，也没有有效 PID —— 说明进程本来就不在了
-        // 目标状态（服务器停止）已经达成，应当视为成功，而不是报失败吓唬用户
+        // 未找到运行中的进程 —— 目标状态（服务器停止）已达成，视为成功
         Log.Information("ℹ️ 未找到运行中的服务器进程，视为已停止: {JarName}", server.ServerJarName);
         return true;
     }
 
+    /// <summary>
+    /// 通过进程 ID 停止服务器进程及其子进程树
+    /// </summary>
+    /// <param name="processId">父进程 ID</param>
+    /// <returns>true 表示停止操作执行成功</returns>
+    /// <remarks>
+    /// 终止整个进程树，防止 java.exe 的子进程继续运行。
+    /// 采用防御式编程，进程不存在或已退出均视为成功。
+    /// </remarks>
     public bool StopServerByProcessId(int processId)
     {
         Log.Information("🛑 尝试终止进程: PID={Pid}", processId);
@@ -271,6 +401,16 @@ public class ServerManagerService : IServerManagerService
         }
     }
 
+    /// <summary>
+    /// 查找与指定服务器实例匹配的运行中进程
+    /// </summary>
+    /// <param name="server">服务器实例</param>
+    /// <returns>匹配的进程对象；未找到返回 null</returns>
+    /// <remarks>
+    /// 通过枚举所有 java.exe 进程，匹配命令行中包含目标 JAR 文件名的进程。
+    /// 返回新的 Process 对象实例，调用方负责释放。
+    /// 处理进程枚举过程中的竞态条件——进程可能随时退出。
+    /// </remarks>
     public Process? FindServerProcess(ServerInstance server)
     {
         var jarName = Path.GetFileName(server.ServerJarPath).ToLowerInvariant();
@@ -287,14 +427,14 @@ public class ServerManagerService : IServerManagerService
                         if (!string.IsNullOrEmpty(cmdLine) && 
                             cmdLine.ToLowerInvariant().Contains(jarName))
                         {
-                            // 返回一个新的 Process 对象，避免 using 释放
+                            // 返回新的 Process 对象，避免 using 块释放
                             try { return Process.GetProcessById(process.Id); }
                             catch { return null; }
                         }
                     }
                     catch
                     {
-                        // Process may have exited
+                        // 进程可能已退出，跳过
                     }
                 }
             }
@@ -307,6 +447,15 @@ public class ServerManagerService : IServerManagerService
         return null;
     }
 
+    /// <summary>
+    /// 获取指定 JAR 文件对应的服务器进程 ID
+    /// </summary>
+    /// <param name="jarFilePath">JAR 文件完整路径</param>
+    /// <returns>进程 ID；未找到返回 null</returns>
+    /// <remarks>
+    /// 通过枚举所有 java.exe 进程，匹配命令行中包含目标 JAR 文件名的进程。
+    /// 处理进程枚举过程中的竞态条件。
+    /// </remarks>
     public int? GetServerProcessId(string jarFilePath)
     {
         var jarName = Path.GetFileName(jarFilePath).ToLowerInvariant();
@@ -328,7 +477,7 @@ public class ServerManagerService : IServerManagerService
                     }
                     catch
                     {
-                        // Process may have exited
+                        // 进程可能已退出，跳过
                     }
                 }
             }
@@ -341,6 +490,15 @@ public class ServerManagerService : IServerManagerService
         return null;
     }
 
+    /// <summary>
+    /// 检测 JAR 文件是否被进程独占锁定
+    /// </summary>
+    /// <param name="jarFilePath">JAR 文件路径</param>
+    /// <returns>true 表示文件被锁定（无法以 FileShare.None 打开）</returns>
+    /// <remarks>
+    /// 原理：尝试以独占读取方式打开文件，若抛出 IOException 则判定为被锁定。
+    /// 这是判断 Java 进程是否正在加载该 JAR 的快速检测手段。
+    /// </remarks>
     private bool IsJarFileLocked(string jarFilePath)
     {
         try
@@ -359,6 +517,15 @@ public class ServerManagerService : IServerManagerService
         }
     }
 
+    /// <summary>
+    /// 构建服务器启动参数字符串
+    /// </summary>
+    /// <param name="server">服务器实例（包含 JVM 参数与 JAR 路径）</param>
+    /// <returns>拼接完成的启动参数字符串</returns>
+    /// <remarks>
+    /// 参数顺序：JVM 参数在前，-jar 选项居中，JAR 路径在最后。
+    /// JAR 路径包含空格时自动添加引号。
+    /// </remarks>
     private string BuildStartupArguments(ServerInstance server)
     {
         var args = new List<string>();
@@ -375,6 +542,11 @@ public class ServerManagerService : IServerManagerService
         return string.Join(" ", args);
     }
 
+    /// <summary>
+    /// 将字节数格式化为人类可读的内存大小字符串
+    /// </summary>
+    /// <param name="bytes">字节数</param>
+    /// <returns>格式化后的字符串（G/M/K 单位）</returns>
     private string FormatMemorySize(long bytes)
     {
         if (bytes >= 1L << 30)
@@ -384,11 +556,23 @@ public class ServerManagerService : IServerManagerService
         return $"{bytes >> 10}K";
     }
 
+    /// <summary>
+    /// 终止指定进程及其整个子进程树
+    /// </summary>
+    /// <param name="parentProcessId">父进程 ID</param>
+    /// <returns>true 表示终止操作成功（或进程本就不存在）</returns>
+    /// <remarks>
+    /// 终止策略：
+    /// 1. 递归获取所有子进程 ID（深度限制 5 层，防止无限递归）
+    /// 2. 先终止所有子进程，再终止父进程
+    /// 3. 进程已退出或不存在均视为成功（目标状态已达成）
+    /// 使用 WMI 查询子进程关系，确保完整终止进程树。
+    /// </remarks>
     private bool StopProcessTree(int parentProcessId)
     {
         try
         {
-            // 先递归终止子进程（防止 java.exe 的子进程继续跑）
+            // 先递归终止子进程，防止 java.exe 的子进程继续运行
             var childProcessIds = GetChildProcessIds(parentProcessId);
 
             foreach (var childId in childProcessIds)
@@ -405,7 +589,7 @@ public class ServerManagerService : IServerManagerService
                 }
                 catch (ArgumentException)
                 {
-                    // 子进程已退出，GetProcessById 会抛 ArgumentException，正常情况
+                    // 子进程已退出，GetProcessById 会抛 ArgumentException，属于正常竞态
                     Log.Debug("子进程已退出: PID={Pid}", childId);
                 }
                 catch (Exception ex)
@@ -420,7 +604,7 @@ public class ServerManagerService : IServerManagerService
                 var parentProcess = Process.GetProcessById(parentProcessId);
                 if (parentProcess.HasExited)
                 {
-                    // 进程已经退出 —— 目标状态已达成，视为成功
+                    // 进程已退出 —— 目标状态已达成，视为成功
                     Log.Information("ℹ️ 进程已退出（无需终止）: PID={Pid}", parentProcessId);
                     return true;
                 }
@@ -433,7 +617,7 @@ public class ServerManagerService : IServerManagerService
             catch (ArgumentException)
             {
                 // GetProcessById 找不到进程会抛 ArgumentException
-                // 说明进程已经不在了 —— 目标状态已达成，视为成功
+                // 说明进程已经不在 —— 目标状态已达成，视为成功
                 Log.Information("ℹ️ 进程已不存在（视为已停止）: PID={Pid}", parentProcessId);
                 return true;
             }
@@ -446,6 +630,16 @@ public class ServerManagerService : IServerManagerService
         return false;
     }
 
+    /// <summary>
+    /// 递归获取指定进程的所有子进程 ID
+    /// </summary>
+    /// <param name="parentProcessId">父进程 ID</param>
+    /// <param name="depth">当前递归深度（用于防止无限递归）</param>
+    /// <returns>所有子进程 ID 列表（含多层嵌套）</returns>
+    /// <remarks>
+    /// 通过 WMI Win32_Process 查询父子进程关系。
+    /// 递归深度限制为 5 层，防止异常进程链导致的栈溢出。
+    /// </remarks>
     private List<int> GetChildProcessIds(int parentProcessId, int depth = 0)
     {
         var childIds = new List<int>();
@@ -478,6 +672,15 @@ public class ServerManagerService : IServerManagerService
         return childIds;
     }
 
+    /// <summary>
+    /// 获取指定进程的完整命令行
+    /// </summary>
+    /// <param name="processId">进程 ID</param>
+    /// <returns>进程命令行字符串；获取失败返回空字符串</returns>
+    /// <remarks>
+    /// 通过 WMI Win32_Process.CommandLine 属性获取进程命令行。
+    /// 这是获取 Java 进程启动参数的可靠方式。
+    /// </remarks>
     private string GetProcessCommandLine(int processId)
     {
         try
@@ -501,6 +704,15 @@ public class ServerManagerService : IServerManagerService
         return string.Empty;
     }
 
+    /// <summary>
+    /// 检测是否有任何 Minecraft 服务器正在运行
+    /// </summary>
+    /// <returns>true 表示至少有一台服务器在运行</returns>
+    /// <remarks>
+    /// 通过枚举所有 java.exe 进程，检查命令行中是否包含 "server" 关键字。
+    /// 这是一种快速检测手段，用于判断系统中是否存在活跃的 Minecraft 服务端。
+    /// 采用防御式编程，枚举失败时返回 false。
+    /// </remarks>
     public bool AnyServerRunning()
     {
         try
@@ -529,8 +741,10 @@ public class ServerManagerService : IServerManagerService
     }
 
     /// <summary>
-    /// 获取进程的内存使用量（字节）
+    /// 获取指定进程的内存使用量
     /// </summary>
+    /// <param name="processId">进程 ID</param>
+    /// <returns>工作集内存字节数；进程不存在或读取失败返回 null</returns>
     public long? GetProcessMemoryUsage(int processId)
     {
         try
@@ -552,9 +766,14 @@ public class ServerManagerService : IServerManagerService
     }
 
     /// <summary>
-    /// 获取进程的 CPU 使用率（百分比，0-100）
-    /// 注意：需要两次采样才能计算准确值，此处返回单次采样作为近似值
+    /// 获取指定进程的 CPU 使用率
     /// </summary>
+    /// <param name="processId">进程 ID</param>
+    /// <returns>CPU 使用率百分比近似值；进程不存在或读取失败返回 null</returns>
+    /// <remarks>
+    /// 注意：准确的 CPU 使用率需要两次采样计算，
+    /// 此处基于工作集内存占总内存的比例返回近似参考值。
+    /// </remarks>
     public double? GetProcessCpuUsage(int processId)
     {
         try
@@ -562,8 +781,8 @@ public class ServerManagerService : IServerManagerService
             var process = Process.GetProcessById(processId);
             if (process.HasExited) return null;
 
-            // 使用 TotalProcessorTime 计算（需要两次采样）
-            // 这里简单返回 WorkingSet64 占总内存的比例作为参考
+            // 使用 TotalProcessorTime 计算需要两次采样
+            // 此处简单返回 WorkingSet64 占总内存的比例作为参考
             var totalMemory = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
             if (totalMemory > 0)
             {

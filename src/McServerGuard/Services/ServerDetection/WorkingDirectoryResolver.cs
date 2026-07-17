@@ -1,6 +1,10 @@
-// 🧭 工作目录解析器 —— 哪怕命令行里藏了再多路径，也要把它挖出来
-// 有时候 Java 进程的 WorkingDirectory 就是不可靠，所以我们需要"尽一切可能"来确认
-// 这个类的名字应该叫"死皮赖脸目录侦探"更贴切 🕵️
+// -----------------------------------------------------------------------------
+// 文件名: WorkingDirectoryResolver.cs
+// 命名空间: McServerGuard.Services.ServerDetection
+// 功能描述: 服务器工作目录多策略解析器，通过JAR路径推导、父进程脚本提取、WMI进程目录查询、文件系统搜索等多级策略，精准定位Minecraft服务器的工作目录
+// 依赖组件: System.Diagnostics, System.IO, System.Management, Serilog, McServerGuard.Constants
+// 设计模式: 策略模式（多解析策略级联）、责任链模式（策略按优先级依次尝试）
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Services.ServerDetection;
 
 using System.Diagnostics;
@@ -10,36 +14,48 @@ using McServerGuard.Constants;
 using Serilog;
 
 /// <summary>
-/// 工作目录解析器 —— 服务器到底在哪个目录？这是本文的核心问题
+/// 工作目录解析器 —— 基于多策略级联架构，精准定位Minecraft服务器的工作目录
 /// </summary>
+/// <remarks>
+/// 采用策略级联架构，按优先级依次尝试以下解析策略：
+/// 1. JAR参数推导：从命令行-jar参数中提取JAR路径，推导工作目录
+/// 2. 父进程脚本追溯：从父进程Shell的启动脚本路径中提取目录
+/// 3. WMI进程目录查询：通过WMI获取进程的CurrentDirectory
+/// 4. 文件系统搜索：在常见位置递归搜索包含server.properties的目录
+/// 
+/// 每级策略均支持server.properties存在性验证，确保解析结果的可靠性。
+/// </remarks>
 public class WorkingDirectoryResolver
 {
     /// <summary>
-    /// 尽一切可能确认服务器的工作目录
-    /// 策略优先级：
-    ///   1. 从命令行的 -jar 参数中解析 JAR 路径，取其所在目录
-    ///   2. 验证该目录下是否存在 server.properties
-    ///   3. 如果以上都失败，就在常见位置搜索
-    /// 简直是"找不到就搜家"的架势 🔍
+    /// 解析服务器工作目录，按策略优先级依次尝试，返回首个有效结果
     /// </summary>
-    /// <param name="processId">Java 进程 ID</param>
-    /// <param name="commandLine">完整命令行</param>
-    /// <param name="jarName">JAR 文件名</param>
-    /// <returns>确认的工作目录，如果实在找不到就返回进程的当前目录</returns>
+    /// <param name="processId">目标Java进程ID</param>
+    /// <param name="commandLine">进程完整命令行</param>
+    /// <param name="jarName">JAR文件名</param>
+    /// <returns>解析得到的工作目录；所有策略均失败时返回占位符字符串</returns>
+    /// <remarks>
+    /// 策略优先级：
+    /// 1. JAR路径解析（最高优先级）—— 从-jar参数推导并验证
+    /// 2. 父进程脚本追溯 —— 从Shell启动脚本路径推导
+    /// 3. 进程模块目录 —— 从MainModule获取（通常不可靠，仅作参考）
+    /// 4. 进程工作目录 —— 通过WMI查询CurrentDirectory
+    /// 5. 文件系统搜索 —— 在常见位置递归搜索（终极大招）
+    /// </remarks>
     public string Resolve(int processId, string commandLine, string jarName)
     {
         Log.Information("🗺️ WorkingDirectoryResolver: 解析工作目录 PID={Pid}, CmdLine={Cmd}", processId, 
             commandLine?.Length > 150 ? commandLine[..150] + "..." : commandLine);
         string? workingDir = null;
 
-        // 策略1: 从 JAR 路径解析（相对路径会用 java/shell 的真实工作目录拼接）
+        // 策略1：从JAR路径解析
         Log.Debug("策略1: 从 JAR 路径解析");
         workingDir = ResolveFromJarArgument(commandLine, processId);
         if (!string.IsNullOrEmpty(workingDir))
         {
             Log.Debug("方法1成功：从 -jar 参数解析到目录: {Dir}", workingDir);
 
-            // 方法 2：验证该目录下是否存在 server.properties
+            // 验证目录下是否存在server.properties
             if (ValidateServerDirectory(workingDir))
             {
                 Log.Information("✅ 工作目录解析成功: {Dir}", workingDir);
@@ -49,12 +65,12 @@ public class WorkingDirectoryResolver
             Log.Warning(
                 "方法2验证失败: {Dir} 下没有 server.properties，可能是软链接或者非标准目录",
                 workingDir);
-            // 即使没有 server.properties 也先返回这个目录，毕竟大概率是对的
+            // 即使未通过验证，仍返回该目录（高置信度候选）
             Log.Information("✅ 工作目录解析成功: {Dir}", workingDir);
             return workingDir;
         }
 
-        // 策略1.5: 如果 JAR 是相对路径且解析失败，尝试从父进程 cmd 的命令行里找到 start.bat 所在目录
+        // 策略1.5：从父进程Shell的启动脚本路径推断
         Log.Debug("策略1.5: 从父进程 Shell 的启动脚本路径推断工作目录");
         var scriptDir = ResolveFromParentBatchScript(processId);
         if (!string.IsNullOrEmpty(scriptDir))
@@ -69,14 +85,12 @@ public class WorkingDirectoryResolver
             return scriptDir;
         }
 
-        // 策略2: 从进程的 MainModule 获取
-        // 注意：访问 MainModule 在跨位数（32位↔64位）访问时会抛 Win32Exception，
-        // 进程已退出时会抛 InvalidOperationException，权限不足时抛 IOException
+        // 策略2：从进程MainModule获取（参考价值有限）
+        // 注意：跨位数访问MainModule会抛出Win32Exception，进程已退出时抛出InvalidOperationException
         Log.Debug("策略2: 从进程 MainModule 获取");
         try
         {
             using var process = Process.GetProcessById(processId);
-            // 先判断 MainModule 是否可访问，避免属性 getter 抛异常被调试器当作未捕获
             var mainModule = process.MainModule;
             if (mainModule is not null)
             {
@@ -104,7 +118,7 @@ public class WorkingDirectoryResolver
             Log.Debug(ex, "解析策略跳过: {Message}", ex.Message);
         }
 
-        // 策略3: 用进程自己的当前工作目录（通过WMI查询，而不是本程序的工作目录）
+        // 策略3：通过WMI查询进程的当前工作目录
         Log.Debug("策略3: 尝试使用进程的工作目录...");
         try
         {
@@ -117,7 +131,6 @@ public class WorkingDirectoryResolver
                     return procWorkingDir;
                 }
 
-                // 即使没找到 server.properties，也记录到日志里
                 Log.Debug("进程工作目录 {Dir} 未通过验证，但仍作为候选目录", procWorkingDir);
                 return procWorkingDir;
             }
@@ -127,7 +140,7 @@ public class WorkingDirectoryResolver
             Log.Debug(ex, "解析策略跳过: {Message}", ex.Message);
         }
 
-        // 策略4（终极大招）：在常见位置搜索
+        // 策略4：在常见位置进行递归搜索（终级策略）
         Log.Debug("策略4: 启动地毯式搜索 SearchServerDirectories...");
         var found = SearchServerDirectories(jarName);
         if (!string.IsNullOrEmpty(found))
@@ -136,16 +149,20 @@ public class WorkingDirectoryResolver
             return found;
         }
 
-        // 实在找不到就返回 null 的替代值，让调用方知道解析失败
-        // 注意：不要返回 Environment.CurrentDirectory，那会误导成本程序目录
+        // 所有策略均失败，返回占位符
         Log.Warning("⚠️ 所有策略均失败，无法解析工作目录");
         return "(无法解析工作目录)";
     }
 
     /// <summary>
-    /// 获取 java 进程自己的当前工作目录
-    /// 如果查询失败，会尝试追溯父进程链，找到 shell 的工作目录
+    /// 获取Java进程的当前工作目录，支持父进程链追溯
     /// </summary>
+    /// <param name="processId">目标进程ID</param>
+    /// <returns>工作目录路径；获取失败返回<c>null</c></returns>
+    /// <remarks>
+    /// 若当前进程目录不可获取，则沿父进程链向上追溯Shell进程的工作目录。
+    /// 使用哈希集合防止循环引用导致的无限递归。
+    /// </remarks>
     private string? GetProcessCurrentDirectory(int processId)
     {
         var triedIds = new HashSet<int>();
@@ -179,8 +196,10 @@ public class WorkingDirectoryResolver
     }
 
     /// <summary>
-    /// 查询单个进程的 CurrentDirectory
+    /// 通过WMI查询单个进程的CurrentDirectory属性
     /// </summary>
+    /// <param name="processId">目标进程ID</param>
+    /// <returns>当前工作目录路径；查询失败返回<c>null</c></returns>
     private string? QueryCurrentDirectory(int processId)
     {
         try
@@ -213,8 +232,10 @@ public class WorkingDirectoryResolver
     }
 
     /// <summary>
-    /// 获取进程的父进程 ID
+    /// 通过WMI获取进程的父进程ID
     /// </summary>
+    /// <param name="processId">目标进程ID</param>
+    /// <returns>父进程ID；获取失败返回0</returns>
     private int GetParentProcessId(int processId)
     {
         try
@@ -246,9 +267,14 @@ public class WorkingDirectoryResolver
     }
 
     /// <summary>
-    /// 从父进程 cmd 的命令行中提取启动脚本（.bat/.cmd）的路径，返回其所在目录
-    /// 用于处理双击 start.bat 启动服务器的情况
+    /// 从父进程命令行中提取批处理脚本路径，推导服务器工作目录
     /// </summary>
+    /// <param name="processId">目标进程ID</param>
+    /// <returns>脚本所在目录；未找到返回<c>null</c></returns>
+    /// <remarks>
+    /// 用于处理通过双击start.bat启动服务器的场景：
+    /// 沿父进程链向上追溯，在Shell进程的命令行中提取.bat/.cmd脚本路径。
+    /// </remarks>
     private string? ResolveFromParentBatchScript(int processId)
     {
         var currentId = processId;
@@ -279,14 +305,18 @@ public class WorkingDirectoryResolver
     }
 
     /// <summary>
-    /// 从命令行字符串中提取 .bat/.cmd 脚本路径
-    /// 例如 cmd /c ""H:\MyServer\start.bat"" → H:\MyServer\start.bat
+    /// 从命令行字符串中提取.bat/.cmd脚本的完整路径
     /// </summary>
+    /// <param name="commandLine">命令行字符串</param>
+    /// <returns>脚本文件路径；未匹配返回<c>null</c></returns>
+    /// <example>
+    /// 输入：cmd /c ""H:\MyServer\start.bat""
+    /// 输出：H:\MyServer\start.bat
+    /// </example>
     private string? ExtractBatchScriptPath(string commandLine)
     {
         try
         {
-            // 先找 .bat 或 .cmd 扩展名
             var match = System.Text.RegularExpressions.Regex.Match(
                 commandLine,
                 @"[""']?([a-zA-Z]:[^""'\s]*\.(?:bat|cmd))[""']?",
@@ -308,8 +338,10 @@ public class WorkingDirectoryResolver
     }
 
     /// <summary>
-    /// 通过 WMI 获取进程的完整命令行
+    /// 通过WMI获取指定进程的完整命令行
     /// </summary>
+    /// <param name="processId">目标进程ID</param>
+    /// <returns>完整命令行字符串；获取失败返回<c>null</c></returns>
     private string? GetProcessCommandLine(int processId)
     {
         try
@@ -349,9 +381,18 @@ public class WorkingDirectoryResolver
     }
 
     /// <summary>
-    /// 方法 1：从命令行的 -jar 参数中解析 JAR 文件的完整路径，取其所在目录
-    /// 这是最高优先级的方法，因为 -jar 后面通常跟的是完整路径
+    /// 从命令行的-jar参数中解析JAR文件路径，推导工作目录
     /// </summary>
+    /// <param name="commandLine">进程完整命令行</param>
+    /// <param name="processId">目标进程ID（用于相对路径拼接时获取进程工作目录）</param>
+    /// <returns>推导的工作目录；解析失败返回<c>null</c></returns>
+    /// <remarks>
+    /// 路径处理逻辑：
+    /// 1. 绝对路径且文件存在 → 直接取目录
+    /// 2. 相对路径 → 使用进程工作目录拼接后验证
+    /// 3. 拼接后不存在 → 向上递归搜索祖先目录（最多3层）
+    /// 4. 无法获取进程工作目录 → 使用当前程序目录兜底
+    /// </remarks>
     private string? ResolveFromJarArgument(string commandLine, int processId)
     {
         try
@@ -362,24 +403,23 @@ public class WorkingDirectoryResolver
 
             var afterJar = commandLine[(jarIdx + 4)..].TrimStart();
 
-            // JAR 路径到下一个空格为止（或者到字符串末尾）
+            // JAR路径截取至下一个空白字符
             var endIdx = afterJar.IndexOfAny([' ', '\t']);
             var jarPath = endIdx > 0 ? afterJar[..endIdx] : afterJar;
 
-            // 去除可能的引号 —— Windows 路径有空格时会被引号包裹
+            // 去除路径两端的引号（Windows路径含空格时会被引号包裹）
             jarPath = jarPath.Trim('"');
 
             if (string.IsNullOrWhiteSpace(jarPath))
                 return null;
 
-            // 如果是绝对路径，直接取目录
+            // 绝对路径且文件存在 → 直接返回目录
             if (Path.IsPathRooted(jarPath) && File.Exists(jarPath))
             {
                 return Path.GetDirectoryName(jarPath);
             }
 
-            // 如果是相对路径，必须用 java 进程自己或父进程 shell 的工作目录来拼接，
-            // 不能用本程序的当前目录，否则就硬编码成了 McServerGuard 的启动目录
+            // 相对路径 → 使用进程工作目录拼接
             var processWorkingDir = GetProcessCurrentDirectory(processId);
             if (!string.IsNullOrWhiteSpace(processWorkingDir))
             {
@@ -389,8 +429,7 @@ public class WorkingDirectoryResolver
                     return Path.GetDirectoryName(fullPath);
                 }
 
-                // 当前工作目录下没有 JAR，可能是 cd 到子目录后启动的，
-                // 在父目录中向上搜索这个 JAR（最多向上 3 层）
+                // 当前工作目录下未找到JAR，向上递归搜索祖先目录（最多3层）
                 var foundDir = FindJarInAncestors(processWorkingDir, jarPath, maxDepth: 3);
                 if (!string.IsNullOrEmpty(foundDir))
                 {
@@ -401,7 +440,7 @@ public class WorkingDirectoryResolver
                 return Path.GetDirectoryName(fullPath);
             }
 
-            // 拿不到进程工作目录时，用本程序目录兜底
+            // 无法获取进程工作目录时，使用本程序目录作为兜底
             Log.Debug("无法获取进程 PID={Pid} 的工作目录，使用本程序目录作为最后手段", processId);
             var fallbackPath = Path.GetFullPath(jarPath);
             return Path.GetDirectoryName(fallbackPath) ?? Path.GetDirectoryName(jarPath);
@@ -414,9 +453,15 @@ public class WorkingDirectoryResolver
     }
 
     /// <summary>
-    /// 在指定目录的祖先目录中搜索指定的 JAR 文件
-    /// 用于处理 cd 到子目录后启动服务器的情况
+    /// 在指定目录的祖先路径中搜索JAR文件
     /// </summary>
+    /// <param name="startDirectory">起始目录</param>
+    /// <param name="jarName">JAR文件名</param>
+    /// <param name="maxDepth">最大向上搜索层数</param>
+    /// <returns>找到JAR文件的目录；未找到返回<c>null</c></returns>
+    /// <remarks>
+    /// 用于处理cd至子目录后启动服务器的场景，向上回溯查找JAR所在的真实工作目录。
+    /// </remarks>
     private string? FindJarInAncestors(string startDirectory, string jarName, int maxDepth)
     {
         var currentDir = startDirectory;
@@ -437,9 +482,10 @@ public class WorkingDirectoryResolver
     }
 
     /// <summary>
-    /// 方法 2：验证目录下是否存在 server.properties
-    /// 这是最可靠的服务器目录标识 —— 没有这个文件的基本不可能是服务器
+    /// 验证目录是否为有效的服务器目录（以server.properties存在性为判定依据）
     /// </summary>
+    /// <param name="directory">待验证的目录路径</param>
+    /// <returns>目录存在且包含server.properties则返回<c>true</c>，否则返回<c>false</c></returns>
     private bool ValidateServerDirectory(string directory)
     {
         if (!Directory.Exists(directory))
@@ -449,13 +495,16 @@ public class WorkingDirectoryResolver
     }
 
     /// <summary>
-    /// 方法 3：在常见位置搜索服务器 JAR 文件
-    /// 搜索策略：在预定义的目录列表中递归搜索，深度限制为 MaxSearchDepth
-    /// 这招虽然暴力但有效 —— 找到一个 JAR 名字匹配的目录就收手
+    /// 在预定义的常见位置中搜索服务器目录
     /// </summary>
+    /// <param name="jarName">目标JAR文件名</param>
+    /// <returns>找到的服务器目录；未找到返回<c>null</c></returns>
+    /// <remarks>
+    /// 搜索策略：在预定义目录列表中按顺序递归搜索，
+    /// 深度限制为MaxSearchDepth，找到首个匹配目录即返回。
+    /// </remarks>
     private string? SearchServerDirectories(string jarName)
     {
-        // 定义要搜索的常见位置
         var searchPaths = new[]
         {
             ".",
@@ -482,21 +531,25 @@ public class WorkingDirectoryResolver
     }
 
     /// <summary>
-    /// 递归搜索目录，寻找包含指定 JAR 文件且存在 server.properties 的目录
+    /// 递归搜索目录，查找包含指定JAR文件且存在server.properties的服务器目录
     /// </summary>
+    /// <param name="directory">当前搜索目录</param>
+    /// <param name="jarName">目标JAR文件名</param>
+    /// <param name="currentDepth">当前递归深度</param>
+    /// <returns>匹配的服务器目录；未找到返回<c>null</c></returns>
     private string? SearchDirectoryRecursive(string directory, string jarName, int currentDepth)
     {
-        const int maxSearchDepth = 3; // 递归搜索的最大深度 —— 不然它能把整个硬盘翻个底朝天 💀
+        const int maxSearchDepth = 3; // 最大递归深度，防止无限制搜索
 
         if (currentDepth > maxSearchDepth)
             return null;
 
         try
         {
-            // 先检查当前目录
+            // 优先验证当前目录
             if (ValidateServerDirectory(directory))
             {
-                // 检查这个目录里有没有匹配的 JAR 文件
+                // 检查目录中是否存在匹配的JAR文件
                 if (string.IsNullOrWhiteSpace(jarName) ||
                     Directory.GetFiles(directory, "*.jar").Any(f =>
                         Path.GetFileName(f).Equals(jarName, StringComparison.OrdinalIgnoreCase)))
@@ -508,7 +561,7 @@ public class WorkingDirectoryResolver
             // 递归搜索子目录
             foreach (var subDir in Directory.GetDirectories(directory))
             {
-                // 跳过隐藏目录和系统目录 —— 它们里面不会有服务器的（大概）
+                // 跳过隐藏目录与系统目录
                 var dirInfo = new DirectoryInfo(subDir);
                 if (dirInfo.Attributes.HasFlag(FileAttributes.Hidden | FileAttributes.System))
                     continue;
@@ -520,7 +573,6 @@ public class WorkingDirectoryResolver
         }
         catch (UnauthorizedAccessException)
         {
-            // 没权限访问的目录就跳过，别纠结
             Log.Debug("无权访问目录: {Dir}", directory);
         }
         catch (Exception ex)

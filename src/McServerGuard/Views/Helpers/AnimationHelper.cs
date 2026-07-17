@@ -1,6 +1,12 @@
-// 🎬 AnimationHelper —— 统一动画工具类
-// 所有页面的入场/切换/淡入淡出动画都从这里走，时长跟随 ThemeService
-// 为什么不用纯 XAML Storyboard？因为 Storyboard.Duration 是 Freezable 不能绑定，无法跟随设置 😅
+// -----------------------------------------------------------------------------
+// 文件名: AnimationHelper.cs
+// 命名空间: McServerGuard.Views.Helpers
+// 功能描述: 动画工具类，封装常用入场与过渡动画方法。
+//           所有动画均通过代码动态创建 DoubleAnimation 实现，
+//           动画时长由参数传入，天然支持主题服务配置。
+// 依赖组件: PresentationFramework, System.Windows.Media.Animation
+// 设计模式: 工具类 (静态方法), 缓动函数
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Views.Helpers;
 
 using System.Windows;
@@ -8,17 +14,22 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 /// <summary>
-/// 动画工具类 —— 封装常用入场/过渡动画
-/// 全部用 code-behind 动态创建 DoubleAnimation，时长从参数传入，天然跟随 ThemeService 设置
+/// 动画工具类。
+/// 封装页面入场、元素过渡等常用动画效果。
+/// 全部通过代码隐藏动态创建 DoubleAnimation 时间线，
+/// 动画时长以参数形式传入，便于跟随主题服务配置统一调整。
+/// 不采用 XAML Storyboard 的原因是其 Duration 属性为 Freezable 类型，
+/// 无法进行数据绑定。
 /// </summary>
 public static class AnimationHelper
 {
     /// <summary>
-    /// 淡入 + 从下方滑入（页面入场标准动画）
+    /// 淡入 + 从下方滑入组合动画（页面入场标准效果）。
+    /// 动画完成后清除动画对象持有，释放相关资源。
     /// </summary>
-    /// <param name="element">目标元素</param>
-    /// <param name="durationMs">动画时长（毫秒），<=0 时直接显示不播动画</param>
-    /// <param name="slideDistance">滑动距离（像素）</param>
+    /// <param name="element">目标 UI 元素</param>
+    /// <param name="durationMs">动画时长（毫秒），小于等于 0 时直接显示不播放动画</param>
+    /// <param name="slideDistance">滑动距离（像素），默认 20</param>
     public static void FadeAndSlideIn(UIElement element, int durationMs, double slideDistance = 20)
     {
         if (durationMs <= 0)
@@ -35,7 +46,8 @@ public static class AnimationHelper
         var duration = TimeSpan.FromMilliseconds(durationMs);
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
-        // 使用 HoldEnd（默认）而非 Stop：动画结束保持终值，即使 Completed 丢失 Opacity 也是 1
+        // 使用 HoldEnd（默认 FillBehavior）而非 Stop：动画结束后保持终值，
+        // 即使 Completed 事件丢失，Opacity 仍为 1
         var opacityAnim = new DoubleAnimation(1, duration)
         {
             EasingFunction = ease
@@ -60,8 +72,11 @@ public static class AnimationHelper
     }
 
     /// <summary>
-    /// 淡入 + 从左侧滑入（卡片/列表项入场）
+    /// 淡入 + 从左侧滑入组合动画（卡片/列表项入场效果）。
     /// </summary>
+    /// <param name="element">目标 UI 元素</param>
+    /// <param name="durationMs">动画时长（毫秒）</param>
+    /// <param name="slideDistance">滑动距离（像素），默认 20</param>
     public static void FadeAndSlideInFromLeft(UIElement element, int durationMs, double slideDistance = 20)
     {
         if (durationMs <= 0)
@@ -102,8 +117,10 @@ public static class AnimationHelper
     }
 
     /// <summary>
-    /// 仅淡入
+    /// 纯淡入动画。
     /// </summary>
+    /// <param name="element">目标 UI 元素</param>
+    /// <param name="durationMs">动画时长（毫秒）</param>
     public static void FadeIn(UIElement element, int durationMs)
     {
         if (durationMs <= 0)
@@ -126,11 +143,12 @@ public static class AnimationHelper
     }
 
     /// <summary>
-    /// 页面切换：淡出当前 + 延迟后淡入新内容（CrossFade）
+    /// 页面交叉淡入淡出切换（CrossFade）。
+    /// 前半段淡出旧元素，后半段淡入新元素，总时长由参数指定。
     /// </summary>
-    /// <param name="oldElement">旧内容（可为 null）</param>
-    /// <param name="newElement">新内容（可为 null）</param>
-    /// <param name="durationMs">总时长（毫秒），前半淡出，后半淡入</param>
+    /// <param name="oldElement">旧内容元素（可为 null）</param>
+    /// <param name="newElement">新内容元素（可为 null）</param>
+    /// <param name="durationMs">总时长（毫秒）</param>
     public static void CrossFade(UIElement? oldElement, UIElement? newElement, int durationMs)
     {
         if (durationMs <= 0)

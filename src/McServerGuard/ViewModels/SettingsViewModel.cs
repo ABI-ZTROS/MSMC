@@ -1,3 +1,13 @@
+// -----------------------------------------------------------------------------
+// 文件名: SettingsViewModel.cs
+// 命名空间: McServerGuard.ViewModels
+// 功能描述: 设置视图模型 —— 基于 CommunityToolkit.Mvvm 源生成器的 MVVM 绑定层，
+//           承担主题配色、圆角、动画等 UI 设置的编辑、预览、持久化与预设切换职责
+// 依赖组件: CommunityToolkit.Mvvm (ObservableProperty/RelayCommand),
+//           System.Windows.Media, Serilog
+// 设计模式: MVVM 模式, 命令模式, 策略模式 (主题预设切换), 观察者 (PropertyChanged)
+// -----------------------------------------------------------------------------
+
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -5,59 +15,84 @@ using Serilog;
 
 namespace McServerGuard.ViewModels;
 
+/// <summary>
+/// 设置视图模型 —— 设置页面的数据上下文
+/// </summary>
+/// <remarks>
+/// 本类作为设置页的 MVVM 绑定层，负责：主题配色（主色、强调色、背景色、卡片色、文字色、边框色）、
+/// 视觉参数（圆角半径、动画时长、动画开关）的双向绑定与实时预览；
+/// 提供主题预设一键切换、应用与保存、重置默认值、通知测试等命令。
+/// 颜色值以 Color 结构存储，同时提供十六进制字符串属性与 SolidColorBrush 画刷属性供不同绑定场景使用。
+/// </remarks>
 public partial class SettingsViewModel : ObservableObject
 {
+    /// <summary>主题服务</summary>
     private readonly Services.IThemeService _themeService;
+    /// <summary>吐司通知服务</summary>
     private readonly Services.IToastNotificationService _toastService;
 
+    /// <summary>主题主色</summary>
     [ObservableProperty]
     private Color _primaryColor = Color.FromRgb(0x3B, 0x82, 0xF6);
 
+    /// <summary>主题强调色</summary>
     [ObservableProperty]
     private Color _accentColor = Color.FromRgb(0xFB, 0x71, 0x85);
 
+    /// <summary>背景色</summary>
     [ObservableProperty]
     private Color _backgroundColor = Color.FromRgb(0x02, 0x06, 0x17);
 
+    /// <summary>卡片背景色</summary>
     [ObservableProperty]
     private Color _cardColor = Color.FromRgb(0x0F, 0x17, 0x2A);
 
+    /// <summary>文字颜色</summary>
     [ObservableProperty]
     private Color _textColor = Color.FromRgb(0xE2, 0xE8, 0xF0);
 
+    /// <summary>边框颜色</summary>
     [ObservableProperty]
     private Color _borderColor = Color.FromRgb(0x33, 0x41, 0x55);
 
-    /// <summary>主色画刷 —— 给 Border.Background 绑定用的</summary>
+    /// <summary>主色画刷（供 Border.Background 等画刷属性绑定）</summary>
     public SolidColorBrush PrimaryColorBrush => new SolidColorBrush(PrimaryColor);
 
-    /// <summary>强调色画刷 —— 给 Border.Background 绑定用的</summary>
+    /// <summary>强调色画刷</summary>
     public SolidColorBrush AccentColorBrush => new SolidColorBrush(AccentColor);
 
-    /// <summary>背景色画刷 —— 给预览 Border 绑定用的</summary>
+    /// <summary>背景色画刷</summary>
     public SolidColorBrush BackgroundColorBrush => new SolidColorBrush(BackgroundColor);
 
-    /// <summary>卡片色画刷 —— 给预览 Border 绑定用的</summary>
+    /// <summary>卡片色画刷</summary>
     public SolidColorBrush CardColorBrush => new SolidColorBrush(CardColor);
 
-    /// <summary>文字色画刷 —— 给预览 Border 绑定用的</summary>
+    /// <summary>文字色画刷</summary>
     public SolidColorBrush TextColorBrush => new SolidColorBrush(TextColor);
 
-    /// <summary>边框色画刷 —— 给预览 Border 绑定用的</summary>
+    /// <summary>边框色画刷</summary>
     public SolidColorBrush BorderColorBrush => new SolidColorBrush(BorderColor);
 
+    /// <summary>控件圆角半径（像素）</summary>
     [ObservableProperty]
     private int _cornerRadius = 12;
 
+    /// <summary>过渡动画时长（毫秒）</summary>
     [ObservableProperty]
     private int _animationDuration = 300;
 
+    /// <summary>是否启用过渡动画</summary>
     [ObservableProperty]
     private bool _enableAnimations = true;
 
+    /// <summary>状态栏消息文本</summary>
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
+    /// <summary>
+    /// 主色的十六进制字符串表示（#AARRGGBB 格式）
+    /// </summary>
+    /// <remarks>设置时自动解析颜色值，解析失败则更新状态消息。</remarks>
     public string PrimaryColorHex
     {
         get => $"#{PrimaryColor.A:X2}{PrimaryColor.R:X2}{PrimaryColor.G:X2}{PrimaryColor.B:X2}";
@@ -75,6 +110,9 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 强调色的十六进制字符串表示
+    /// </summary>
     public string AccentColorHex
     {
         get => $"#{AccentColor.A:X2}{AccentColor.R:X2}{AccentColor.G:X2}{AccentColor.B:X2}";
@@ -92,6 +130,9 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 背景色的十六进制字符串表示
+    /// </summary>
     public string BackgroundColorHex
     {
         get => $"#{BackgroundColor.A:X2}{BackgroundColor.R:X2}{BackgroundColor.G:X2}{BackgroundColor.B:X2}";
@@ -109,6 +150,9 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 卡片色的十六进制字符串表示
+    /// </summary>
     public string CardColorHex
     {
         get => $"#{CardColor.A:X2}{CardColor.R:X2}{CardColor.G:X2}{CardColor.B:X2}";
@@ -126,6 +170,9 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 文字色的十六进制字符串表示
+    /// </summary>
     public string TextColorHex
     {
         get => $"#{TextColor.A:X2}{TextColor.R:X2}{TextColor.G:X2}{TextColor.B:X2}";
@@ -143,6 +190,9 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 边框色的十六进制字符串表示
+    /// </summary>
     public string BorderColorHex
     {
         get => $"#{BorderColor.A:X2}{BorderColor.R:X2}{BorderColor.G:X2}{BorderColor.B:X2}";
@@ -160,6 +210,12 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 初始化设置视图模型的新实例
+    /// </summary>
+    /// <param name="themeService">主题服务</param>
+    /// <param name="toastService">吐司通知服务</param>
+    /// <remarks>构造时从主题服务加载已持久化的设置。</remarks>
     public SettingsViewModel(Services.IThemeService themeService, Services.IToastNotificationService toastService)
     {
         _themeService = themeService;
@@ -167,6 +223,9 @@ public partial class SettingsViewModel : ObservableObject
         LoadSettings();
     }
 
+    /// <summary>
+    /// 从主题服务加载设置到 ViewModel 属性
+    /// </summary>
     private void LoadSettings()
     {
         _themeService.LoadSettings();
@@ -185,6 +244,11 @@ public partial class SettingsViewModel : ObservableObject
         Log.Information("⚙️ 设置页面已加载");
     }
 
+    /// <summary>
+    /// 设置主色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
+    /// <remarks>触发条件：用户选择预设颜色或输入十六进制值。副作用：更新 <see cref="PrimaryColor"/>。</remarks>
     [RelayCommand]
     private void SetPrimaryColor(string hex)
     {
@@ -200,6 +264,10 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 设置强调色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
     [RelayCommand]
     private void SetAccentColor(string hex)
     {
@@ -215,6 +283,10 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 设置背景色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
     [RelayCommand]
     private void SetBackgroundColor(string hex)
     {
@@ -230,6 +302,10 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 设置卡片色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
     [RelayCommand]
     private void SetCardColor(string hex)
     {
@@ -245,6 +321,10 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 设置文字色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
     [RelayCommand]
     private void SetTextColor(string hex)
     {
@@ -260,6 +340,10 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 设置边框色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
     [RelayCommand]
     private void SetBorderColor(string hex)
     {
@@ -275,6 +359,13 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 应用主题命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击应用按钮。
+    /// 副作用：将当前 ViewModel 属性同步到 <see cref="Services.IThemeService"/>，使主题实时生效。
+    /// </remarks>
     [RelayCommand]
     private void ApplyTheme()
     {
@@ -300,6 +391,14 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 保存设置命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击保存按钮。
+    /// 副作用：调用 <see cref="Services.IThemeService.SaveSettings"/> 持久化当前主题配置，
+    /// 并通过吐司通知反馈结果。
+    /// </remarks>
     [RelayCommand]
     private void SaveSettings()
     {
@@ -318,6 +417,14 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 应用主题预设命令
+    /// </summary>
+    /// <param name="preset">预设名称（SkyBlue / OceanBlue / BlueOrange / TealPink / RedYellow）</param>
+    /// <remarks>
+    /// 触发条件：用户选择预设主题。
+    /// 副作用：一次性更新所有颜色属性为预设值，触发实时预览。
+    /// </remarks>
     [RelayCommand]
     private void SetPreset(string preset)
     {
@@ -368,6 +475,14 @@ public partial class SettingsViewModel : ObservableObject
         Log.Information("🎨 已应用预设: {Preset}", preset);
     }
 
+    /// <summary>
+    /// 重置为默认设置命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击重置按钮。
+    /// 副作用：调用 <see cref="Services.IThemeService.ResetToDefault"/> 恢复默认配置，
+    /// 同步到 ViewModel 所有属性并触发通知。
+    /// </remarks>
     [RelayCommand]
     private void ResetToDefault()
     {
@@ -402,6 +517,13 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 测试通知命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击测试通知按钮。
+    /// 副作用：调用 <see cref="Services.IToastNotificationService.ShowSuccess"/> 弹出测试通知。
+    /// </remarks>
     [RelayCommand]
     private void TestNotification()
     {
@@ -410,6 +532,10 @@ public partial class SettingsViewModel : ObservableObject
         Log.Information("🔔 测试通知已发送");
     }
 
+    /// <summary>
+    /// 应用并保存设置命令
+    /// </summary>
+    /// <remarks>依次调用 <see cref="ApplyTheme"/> 与 <see cref="SaveSettings"/> 的复合命令。</remarks>
     [RelayCommand]
     private void ApplyAndSave()
     {
@@ -417,6 +543,11 @@ public partial class SettingsViewModel : ObservableObject
         SaveSettings();
     }
 
+    /// <summary>
+    /// PrimaryColor 变更回调 —— 由源生成器在属性变更时调用
+    /// </summary>
+    /// <param name="value">新的主色值</param>
+    /// <remarks>同步到主题服务，并触发派生属性 <see cref="PrimaryColorHex"/> 与 <see cref="PrimaryColorBrush"/> 的变更通知。</remarks>
     partial void OnPrimaryColorChanged(Color value)
     {
         _themeService.PrimaryColor = value;
@@ -424,6 +555,10 @@ public partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(PrimaryColorBrush));
     }
 
+    /// <summary>
+    /// AccentColor 变更回调
+    /// </summary>
+    /// <param name="value">新的强调色值</param>
     partial void OnAccentColorChanged(Color value)
     {
         _themeService.AccentColor = value;
@@ -431,6 +566,10 @@ public partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(AccentColorBrush));
     }
 
+    /// <summary>
+    /// BackgroundColor 变更回调
+    /// </summary>
+    /// <param name="value">新的背景色值</param>
     partial void OnBackgroundColorChanged(Color value)
     {
         _themeService.BackgroundColor = value;
@@ -438,6 +577,10 @@ public partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(BackgroundColorBrush));
     }
 
+    /// <summary>
+    /// CardColor 变更回调
+    /// </summary>
+    /// <param name="value">新的卡片色值</param>
     partial void OnCardColorChanged(Color value)
     {
         _themeService.CardColor = value;
@@ -445,6 +588,10 @@ public partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(CardColorBrush));
     }
 
+    /// <summary>
+    /// TextColor 变更回调
+    /// </summary>
+    /// <param name="value">新的文字色值</param>
     partial void OnTextColorChanged(Color value)
     {
         _themeService.TextColor = value;
@@ -452,6 +599,10 @@ public partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(TextColorBrush));
     }
 
+    /// <summary>
+    /// BorderColor 变更回调
+    /// </summary>
+    /// <param name="value">新的边框色值</param>
     partial void OnBorderColorChanged(Color value)
     {
         _themeService.BorderColor = value;
@@ -459,6 +610,10 @@ public partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(BorderColorBrush));
     }
 
+    /// <summary>
+    /// CornerRadius 变更回调
+    /// </summary>
+    /// <param name="value">新的圆角半径值</param>
     partial void OnCornerRadiusChanged(int value)
     {
         _themeService.CornerRadius = value;

@@ -1,3 +1,13 @@
+// -----------------------------------------------------------------------------
+// 文件名: ConfigEditorViewModel.cs
+// 命名空间: McServerGuard.ViewModels
+// 功能描述: 配置编辑器视图模型 —— 基于 CommunityToolkit.Mvvm 源生成器的 MVVM 绑定层，
+//           承担 Minecraft 服务器配置文件的加载、编辑、验证与持久化职责
+// 依赖组件: CommunityToolkit.Mvvm (ObservableProperty/RelayCommand),
+//           System.Collections.ObjectModel, Serilog
+// 设计模式: MVVM 模式, 命令模式, 防抖模式 (分组更新计时器), 观察者 (PropertyChanged)
+// -----------------------------------------------------------------------------
+
 using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -12,14 +22,19 @@ using Serilog;
 namespace McServerGuard.ViewModels;
 
 /// <summary>
-/// 配置文件项 —— 用于左侧文件树展示
+/// 配置文件树节点模型
 /// </summary>
 public sealed class ConfigFileItem
 {
+    /// <summary>文件名</summary>
     public string FileName { get; init; }
+    /// <summary>完整路径</summary>
     public string FullPath { get; init; }
+    /// <summary>相对路径</summary>
     public string RelativePath { get; init; }
+    /// <summary>是否为目录</summary>
     public bool IsDirectory { get; init; }
+    /// <summary>子节点集合</summary>
     public List<ConfigFileItem> Children { get; init; } = [];
 
     public ConfigFileItem(string fileName, string fullPath, string relativePath, bool isDirectory = false)
@@ -32,11 +47,13 @@ public sealed class ConfigFileItem
 }
 
 /// <summary>
-/// 配置项分组 —— 用于 UI 的 Expander 展示
+/// 配置项分组模型 —— 用于 UI Expander 分组展示
 /// </summary>
 public sealed class ConfigEntryGroup
 {
+    /// <summary>分组键</summary>
     public string Key { get; init; }
+    /// <summary>分组内的配置项列表</summary>
     public List<ServerConfigEntry> Items { get; init; }
 
     public ConfigEntryGroup(string key, List<ServerConfigEntry> items)
@@ -47,35 +64,41 @@ public sealed class ConfigEntryGroup
 }
 
 /// <summary>
-/// ⚙️ 配置编辑器 ViewModel —— "改配置就像改菜单，所见即所得"
-/// 
-/// 负责加载、编辑、保存 Minecraft 服务器的配置文件。
-/// 支持加载 ServerConfigDescriptor（中文说明+约束验证），
-/// 让用户知道每个参数到底是干嘛的，而不是对着 server.properties 一脸懵。
-/// 
-/// 增强：支持选择服务器 + 目录遍历 + 递归扫描配置文件
+/// 配置编辑器视图模型 —— 配置编辑页面的数据上下文
 /// </summary>
+/// <remarks>
+/// 本类作为配置编辑页的 MVVM 绑定层，负责：配置文件递归扫描与目录树构建、
+/// 配置条目加载与分组展示、值编辑与实时验证、脏数据追踪与持久化。
+/// 支持从运行中服务器、已知服务器及手动选择目录三种数据源切换。
+/// </remarks>
 public partial class ConfigEditorViewModel : ObservableObject
 {
+    /// <summary>配置管理服务</summary>
     private readonly IConfigManager _configManager;
+    /// <summary>服务器检测服务（可选）</summary>
     private readonly IServerDetector? _serverDetector;
+    /// <summary>应用配置服务（可选）</summary>
     private readonly IAppConfigService? _appConfigService;
 
-    /// <summary>记住原始配置的副本 —— 用于"撤销修改"（ResetChanges）</summary>
+    /// <summary>原始配置快照 —— 用于重置变更与脏数据比对</summary>
     private Dictionary<string, string> _originalConfig = new();
 
-    /// <summary>当前正在编辑的配置文件完整路径（LoadConfig 时记录）</summary>
+    /// <summary>当前编辑的配置文件完整路径</summary>
     private string _currentFilePath = string.Empty;
 
-    /// <summary>取消之前未完成的加载任务 —— 防止快速切换文件时的竞态</summary>
+    /// <summary>加载取消令牌源 —— 防止快速切换文件时的竞态</summary>
     private CancellationTokenSource? _loadCts;
 
-    /// <summary>记录最后一次配置加载任务 —— 避免 fire-and-forget 扫描误报</summary>
+    /// <summary>最后一次配置加载任务引用</summary>
     private Task? _lastLoadTask;
 
-    /// <summary>分组更新防抖计时器 —— 避免每次 Add 都重新计算分组</summary>
+    /// <summary>分组更新防抖计时器</summary>
     private System.Timers.Timer? _groupUpdateTimer;
 
+    /// <summary>
+    /// 初始化配置编辑器视图模型的新实例（最小依赖版本）
+    /// </summary>
+    /// <param name="configManager">配置管理服务</param>
     public ConfigEditorViewModel(IConfigManager configManager)
     {
         Log.Information("⚙️ ConfigEditorViewModel 初始化");
@@ -88,6 +111,12 @@ public partial class ConfigEditorViewModel : ObservableObject
         ConfigEntries.CollectionChanged += (s, e) => ScheduleGroupUpdate();
     }
 
+    /// <summary>
+    /// 初始化配置编辑器视图模型的新实例（完整依赖版本）
+    /// </summary>
+    /// <param name="configManager">配置管理服务</param>
+    /// <param name="serverDetector">服务器检测服务</param>
+    /// <param name="appConfigService">应用配置服务</param>
     public ConfigEditorViewModel(
         IConfigManager configManager,
         IServerDetector serverDetector,
@@ -96,93 +125,89 @@ public partial class ConfigEditorViewModel : ObservableObject
         _serverDetector = serverDetector;
         _appConfigService = appConfigService;
 
-        // 启动时加载可用服务器列表（运行中 + 已知）
         _ = RefreshServerListAsync();
     }
 
-    // ─── 核心属性 ────────────────────────────────────────────────────
-
     /// <summary>
-    /// 可选服务器列表（运行中的 + 已知的）
+    /// 可用服务器列表（运行中服务器与已知服务器的并集）
     /// </summary>
     [ObservableProperty]
     private List<ServerInstance> _availableServers = [];
 
     /// <summary>
-    /// 当前选中的服务器名称（用于下拉框显示）
+    /// 当前选中的服务器名称
     /// </summary>
     [ObservableProperty]
     private string? _selectedServerName;
 
     /// <summary>
-    /// 当前服务器的工作目录
+    /// 当前服务器的工作目录路径
     /// </summary>
     [ObservableProperty]
     private string _serverWorkingDirectory = string.Empty;
 
     /// <summary>
-    /// 配置文件树（递归扫描后的目录结构）
+    /// 配置文件目录树结构
     /// </summary>
     [ObservableProperty]
     private List<ConfigFileItem> _configFileTree = [];
 
     /// <summary>
     /// 当前操作的服务器实例
-    /// 设置后会自动刷新 ConfigFiles 列表
     /// </summary>
+    /// <remarks>设置后自动触发配置文件列表的递归扫描。</remarks>
     [ObservableProperty]
     private ServerInstance? _server;
 
     /// <summary>
-    /// 配置文件列表 —— 从 Server.ConfigFiles 中过滤出"文件"（排除目录）
-    /// 
-    /// 为什么要排除目录？因为 Server.ConfigFiles 里可能有 "mods/" 这种目录，
-    /// 你总不能打开一个目录来编辑吧...虽然也不一定不能，但咱不做这种奇怪的事 🤔
+    /// 配置文件路径列表（扁平结构，仅包含文件）
     /// </summary>
     [ObservableProperty]
     private List<string> _configFiles = [];
 
     /// <summary>
-    /// 当前选中的配置文件名 —— 用户在左侧文件列表里选了哪个
-    /// 选中后自动加载该文件的配置内容
+    /// 当前选中的配置文件相对路径
     /// </summary>
+    /// <remarks>选中后自动异步加载该文件的配置内容。</remarks>
     [ObservableProperty]
     private string? _selectedConfigFile;
 
     /// <summary>
-    /// 当前配置文件的所有条目 —— 核心数据！
-    /// 每个 ServerConfigEntry 包含 Key、Value、Descriptor 等信息，
-    /// UI 上就是一个可编辑的配置项列表
-    /// 使用 ObservableCollection 支持增量添加，实现逐条动画入场
+    /// 当前配置文件的条目集合
     /// </summary>
+    /// <remarks>
+    /// 使用 ObservableCollection 支持增量 UI 更新。每个条目包含 Key、Value、Descriptor 等信息，
+    /// 由 <see cref="IConfigManager.GetDescriptor"/> 提供中文说明与验证约束。
+    /// </remarks>
     [ObservableProperty]
     private ObservableCollection<ServerConfigEntry> _configEntries = [];
 
     /// <summary>
-    /// 按分类分组的配置项 —— 用于 UI 的 Expander 展示
-    /// 使用明确的分组模型，避免 IGrouping 在 WPF 绑定中被当作 string 迭代为 char
-    /// 缓存计算结果，只在 ConfigEntries 变化时重新计算
+    /// 按分类分组的配置项集合
     /// </summary>
+    /// <remarks>
+    /// 采用显式分组模型而非 IGrouping，避免 WPF 绑定中字符串枚举为字符的问题。
+    /// 通过防抖计时器延迟计算，减少频繁 Add 操作导致的性能损耗。
+    /// </remarks>
     [ObservableProperty]
     private List<ConfigEntryGroup> _groupedConfigEntries = [];
 
-    /// <summary>
-    /// 配置文件数量统计文本
-    /// </summary>
+    /// <summary>配置文件数量统计文本</summary>
     public string ConfigFileCountText => ConfigFiles.Count > 0
         ? $"共 {ConfigFiles.Count} 个配置文件"
         : "未找到配置文件";
 
-    /// <summary>
-    /// 是否有选中的服务器目录
-    /// </summary>
+    /// <summary>获取一个值，指示当前是否存在有效的服务器工作目录</summary>
     public bool HasServerDirectory => !string.IsNullOrEmpty(ServerWorkingDirectory) && Directory.Exists(ServerWorkingDirectory);
 
-    // ─── 服务器选择和目录扫描命令 ─────────────────────────────────────
-
     /// <summary>
-    /// 刷新可用服务器列表
+    /// 刷新可用服务器列表命令
     /// </summary>
+    /// <returns>表示异步操作的任务</returns>
+    /// <remarks>
+    /// 触发条件：用户点击刷新按钮或 ViewModel 初始化时。
+    /// 副作用：从检测服务与应用配置服务聚合服务器列表，更新 <see cref="AvailableServers"/>。
+    /// </remarks>
     [RelayCommand]
     private async Task RefreshServerListAsync()
     {
@@ -191,7 +216,6 @@ public partial class ConfigEditorViewModel : ObservableObject
 
         try
         {
-            // 从检测器获取运行中的服务器
             if (_serverDetector != null)
             {
                 var result = await _serverDetector.DetectAllAsync();
@@ -207,14 +231,12 @@ public partial class ConfigEditorViewModel : ObservableObject
             Log.Warning(ex, "获取运行中服务器列表失败");
         }
 
-        // 从已知服务器添加
         if (_appConfigService != null)
         {
             foreach (var ks in _appConfigService.GetAllKnownServers())
             {
                 if (!string.IsNullOrEmpty(ks.WorkingDirectory) && Directory.Exists(ks.WorkingDirectory))
                 {
-                    // 避免重复（检查是否已经有相同工作目录的）
                     if (!servers.Any(s => string.Equals(s.WorkingDirectory, ks.WorkingDirectory, StringComparison.OrdinalIgnoreCase)))
                     {
                         servers.Add(new ServerInstance
@@ -235,8 +257,10 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 选择指定的服务器并扫描配置文件
+    /// 选中服务器名称变更回调 —— 由源生成器在属性变更时调用
     /// </summary>
+    /// <param name="value">新的服务器名称</param>
+    /// <remarks>根据名称从可用服务器列表中匹配并设置 <see cref="Server"/>。</remarks>
     partial void OnSelectedServerNameChanged(string? value)
     {
         if (string.IsNullOrEmpty(value)) return;
@@ -251,8 +275,12 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 浏览并选择服务器目录（通过选择 JAR 文件推断）
+    /// 浏览并选择服务器目录命令
     /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击浏览按钮。
+    /// 副作用：打开文件选择对话框，通过 JAR 文件推断服务器目录并加载配置。
+    /// </remarks>
     [RelayCommand]
     private void BrowseServerDirectory()
     {
@@ -276,8 +304,9 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 从目录加载服务器配置
+    /// 从目录加载服务器实例
     /// </summary>
+    /// <param name="path">服务器根目录路径</param>
     private void LoadServerFromDirectory(string path)
     {
         if (!Directory.Exists(path)) return;
@@ -290,7 +319,6 @@ public partial class ConfigEditorViewModel : ObservableObject
             ServerType = ServerType.Unknown
         };
 
-        // 尝试查找 JAR 文件
         try
         {
             var jarFiles = Directory.GetFiles(path, "*.jar", SearchOption.TopDirectoryOnly);
@@ -302,15 +330,18 @@ public partial class ConfigEditorViewModel : ObservableObject
         }
         catch
         {
-            // 忽略 JAR 搜索错误
         }
 
         Server = server;
     }
 
     /// <summary>
-    /// 重新扫描当前服务器目录的配置文件
+    /// 重新扫描配置文件命令
     /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击重新扫描按钮。
+    /// 副作用：递归扫描当前服务器工作目录，更新配置文件列表与目录树。
+    /// </remarks>
     [RelayCommand]
     private void RescanConfigFiles()
     {
@@ -319,31 +350,28 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 是否有未保存的修改 —— 用户改了配置但还没保存时的"脏数据"标志
-    /// 用来提醒用户"你改的东西还没保存，走了可就丢了哦"
+    /// 获取或设置一个值，指示当前是否存在未保存的变更
     /// </summary>
     [ObservableProperty]
     private bool _hasUnsavedChanges;
 
-    /// <summary>是否正在加载配置</summary>
+    /// <summary>是否正在加载配置文件</summary>
     [ObservableProperty]
     private bool _isLoading;
 
-    /// <summary>加载进度百分比 (0-100)</summary>
+    /// <summary>配置加载进度百分比（0-100）</summary>
     [ObservableProperty]
     private int _loadProgress;
 
-    // ─── 命令 ──────────────────────────────────────────────────────────
-
     /// <summary>
-    /// 保存配置 —— 把用户修改过的配置写回文件
-    /// 只保存 IsModified 为 true 的条目...不对，是全部保存（因为是全量替换）
-    /// 
-    /// 流程：
-    /// 1. 从 ConfigEntries 中提取当前值
-    /// 2. 调用 IConfigManager.SaveConfigAsync 写回
-    /// 3. 刷新 OriginalConfig 和 IsModified 状态
+    /// 保存配置命令
     /// </summary>
+    /// <returns>表示异步操作的任务</returns>
+    /// <remarks>
+    /// 触发条件：<see cref="CanSaveConfig"/> 返回 true 且用户点击保存按钮。
+    /// 副作用：将当前所有配置条目序列化写入磁盘，重置脏数据标记与各条目修改状态。
+    /// 执行流程：构建配置字典 → 调用 <see cref="IConfigManager.SaveConfigAsync"/> 持久化 → 重置修改状态。
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(CanSaveConfig))]
     private async Task SaveConfigAsync()
     {
@@ -357,14 +385,11 @@ public partial class ConfigEditorViewModel : ObservableObject
 
         try
         {
-            // 📝 构建当前配置字典
             var currentConfig = ConfigEntries
                 .ToDictionary(entry => entry.Key, entry => entry.Value);
 
-            // 💾 写回文件 —— IConfigManager 会自动选择合适的序列化器
             await _configManager.SaveConfigAsync(_currentFilePath, currentConfig);
 
-            // 🔄 更新原始配置副本 + 清除修改标记
             _originalConfig = new Dictionary<string, string>(currentConfig);
             foreach (var entry in ConfigEntries)
             {
@@ -376,21 +401,24 @@ public partial class ConfigEditorViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            // 😅 保存失败 —— 配置文件可能被服务器锁定了
             System.Diagnostics.Debug.WriteLine($"保存配置失败：{ex.Message}");
             Log.Error(ex, "💥 fuck: 配置保存失败: {Message}", ex.Message);
         }
     }
 
     /// <summary>
-    /// 能不能保存 —— 有未保存修改 + 有选中文件才能保存
+    /// 判断是否可执行保存命令
     /// </summary>
+    /// <returns>若存在未保存变更且当前有选中文件则返回 true</returns>
     private bool CanSaveConfig() => HasUnsavedChanges && !string.IsNullOrEmpty(_currentFilePath);
 
     /// <summary>
-    /// 重置修改 —— "我改错了我不要了给我恢复！"
-    /// 从 _originalConfig 中恢复所有配置项的原始值
+    /// 重置配置变更命令
     /// </summary>
+    /// <remarks>
+    /// 触发条件：<see cref="CanResetChanges"/> 返回 true 且用户点击重置按钮。
+    /// 副作用：从原始配置快照恢复所有条目的值，清除脏数据标记。
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(CanResetChanges))]
     private void ResetChanges()
     {
@@ -409,22 +437,23 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 能不能重置 —— 有未保存修改才能重置（没修改你重置个啥）
+    /// 判断是否可执行重置命令
     /// </summary>
+    /// <returns>若存在未保存变更则返回 true</returns>
     private bool CanResetChanges() => HasUnsavedChanges;
 
-    // ─── 属性变更响应 ────────────────────────────────────────────────
-
     /// <summary>
-    /// 当配置条目列表变化时 —— 仅做清理工作，分组更新由 CollectionChanged 触发
+    /// 配置条目集合变更回调 —— 由源生成器在属性赋值时调用
     /// </summary>
+    /// <param name="value">新的条目集合</param>
     partial void OnConfigEntriesChanged(ObservableCollection<ServerConfigEntry> value)
     {
     }
 
     /// <summary>
-    /// 调度分组更新 —— 防抖，避免每次 Add 都重新计算
+    /// 调度分组更新（防抖机制）
     /// </summary>
+    /// <remarks>重置防抖计时器，延迟触发分组重新计算以避免高频 Add 操作的性能损耗。</remarks>
     private void ScheduleGroupUpdate()
     {
         if (_groupUpdateTimer != null)
@@ -435,8 +464,9 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 更新分组 —— 在 UI 线程执行
+    /// 更新分组后的配置条目集合
     /// </summary>
+    /// <remarks>在 UI 线程上执行，按配置条目分类重新分组并更新 <see cref="GroupedConfigEntries"/>。</remarks>
     private void UpdateGroupedEntries()
     {
         System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
@@ -449,9 +479,13 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 当 Server 变化时 —— 刷新配置文件列表（递归扫描目录）
-    /// 新服务器来了，它的配置文件列表当然也要换新的
+    /// Server 属性变更回调 —— 由源生成器在属性变更时调用
     /// </summary>
+    /// <param name="value">新的服务器实例</param>
+    /// <remarks>
+    /// 切换服务器时清空当前配置状态，递归扫描新服务器目录下的配置文件，
+    /// 并更新 <see cref="ConfigFiles"/>、<see cref="ConfigFileTree"/> 及相关派生属性。
+    /// </remarks>
     partial void OnServerChanged(ServerInstance? value)
     {
         ConfigEntries.Clear();
@@ -471,14 +505,12 @@ public partial class ConfigEditorViewModel : ObservableObject
         ServerWorkingDirectory = value.WorkingDirectory;
         SelectedServerName = value.DisplayName;
 
-        // 递归扫描服务器目录下的配置文件
         if (!string.IsNullOrEmpty(value.WorkingDirectory) && Directory.Exists(value.WorkingDirectory))
         {
             ScanDirectoryForConfigFiles(value.WorkingDirectory);
         }
         else
         {
-            // 回退到旧方式：从 Server.ConfigFiles 中获取
             ConfigFiles = value.ConfigFiles
                 .Where(f => !f.EndsWith('/') && !f.EndsWith('\\'))
                 .Select(f => Path.GetRelativePath(value.WorkingDirectory, f))
@@ -490,9 +522,13 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 递归扫描目录，查找所有配置文件
-    /// 支持的格式：.properties, .yml, .yaml, .json, .cfg, .conf, .toml
+    /// 递归扫描目录以构建配置文件列表与目录树
     /// </summary>
+    /// <param name="rootPath">根目录路径</param>
+    /// <remarks>
+    /// 支持格式：.properties、.yml、.yaml、.json、.cfg、.conf、.toml、.ini、.txt。
+    /// 自动跳过 mods、world、logs、cache、libraries 等非配置目录与隐藏目录。
+    /// </remarks>
     private void ScanDirectoryForConfigFiles(string rootPath)
     {
         if (!Directory.Exists(rootPath))
@@ -530,8 +566,15 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 递归构建配置文件树
+    /// 递归构建配置文件目录树
     /// </summary>
+    /// <param name="currentPath">当前扫描目录</param>
+    /// <param name="rootPath">根目录路径</param>
+    /// <param name="supportedExtensions">支持的文件扩展名集合</param>
+    /// <param name="parentList">父级节点列表</param>
+    /// <param name="flatList">扁平文件路径列表</param>
+    /// <param name="depth">当前递归深度</param>
+    /// <remarks>最大递归深度限制为 10，防止符号链接循环或深层目录导致的栈溢出。</remarks>
     private static void BuildConfigFileTree(
         string currentPath,
         string rootPath,
@@ -540,18 +583,15 @@ public partial class ConfigEditorViewModel : ObservableObject
         List<string> flatList,
         int depth)
     {
-        // 限制最大深度，防止目录太深或符号链接循环
         if (depth > 10) return;
 
         try
         {
-            // 先添加子目录
             var directories = Directory.GetDirectories(currentPath);
             foreach (var dir in directories)
             {
                 var dirName = Path.GetFileName(dir);
 
-                // 跳过一些常见的非配置目录
                 if (dirName.Equals("mods", StringComparison.OrdinalIgnoreCase) && depth > 0) continue;
                 if (dirName.Equals("world", StringComparison.OrdinalIgnoreCase)) continue;
                 if (dirName.Equals("world_nether", StringComparison.OrdinalIgnoreCase)) continue;
@@ -559,7 +599,7 @@ public partial class ConfigEditorViewModel : ObservableObject
                 if (dirName.Equals("logs", StringComparison.OrdinalIgnoreCase)) continue;
                 if (dirName.Equals("cache", StringComparison.OrdinalIgnoreCase)) continue;
                 if (dirName.Equals("libraries", StringComparison.OrdinalIgnoreCase)) continue;
-                if (dirName.StartsWith('.')) continue; // 隐藏目录
+                if (dirName.StartsWith('.')) continue;
 
                 var dirItem = new ConfigFileItem(
                     dirName,
@@ -569,14 +609,12 @@ public partial class ConfigEditorViewModel : ObservableObject
 
                 BuildConfigFileTree(dir, rootPath, supportedExtensions, dirItem.Children, flatList, depth + 1);
 
-                // 只添加有配置文件的目录（或者是根目录下的一级目录）
                 if (dirItem.Children.Count > 0 || depth == 0)
                 {
                     parentList.Add(dirItem);
                 }
             }
 
-            // 再添加文件
             var files = Directory.GetFiles(currentPath);
             foreach (var file in files)
             {
@@ -598,7 +636,6 @@ public partial class ConfigEditorViewModel : ObservableObject
         }
         catch (UnauthorizedAccessException)
         {
-            // 没有权限访问的目录，跳过
         }
         catch (Exception ex)
         {
@@ -607,9 +644,13 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 当选中的配置文件变化时 —— 加载配置内容
-    /// 把文件里的配置项读取出来，附带中文 Descriptor，排列整齐给用户看
+    /// 选中配置文件变更回调 —— 由源生成器在属性变更时调用
     /// </summary>
+    /// <param name="value">新选中的配置文件相对路径</param>
+    /// <remarks>
+    /// 切换文件时取消上一次未完成的加载任务，启动新的异步加载流程。
+    /// 通过 <see cref="LoadConfigAsync"/> 实现分批条目加载与进度反馈。
+    /// </remarks>
     partial void OnSelectedConfigFileChanged(string? value)
     {
         Log.Debug("📄 选中配置文件: {File}", value);
@@ -632,14 +673,20 @@ public partial class ConfigEditorViewModel : ObservableObject
         _lastLoadTask = LoadConfigAsync(fullPath, value, _loadCts.Token);
     }
 
-    // ─── 私有方法 ────────────────────────────────────────────────────
-
     /// <summary>
-    /// 加载配置文件 —— 异步读取 + 后台预处理 + UI线程逐条动画入场
-    /// 后台线程：读取文件、创建所有 ServerConfigEntry（不绑定 UI）
-    /// UI线程：逐条添加到 ObservableCollection，触发入场动画
-    /// 每批添加多个条目并让出UI线程，保证流畅性
+    /// 异步加载配置文件
     /// </summary>
+    /// <param name="fullPath">配置文件完整路径</param>
+    /// <param name="fileName">配置文件名</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>表示异步操作的任务</returns>
+    /// <remarks>
+    /// 执行流程：
+    /// 1. 调用 <see cref="IConfigManager.ReadConfigAsync"/> 读取原始配置；
+    /// 2. 后台线程预处理条目（附加描述符与验证状态）；
+    /// 3. UI 线程分批添加至 <see cref="ConfigEntries"/>，触发入场动画与进度更新。
+    /// 支持通过 <paramref name="cancellationToken"/> 取消加载。
+    /// </remarks>
     private async Task LoadConfigAsync(string fullPath, string fileName, CancellationToken cancellationToken = default)
     {
         Log.Information("📂 加载配置文件: {Path}", fullPath);
@@ -649,7 +696,6 @@ public partial class ConfigEditorViewModel : ObservableObject
 
         try
         {
-            // 📖 步骤1：异步读取配置文件
             var config = await _configManager.ReadConfigAsync(fullPath);
 
             if (cancellationToken.IsCancellationRequested)
@@ -661,7 +707,6 @@ public partial class ConfigEditorViewModel : ObservableObject
             _currentFilePath = fullPath;
             var pureFileName = Path.GetFileName(fileName);
 
-            // 🔧 步骤2：后台线程预处理所有配置项（不涉及UI绑定）
             var processedEntries = await Task.Run(() =>
             {
                 return config.Select(kvp =>
@@ -687,12 +732,10 @@ public partial class ConfigEditorViewModel : ObservableObject
                 return;
             }
 
-            // 🧹 清空旧数据
             ConfigEntries.Clear();
             _originalConfig = new Dictionary<string, string>(config);
             HasUnsavedChanges = false;
 
-            // 🎬 步骤3：UI线程逐条添加，触发入场动画
             const int batchSize = 5;
             int total = processedEntries.Count;
             int processed = 0;
@@ -737,19 +780,21 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 配置项属性变更回调 —— 用户改了一个值，标记为已修改
-    /// 同时验证新值是否合法
+    /// 配置条目属性变更事件处理程序
     /// </summary>
+    /// <param name="sender">事件源</param>
+    /// <param name="e">属性变更事件参数</param>
+    /// <remarks>
+    /// 监听 <see cref="ServerConfigEntry.Value"/> 变更，触发值验证与脏数据状态更新。
+    /// </remarks>
     private void OnConfigEntryChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (sender is not ServerConfigEntry entry || e.PropertyName != nameof(ServerConfigEntry.Value))
             return;
 
-        // ✅ 重新验证
         entry.IsValid = entry.Descriptor is null ||
                         _configManager.ValidateValue(entry.Key, entry.SourceFile, entry.Value);
 
-        // 📝 检查是否有任何未保存的修改
         HasUnsavedChanges = ConfigEntries.Any(ce => ce.IsModified);
     }
 }

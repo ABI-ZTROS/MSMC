@@ -1,11 +1,29 @@
+// -----------------------------------------------------------------------------
+// 文件名: ColorPickerControl.xaml.cs
+// 命名空间: McServerGuard.Views.Controls
+// 功能描述: 颜色拾取器自定义控件代码隐藏类，基于依赖属性 SelectedColor
+//           实现 RGB 滑块、十六进制文本输入与颜色预览的双向同步。
+// 依赖组件: PresentationFramework, System.Windows.Media
+// 设计模式: 代码隐藏模式, 自定义控件 (DependencyProperty)
+// -----------------------------------------------------------------------------
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
 namespace McServerGuard.Views.Controls;
 
+/// <summary>
+/// 颜色拾取器自定义控件。
+/// 通过 SelectedColor 依赖属性对外暴露颜色值，内部维护 RGB 滑块、
+/// 十六进制文本框与颜色预览三者之间的同步更新，
+/// 使用 _isUpdating 标志位防止递归更新导致的栈溢出。
+/// </summary>
 public partial class ColorPickerControl : UserControl
 {
+    /// <summary>
+    /// 选中颜色依赖属性。支持双向绑定，属性变更时触发 UI 同步更新。
+    /// 默认值为蓝色 (#3B82F6)。
+    /// </summary>
     public static readonly DependencyProperty SelectedColorProperty =
         DependencyProperty.Register(
             nameof(SelectedColor),
@@ -13,6 +31,9 @@ public partial class ColorPickerControl : UserControl
             typeof(ColorPickerControl),
             new PropertyMetadata(Color.FromRgb(0x3B, 0x82, 0xF6), OnSelectedColorChanged));
 
+    /// <summary>
+    /// 获取或设置当前选中的颜色值。
+    /// </summary>
     public Color SelectedColor
     {
         get => (Color)GetValue(SelectedColorProperty);
@@ -34,6 +55,12 @@ public partial class ColorPickerControl : UserControl
         UpdateUI(SelectedColor);
     }
 
+    /// <summary>
+    /// SelectedColor 依赖属性变更回调。
+    /// 当属性值由外部绑定更改时，同步更新所有 UI 元素的显示状态。
+    /// </summary>
+    /// <param name="d">依赖对象实例</param>
+    /// <param name="e">属性变更事件参数</param>
     private static void OnSelectedColorChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is ColorPickerControl picker)
@@ -42,6 +69,11 @@ public partial class ColorPickerControl : UserControl
         }
     }
 
+    /// <summary>
+    /// 根据指定颜色更新所有 UI 元素（滑块、数值文本、预览刷、十六进制文本）。
+    /// 使用 _isUpdating 标志位阻止 ValueChanged 等事件触发反向更新。
+    /// </summary>
+    /// <param name="color">目标颜色值</param>
     private void UpdateUI(Color color)
     {
         if (_isUpdating) return;
@@ -66,6 +98,7 @@ public partial class ColorPickerControl : UserControl
         }
     }
 
+    // RGB 滑块 ValueChanged 事件处理：根据滑块值计算颜色并同步至 SelectedColor
     private void RGB_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_isUpdating) return;
@@ -94,6 +127,7 @@ public partial class ColorPickerControl : UserControl
         }
     }
 
+    // 十六进制文本框 KeyDown 事件处理：按下回车键时应用颜色
     private void HexTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == System.Windows.Input.Key.Enter)
@@ -102,11 +136,16 @@ public partial class ColorPickerControl : UserControl
         }
     }
 
+    // 十六进制文本框 LostFocus 事件处理：失去焦点时应用颜色
     private void HexTextBox_LostFocus(object sender, RoutedEventArgs e)
     {
         ApplyHexColor();
     }
 
+    /// <summary>
+    /// 解析十六进制文本并应用为当前选中颜色。
+    /// 解析失败时恢复为当前颜色的文本表示，避免非法值残留。
+    /// </summary>
     private void ApplyHexColor()
     {
         try

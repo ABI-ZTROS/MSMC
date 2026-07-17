@@ -1,3 +1,13 @@
+// -----------------------------------------------------------------------------
+// 文件名: ServerDetectionViewModel.cs
+// 命名空间: McServerGuard.ViewModels
+// 功能描述: 服务器检测视图模型 —— 基于 CommunityToolkit.Mvvm 源生成器的 MVVM 绑定层，
+//           承担服务器进程检测、已知服务器管理、JVM 参数编辑与启停控制等职责
+// 依赖组件: CommunityToolkit.Mvvm (ObservableProperty/RelayCommand),
+//           Microsoft.Win32 (OpenFileDialog), System.Windows.Data (CollectionView), Serilog
+// 设计模式: MVVM 模式, 命令模式, 状态机 (ServerOperation), 观察者 (DetectionCompleted 事件)
+// -----------------------------------------------------------------------------
+
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -16,14 +26,38 @@ using Serilog;
 
 namespace McServerGuard.ViewModels;
 
+/// <summary>
+/// 服务器检测视图模型 —— 服务器管理页面的数据上下文
+/// </summary>
+/// <remarks>
+/// 本类作为检测页的 MVVM 绑定层，负责：服务器进程检测调度、运行中服务器与已知服务器的
+/// 双列表维护、JVM 参数编辑器（含预设管理）、服务器启停命令路由以及操作状态机管理。
+/// 通过 <see cref="IServerDetector.DetectionCompleted"/> 事件订阅实现自动检测数据推送。
+/// </remarks>
 public partial class ServerDetectionViewModel : ObservableObject
 {
+    /// <summary>服务器检测服务</summary>
     private readonly IServerDetector _serverDetector;
+    /// <summary>应用配置服务</summary>
     private readonly IAppConfigService _appConfigService;
+    /// <summary>服务器管理服务</summary>
     private readonly IServerManagerService _serverManager;
+    /// <summary>服务器导入服务</summary>
     private readonly IServerImporterService _serverImporter;
+    /// <summary>运行中服务器内部集合（作为 CollectionView 的 Source）</summary>
     private readonly ObservableCollection<ServerInstance> _runningServersInternal;
 
+    /// <summary>
+    /// 初始化服务器检测视图模型的新实例
+    /// </summary>
+    /// <param name="serverDetector">服务器检测服务</param>
+    /// <param name="appConfigService">应用配置服务</param>
+    /// <param name="serverManager">服务器管理服务</param>
+    /// <param name="serverImporter">服务器导入服务</param>
+    /// <remarks>
+    /// 完成 JVM 参数初始化、服务器列表 CollectionView 构建、已知服务器加载、
+    /// 自动检测事件订阅以及自动检测循环启动。
+    /// </remarks>
     public ServerDetectionViewModel(
         IServerDetector serverDetector,
         IAppConfigService appConfigService,
@@ -50,7 +84,6 @@ public partial class ServerDetectionViewModel : ObservableObject
             SelectedArguments.Add(BuildFullArgument(arg));
         }
 
-        // 🔍 初始化带过滤功能的服务器列表视图
         var runningSource = new ObservableCollection<ServerInstance>();
         FilteredRunningServers = new CollectionViewSource { Source = runningSource }.View;
         FilteredRunningServers.Filter = obj => MatchesSearch(obj, true);
@@ -61,19 +94,22 @@ public partial class ServerDetectionViewModel : ObservableObject
 
         LoadKnownServers();
 
-        // 📡 订阅自动检测事件 —— 后台每秒检测完会通知我们，然后刷新列表
         _serverDetector.DetectionCompleted += OnAutoDetectCompleted;
 
-        // 🔄 启动自动检测循环
         StartAutoDetect();
     }
 
     /// <summary>
-    /// 自动检测完成回调 —— 在后台线程触发，需要切回 UI 线程更新绑定
+    /// 自动检测完成事件处理程序 —— 将检测结果同步至 UI 线程
     /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="result">检测结果</param>
+    /// <remarks>
+    /// 在后台线程触发，需通过 Dispatcher 封送到 UI 线程更新绑定属性。
+    /// 若当前处于忙碌状态则丢弃更新，避免与手动操作产生状态竞态。
+    /// </remarks>
     private void OnAutoDetectCompleted(object? sender, DetectionResult result)
     {
-        // 不在 IsBusy 时才更新，避免和手动操作冲突
         if (IsBusy) return;
 
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher)
@@ -88,15 +124,15 @@ public partial class ServerDetectionViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 将检测结果更新到绑定属性，触发列表刷新
+    /// 将检测结果更新至绑定属性，触发 UI 列表刷新
     /// </summary>
+    /// <param name="result">检测结果实例</param>
     private void UpdateDetectionResult(DetectionResult result)
     {
         if (IsBusy) return;
 
         DetectionResult = result;
 
-        // 保留之前的选中（如果还在）
         if (SelectedServer == null ||
             !result.Servers.Any(s => s.ServerJarPath == SelectedServer.ServerJarPath))
         {
@@ -104,19 +140,32 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🔄 自动检测控制
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 指示自动检测功能是否启用
+    /// </summary>
+    /// <remarks>
+    /// 由源生成器生成 <c>IsAutoDetectEnabled</c> 属性，变更时通知
+    /// <see cref="AutoDetectStatusText"/> 与 <see cref="AutoDetectIcon"/> 刷新。
+    /// </remarks>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(AutoDetectStatusText))]
     [NotifyPropertyChangedFor(nameof(AutoDetectIcon))]
     private bool _isAutoDetectEnabled;
 
+    /// <summary>自动检测状态描述文本</summary>
     public string AutoDetectStatusText => IsAutoDetectEnabled ? "自动检测中" : "自动检测已暂停";
 
+    /// <summary>自动检测图标标识符</summary>
     public string AutoDetectIcon => IsAutoDetectEnabled ? "PauseSolid" : "PlaySolid";
 
+    /// <summary>
+    /// 切换自动检测状态命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击自动检测切换按钮。
+    /// 副作用：调用 <see cref="IServerDetector.StartAutoDetect"/> 或
+    /// <see cref="IServerDetector.StopAutoDetect"/> 控制后台检测循环。
+    /// </remarks>
     [RelayCommand]
     private void ToggleAutoDetect()
     {
@@ -130,6 +179,7 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>启动自动检测循环</summary>
     private void StartAutoDetect()
     {
         if (_serverDetector.IsAutoDetectRunning)
@@ -143,6 +193,7 @@ public partial class ServerDetectionViewModel : ObservableObject
         Log.Information("⏱️ 自动检测已启动");
     }
 
+    /// <summary>停止自动检测循环</summary>
     private void StopAutoDetect()
     {
         _serverDetector.StopAutoDetect();
@@ -150,23 +201,27 @@ public partial class ServerDetectionViewModel : ObservableObject
         Log.Information("⏹️ 自动检测已暂停");
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🔒 统一功能锁 —— 任何时候只能有一个操作在进行
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 当前活动操作 —— 用作互斥锁状态机
+    /// </summary>
+    /// <remarks>
+    /// 确保任意时刻仅有一种操作处于进行状态。变更时自动通知
+    /// <see cref="IsIdle"/>、<see cref="BusyReasonText"/>、<see cref="CanShowOperation"/>
+    /// 以及各命令的 CanExecute 刷新。
+    /// </remarks>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIdle))]
     [NotifyPropertyChangedFor(nameof(BusyReasonText))]
     [NotifyPropertyChangedFor(nameof(CanShowOperation))]
     private ServerOperation _activeOperation = ServerOperation.None;
 
-    /// <summary>是否空闲（无操作进行中）</summary>
+    /// <summary>获取一个值，指示当前是否无操作进行中</summary>
     public bool IsIdle => ActiveOperation == ServerOperation.None;
 
-    /// <summary>是否忙碌（任何操作进行中）</summary>
+    /// <summary>获取一个值，指示当前是否有操作正在进行</summary>
     public bool IsBusy => ActiveOperation != ServerOperation.None;
 
-    /// <summary>忙碌原因文案（显示在 UI）</summary>
+    /// <summary>忙碌状态描述文本</summary>
     public string BusyReasonText => ActiveOperation switch
     {
         ServerOperation.Detecting => "🔍 正在扫描服务器进程...",
@@ -178,11 +233,16 @@ public partial class ServerDetectionViewModel : ObservableObject
         _ => string.Empty
     };
 
+    /// <summary>获取一个值，指示是否应显示操作进度 UI</summary>
     public bool CanShowOperation => IsBusy;
 
+    /// <summary>
+    /// 活动操作变更回调 —— 由源生成器在属性变更时调用
+    /// </summary>
+    /// <param name="value">新的操作状态</param>
+    /// <remarks>通知所有依赖 <see cref="IsBusy"/> 的命令刷新 CanExecute 状态。</remarks>
     partial void OnActiveOperationChanged(ServerOperation value)
     {
-        // 任何命令的 CanExecute 都依赖 IsBusy，统统通知刷新
         DetectCommand.NotifyCanExecuteChanged();
         StartCurrentServerCommand.NotifyCanExecuteChanged();
         StopCurrentServerCommand.NotifyCanExecuteChanged();
@@ -191,20 +251,28 @@ public partial class ServerDetectionViewModel : ObservableObject
         RemoveKnownServerCommand.NotifyCanExecuteChanged();
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🔍 检测相关属性
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 服务器检测结果
+    /// </summary>
     [ObservableProperty]
     private DetectionResult? _detectionResult;
 
+    /// <summary>
+    /// 当前选中的运行中服务器实例
+    /// </summary>
     [ObservableProperty]
     private ServerInstance? _selectedServer;
 
+    /// <summary>检测日志合并文本</summary>
     public string DetectionLog => DetectionResult is not null
         ? string.Join(Environment.NewLine, DetectionResult.LogMessages)
         : string.Empty;
 
+    /// <summary>
+    /// 检测结果变更回调 —— 由源生成器在属性变更时调用
+    /// </summary>
+    /// <param name="value">新的检测结果</param>
+    /// <remarks>触发检测日志、运行中服务器列表以及当前状态的刷新。</remarks>
     partial void OnDetectionResultChanged(DetectionResult? value)
     {
         OnPropertyChanged(nameof(DetectionLog));
@@ -212,10 +280,14 @@ public partial class ServerDetectionViewModel : ObservableObject
         RefreshCurrentStatus();
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🚦 选中服务器的运行状态
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 当前选中服务器的运行状态
+    /// </summary>
+    /// <remarks>
+    /// 变更时通知 <see cref="CurrentServerStatusText"/>、<see cref="CurrentServerStatusBrush"/>、
+    /// <see cref="CurrentServerStatusIcon"/>、<see cref="HasSelectedServer"/> 及
+    /// <see cref="SelectedServerSubtitle"/> 刷新显示。
+    /// </remarks>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentServerStatusText))]
     [NotifyPropertyChangedFor(nameof(CurrentServerStatusBrush))]
@@ -224,6 +296,7 @@ public partial class ServerDetectionViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SelectedServerSubtitle))]
     private ServerStatus _currentServerStatus = ServerStatus.Unknown;
 
+    /// <summary>当前服务器状态描述文本</summary>
     public string CurrentServerStatusText => CurrentServerStatus switch
     {
         ServerStatus.Running => $"🟢 运行中{(GetActiveServer() is { } s && s.ProcessId > 0 ? $" (PID: {s.ProcessId})" : string.Empty)}",
@@ -234,6 +307,7 @@ public partial class ServerDetectionViewModel : ObservableObject
         _ => "❓ 未知"
     };
 
+    /// <summary>当前服务器状态对应的画刷颜色</summary>
     public Brush CurrentServerStatusBrush => CurrentServerStatus switch
     {
         ServerStatus.Running => new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50)),
@@ -244,6 +318,7 @@ public partial class ServerDetectionViewModel : ObservableObject
         _ => new SolidColorBrush(Color.FromRgb(0x9E, 0x9E, 0x9E))
     };
 
+    /// <summary>当前服务器状态对应的图标标识符</summary>
     public string CurrentServerStatusIcon => CurrentServerStatus switch
     {
         ServerStatus.Running => "CirclePlaySolid",
@@ -254,44 +329,60 @@ public partial class ServerDetectionViewModel : ObservableObject
         _ => "CircleQuestionSolid"
     };
 
+    /// <summary>获取一个值，指示当前是否存在已选中的服务器</summary>
     public bool HasSelectedServer => SelectedServer != null || SelectedKnownServer != null;
 
+    /// <summary>选中服务器副标题文本</summary>
     public string SelectedServerSubtitle => GetActiveServer() is { } active
         ? active.DisplayName
         : "未选择服务器";
 
-    // ═══════════════════════════════════════════════════════════════
-    // 📚 已知服务器
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>已知服务器集合</summary>
     public ObservableCollection<KnownServer> KnownServers { get; } = [];
 
+    /// <summary>获取一个值，指示已知服务器集合是否非空</summary>
     public bool HasKnownServers => KnownServers.Count > 0;
 
+    /// <summary>
+    /// 当前选中的已知服务器
+    /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedServer))]
     [NotifyPropertyChangedFor(nameof(SelectedServerSubtitle))]
     private KnownServer? _selectedKnownServer;
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🔍 搜索过滤
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 搜索过滤关键字
+    /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSearchKeyword))]
     private string _searchKeyword = string.Empty;
 
+    /// <summary>获取一个值，指示搜索关键字是否非空</summary>
     public bool HasSearchKeyword => !string.IsNullOrWhiteSpace(SearchKeyword);
 
+    /// <summary>运行中服务器的过滤视图</summary>
     public ICollectionView FilteredRunningServers { get; }
+    /// <summary>已知服务器的过滤视图</summary>
     public ICollectionView FilteredKnownServers { get; }
 
+    /// <summary>
+    /// 搜索关键字变更回调 —— 由源生成器在属性变更时调用
+    /// </summary>
+    /// <param name="value">新的搜索关键字</param>
+    /// <remarks>触发运行中服务器与已知服务器的 CollectionView 重新过滤。</remarks>
     partial void OnSearchKeywordChanged(string value)
     {
         FilteredRunningServers.Refresh();
         FilteredKnownServers.Refresh();
     }
 
+    /// <summary>
+    /// 判定对象是否匹配当前搜索关键字
+    /// </summary>
+    /// <param name="obj">待判定对象</param>
+    /// <param name="isRunning">是否为运行中服务器</param>
+    /// <returns>匹配则返回 <c>true</c>，否则返回 <c>false</c></returns>
     private bool MatchesSearch(object obj, bool isRunning)
     {
         if (obj is null) return false;
@@ -314,16 +405,19 @@ public partial class ServerDetectionViewModel : ObservableObject
         return false;
     }
 
+    /// <summary>
+    /// 刷新运行中服务器的过滤视图
+    /// </summary>
+    /// <remarks>
+    /// 采用防御性拷贝策略避免枚举时集合被修改，通过重建 ObservableCollection 内容
+    /// 触发 CollectionView 自动响应。若当前不在 UI 线程，则通过 Dispatcher 封送。
+    /// </remarks>
     private void RefreshFilteredRunningServers()
     {
-        // 防御性拷贝：避免在枚举时 DetectionResult.Servers 被另一线程修改
         var snapshot = DetectionResult?.Servers is { } servers
             ? servers.Where(s => s is not null).ToList()
             : new List<ServerInstance>();
 
-        // 直接重建 ObservableCollection 内容，CollectionView 会通过 CollectionChanged
-        // 自动响应，无需手动 Refresh（手动 Refresh 的 PrepareLocalArray 在并发场景下
-        // 会抛 NRE）。确保在 UI 线程执行。
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher
             && !dispatcher.CheckAccess())
         {
@@ -339,7 +433,6 @@ public partial class ServerDetectionViewModel : ObservableObject
             {
                 _runningServersInternal.Add(s);
             }
-            // Refresh 仅在搜索关键字非空时才需要（触发 Filter 重新过滤）
             if (!string.IsNullOrWhiteSpace(SearchKeyword))
             {
                 try { FilteredRunningServers.Refresh(); }
@@ -351,28 +444,36 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 📑 右侧 Tab 切换
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 右侧内容区当前选中的 Tab 索引
+    /// </summary>
     [ObservableProperty]
     private int _selectedTabIndex;
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🧠 JVM 参数编辑
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>JVM 初始堆内存大小</summary>
     [ObservableProperty] private string _initialMemory = "2G";
+    /// <summary>JVM 最大堆内存大小</summary>
     [ObservableProperty] private string _maxMemory = "4G";
+    /// <summary>当前选中的 JVM 参数分类</summary>
     [ObservableProperty] private ArgumentCategory _selectedCategory = ArgumentCategory.Memory;
+    /// <summary>用户输入的自定义 JVM 参数</summary>
     [ObservableProperty] private string _customArgument = string.Empty;
+    /// <summary>当前处于编辑状态的 JVM 参数</summary>
     [ObservableProperty] private string _selectedArgumentToEdit = string.Empty;
+    /// <summary>正在编辑的参数值</summary>
     [ObservableProperty] private string _editingArgumentValue = string.Empty;
+    /// <summary>指示当前是否处于参数编辑状态</summary>
     [ObservableProperty] private bool _isEditingArgument;
 
+    /// <summary>已选中的 JVM 参数集合</summary>
     public ObservableCollection<string> SelectedArguments { get; }
+    /// <summary>所有可用的 JVM 参数分类</summary>
     public ObservableCollection<ArgumentCategory> AllArgumentCategories { get; }
 
+    /// <summary>
+    /// 按当前分类过滤后的可用 JVM 参数定义列表
+    /// </summary>
+    /// <remarks>排除已选中的参数（基于参数基名去重）。</remarks>
     public List<JvmArgumentDefinition> FilteredArguments
     {
         get
@@ -385,6 +486,9 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 启动命令预览字符串
+    /// </summary>
     public string StartupCommandPreview
     {
         get
@@ -396,21 +500,49 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 参数分类变更回调 —— 由源生成器在属性变更时调用
+    /// </summary>
+    /// <param name="value">新的分类值</param>
     partial void OnSelectedCategoryChanged(ArgumentCategory value)
         => OnPropertyChanged(nameof(FilteredArguments));
 
+    /// <summary>
+    /// 初始内存变更回调 —— 由源生成器在属性变更时调用
+    /// </summary>
+    /// <param name="value">新的初始内存值</param>
     partial void OnInitialMemoryChanged(string value)
         => OnPropertyChanged(nameof(StartupCommandPreview));
 
+    /// <summary>
+    /// 最大内存变更回调 —— 由源生成器在属性变更时调用
+    /// </summary>
+    /// <param name="value">新的最大内存值</param>
     partial void OnMaxMemoryChanged(string value)
         => OnPropertyChanged(nameof(StartupCommandPreview));
 
+    /// <summary>
+    /// 选择 JVM 参数分类命令
+    /// </summary>
+    /// <param name="category">目标分类</param>
+    /// <remarks>
+    /// 触发条件：用户点击分类 Tab。
+    /// 副作用：更新 <see cref="SelectedCategory"/> 并刷新 <see cref="FilteredArguments"/>。
+    /// </remarks>
     [RelayCommand]
     private void SelectCategory(ArgumentCategory category)
     {
         SelectedCategory = category;
     }
 
+    /// <summary>
+    /// 添加 JVM 参数命令
+    /// </summary>
+    /// <param name="flag">参数标志</param>
+    /// <remarks>
+    /// 触发条件：用户点击可用参数列表中的添加按钮。
+    /// 副作用：将参数追加至 <see cref="SelectedArguments"/> 集合。
+    /// </remarks>
     [RelayCommand]
     private void AddArgument(string flag)
     {
@@ -425,6 +557,14 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 移除 JVM 参数命令
+    /// </summary>
+    /// <param name="flag">参数标志</param>
+    /// <remarks>
+    /// 触发条件：用户点击已选参数列表中的移除按钮。
+    /// 副作用：从 <see cref="SelectedArguments"/> 中移除参数，若该参数正处于编辑状态则退出编辑。
+    /// </remarks>
     [RelayCommand]
     private void RemoveArgument(string flag)
     {
@@ -442,6 +582,15 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 进入 JVM 参数编辑模式命令
+    /// </summary>
+    /// <param name="argument">待编辑的参数</param>
+    /// <remarks>
+    /// 触发条件：用户点击参数编辑按钮。
+    /// 副作用：设置 <see cref="IsEditingArgument"/> 为 <c>true</c>，
+    /// 并将参数值填充至 <see cref="EditingArgumentValue"/>。
+    /// </remarks>
     [RelayCommand]
     private void StartEditArgument(string argument)
     {
@@ -453,6 +602,14 @@ public partial class ServerDetectionViewModel : ObservableObject
         IsEditingArgument = true;
     }
 
+    /// <summary>
+    /// 保存 JVM 参数编辑命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击参数编辑保存按钮。
+    /// 副作用：更新 <see cref="SelectedArguments"/> 中的参数值，退出编辑状态。
+    /// 验证：通过 <c>JvmArgumentNormalizer.ValidateArgument</c> 验证参数合法性。
+    /// </remarks>
     [RelayCommand]
     private void SaveEditArgument()
     {
@@ -476,6 +633,13 @@ public partial class ServerDetectionViewModel : ObservableObject
         EditingArgumentValue = string.Empty;
     }
 
+    /// <summary>
+    /// 取消 JVM 参数编辑命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击取消编辑按钮。
+    /// 副作用：清除编辑状态，不修改 <see cref="SelectedArguments"/>。
+    /// </remarks>
     [RelayCommand]
     private void CancelEditArgument()
     {
@@ -484,6 +648,14 @@ public partial class ServerDetectionViewModel : ObservableObject
         EditingArgumentValue = string.Empty;
     }
 
+    /// <summary>
+    /// 添加自定义 JVM 参数命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户在自定义参数输入框中按下确认。
+    /// 副作用：将 <see cref="CustomArgument"/> 追加至 <see cref="SelectedArguments"/>。
+    /// 验证：通过 <c>JvmArgumentNormalizer.ValidateArgument</c> 验证参数合法性。
+    /// </remarks>
     [RelayCommand]
     private void AddCustomArgument()
     {
@@ -499,6 +671,13 @@ public partial class ServerDetectionViewModel : ObservableObject
         CustomArgument = string.Empty;
     }
 
+    /// <summary>
+    /// 应用 Aikar JVM 参数预设命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击 Aikar 预设按钮。
+    /// 副作用：替换 <see cref="SelectedArguments"/> 为 Aikar 推荐参数集。
+    /// </remarks>
     [RelayCommand]
     private void ApplyAikarPreset()
     {
@@ -506,6 +685,13 @@ public partial class ServerDetectionViewModel : ObservableObject
         ApplyPreset(ApplyAikarFlags(), "Aikar");
     }
 
+    /// <summary>
+    /// 应用 G1GC JVM 参数预设命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击 G1GC 预设按钮。
+    /// 副作用：替换 <see cref="SelectedArguments"/> 为 G1GC 参数集。
+    /// </remarks>
     [RelayCommand]
     private void ApplyG1GCPreset()
     {
@@ -513,6 +699,13 @@ public partial class ServerDetectionViewModel : ObservableObject
         ApplyPreset(ApplyG1GCFlags(), "G1GC");
     }
 
+    /// <summary>
+    /// 应用 ZGC JVM 参数预设命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击 ZGC 预设按钮。
+    /// 副作用：替换 <see cref="SelectedArguments"/> 为 ZGC 参数集。
+    /// </remarks>
     [RelayCommand]
     private void ApplyZgcPreset()
     {
@@ -520,6 +713,10 @@ public partial class ServerDetectionViewModel : ObservableObject
         ApplyPreset(ApplyZgcFlags(), "ZGC");
     }
 
+    /// <summary>
+    /// 获取 Aikar 推荐的 JVM 参数列表
+    /// </summary>
+    /// <returns>Aikar 参数列表</returns>
     private static List<string> ApplyAikarFlags() =>
     [
         "-XX:+UseG1GC",
@@ -546,6 +743,10 @@ public partial class ServerDetectionViewModel : ObservableObject
         "-Daikars.new.flags=true"
     ];
 
+    /// <summary>
+    /// 获取 G1GC 基础 JVM 参数列表
+    /// </summary>
+    /// <returns>G1GC 参数列表</returns>
     private static List<string> ApplyG1GCFlags() =>
     [
         "-XX:+UseG1GC",
@@ -556,6 +757,10 @@ public partial class ServerDetectionViewModel : ObservableObject
         "-Dlog4j2.formatMsgNoLookups=true"
     ];
 
+    /// <summary>
+    /// 获取 ZGC 基础 JVM 参数列表
+    /// </summary>
+    /// <returns>ZGC 参数列表</returns>
     private static List<string> ApplyZgcFlags() =>
     [
         "-XX:+UseZGC",
@@ -566,6 +771,11 @@ public partial class ServerDetectionViewModel : ObservableObject
         "-Dlog4j2.formatMsgNoLookups=true"
     ];
 
+    /// <summary>
+    /// 应用 JVM 参数预设
+    /// </summary>
+    /// <param name="flags">参数列表</param>
+    /// <param name="name">预设名称</param>
     private void ApplyPreset(List<string> flags, string name)
     {
         SelectedArguments.Clear();
@@ -573,12 +783,19 @@ public partial class ServerDetectionViewModel : ObservableObject
         Log.Information("🎯 应用 {Name} 预设参数", name);
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🚀 启动/停止当前选中服务器（带功能锁）
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>当前操作提示消息</summary>
     [ObservableProperty] private string _operationMessage = string.Empty;
 
+    /// <summary>
+    /// 启动当前选中的服务器命令
+    /// </summary>
+    /// <returns>表示异步操作的任务</returns>
+    /// <remarks>
+    /// 触发条件：用户点击启动按钮且服务器未运行。
+    /// 副作用：设置 <see cref="ActiveOperation"/> 为 Starting，
+    /// 调用 <see cref="IServerManagerService.StartServer"/> 启动进程，
+    /// 完成后触发检测刷新服务器列表。
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(CanStartCurrent))]
     private async Task StartCurrentServerAsync()
     {
@@ -620,7 +837,6 @@ public partial class ServerDetectionViewModel : ObservableObject
                 CurrentServerStatus = ServerStatus.Running;
 
                 await Task.Delay(1500);
-                // 先解除忙碌状态，否则 DetectAsync 会被 IsBusy 拦截直接 return
                 ActiveOperation = ServerOperation.None;
                 await DetectAsync();
             }
@@ -639,7 +855,6 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
         finally
         {
-            // ⚠️ 注意：DetectAsync 完成后 ActiveOperation 已经是 Detecting，要还原
             if (ActiveOperation == ServerOperation.Starting)
             {
                 ActiveOperation = previousOperation;
@@ -648,6 +863,10 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 确定启动命令是否可执行
+    /// </summary>
+    /// <returns>可启动则返回 <c>true</c>，否则返回 <c>false</c></returns>
     private bool CanStartCurrent()
     {
         if (IsBusy) return false;
@@ -656,6 +875,16 @@ public partial class ServerDetectionViewModel : ObservableObject
         return !_serverManager.IsServerRunning(server);
     }
 
+    /// <summary>
+    /// 停止当前选中的服务器命令
+    /// </summary>
+    /// <returns>表示异步操作的任务</returns>
+    /// <remarks>
+    /// 触发条件：用户点击停止按钮且服务器正在运行。
+    /// 副作用：设置 <see cref="ActiveOperation"/> 为 Stopping，
+    /// 调用 <see cref="IServerManagerService.StopServer"/> 终止进程，
+    /// 完成后触发检测刷新服务器列表。
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(CanStopCurrent))]
     private async Task StopCurrentServerAsync()
     {
@@ -671,14 +900,11 @@ public partial class ServerDetectionViewModel : ObservableObject
         try
         {
             var success = await Task.Run(() => _serverManager.StopServer(server));
-            // success=true 表示目标状态达成（进程已不在，无论是否由我们杀的）
-            // 不再用"可能需要手动关闭"吓唬新手 —— 真失败时 ex 会被 catch 到下面的异常分支
             OperationMessage = success ? "✅ 服务器已停止" : "⚠️ 停止失败，进程可能仍在运行，请检查任务管理器";
 
             if (success)
             {
                 await Task.Delay(800);
-                // 先解除忙碌状态，否则 DetectAsync 会被 IsBusy 拦截直接 return
                 ActiveOperation = ServerOperation.None;
                 await DetectAsync();
             }
@@ -698,6 +924,10 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 确定停止命令是否可执行
+    /// </summary>
+    /// <returns>可停止则返回 <c>true</c>，否则返回 <c>false</c></returns>
     private bool CanStopCurrent()
     {
         if (IsBusy) return false;
@@ -706,6 +936,10 @@ public partial class ServerDetectionViewModel : ObservableObject
         return _serverManager.IsServerRunning(server);
     }
 
+    /// <summary>
+    /// 获取当前活动的服务器实例
+    /// </summary>
+    /// <returns>运行中服务器或已知服务器转换后的实例；无选中则返回 <c>null</c></returns>
     private ServerInstance? GetActiveServer()
     {
         if (SelectedServer != null) return SelectedServer;
@@ -726,6 +960,9 @@ public partial class ServerDetectionViewModel : ObservableObject
         return null;
     }
 
+    /// <summary>
+    /// 刷新当前选中服务器的运行状态
+    /// </summary>
     private void RefreshCurrentStatus()
     {
         var server = GetActiveServer();
@@ -751,15 +988,18 @@ public partial class ServerDetectionViewModel : ObservableObject
             CurrentServerStatus = ServerStatus.Unknown;
         }
 
-        // 通知按钮 CanExecute 刷新
         StartCurrentServerCommand.NotifyCanExecuteChanged();
         StopCurrentServerCommand.NotifyCanExecuteChanged();
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 📦 导入服务器（仅导入到列表，不再自动启动）
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 浏览并导入服务器命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击导入服务器按钮。
+    /// 副作用：打开文件选择对话框，将选中的 JAR 文件注册为已知服务器，
+    /// 若已存在则加载其已保存的配置。
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(CanImport))]
     private void BrowseAndImportServer()
     {
@@ -855,12 +1095,22 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 确定导入命令是否可执行
+    /// </summary>
+    /// <returns>可导入则返回 <c>true</c>，否则返回 <c>false</c></returns>
     private bool CanImport() => !IsBusy;
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🔍 检测命令
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 执行服务器进程检测命令
+    /// </summary>
+    /// <returns>表示异步操作的任务</returns>
+    /// <remarks>
+    /// 触发条件：用户点击检测按钮。
+    /// 副作用：设置 <see cref="ActiveOperation"/> 为 Detecting，
+    /// 调用 <see cref="IServerDetector.DetectAllAsync"/> 获取检测结果，
+    /// 更新 <see cref="DetectionResult"/> 与 <see cref="SelectedServer"/>。
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(CanDetect))]
     private async Task DetectAsync()
     {
@@ -874,7 +1124,6 @@ public partial class ServerDetectionViewModel : ObservableObject
 
             if (DetectionResult.Servers.Count > 0)
             {
-                // 保留之前的选中（如果还在）
                 if (SelectedServer == null ||
                     !DetectionResult.Servers.Any(s => s.ServerJarPath == SelectedServer.ServerJarPath))
                 {
@@ -903,8 +1152,20 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 确定检测命令是否可执行
+    /// </summary>
+    /// <returns>可检测则返回 <c>true</c>，否则返回 <c>false</c></returns>
     private bool CanDetect() => !IsBusy;
 
+    /// <summary>
+    /// 选中服务器变更回调 —— 由源生成器在属性变更时调用
+    /// </summary>
+    /// <param name="value">新的选中服务器实例</param>
+    /// <remarks>
+    /// 刷新相关命令的 CanExecute 状态、更新服务器状态显示，
+    /// 并将选中服务器的 JVM 参数同步至编辑器。
+    /// </remarks>
     partial void OnSelectedServerChanged(ServerInstance? value)
     {
         SaveAsKnownServerCommand.NotifyCanExecuteChanged();
@@ -928,10 +1189,13 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 💾 保存为已知服务器
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 保存为已知服务器命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击保存为已知服务器按钮且存在选中的运行中服务器。
+    /// 副作用：将当前服务器的 JVM 参数配置持久化至已知服务器列表。
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(CanSaveAsKnown))]
     private void SaveAsKnownServer()
     {
@@ -998,19 +1262,27 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 确定保存为已知服务器命令是否可执行
+    /// </summary>
+    /// <returns>可保存则返回 <c>true</c>，否则返回 <c>false</c></returns>
     private bool CanSaveAsKnown() => !IsBusy && SelectedServer != null;
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🗑️ 已知服务器：删除 + 启动（带功能锁）
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 删除已知服务器命令
+    /// </summary>
+    /// <param name="server">待删除的已知服务器</param>
+    /// <remarks>
+    /// 触发条件：用户点击已知服务器列表的删除按钮。
+    /// 副作用：从 <see cref="KnownServers"/> 中移除条目并持久化至应用配置。
+    /// 前置校验：若服务器正在运行则拒绝删除。
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(CanRemoveKnown))]
     private void RemoveKnownServer(KnownServer? server)
     {
         if (IsBusy) return;
         if (server is null) return;
 
-        // 🚨 二次校验：正在运行的服务器不允许删除
         try
         {
             if (File.Exists(server.ServerJarPath) && _serverManager.IsServerRunningByJarPath(server.ServerJarPath))
@@ -1047,8 +1319,24 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 确定删除已知服务器命令是否可执行
+    /// </summary>
+    /// <param name="server">待删除的已知服务器</param>
+    /// <returns>可删除则返回 <c>true</c>，否则返回 <c>false</c></returns>
     private bool CanRemoveKnown(KnownServer? server) => !IsBusy && server != null;
 
+    /// <summary>
+    /// 启动已知服务器命令
+    /// </summary>
+    /// <param name="server">待启动的已知服务器</param>
+    /// <returns>表示异步操作的任务</returns>
+    /// <remarks>
+    /// 触发条件：用户点击已知服务器列表的启动按钮。
+    /// 副作用：构造 <see cref="ServerInstance"/> 并调用
+    /// <see cref="IServerManagerService.StartServer"/> 启动进程，
+    /// 完成后触发检测刷新服务器列表。
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(CanStartKnownServer))]
     private async Task StartKnownServerAsync(KnownServer? server)
     {
@@ -1086,7 +1374,6 @@ public partial class ServerDetectionViewModel : ObservableObject
                 server.LastSeenAt = DateTime.Now;
                 _appConfigService.UpdateKnownServer(server);
                 await Task.Delay(1500);
-                // 先解除忙碌状态，否则 DetectAsync 会被 IsBusy 拦截直接 return
                 ActiveOperation = ServerOperation.None;
                 await DetectAsync();
             }
@@ -1109,6 +1396,11 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 确定启动已知服务器命令是否可执行
+    /// </summary>
+    /// <param name="server">待启动的已知服务器</param>
+    /// <returns>可启动则返回 <c>true</c>，否则返回 <c>false</c></returns>
     private bool CanStartKnownServer(KnownServer? server)
     {
         if (server is null || IsBusy) return false;
@@ -1116,6 +1408,14 @@ public partial class ServerDetectionViewModel : ObservableObject
         return true;
     }
 
+    /// <summary>
+    /// 选中已知服务器变更回调 —— 由源生成器在属性变更时调用
+    /// </summary>
+    /// <param name="value">新选中的已知服务器</param>
+    /// <remarks>
+    /// 刷新相关命令的 CanExecute 状态、更新服务器状态显示，
+    /// 并将已知服务器的 JVM 参数同步至编辑器。
+    /// </remarks>
     partial void OnSelectedKnownServerChanged(KnownServer? value)
     {
         StartKnownServerCommand.NotifyCanExecuteChanged();
@@ -1140,10 +1440,13 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 📋 复制启动命令
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 复制启动命令至剪贴板命令
+    /// </summary>
+    /// <remarks>
+    /// 触发条件：用户点击复制启动命令按钮。
+    /// 副作用：将 <see cref="StartupCommandPreview"/> 写入系统剪贴板。
+    /// </remarks>
     [RelayCommand]
     private void CopyStartupCommand()
     {
@@ -1163,10 +1466,9 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🔧 辅助方法
-    // ═══════════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// 从应用配置加载已知服务器列表
+    /// </summary>
     private void LoadKnownServers()
     {
         KnownServers.Clear();
@@ -1178,6 +1480,11 @@ public partial class ServerDetectionViewModel : ObservableObject
         FilteredKnownServers.Refresh();
     }
 
+    /// <summary>
+    /// 提取 JVM 参数的基名（不含值部分）
+    /// </summary>
+    /// <param name="argument">完整的 JVM 参数</param>
+    /// <returns>参数基名字符串</returns>
     private static string GetArgumentBaseName(string argument)
     {
         if (string.IsNullOrEmpty(argument)) return argument;
@@ -1205,6 +1512,11 @@ public partial class ServerDetectionViewModel : ObservableObject
         return argument;
     }
 
+    /// <summary>
+    /// 根据参数定义构建完整的 JVM 参数字符串
+    /// </summary>
+    /// <param name="arg">参数定义</param>
+    /// <returns>完整参数字符串</returns>
     private static string BuildFullArgument(JvmArgumentDefinition arg)
     {
         if (arg.ValueType == ArgumentValueType.BooleanFlag)
@@ -1216,6 +1528,11 @@ public partial class ServerDetectionViewModel : ObservableObject
         return arg.Flag;
     }
 
+    /// <summary>
+    /// 从完整 JVM 参数中提取参数值
+    /// </summary>
+    /// <param name="argument">完整的 JVM 参数</param>
+    /// <returns>参数值字符串</returns>
     private static string ExtractArgumentValue(string argument)
     {
         if (string.IsNullOrEmpty(argument)) return string.Empty;
@@ -1231,6 +1548,12 @@ public partial class ServerDetectionViewModel : ObservableObject
         return string.Empty;
     }
 
+    /// <summary>
+    /// 根据基名和值构建完整的 JVM 参数
+    /// </summary>
+    /// <param name="baseName">参数基名</param>
+    /// <param name="value">参数值</param>
+    /// <returns>完整参数字符串</returns>
     private static string BuildArgumentFromValue(string baseName, string value)
     {
         if (string.IsNullOrEmpty(baseName)) return baseName;
@@ -1244,6 +1567,10 @@ public partial class ServerDetectionViewModel : ObservableObject
         return baseName + "=" + value;
     }
 
+    /// <summary>
+    /// 构建当前完整的 JVM 参数列表
+    /// </summary>
+    /// <returns>JVM 参数列表</returns>
     private List<string> BuildCurrentJvmArguments()
     {
         var args = new List<string>
@@ -1259,6 +1586,11 @@ public partial class ServerDetectionViewModel : ObservableObject
         return args;
     }
 
+    /// <summary>
+    /// 根据参数列表判定 GC 类型
+    /// </summary>
+    /// <param name="args">JVM 参数列表</param>
+    /// <returns>GC 类型名称</returns>
     private static string DetermineGcType(List<string> args)
     {
         if (args.Any(a => a.Contains("UseZGC"))) return "ZGC";

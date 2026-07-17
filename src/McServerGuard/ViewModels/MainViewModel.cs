@@ -1,3 +1,13 @@
+// -----------------------------------------------------------------------------
+// 文件名: MainViewModel.cs
+// 命名空间: McServerGuard.ViewModels
+// 功能描述: 主窗口视图模型 —— 基于 CommunityToolkit.Mvvm 源生成器的 MVVM 绑定层，
+//           承担子页面导航调度、服务器检测协调与状态分发的核心职责
+// 依赖组件: CommunityToolkit.Mvvm (ObservableProperty/RelayCommand),
+//           MaterialDesignThemes.Wpf (Snackbar), Microsoft.Extensions.DependencyInjection, Serilog
+// 设计模式: MVVM 模式, 命令模式, 发布-订阅 (PropertyChanged 事件)
+// -----------------------------------------------------------------------------
+
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,14 +22,16 @@ using Serilog;
 namespace McServerGuard.ViewModels;
 
 /// <summary>
-/// 🏠 主窗口 ViewModel —— 整个应用的大脑/指挥中心
-/// 
-/// 负责各大子页面的调度和导航，像指挥官一样把检测到的 Server
-/// 分发给各个子页面。毕竟 Server 只需检测一次，但谁都要用它。
+/// 主窗口视图模型 —— 应用 UI 层的核心协调器
 /// </summary>
+/// <remarks>
+/// 作为主窗口的数据上下文，本类负责子页面 ViewModel 的生命周期管理、
+/// 导航状态机维护、跨页面服务器实例分发以及状态栏信息聚合。
+/// 通过订阅 <see cref="ServerDetectionViewModel.PropertyChanged"/> 事件
+/// 实现选中服务器在配置编辑页与系统监控页之间的同步。
+/// </remarks>
 public partial class MainViewModel : ObservableObject
 {
-    // 🔧 注入的服务 —— 依赖注入的魔法，不用 new 就能用
     private readonly IServerDetector _serverDetector;
     private readonly IConfigManager _configManager;
     private readonly ISystemMonitor _systemMonitor;
@@ -31,9 +43,21 @@ public partial class MainViewModel : ObservableObject
     private readonly IPrivilegeService _privilegeService;
 
     /// <summary>
-    /// 主窗口 ViewModel 构造函数
-    /// 通过构造函数注入所有服务 + 初始化子页面
+    /// 初始化主窗口视图模型的新实例
     /// </summary>
+    /// <param name="serverDetector">服务器检测服务</param>
+    /// <param name="configManager">配置管理服务</param>
+    /// <param name="systemMonitor">系统监控服务</param>
+    /// <param name="serverImporter">服务器导入服务</param>
+    /// <param name="serverManager">服务器管理服务</param>
+    /// <param name="themeService">主题服务</param>
+    /// <param name="toastService">吐司通知服务</param>
+    /// <param name="appConfigService">应用配置服务</param>
+    /// <param name="privilegeService">权限提升服务</param>
+    /// <remarks>
+    /// 通过构造函数依赖注入获取所有外部依赖项，完成子页面 ViewModel 的实例化、
+    /// 跨页面属性变更订阅、通知服务初始化以及状态栏时钟启动。
+    /// </remarks>
     public MainViewModel(
         IServerDetector serverDetector,
         IConfigManager configManager,
@@ -57,13 +81,11 @@ public partial class MainViewModel : ObservableObject
         _appConfigService = appConfigService;
         _privilegeService = privilegeService;
 
-        // 📦 初始化子页面 ViewModel
         DetectionPage = new ServerDetectionViewModel(serverDetector, appConfigService, serverManager, serverImporter);
         ConfigPage = new ConfigEditorViewModel(configManager, serverDetector, appConfigService);
         MonitorPage = new SystemMonitorViewModel(systemMonitor);
         SettingsPage = new SettingsViewModel(themeService, toastService);
 
-        // 📡 订阅检测页的选中服务器变化，同步到配置页/监控页
         DetectionPage.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName == nameof(ServerDetectionViewModel.SelectedServer))
@@ -74,10 +96,8 @@ public partial class MainViewModel : ObservableObject
             }
         };
 
-        // 🔔 初始化通知服务
         _toastService.Initialize();
 
-        // ⏰ 启动状态栏时钟
         var clockTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(1)
@@ -85,7 +105,6 @@ public partial class MainViewModel : ObservableObject
         clockTimer.Tick += (s, e) => CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         clockTimer.Start();
 
-        // 🚀 启动时自动检测服务器 —— 让用户一上来就能看到结果
         Log.Information("🚀 启动时自动检测服务器...");
         _ = Task.Run(async () =>
         {
@@ -105,43 +124,52 @@ public partial class MainViewModel : ObservableObject
         });
     }
 
-    // ─── Snackbar 通知队列 ──────────────────────────────────────
-    // MaterialDesign 的 Snackbar，弹出来告诉用户"嘿，事情办完了" 📢
-
     /// <summary>
-    /// Snackbar 消息队列 —— 弹出式通知用的
-    /// 比状态栏更显眼，适合用来通知"检测完成"这类一次性消息
+    /// Snackbar 消息队列 —— 基于 MaterialDesign 的弹出式通知通道
     /// </summary>
+    /// <remarks>
+    /// 用于承载检测完成、操作结果等临时性通知，显示时长为 3 秒。
+    /// 与状态栏文本相比具有更高的视觉优先级。
+    /// </remarks>
     public SnackbarMessageQueue SnackbarMessages { get; } = new(TimeSpan.FromSeconds(3));
 
-    // ─── 子页面 ViewModel ─────────────────────────────────────────
-
-    /// <summary>🔍 服务器检测页 —— "你的服务器在哪？让我找找"</summary>
+    /// <summary>
+    /// 服务器检测页视图模型
+    /// </summary>
     public ServerDetectionViewModel DetectionPage { get; }
 
-    /// <summary>⚙️ 配置编辑页 —— "让我改改你的配置"</summary>
+    /// <summary>
+    /// 配置编辑页视图模型
+    /// </summary>
     public ConfigEditorViewModel ConfigPage { get; }
 
-    /// <summary>📊 系统监控页 —— "你的服务器还能撑多久？"</summary>
+    /// <summary>
+    /// 系统监控页视图模型
+    /// </summary>
     public SystemMonitorViewModel MonitorPage { get; }
 
-    /// <summary>⚙️ 设置页 —— "自定义外观和行为"</summary>
+    /// <summary>
+    /// 设置页视图模型
+    /// </summary>
     public SettingsViewModel SettingsPage { get; }
 
-    // ─── 导航 ────────────────────────────────────────────────────────
-
     /// <summary>
-    /// 当前选中的 Tab 索引
-    /// 0=检测, 1=配置, 2=监控, 3=设置
-    /// 改变它就能切换页面
+    /// 当前选中的 Tab 索引（0=检测, 1=配置, 2=监控, 3=设置）
     /// </summary>
+    /// <remarks>
+    /// 由源生成器生成 <c>SelectedTabIndex</c> 属性，变更时触发
+    /// <see cref="OnSelectedTabIndexChanged(int)"/> 部分方法以更新导航状态。
+    /// </remarks>
     [ObservableProperty]
     private int _selectedTabIndex;
 
     /// <summary>
-    /// 当前页面 ViewModel —— 根据 SelectedTabIndex 返回对应的子 ViewModel
-    /// ContentControl 绑定此属性，配合 DataTemplate 自动切换页面
+    /// 当前页面数据上下文 —— 基于 Tab 索引的导航状态机
     /// </summary>
+    /// <remarks>
+    /// <c>ContentControl</c> 绑定此属性，配合 <c>DataTemplate</c> 资源字典
+    /// 实现子页面的动态切换。
+    /// </remarks>
     public object CurrentPage => SelectedTabIndex switch
     {
         0 => DetectionPage,
@@ -151,33 +179,38 @@ public partial class MainViewModel : ObservableObject
         _ => DetectionPage
     };
 
-    // ─── 状态栏 ──────────────────────────────────────────────────────
-
     /// <summary>
-    /// 底部状态栏文本 —— 告诉用户"我在干嘛"
-    /// 比如检测中、检测完成、出错了等等
+    /// 状态栏状态文本 —— 反映当前应用级操作状态
     /// </summary>
     [ObservableProperty]
     private string _statusMessage = "准备就绪，点击「开始检测」寻找 Minecraft 服务器 🎯";
 
     /// <summary>
-    /// 状态栏右下角实时时钟 —— 每秒刷新一次
+    /// 状态栏实时时钟 —— 每秒刷新一次的时间戳显示
     /// </summary>
     [ObservableProperty]
     private string _currentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
     /// <summary>
-    /// 当前权限模式文本 —— 显示在状态栏
+    /// 当前权限模式描述文本
     /// </summary>
     public string PrivilegeStatusText => _privilegeService.IsRunningAsAdmin
         ? "🔒 管理员模式"
         : "⚠️ 受限模式";
 
     /// <summary>
-    /// 是否为管理员模式
+    /// 获取一个值，指示当前进程是否以管理员权限运行
     /// </summary>
     public bool IsAdminMode => _privilegeService.IsRunningAsAdmin;
 
+    /// <summary>
+    /// 请求管理员权限提升命令
+    /// </summary>
+    /// <remarks>
+    /// 调用 <see cref="IPrivilegeService.RequestElevation"/> 触发 UAC 提权流程。
+    /// 触发条件：用户点击状态栏权限提示区域。
+    /// 副作用：可能启动新的高权限进程实例。
+    /// </remarks>
     [RelayCommand]
     private void RequestElevation()
     {
@@ -185,24 +218,31 @@ public partial class MainViewModel : ObservableObject
         _privilegeService.RequestElevation();
     }
 
-    // ─── 检测命令 ────────────────────────────────────────────────────
-
     /// <summary>
-    /// 是否正在检测中 —— 用来控制按钮的 IsEnabled，防止用户狂点
+    /// 指示当前是否正在执行服务器检测
     /// </summary>
+    /// <remarks>
+    /// 用作检测命令的 CanExecute 判定依据，防止重复触发检测操作。
+    /// </remarks>
     [ObservableProperty]
     private bool _isDetecting;
 
     /// <summary>
-    /// 异步检测服务器 —— 大招！检测到 Server 后分发给各子页面
-    /// 
-    /// 流程：
-    /// 1. 调用 DetectionPage.DetectCommand（子页面自己会更新 UI）
-    /// 2. 等检测结果回来
-    /// 3. 如果检测到了服务器，把第一个（或用户选中的）塞给其他子页面
-    /// 
-    /// 为什么不直接在这里调 IServerDetector？因为 DetectionPage 自己也要显示进度啊
+    /// 异步执行服务器检测并将结果分发至各子页面
     /// </summary>
+    /// <returns>表示异步操作的任务</returns>
+    /// <remarks>
+    /// <para>执行流程：</para>
+    /// <list type="number">
+    /// <item>调用 <see cref="ServerDetectionViewModel.DetectCommand"/> 启动检测</item>
+    /// <item>等待检测结果返回</item>
+    /// <item>若检测到服务器，将首个实例同步至配置页与监控页</item>
+    /// </list>
+    /// <para>触发条件：用户点击「开始检测」按钮或应用启动后自动触发。</para>
+    /// <para>副作用：更新 <see cref="IsDetecting"/>、<see cref="StatusMessage"/>
+    /// 以及各子页面的 Server 属性。</para>
+    /// <para>通过子页面命令而非直接调用 <c>IServerDetector</c>，以确保检测页 UI 状态同步更新。</para>
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(CanDetectServers))]
     private async Task DetectServersAsync()
     {
@@ -212,23 +252,18 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            // 先让检测页干活
             await DetectionPage.DetectCommand.ExecuteAsync(null);
 
-            // 检查结果
             var result = DetectionPage.DetectionResult;
             if (result?.Servers.Count > 0)
             {
                 StatusMessage = $"✅ 检测完成！找到 {result.Servers.Count} 个服务器实例";
-                // 📢 Snackbar 弹一个通知，让用户更直观地知道结果
                 SnackbarMessages.Enqueue($"🎉 找到 {result.Servers.Count} 个 Minecraft 服务器！");
 
-                // 📤 把第一个服务器分发下去（后续用户可以手动切换）
                 var firstServer = result.Servers[0];
                 ConfigPage.Server = firstServer;
                 MonitorPage.Server = firstServer;
 
-                // 自动选中第一个服务器
                 DetectionPage.SelectedServer = firstServer;
 
                 Log.Information("✅ 服务器检测完成，发现 {Count} 个服务器", result.Servers.Count);
@@ -236,7 +271,6 @@ public partial class MainViewModel : ObservableObject
             else
             {
                 StatusMessage = result?.ErrorMessage ?? "未检测到正在运行的 Minecraft 服务器 😢";
-                // 😢 没找到也要通知一下，别让用户干等着
                 SnackbarMessages.Enqueue("😔 未检测到正在运行的 Minecraft 服务器");
                 Log.Information("✅ 服务器检测完成，发现 0 个服务器");
             }
@@ -253,29 +287,30 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 能不能执行检测 —— 检测中就别再点了
+    /// 确定检测命令是否可执行
     /// </summary>
+    /// <returns>当未处于检测状态时返回 <c>true</c>，否则返回 <c>false</c></returns>
+    /// <remarks>用作 <see cref="DetectServersCommand"/> 的 CanExecute 谓词。</remarks>
     private bool CanDetectServers()
     {
         Log.Debug("🔄 CanDetectServers 检查: IsDetecting={IsDetecting}", IsDetecting);
         return !IsDetecting;
     }
 
-    // ─── 辅助方法 ────────────────────────────────────────────────────
-
     /// <summary>
-    /// 局部方法：当 SelectedTabIndex 变化时更新状态栏
-    /// 虽然可以放 OnSelectedTabIndexChanged 里，但 partial method
-    /// 被源生成器用了，咱就别手动写了，用 PropertyChanged 订阅
+    /// Tab 索引变更回调 —— 由 CommunityToolkit.Mvvm 源生成器在属性变更时调用
     /// </summary>
+    /// <param name="value">新的 Tab 索引值</param>
+    /// <remarks>
+    /// 触发 <see cref="CurrentPage"/> 属性变更通知以驱动 ContentControl 页面切换，
+    /// 并根据当前导航上下文更新状态栏提示文本。
+    /// </remarks>
     partial void OnSelectedTabIndexChanged(int value)
     {
         Log.Debug("🔄 SelectedTabIndex 变更为 {TabIndex}", value);
 
-        // 通知 CurrentPage 属性已变更，触发 ContentControl 切换页面
         OnPropertyChanged(nameof(CurrentPage));
 
-        // 🗺️ 根据当前 Tab 切换状态栏提示语
         StatusMessage = value switch
         {
             0 => "服务器管理 —— 检测、导入、启动你的 Minecraft 服务器 🎮",

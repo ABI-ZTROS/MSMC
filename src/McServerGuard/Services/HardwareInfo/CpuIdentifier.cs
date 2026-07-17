@@ -1,3 +1,10 @@
+// -----------------------------------------------------------------------------
+// 文件名: CpuIdentifier.cs
+// 命名空间: McServerGuard.Services.HardwareInfo
+// 功能描述: 提供 CPU 硬件信息识别服务，支持多厂商 CPU 型号解析与性能评分
+// 依赖组件: System.Management, System.Runtime.InteropServices
+// 设计模式: 单例模式、缓存模式、策略模式（厂商解析分派）
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Services.HardwareInfo;
 
 using System.Management;
@@ -6,21 +13,33 @@ using McServerGuard.Models.Hardware;
 using Serilog;
 
 /// <summary>
-/// CPU 识别服务 —— 通过 WMI 获取 CPU 详细信息
-/// 支持 Intel / AMD / ARM 等主流 CPU 厂商
-/// 包含型号解析、代际识别、架构判断
+/// CPU 识别服务
+/// 通过 WMI 获取 CPU 详细信息，支持 Intel / AMD / ARM 等主流 CPU 厂商
+/// 包含型号规范化、代际识别、架构判断与性能评分
 /// </summary>
 public class CpuIdentifier
 {
+    /// <summary>
+    /// CPU 信息缓存
+    /// </summary>
     private CpuInfo? _cachedInfo;
+
+    /// <summary>
+    /// 缓存访问锁
+    /// </summary>
     private readonly object _cacheLock = new();
 
+    /// <summary>
+    /// 当前操作系统是否为 Windows
+    /// </summary>
     private static bool IsWindows =>
         RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
     /// <summary>
     /// 获取当前系统 CPU 信息
+    /// 首次调用时执行识别，后续调用返回缓存结果
     /// </summary>
+    /// <returns>CPU 信息对象</returns>
     public CpuInfo GetCpuInfo()
     {
         lock (_cacheLock)
@@ -42,6 +61,11 @@ public class CpuIdentifier
         return info;
     }
 
+    /// <summary>
+    /// 内部实现：获取 CPU 信息
+    /// Windows 平台通过 WMI 查询，非 Windows 平台返回降级数据
+    /// </summary>
+    /// <returns>CPU 信息对象</returns>
     private CpuInfo GetCpuInfoInternal()
     {
         if (!IsWindows)
@@ -92,6 +116,11 @@ public class CpuIdentifier
         return GetFallbackCpuInfo();
     }
 
+    /// <summary>
+    /// 获取降级 CPU 信息
+    /// 当无法通过 WMI 获取信息时使用，基于环境变量估算核心数
+    /// </summary>
+    /// <returns>CPU 信息对象</returns>
     private static CpuInfo GetFallbackCpuInfo()
     {
         var logicalCores = Environment.ProcessorCount;
@@ -115,8 +144,11 @@ public class CpuIdentifier
     }
 
     /// <summary>
-    /// 规范化 CPU 名称 —— 移除多余空格、统一大小写
+    /// 规范化 CPU 名称
+    /// 移除多余空格、统一商标符号格式
     /// </summary>
+    /// <param name="name">原始 CPU 名称</param>
+    /// <returns>规范化后的名称</returns>
     private static string NormalizeCpuName(string name)
     {
         var cleaned = name.Replace("(R)", "®").Replace("(TM)", "™").Trim();
@@ -126,8 +158,11 @@ public class CpuIdentifier
     }
 
     /// <summary>
-    /// 解析 CPU 型号，提取架构、代际、定位
+    /// 解析 CPU 型号，提取架构、代际与市场定位
     /// </summary>
+    /// <param name="modelName">CPU 型号名称</param>
+    /// <param name="manufacturer">CPU 厂商</param>
+    /// <returns>架构名称、代际、市场定位的三元组</returns>
     private static (string Architecture, int Generation, string Tier) ParseCpuModel(string modelName, string manufacturer)
     {
         var lowerName = modelName.ToLowerInvariant();
@@ -156,8 +191,11 @@ public class CpuIdentifier
 
     /// <summary>
     /// 解析 Intel CPU 型号
-    /// 支持：Core i3/i5/i7/i9 第1-15代、Xeon、Pentium、Celeron、Atom 等
+    /// 支持 Core i3/i5/i7/i9 第1-15代、Xeon、Pentium、Celeron、Atom 等系列
     /// </summary>
+    /// <param name="lowerName">小写型号名称</param>
+    /// <param name="fullName">完整型号名称</param>
+    /// <returns>架构名称、代际、市场定位的三元组</returns>
     private static (string Architecture, int Generation, string Tier) ParseIntelCpu(string lowerName, string fullName)
     {
         var arch = "Intel 未知架构";
@@ -226,6 +264,11 @@ public class CpuIdentifier
         return (arch, generation, tier);
     }
 
+    /// <summary>
+    /// 根据 Intel CPU 代次获取架构名称
+    /// </summary>
+    /// <param name="generation">CPU 代次</param>
+    /// <returns>架构名称</returns>
     private static string GetIntelArchName(int generation)
     {
         return generation switch
@@ -251,8 +294,11 @@ public class CpuIdentifier
 
     /// <summary>
     /// 解析 AMD CPU 型号
-    /// 支持：Ryzen 3/5/7/9 1000-9000系列、Threadripper、EPYC、Athlon 等
+    /// 支持 Ryzen 3/5/7/9 1000-9000 系列、Threadripper、EPYC、Athlon 等系列
     /// </summary>
+    /// <param name="lowerName">小写型号名称</param>
+    /// <param name="fullName">完整型号名称</param>
+    /// <returns>架构名称、代际、市场定位的三元组</returns>
     private static (string Architecture, int Generation, string Tier) ParseAmdCpu(string lowerName, string fullName)
     {
         var arch = "AMD 未知架构";
@@ -295,6 +341,11 @@ public class CpuIdentifier
         return (arch, generation, tier);
     }
 
+    /// <summary>
+    /// 根据 AMD CPU 代次获取架构名称
+    /// </summary>
+    /// <param name="generation">CPU 代次</param>
+    /// <returns>架构名称</returns>
     private static string GetAmdArchName(int generation)
     {
         return generation switch
@@ -313,8 +364,14 @@ public class CpuIdentifier
     }
 
     /// <summary>
-    /// 计算综合性能评分（0-100，基于核心数、频率、定位）
+    /// 计算 CPU 综合性能评分（0-100）
+    /// 基于物理核心数、逻辑核心数、主频与市场定位综合计算
     /// </summary>
+    /// <param name="physicalCores">物理核心数</param>
+    /// <param name="logicalCores">逻辑核心数</param>
+    /// <param name="maxClockMHz">最高主频（MHz）</param>
+    /// <param name="tier">市场定位</param>
+    /// <returns>性能评分（0-100）</returns>
     private static double CalculatePerformanceScore(int physicalCores, int logicalCores, uint maxClockMHz, string tier)
     {
         if (physicalCores == 0) physicalCores = logicalCores;
@@ -339,7 +396,8 @@ public class CpuIdentifier
     }
 
     /// <summary>
-    /// 清除缓存，强制重新识别
+    /// 清除 CPU 信息缓存
+    /// 强制下一次获取时重新识别
     /// </summary>
     public void InvalidateCache()
     {

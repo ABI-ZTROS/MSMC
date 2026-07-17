@@ -1,6 +1,11 @@
-// 🔍 服务器检测页面的 Code-Behind
-// 页面级入场动画由 code-behind 控制，跟随 ThemeService 设置
-// 列表项点击事件也在此处理（避免复杂 binding 逻辑）
+// -----------------------------------------------------------------------------
+// 文件名: ServerDetectionPage.xaml.cs
+// 命名空间: McServerGuard.Views
+// 功能描述: 服务器检测页面代码隐藏类，负责页面入场动画控制及列表项交互事件处理。
+//           列表项点击选中逻辑在此处理以避免复杂的绑定路由。
+// 依赖组件: PresentationFramework, System.Windows.Input
+// 设计模式: 代码隐藏模式
+// -----------------------------------------------------------------------------
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -13,6 +18,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace McServerGuard.Views;
 
+/// <summary>
+/// 服务器检测页面代码隐藏类。
+/// 负责页面级入场动画控制，以及运行中服务器列表、已知服务器列表的
+/// 鼠标点击选中交互与搜索框清空操作。
+/// </summary>
 public partial class ServerDetectionPage : UserControl
 {
     private readonly IThemeService _themeService;
@@ -25,9 +35,10 @@ public partial class ServerDetectionPage : UserControl
         Loaded += OnLoaded;
     }
 
+    // 页面 Loaded 事件处理：首次加载触发入场动画，重复加载直接显示
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // 防止 Loaded 重复触发（Tab 切换/布局变化都会触发）导致页面被反复设为透明
+        // 防止 Loaded 重复触发（Tab 切换/布局变化均会触发）导致页面反复被重置为透明
         if (_animationPlayed)
         {
             Opacity = 1;
@@ -43,7 +54,8 @@ public partial class ServerDetectionPage : UserControl
     }
 
     /// <summary>
-    /// 🖱️ 点击运行中服务器项 → 设为当前选中
+    /// 运行中服务器列表项鼠标左键释放事件处理：
+    /// 从 FrameworkElement.Tag 中提取 ServerInstance 并设为当前选中项。
     /// </summary>
     private void RunningItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
@@ -56,7 +68,8 @@ public partial class ServerDetectionPage : UserControl
     }
 
     /// <summary>
-    /// 🖱️ 点击已知服务器项 → 设为当前选中
+    /// 已知服务器列表项鼠标左键释放事件处理：
+    /// 从 FrameworkElement.Tag 中提取 KnownServer 并设为当前选中项。
     /// </summary>
     private void KnownItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
@@ -69,7 +82,7 @@ public partial class ServerDetectionPage : UserControl
     }
 
     /// <summary>
-    /// 🧹 清空搜索关键字
+    /// 清除搜索按钮点击事件处理：清空搜索关键字文本。
     /// </summary>
     private void ClearSearch_Click(object sender, RoutedEventArgs e)
     {

@@ -1,72 +1,228 @@
+// -----------------------------------------------------------------------------
+// 文件名: JvmArgumentConstants.cs
+// 命名空间: McServerGuard.Constants
+// 功能描述: JVM 参数定义与常量集合，提供参数元数据、分类及查找能力
+// 依赖组件: System.Linq
+// 设计模式: 常量容器 + 策略模式参数定义 + 规范化查找
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Constants;
 
+/// <summary>
+/// JVM 参数值类型枚举，表示参数值的数据类型。
+/// 用于 UI 编辑控件的选择与输入校验。
+/// </summary>
 public enum ArgumentValueType
 {
+    /// <summary>
+    /// 无值类型，纯标志位参数。
+    /// </summary>
     None,
+
+    /// <summary>
+    /// 数值类型，整数或浮点数。
+    /// </summary>
     Number,
+
+    /// <summary>
+    /// 内存大小类型，支持 K/M/G 等单位后缀。
+    /// </summary>
     MemorySize,
+
+    /// <summary>
+    /// 布尔标志类型，+ 启用 / - 禁用。
+    /// </summary>
     BooleanFlag,
+
+    /// <summary>
+    /// 字符串类型，任意文本值。
+    /// </summary>
     String,
+
+    /// <summary>
+    /// 枚举类型，仅支持预定义的取值集合。
+    /// </summary>
     Enum
 }
 
+/// <summary>
+/// JVM 参数分类枚举，用于参数的分组展示与筛选。
+/// </summary>
 public enum ArgumentCategory
 {
+    /// <summary>
+    /// 内存相关参数。
+    /// </summary>
     Memory,
+
+    /// <summary>
+    /// 垃圾回收相关参数。
+    /// </summary>
     GarbageCollection,
+
+    /// <summary>
+    /// 性能调优相关参数。
+    /// </summary>
     Performance,
+
+    /// <summary>
+    /// 编码相关参数。
+    /// </summary>
     Encoding,
+
+    /// <summary>
+    /// 安全相关参数。
+    /// </summary>
     Security,
+
+    /// <summary>
+    /// 调试相关参数。
+    /// </summary>
     Debug,
+
+    /// <summary>
+    /// 服务器行为相关参数。
+    /// </summary>
     ServerBehavior,
+
+    /// <summary>
+    /// 其他未分类参数。
+    /// </summary>
     Other
 }
 
+/// <summary>
+/// JVM 参数定义数据契约，封装单个 JVM 参数的完整元数据。
+/// 包含参数标志、名称、描述、值类型、取值范围及推荐状态等信息。
+/// 作为参数配置模块的核心数据模型。
+/// </summary>
 public class JvmArgumentDefinition
 {
+    /// <summary>
+    /// JVM 参数标志字符串。
+    /// 例如 "-Xmx"、"-XX:+UseG1GC"。
+    /// </summary>
     public string Flag { get; init; } = string.Empty;
+
+    /// <summary>
+    /// 参数的本地化显示名称。
+    /// </summary>
     public string Name { get; init; } = string.Empty;
+
+    /// <summary>
+    /// 参数的功能描述文本。
+    /// 说明参数的作用与适用场景。
+    /// </summary>
     public string Description { get; init; } = string.Empty;
+
+    /// <summary>
+    /// 参数值的数据类型。
+    /// 决定 UI 编辑控件的类型。
+    /// </summary>
     public ArgumentValueType ValueType { get; init; }
+
+    /// <summary>
+    /// 参数所属分类。
+    /// 用于分组展示与筛选。
+    /// </summary>
     public ArgumentCategory Category { get; init; }
+
+    /// <summary>
+    /// 参数的默认值。
+    /// 为 null 表示无默认值。
+    /// </summary>
     public string? DefaultValue { get; init; }
+
+    /// <summary>
+    /// 参数的最小允许值。
+    /// 为 null 表示无下限约束。
+    /// </summary>
     public string? MinimumValue { get; init; }
+
+    /// <summary>
+    /// 参数的最大允许值。
+    /// 为 null 表示无上限约束。
+    /// </summary>
     public string? MaximumValue { get; init; }
+
+    /// <summary>
+    /// 参数的允许取值集合。
+    /// 仅枚举类型参数有效，为 null 表示无枚举限制。
+    /// </summary>
     public string[]? AllowedValues { get; init; }
+
+    /// <summary>
+    /// 指示是否为推荐参数。
+    /// 推荐参数在 UI 中高亮或置顶显示。
+    /// </summary>
     public bool Recommended { get; init; }
+
+    /// <summary>
+    /// 参数的警告信息。
+    /// 描述使用该参数的注意事项或潜在风险。
+    /// 为 null 表示无警告。
+    /// </summary>
     public string? Warning { get; init; }
 
     /// <summary>
-    /// 是否为实验性参数，需要 -XX:+UnlockExperimentalVMOptions 才能使用。
-    /// JVM 要求 UnlockExperimentalVMOptions 必须出现在实验性参数之前。
+    /// 指示是否为实验性参数。
+    /// 实验性参数需要 -XX:+UnlockExperimentalVMOptions 前置启用。
+    /// JVM 规范要求 UnlockExperimentalVMOptions 必须出现在实验性参数之前。
     /// </summary>
     public bool RequiresExperimentalUnlock { get; init; }
 }
 
+/// <summary>
+/// JVM 参数常量容器类，提供常用 JVM 参数标志定义与完整参数元数据集合。
+/// 包含参数分类查询、推荐参数筛选及标志查找等辅助方法。
+/// </summary>
 public static class JvmArgumentConstants
 {
+    /// <summary>
+    /// 内存参数标志常量。
+    /// 用于从命令行中解析内存配置。
+    /// </summary>
     public const string InitialHeapMemory = "-Xms";
     public const string MaxHeapMemory = "-Xmx";
     public const string MetaspaceSize = "-XX:MetaspaceSize=";
     public const string MaxMetaspaceSize = "-XX:MaxMetaspaceSize=";
 
+    /// <summary>
+    /// 垃圾回收器选择标志常量。
+    /// 用于识别当前使用的 GC 类型。
+    /// </summary>
     public const string G1GC = "-XX:+UseG1GC";
     public const string ZGC = "-XX:+UseZGC";
     public const string ShenandoahGC = "-XX:+UseShenandoahGC";
     public const string ParallelGC = "-XX:+UseParallelGC";
 
+    /// <summary>
+    /// Aikar 参数标识常量。
+    /// 用于判定是否使用 Aikar 推荐参数集。
+    /// </summary>
     public const string AikarFlagIdentifier = "-Dusing.aikars.flags=";
     public const string AikarNewFlagIdentifier = "-Daikars.new.flags=true";
 
+    /// <summary>
+    /// JVM 参数前缀与模式常量。
+    /// 用于参数解析与规范化处理。
+    /// </summary>
     public const string JvmFlagPrefix = "-XX:";
     public const string SystemPropertyPrefix = "-D";
     public const string GcLogPatternLegacy = "-Xloggc:";
     public const string GcLogPatternModern = "-Xlog:gc*";
 
+    /// <summary>
+    /// 服务器启动相关标志常量。
+    /// 用于识别 nogui 模式与 -jar 参数。
+    /// </summary>
     public const string NoGuiLegacy = "nogui";
     public const string NoGuiModern = "--nogui";
     public const string JarFlag = "-jar";
 
+    /// <summary>
+    /// 全部 JVM 参数定义集合。
+    /// 包含内存、GC、性能、安全等各分类的参数元数据。
+    /// </summary>
     public static readonly List<JvmArgumentDefinition> AllArguments =
     [
         new()
@@ -437,16 +593,31 @@ public static class JvmArgumentConstants
         }
     ];
 
+    /// <summary>
+    /// 按分类筛选 JVM 参数定义。
+    /// </summary>
+    /// <param name="category">参数分类</param>
+    /// <returns>指定分类下的所有参数定义列表</returns>
     public static List<JvmArgumentDefinition> GetArgumentsByCategory(ArgumentCategory category)
     {
         return AllArguments.Where(a => a.Category == category).ToList();
     }
 
+    /// <summary>
+    /// 获取所有推荐的 JVM 参数定义。
+    /// </summary>
+    /// <returns>推荐参数定义列表</returns>
     public static List<JvmArgumentDefinition> GetRecommendedArguments()
     {
         return AllArguments.Where(a => a.Recommended).ToList();
     }
 
+    /// <summary>
+    /// 根据参数标志查找对应的参数定义。
+    /// 支持精确匹配、前缀匹配与反向前缀匹配三种策略。
+    /// </summary>
+    /// <param name="flag">参数标志字符串</param>
+    /// <returns>匹配的参数定义，未找到时返回 null</returns>
     public static JvmArgumentDefinition? FindByFlag(string flag)
     {
         if (string.IsNullOrWhiteSpace(flag))
@@ -454,38 +625,35 @@ public static class JvmArgumentConstants
 
         var normalized = NormalizeFlagForLookup(flag);
 
-        // 1. 精确匹配（规范化后）
         var exact = AllArguments.FirstOrDefault(a =>
             NormalizeFlagForLookup(a.Flag).Equals(normalized, StringComparison.OrdinalIgnoreCase));
         if (exact != null) return exact;
 
-        // 2. 前缀匹配：参数名以输入开头（如输入 "UseG1GC" 匹配 "-XX:+UseG1GC"）
         var prefix = AllArguments.FirstOrDefault(a =>
             NormalizeFlagForLookup(a.Flag).StartsWith(normalized, StringComparison.OrdinalIgnoreCase));
         if (prefix != null) return prefix;
 
-        // 3. 反向前缀匹配：输入以参数名开头（如输入 "-XX:+UseG1GC -Xmx4G" 匹配 "-XX:+UseG1GC"）
         return AllArguments.FirstOrDefault(a =>
             normalized.StartsWith(NormalizeFlagForLookup(a.Flag), StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
-    /// 规范化 Flag 用于查找匹配 —— 去掉各种 JVM 前缀噪音
+    /// 规范化 JVM 参数标志用于查找匹配。
+    /// 移除 -XX:+/-、-XX:、-X、-/+ 等前缀噪音，保留核心参数名。
     /// </summary>
+    /// <param name="flag">原始参数标志</param>
+    /// <returns>规范化后的参数名</returns>
     private static string NormalizeFlagForLookup(string flag)
     {
         var s = flag.Trim();
-        // 去掉 -XX:+ / -XX:- / -XX: 前缀
         if (s.StartsWith("-XX:+", StringComparison.OrdinalIgnoreCase))
             s = s[5..];
         else if (s.StartsWith("-XX:-", StringComparison.OrdinalIgnoreCase))
             s = s[5..];
         else if (s.StartsWith("-XX:", StringComparison.OrdinalIgnoreCase))
             s = s[4..];
-        // 去掉 -Xms / -Xmx / -Xss / -Xmn 的 -X 前缀（保留 ms/mx/ss/mn）
         else if (s.StartsWith("-X", StringComparison.OrdinalIgnoreCase) && s.Length > 2)
             s = s[2..];
-        // 去掉单 - 或 + 前缀
         else if (s.StartsWith('-') || s.StartsWith('+'))
             s = s[1..];
         return s;

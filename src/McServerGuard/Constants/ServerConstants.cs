@@ -1,11 +1,70 @@
+// -----------------------------------------------------------------------------
+// 文件名: ServerConstants.cs
+// 命名空间: McServerGuard.Constants
+// 功能描述: 服务器类型与识别常量定义，提供服务端指纹识别与配置文件模式
+// 依赖组件: 无
+// 设计模式: 常量容器 + 判别式枚举
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Constants;
 
-// 🎮 Minecraft 服务器类型 —— 咱得知道对方是什么来头
-public enum ServerType { Unknown, Vanilla, Spigot, Paper, Forge, Fabric, Bukkit, Folia }
+/// <summary>
+/// Minecraft 服务器类型枚举，作为服务端核心品牌的判别式。
+/// 用于标识不同发行版的服务端软件，覆盖主流的 Mod 端与插件端。
+/// </summary>
+public enum ServerType
+{
+    /// <summary>
+    /// 未知类型，尚未判定或无法识别。
+    /// </summary>
+    Unknown,
 
+    /// <summary>
+    /// 原版（Vanilla）服务端，Mojang 官方发布。
+    /// </summary>
+    Vanilla,
+
+    /// <summary>
+    /// Spigot 服务端，高性能插件服务端。
+    /// </summary>
+    Spigot,
+
+    /// <summary>
+    /// Paper 服务端，基于 Spigot 的优化分支。
+    /// </summary>
+    Paper,
+
+    /// <summary>
+    /// Forge 服务端，Mod 加载器服务端。
+    /// </summary>
+    Forge,
+
+    /// <summary>
+    /// Fabric 服务端，轻量级 Mod 加载器服务端。
+    /// </summary>
+    Fabric,
+
+    /// <summary>
+    /// Bukkit 服务端，经典插件 API 服务端。
+    /// </summary>
+    Bukkit,
+
+    /// <summary>
+    /// Folia 服务端，基于 Paper 的多线程区域化服务端。
+    /// </summary>
+    Folia
+}
+
+/// <summary>
+/// 服务器常量容器类，提供服务端识别指纹与配置文件模式。
+/// 包含 JAR 文件名模式、进程标识特征、配置文件清单等识别依据。
+/// </summary>
 public static class ServerConstants
 {
-    // 🔍 各大门派的 JAR 文件名特征（用来从进程命令行里辨认身份）
+    /// <summary>
+    /// 各类型服务器核心 JAR 文件的文件名模式。
+    /// 用于从进程命令行中识别服务器类型。
+    /// 采用通配符匹配规则。
+    /// </summary>
     public static readonly string[] VanillaJarPatterns = ["minecraft_server.*.jar", "server.jar"];
     public static readonly string[] SpigotJarPatterns = ["spigot-*.jar", "spigot.jar"];
     public static readonly string[] PaperJarPatterns = ["paper-*.jar", "paper.jar"];
@@ -14,14 +73,30 @@ public static class ServerConstants
     public static readonly string[] BukkitJarPatterns = ["craftbukkit-*.jar"];
     public static readonly string[] FoliaJarPatterns = ["folia-*.jar", "folia.jar"];
 
-    // 📋 服务器核心关键词（只要 JAR 名字里包含这些，就判定为服务器而非客户端）
+    /// <summary>
+    /// 服务器 JAR 文件关键词列表。
+    /// 用于从进程命令行中快速判定 JAR 是否为服务端而非客户端。
+    /// 只要 JAR 名称包含其中任一关键词即判定为服务器。
+    /// </summary>
     public static readonly string[] ServerJarKeywords = ["minecraft_server", "server", "spigot", "paper", "forge", "fabric-server-launch", "craftbukkit", "folia"];
 
-    // 🚫 这些是客户端进程的标志 —— 遇到就跳过，别把人家客户端当服务器了
+    /// <summary>
+    /// 服务端进程标识特征。
+    /// 命令行中包含这些参数时，强化服务端判定。
+    /// </summary>
     public static readonly string[] ServerProcessMarkers = ["nogui", "--nogui"];
+
+    /// <summary>
+    /// 客户端进程标识特征。
+    /// 命令行中包含这些参数时，排除服务端判定。
+    /// </summary>
     public static readonly string[] ClientProcessMarkers = ["--version", "--accessToken", "--userType", "--assetsDir"];
 
-    // 📁 各类型服务器的"身份证"文件组合
+    /// <summary>
+    /// 各类型服务器的特征配置文件映射。
+    /// 通过检测目录下是否存在特定文件组合，辅助判定服务器类型。
+    /// 键为服务器类型，值为该类型特有的文件或目录路径数组。
+    /// </summary>
     public static readonly Dictionary<ServerType, string[]> TypeIndicatorFiles = new()
     {
         [ServerType.Vanilla] = [],
@@ -33,14 +108,41 @@ public static class ServerConstants
         [ServerType.Folia] = ["config/paper-global.yml", "config/folia-global.yml"],
     };
 
-    // 📄 所有服务器共有的配置文件
+    /// <summary>
+    /// 所有服务器共有的标准配置文件列表。
+    /// 包含 server.properties 及权限、封禁等标准配置文件。
+    /// </summary>
     public static readonly string[] CommonConfigFiles = ["server.properties", "eula.txt", "ops.json", "whitelist.json", "banned-players.json", "banned-ips.json", "permissions.yml", "commands.yml"];
+
+    /// <summary>
+    /// Spigot 特有的配置文件列表。
+    /// </summary>
     public static readonly string[] SpigotConfigFiles = ["spigot.yml", "bukkit.yml"];
+
+    /// <summary>
+    /// Paper 特有的配置文件列表。
+    /// </summary>
     public static readonly string[] PaperConfigFiles = ["config/paper-global.yml", "config/paper-world-defaults.yml"];
+
+    /// <summary>
+    /// Forge 特有的配置文件与目录列表。
+    /// </summary>
     public static readonly string[] ForgeConfigFiles = ["server.toml", "forge-server.toml", "mods/"];
+
+    /// <summary>
+    /// Fabric 特有的配置文件与目录列表。
+    /// </summary>
     public static readonly string[] FabricConfigFiles = ["fabric-server-launch.properties", "mods/", ".fabric/"];
 
-    // 🏷️ 最关键的那个文件 —— 有它就是服务器目录，没它...你走错门了
+    /// <summary>
+    /// 服务器目录验证文件名。
+    /// 存在该文件的目录被判定为有效服务器目录。
+    /// </summary>
     public const string ServerValidationFile = "server.properties";
+
+    /// <summary>
+    /// Minecraft 服务器默认监听端口号。
+    /// 标准值为 25565。
+    /// </summary>
     public const int DefaultServerPort = 25565;
 }

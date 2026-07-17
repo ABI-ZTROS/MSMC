@@ -1,4 +1,10 @@
-// 🧹 内存优化服务 —— "定期打扫卫生，让程序轻装上阵"
+// -----------------------------------------------------------------------------
+// 文件名: MemoryOptimizerService.cs
+// 命名空间: McServerGuard.Services
+// 功能描述: 提供应用内存优化与监控服务，支持定时 GC、阈值触发深度回收、LOH 压缩
+// 依赖组件: System.Runtime, System.Windows.Threading, Serilog
+// 设计模式: 单例模式（DI容器注册）、观察者模式（系统内存事件监听）
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Services;
 
 using System.Runtime;
@@ -8,18 +14,39 @@ using Serilog;
 
 /// <summary>
 /// 内存优化服务
-/// - 定期触发 GC 回收
-/// - 监控应用内存占用，超过阈值时强制执行深度回收
-/// - 响应系统内存不足事件
-/// - 支持 Trim 大对象堆（LOH）
+/// 提供定时垃圾回收、内存占用监控、系统内存不足事件响应等功能
+/// 支持大对象堆（LOH）压缩与工作集整理
 /// </summary>
 public class MemoryOptimizerService : IDisposable
 {
+    /// <summary>
+    /// 定时优化定时器
+    /// </summary>
     private readonly DispatcherTimer _optimizeTimer;
+
+    /// <summary>
+    /// 内存监控定时器
+    /// </summary>
     private readonly DispatcherTimer _memoryMonitorTimer;
+
+    /// <summary>
+    /// GC 执行锁，防止并发回收
+    /// </summary>
     private readonly object _gcLock = new();
+
+    /// <summary>
+    /// 是否正在执行优化
+    /// </summary>
     private bool _isOptimizing;
+
+    /// <summary>
+    /// 上次回收后的内存占用（字节）
+    /// </summary>
     private long _lastMemoryBytes;
+
+    /// <summary>
+    /// 上次完整回收时间
+    /// </summary>
     private DateTime _lastCollectTime = DateTime.MinValue;
 
     /// <summary>
@@ -29,7 +56,7 @@ public class MemoryOptimizerService : IDisposable
 
     /// <summary>
     /// 内存优化阈值（MB），超过此值触发深度回收
-    /// 默认 500MB
+    /// 默认值：500MB
     /// </summary>
     public double MemoryThresholdMB { get; set; } = 500;
 
@@ -38,6 +65,10 @@ public class MemoryOptimizerService : IDisposable
     /// </summary>
     public bool AutoOptimizeEnabled { get; set; } = true;
 
+    /// <summary>
+    /// 初始化内存优化服务
+    /// 配置定时器、注册系统 GC 通知、绑定应用退出事件
+    /// </summary>
     public MemoryOptimizerService()
     {
         Log.Information("🧹 MemoryOptimizerService 初始化");
@@ -64,6 +95,10 @@ public class MemoryOptimizerService : IDisposable
         Application.Current.Exit += OnApplicationExit;
     }
 
+    /// <summary>
+    /// 启动内存优化服务
+    /// 启动定时优化与内存监控定时器
+    /// </summary>
     public void Start()
     {
         _optimizeTimer.Start();
@@ -71,6 +106,10 @@ public class MemoryOptimizerService : IDisposable
         Log.Information("🧹 内存优化服务已启动");
     }
 
+    /// <summary>
+    /// 停止内存优化服务
+    /// 停止定时优化与内存监控定时器
+    /// </summary>
     public void Stop()
     {
         _optimizeTimer.Stop();
@@ -81,7 +120,7 @@ public class MemoryOptimizerService : IDisposable
     /// <summary>
     /// 强制执行垃圾回收
     /// </summary>
-    /// <param name="deep">是否深度回收（压缩 LOH + 等待完成）</param>
+    /// <param name="deep">是否深度回收（压缩 LOH + 等待终结器完成）</param>
     public void ForceGC(bool deep = false)
     {
         lock (_gcLock)
@@ -140,8 +179,8 @@ public class MemoryOptimizerService : IDisposable
     }
 
     /// <summary>
-    /// 尝试减少工作集（Working Set）
-    /// 通知操作系统可以将部分内存换出到页面文件
+    /// 尝试减少进程工作集（Working Set）
+    /// 通知操作系统可将部分物理内存换出到页面文件
     /// </summary>
     public void TrimWorkingSet()
     {
@@ -170,6 +209,12 @@ public class MemoryOptimizerService : IDisposable
         }
     }
 
+    /// <summary>
+    /// 定时优化定时器回调
+    /// 执行轻量回收，定期执行深度回收与工作集整理
+    /// </summary>
+    /// <param name="sender">事件源</param>
+    /// <param name="e">事件参数</param>
     private void OnOptimizeTimerTick(object? sender, EventArgs e)
     {
         if (!AutoOptimizeEnabled) return;
@@ -185,6 +230,12 @@ public class MemoryOptimizerService : IDisposable
         }
     }
 
+    /// <summary>
+    /// 内存监控定时器回调
+    /// 检测内存占用是否超过阈值，超限时触发深度回收
+    /// </summary>
+    /// <param name="sender">事件源</param>
+    /// <param name="e">事件参数</param>
     private void OnMemoryMonitorTimerTick(object? sender, EventArgs e)
     {
         if (!AutoOptimizeEnabled) return;
@@ -210,6 +261,7 @@ public class MemoryOptimizerService : IDisposable
 
     /// <summary>
     /// 监控完整 GC 通知（后台线程）
+    /// 监听系统即将触发完整 GC 的事件，提前执行工作集整理
     /// </summary>
     private async void MonitorFullGCNotification()
     {
@@ -238,12 +290,20 @@ public class MemoryOptimizerService : IDisposable
         }
     }
 
+    /// <summary>
+    /// 应用程序退出事件处理
+    /// </summary>
+    /// <param name="sender">事件源</param>
+    /// <param name="e">退出事件参数</param>
     private void OnApplicationExit(object sender, ExitEventArgs e)
     {
         Log.Information("🧹 应用退出，停止内存优化服务");
         Stop();
     }
 
+    /// <summary>
+    /// 释放资源
+    /// </summary>
     public void Dispose()
     {
         Stop();
@@ -251,10 +311,17 @@ public class MemoryOptimizerService : IDisposable
     }
 
     /// <summary>
-    /// 本地 P/Invoke 方法
+    /// 本地 P/Invoke 方法封装
     /// </summary>
     private static class NativeMethods
     {
+        /// <summary>
+        /// 设置进程工作集大小
+        /// </summary>
+        /// <param name="proc">进程句柄</param>
+        /// <param name="min">最小工作集大小</param>
+        /// <param name="max">最大工作集大小</param>
+        /// <returns>是否执行成功</returns>
         [System.Runtime.InteropServices.DllImport("kernel32.dll")]
         public static extern bool SetProcessWorkingSetSize(
             IntPtr proc,

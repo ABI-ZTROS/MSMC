@@ -1,18 +1,23 @@
-// 💾 磁盘空间监控器 —— 关注你硬盘的剩余空间
-// 磁盘满了可比服务器崩溃可怕多了 —— 至少服务器还能重启 💀
+// -----------------------------------------------------------------------------
+// 文件名: DiskSpaceMonitor.cs
+// 命名空间: McServerGuard.Services.SystemMonitoring
+// 功能描述: 磁盘空间监控器，采集指定驱动器的存储空间使用情况
+// 依赖组件: System.IO, Serilog
+// 设计模式: 快照模式、单一职责原则
+// -----------------------------------------------------------------------------
 namespace McServerGuard.Services.SystemMonitoring;
 
 using System.IO;
 using Serilog;
 
 /// <summary>
-/// 磁盘信息 record —— 磁盘使用情况的快照
+/// 磁盘信息记录 —— 磁盘存储空间使用情况的瞬时快照
 /// </summary>
-/// <param name="DriveName">盘符/挂载点名称</param>
-/// <param name="TotalBytes">总空间（字节）</param>
-/// <param name="FreeBytes">剩余空间（字节）</param>
-/// <param name="UsedBytes">已用空间（字节）</param>
-/// <param name="UsagePercent">使用率百分比</param>
+/// <param name="DriveName">盘符或挂载点名称</param>
+/// <param name="TotalBytes">总空间容量（字节）</param>
+/// <param name="FreeBytes">剩余可用空间（字节）</param>
+/// <param name="UsedBytes">已使用空间（字节）</param>
+/// <param name="UsagePercent">空间使用率百分比</param>
 public record DiskInfo(
     string DriveName,
     long TotalBytes,
@@ -22,24 +27,25 @@ public record DiskInfo(
 );
 
 /// <summary>
-/// 磁盘空间监控器 —— 查看指定盘符的存储空间使用情况
+/// 磁盘空间监控器
 /// </summary>
+/// <remarks>
+/// 基于 .NET 内置的 <see cref="DriveInfo"/> 类实现，具备跨平台兼容性。
+/// 提供指定驱动器的总空间、已用空间、剩余空间及使用率等指标。
+/// </remarks>
 public class DiskSpaceMonitor
 {
     /// <summary>
-    /// 获取指定磁盘/挂载点的空间信息
-    /// 返回一个 DiskInfo record，包含总空间、已用空间、剩余空间和使用率
+    /// 获取指定磁盘或挂载点的空间信息
     /// </summary>
     /// <param name="driveRoot">磁盘根路径，如 "C:\" 或 "/"</param>
-    /// <returns>磁盘信息</returns>
+    /// <returns>磁盘信息快照；驱动器未就绪或获取失败时返回零值对象</returns>
     public DiskInfo GetDiskInfo(string driveRoot)
     {
-        // 日志：获取磁盘信息入口
-        Log.Debug("📀 获取磁盘信息: {Drive}", driveRoot);
+        Log.Debug("获取磁盘信息: {Drive}", driveRoot);
 
         try
         {
-            // DriveInfo 是 .NET 内置的，跨平台兼容，不用怕
             var drive = new DriveInfo(driveRoot);
 
             if (!drive.IsReady)
@@ -61,8 +67,7 @@ public class DiskSpaceMonitor
                 ? Math.Round((double)usedBytes / totalBytes * 100, 2)
                 : 0;
 
-            // 日志：磁盘信息结果
-            Log.Debug("📊 磁盘 {Name}: {Used}/{Total} ({Pct}%)",
+            Log.Debug("磁盘 {Name}: {Used}/{Total} ({Pct}%)",
                 driveRoot, usedBytes, totalBytes, usagePercent);
 
             return new DiskInfo(
@@ -75,8 +80,7 @@ public class DiskSpaceMonitor
         }
         catch (Exception ex)
         {
-            // 日志：获取磁盘信息失败
-            Log.Error(ex, "💥 fuck: 获取磁盘信息失败 {Drive}: {Message}", driveRoot, ex.Message);
+            Log.Error(ex, "获取磁盘信息失败 {Drive}: {Message}", driveRoot, ex.Message);
             return new DiskInfo(
                 DriveName: driveRoot,
                 TotalBytes: 0,
