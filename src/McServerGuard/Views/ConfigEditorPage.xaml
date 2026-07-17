@@ -351,18 +351,18 @@
                 </Grid>
             </Border>
 
-            <!-- ═══ 📝 配置项：按分类分组的 Expander 列表（虚拟化） ═══ -->
+            <!-- ═══ 📝 配置项：按分类分组的 Expander 列表 ═══ -->
+            <!-- 注意：禁用虚拟化以避免 VirtualizingStackPanel 布局异常 -->
+            <!-- 配置项数量 < 100，虚拟化收益低但风险高 -->
             <ListBox Grid.Row="1"
                      ItemsSource="{Binding GroupedConfigEntries}"
                      Background="Transparent"
                      BorderThickness="0"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     VirtualizingPanel.IsVirtualizing="True"
-                     VirtualizingPanel.VirtualizationMode="Recycling"
-                     VirtualizingPanel.ScrollUnit="Pixel">
+                     VirtualizingPanel.IsVirtualizing="False">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <VirtualizingStackPanel />
+                        <StackPanel />
                     </ItemsPanelTemplate>
                 </ListBox.ItemsPanel>
                 <ListBox.ItemContainerStyle>

@@ -34,11 +34,20 @@ public static class AnimationHelper
         var duration = TimeSpan.FromMilliseconds(durationMs);
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
-        var opacityAnim = new DoubleAnimation(1, duration) { EasingFunction = ease };
-        var yAnim = new DoubleAnimation(0, duration) { EasingFunction = ease };
+        var opacityAnim = new DoubleAnimation(1, duration)
+        {
+            EasingFunction = ease,
+            FillBehavior = FillBehavior.Stop
+        };
+        var yAnim = new DoubleAnimation(0, duration)
+        {
+            EasingFunction = ease,
+            FillBehavior = FillBehavior.Stop
+        };
+        yAnim.Completed += (_, _) => translate.Y = 0;
 
-        element.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
-        translate.BeginAnimation(TranslateTransform.YProperty, yAnim);
+        element.BeginAnimation(UIElement.OpacityProperty, opacityAnim, HandoffBehavior.SnapshotAndReplace);
+        translate.BeginAnimation(TranslateTransform.YProperty, yAnim, HandoffBehavior.SnapshotAndReplace);
     }
 
     /// <summary>
@@ -59,11 +68,20 @@ public static class AnimationHelper
         var duration = TimeSpan.FromMilliseconds(durationMs);
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
-        var opacityAnim = new DoubleAnimation(1, duration) { EasingFunction = ease };
-        var xAnim = new DoubleAnimation(0, duration) { EasingFunction = ease };
+        var opacityAnim = new DoubleAnimation(1, duration)
+        {
+            EasingFunction = ease,
+            FillBehavior = FillBehavior.Stop
+        };
+        var xAnim = new DoubleAnimation(0, duration)
+        {
+            EasingFunction = ease,
+            FillBehavior = FillBehavior.Stop
+        };
+        xAnim.Completed += (_, _) => translate.X = 0;
 
-        element.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
-        translate.BeginAnimation(TranslateTransform.XProperty, xAnim);
+        element.BeginAnimation(UIElement.OpacityProperty, opacityAnim, HandoffBehavior.SnapshotAndReplace);
+        translate.BeginAnimation(TranslateTransform.XProperty, xAnim, HandoffBehavior.SnapshotAndReplace);
     }
 
     /// <summary>
@@ -80,9 +98,11 @@ public static class AnimationHelper
         element.Opacity = 0;
         var anim = new DoubleAnimation(1, TimeSpan.FromMilliseconds(durationMs))
         {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            FillBehavior = FillBehavior.Stop
         };
-        element.BeginAnimation(UIElement.OpacityProperty, anim);
+        anim.Completed += (_, _) => element.Opacity = 1;
+        element.BeginAnimation(UIElement.OpacityProperty, anim, HandoffBehavior.SnapshotAndReplace);
     }
 
     /// <summary>
@@ -103,26 +123,28 @@ public static class AnimationHelper
         var halfMs = durationMs / 2;
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
-        // 淡出旧的
         if (oldElement != null)
         {
             var fadeOut = new DoubleAnimation(0, TimeSpan.FromMilliseconds(halfMs))
             {
-                EasingFunction = ease
+                EasingFunction = ease,
+                FillBehavior = FillBehavior.Stop
             };
-            oldElement.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+            fadeOut.Completed += (_, _) => oldElement.Opacity = 0;
+            oldElement.BeginAnimation(UIElement.OpacityProperty, fadeOut, HandoffBehavior.SnapshotAndReplace);
         }
 
-        // 淡入新的（延迟半程）
         if (newElement != null)
         {
             newElement.Opacity = 0;
             var fadeIn = new DoubleAnimation(1, TimeSpan.FromMilliseconds(halfMs))
             {
                 BeginTime = TimeSpan.FromMilliseconds(halfMs),
-                EasingFunction = ease
+                EasingFunction = ease,
+                FillBehavior = FillBehavior.Stop
             };
-            newElement.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+            fadeIn.Completed += (_, _) => newElement.Opacity = 1;
+            newElement.BeginAnimation(UIElement.OpacityProperty, fadeIn, HandoffBehavior.SnapshotAndReplace);
         }
     }
 }

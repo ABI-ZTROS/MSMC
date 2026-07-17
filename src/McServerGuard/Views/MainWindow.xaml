@@ -58,7 +58,7 @@
             <RowDefinition Height="Auto" />  <!-- 📊 底部状态栏 -->
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="56" x:Name="NavColumn" /> <!-- 🧭 导航面板（可自动展开/折叠） -->
+            <ColumnDefinition Width="Auto" /> <!-- 🧭 导航面板（可自动展开/折叠） -->
             <ColumnDefinition Width="*" />    <!-- 📄 主内容区 -->
         </Grid.ColumnDefinitions>
 
@@ -133,9 +133,7 @@
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1" Grid.Column="0"
                 x:Name="NavSidebar"
-                Width="240"
-                HorizontalAlignment="Left"
-                Panel.ZIndex="10"
+                Width="56"
                 SnapsToDevicePixels="True"
                 Background="{DynamicResource CardBackgroundBrush}"
                 BorderBrush="{DynamicResource CardSubtleBorderBrush}"
@@ -146,7 +144,7 @@
                 <RectangleGeometry x:Name="NavSidebarClip" Rect="0,0,56,10000" />
             </Border.Clip>
 
-            <Grid Width="240">
+            <Grid Width="240" HorizontalAlignment="Left">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />

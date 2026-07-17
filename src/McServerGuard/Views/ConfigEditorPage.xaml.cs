@@ -3,6 +3,7 @@
 // 卡片级入场动画保留在 XAML Style 里（快速的视觉修饰）
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using McServerGuard.Services;
 using McServerGuard.Views.Helpers;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,9 @@ public partial class ConfigEditorPage : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         var duration = _themeService.EnableAnimations ? _themeService.AnimationDuration : 0;
-        AnimationHelper.FadeAndSlideIn(this, duration);
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            AnimationHelper.FadeAndSlideIn(this, duration);
+        });
     }
 }

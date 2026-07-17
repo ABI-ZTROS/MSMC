@@ -4,6 +4,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using McServerGuard.Models;
 using McServerGuard.Services;
 using McServerGuard.ViewModels;
@@ -26,7 +27,10 @@ public partial class ServerDetectionPage : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         var duration = _themeService.EnableAnimations ? _themeService.AnimationDuration : 0;
-        AnimationHelper.FadeAndSlideInFromLeft(this, duration);
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            AnimationHelper.FadeAndSlideInFromLeft(this, duration);
+        });
     }
 
     /// <summary>

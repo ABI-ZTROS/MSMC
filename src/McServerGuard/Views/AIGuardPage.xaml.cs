@@ -2,6 +2,7 @@
 // 这个页面只负责"好看"，像模像样的那种好看 ✨
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using McServerGuard.Services;
 using McServerGuard.Views.Helpers;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,9 @@ public partial class AIGuardPage : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         var duration = _themeService.EnableAnimations ? _themeService.AnimationDuration : 0;
-        AnimationHelper.FadeAndSlideIn(this, duration);
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            AnimationHelper.FadeAndSlideIn(this, duration);
+        });
     }
 }

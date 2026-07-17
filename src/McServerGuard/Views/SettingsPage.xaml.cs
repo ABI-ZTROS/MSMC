@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using System.Diagnostics;
 using McServerGuard.Services;
 using McServerGuard.Views.Controls;
@@ -25,7 +26,10 @@ public partial class SettingsPage : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         var duration = _themeService.EnableAnimations ? _themeService.AnimationDuration : 0;
-        AnimationHelper.FadeAndSlideIn(this, duration);
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            AnimationHelper.FadeAndSlideIn(this, duration);
+        });
     }
 
     private void PrimaryColorHex_LostFocus(object sender, RoutedEventArgs e)

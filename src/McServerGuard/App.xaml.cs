@@ -156,7 +156,27 @@ public partial class App : Application
         DispatcherUnhandledException += (sender, e) =>
         {
             Log.Fatal(e.Exception, "💥 UI 线程未处理异常");
-            e.Handled = true; // 不让程序直接崩
+
+            var isLayoutOrRenderException = IsLayoutOrRenderException(e.Exception);
+            if (isLayoutOrRenderException)
+            {
+                try
+                {
+                    Current?.MainWindow?.Dispatcher.Invoke(() =>
+                    {
+                        Current.MainWindow.UpdateLayout();
+                    }, DispatcherPriority.Background);
+                    Log.Information("🔧 布局/渲染异常，已尝试 UpdateLayout 恢复");
+                    e.Handled = true;
+                    return;
+                }
+                catch (Exception recoveryEx)
+                {
+                    Log.Error(recoveryEx, "🔧 尝试恢复布局失败");
+                }
+            }
+
+            e.Handled = true;
             ShowCrashReport(e.Exception);
         };
 
@@ -176,6 +196,23 @@ public partial class App : Application
             Log.Error(e.Exception, "⚠️ Task未观察异常（火忘了灭）");
             e.SetObserved(); // 标记已观察，不让进程崩
         };
+    }
+
+    /// <summary>
+    /// 判断异常是否为布局/渲染类异常（可尝试通过 UpdateLayout 恢复）
+    /// </summary>
+    private static bool IsLayoutOrRenderException(Exception ex)
+    {
+        if (ex is ArgumentException &&
+            (ex.StackTrace?.Contains("ContextLayoutManager") == true ||
+             ex.StackTrace?.Contains("ArrangeOverride") == true ||
+             ex.StackTrace?.Contains("RenderData") == true ||
+             ex.StackTrace?.Contains("Viewbox") == true ||
+             ex.StackTrace?.Contains("Freezable") == true))
+        {
+            return true;
+        }
+        return ex.InnerException != null && IsLayoutOrRenderException(ex.InnerException);
     }
 
     /// <summary>
