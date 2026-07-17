@@ -18,9 +18,9 @@
                 <ControlTemplate TargetType="{x:Type iconPacks:PackIconFontAwesome6}">
                     <Grid>
                         <Path Data="{TemplateBinding Data}"
-                              Fill="{TemplateBinding Fill}"
-                              Stroke="{TemplateBinding Stroke}"
-                              StrokeThickness="{TemplateBinding StrokeThickness}"
+                              Fill="{TemplateBinding Foreground}"
+                              Stroke="{TemplateBinding Foreground}"
+                              StrokeThickness="0"
                               Stretch="Uniform"
                               HorizontalAlignment="Center"
                               VerticalAlignment="Center" />
@@ -37,9 +37,9 @@
                 <ControlTemplate TargetType="{x:Type iconPacks:PackIconMaterial}">
                     <Grid>
                         <Path Data="{TemplateBinding Data}"
-                              Fill="{TemplateBinding Fill}"
-                              Stroke="{TemplateBinding Stroke}"
-                              StrokeThickness="{TemplateBinding StrokeThickness}"
+                              Fill="{TemplateBinding Foreground}"
+                              Stroke="{TemplateBinding Foreground}"
+                              StrokeThickness="0"
                               Stretch="Uniform"
                               HorizontalAlignment="Center"
                               VerticalAlignment="Center" />
