@@ -287,6 +287,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
@@ -335,15 +336,15 @@
                                Opacity="0.9" />
                 </StackPanel>
 
-                <TextBlock Grid.Column="2"
-                           Grid.ColumnSpan="2"
+                <!-- ⏰ 时间显示放在独立的 Column 4，与管理员状态用 12px 间隔分隔，避免重叠 -->
+                <TextBlock Grid.Column="4"
                            Text="{Binding CurrentTime}"
                            FontSize="12"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Right"
                            Foreground="{DynamicResource MaterialDesignBody}"
                            Opacity="0.7"
-                           Panel.ZIndex="-1" />
+                           Margin="12,0,0,0" />
             </Grid>
         </materialDesign:ColorZone>
 
