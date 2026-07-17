@@ -195,9 +195,17 @@ public class ProcessScanner
                 }
             }
         }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            Log.Debug(ex, "WMI 获取父进程信息失败（COM 异常）PID={Pid}", processId);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Log.Debug(ex, "WMI 获取父进程信息失败（权限不足）PID={Pid}", processId);
+        }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 获取父进程信息失败 PID={Pid}: {Message}", processId, ex.Message);
+            Log.Debug(ex, "获取父进程信息失败 PID={Pid}: {Message}", processId, ex.Message);
         }
 
         return false;
@@ -231,9 +239,18 @@ public class ProcessScanner
                 }
             }
         }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            // WMI 服务异常（如 RPC 服务器不可用），降级为 Debug
+            Log.Debug(ex, "🔧 WMI 查询失败（COM 异常）PID={Pid}", processId);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Log.Debug(ex, "🔧 WMI 查询失败（权限不足）PID={Pid}", processId);
+        }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 获取命令行失败 PID={Pid}: {Message}", processId, ex.Message);
+            Log.Debug(ex, "🔧 获取命令行失败 PID={Pid}: {Message}", processId, ex.Message);
         }
 
         return string.Empty;

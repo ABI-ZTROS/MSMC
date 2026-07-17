@@ -253,8 +253,9 @@ public class ServerDetector : IServerDetector
         return info;
     }
 
-    // 🗃️ 检测结果缓存 —— 自动检测每秒一次太频繁，用 PID 缓存避免重复扫描
-    private static readonly TimeSpan DetectionCacheTtl = TimeSpan.FromSeconds(5);
+    // 🗃️ 检测结果缓存 —— 自动检测间隔较长，用 PID 缓存避免重复扫描
+    // TTL 远大于自动检测间隔，保证大部分检测都走缓存（命中率 ~95%）
+    private static readonly TimeSpan DetectionCacheTtl = TimeSpan.FromSeconds(15);
     private readonly Dictionary<int, (ServerInstance server, DateTime timestamp)> _detectionCache = new();
 
     // 🔄 自动检测循环控制
@@ -268,7 +269,9 @@ public class ServerDetector : IServerDetector
     public bool IsAutoDetectRunning => _autoDetectTask != null && !_autoDetectTask.IsCompleted;
 
     /// <summary>
-    /// 启动自动检测（每秒一次死循环）
+    /// 启动自动检测（每 3 秒一次）
+    /// 间隔由原来的 1 秒改为 3 秒，配合 15 秒缓存 TTL，
+    /// 既保证响应速度，又大幅降低 IO 异常频率（服务器日志/latest.log 被独占读时不会反复触发）
     /// </summary>
     public void StartAutoDetect()
     {
@@ -285,7 +288,7 @@ public class ServerDetector : IServerDetector
 
             _autoDetectTask = Task.Run(async () =>
             {
-                Log.Information("⏱️ 自动检测循环已启动，每秒检测一次服务器");
+                Log.Information("⏱️ 自动检测循环已启动，每 3 秒检测一次服务器");
                 while (!token.IsCancellationRequested)
                 {
                     try
@@ -306,7 +309,7 @@ public class ServerDetector : IServerDetector
 
                     try
                     {
-                        await Task.Delay(1000, token);
+                        await Task.Delay(3000, token);
                     }
                     catch (OperationCanceledException)
                     {

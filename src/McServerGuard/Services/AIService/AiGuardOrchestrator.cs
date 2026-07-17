@@ -223,6 +223,15 @@ public class AiGuardOrchestrator : IAiGuardService, IAiSelfLearningService
                 LearnFromLogFile(logFile);
             }
         }
+        catch (IOException ex)
+        {
+            // 目录被占用或临时不可访问，降级为 Debug
+            Log.Debug(ex, "📖 日志目录暂时不可访问，跳过: {Dir}", logsDir);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Log.Debug(ex, "📖 无权访问日志目录，跳过: {Dir}", logsDir);
+        }
         catch (Exception ex)
         {
             Log.Error(ex, "❌ 扫描日志目录失败: {Dir}", logsDir);
@@ -235,9 +244,9 @@ public class AiGuardOrchestrator : IAiGuardService, IAiSelfLearningService
     /// </summary>
     private void LearnFromLogFile(string logFilePath)
     {
+        var fileName = Path.GetFileName(logFilePath);
         try
         {
-            var fileName = Path.GetFileName(logFilePath);
             Log.Debug("📖 读取日志文件: {File}", fileName);
 
             var fileInfo = new FileInfo(logFilePath);
@@ -303,6 +312,15 @@ public class AiGuardOrchestrator : IAiGuardService, IAiSelfLearningService
 
             Log.Debug("📖 日志学习完成: {File} — {Total} 行, {Anomaly} 条异常", 
                 fileName, totalLines, anomalyCount);
+        }
+        catch (IOException ex)
+        {
+            // 服务器正在写的日志文件（如 latest.log）会被独占，读取失败是预期情况，降级为 Debug
+            Log.Debug(ex, "📖 日志文件被占用或不可读，跳过: {File}", fileName);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Log.Debug(ex, "📖 无权读取日志文件，跳过: {File}", fileName);
         }
         catch (Exception ex)
         {

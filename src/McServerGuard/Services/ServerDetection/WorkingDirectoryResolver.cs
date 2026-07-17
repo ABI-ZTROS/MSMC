@@ -70,15 +70,34 @@ public class WorkingDirectoryResolver
         }
 
         // 策略2: 从进程的 MainModule 获取
+        // 注意：访问 MainModule 在跨位数（32位↔64位）访问时会抛 Win32Exception，
+        // 进程已退出时会抛 InvalidOperationException，权限不足时抛 IOException
         Log.Debug("策略2: 从进程 MainModule 获取");
         try
         {
             using var process = Process.GetProcessById(processId);
-            var processDir = Path.GetDirectoryName(process.MainModule?.FileName);
-            if (!string.IsNullOrEmpty(processDir) && Directory.Exists(processDir))
+            // 先判断 MainModule 是否可访问，避免属性 getter 抛异常被调试器当作未捕获
+            var mainModule = process.MainModule;
+            if (mainModule is not null)
             {
-                Log.Debug("进程模块目录: {Dir}（通常不是服务器目录）", processDir);
+                var processDir = Path.GetDirectoryName(mainModule.FileName);
+                if (!string.IsNullOrEmpty(processDir) && Directory.Exists(processDir))
+                {
+                    Log.Debug("进程模块目录: {Dir}（通常不是服务器目录）", processDir);
+                }
             }
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            Log.Debug(ex, "策略2跳过（跨位数或权限不足）: PID={Pid}", processId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Debug(ex, "策略2跳过（进程已退出）: PID={Pid}", processId);
+        }
+        catch (IOException ex)
+        {
+            Log.Debug(ex, "策略2跳过（IO 异常）: PID={Pid}", processId);
         }
         catch (Exception ex)
         {
@@ -151,7 +170,7 @@ public class WorkingDirectoryResolver
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "💥 fuck: 获取进程当前目录失败 PID={Pid}: {Message}", currentId, ex.Message);
+                Log.Debug(ex, "获取进程当前目录失败 PID={Pid}: {Message}", currentId, ex.Message);
                 break;
             }
         }
@@ -177,9 +196,17 @@ public class WorkingDirectoryResolver
                     return dir;
             }
         }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            Log.Debug(ex, "WMI 查询 CurrentDirectory 失败（COM 异常）PID={Pid}", processId);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Log.Debug(ex, "WMI 查询 CurrentDirectory 失败（权限不足）PID={Pid}", processId);
+        }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 查询 CurrentDirectory 失败 PID={Pid}: {Message}", processId, ex.Message);
+            Log.Debug(ex, "查询 CurrentDirectory 失败 PID={Pid}: {Message}", processId, ex.Message);
         }
 
         return null;
@@ -202,9 +229,17 @@ public class WorkingDirectoryResolver
                     return parentId;
             }
         }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            Log.Debug(ex, "WMI 查询 ParentProcessId 失败（COM 异常）PID={Pid}", processId);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Log.Debug(ex, "WMI 查询 ParentProcessId 失败（权限不足）PID={Pid}", processId);
+        }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 获取父进程失败 PID={Pid}: {Message}", processId, ex.Message);
+            Log.Debug(ex, "获取父进程失败 PID={Pid}: {Message}", processId, ex.Message);
         }
 
         return 0;
@@ -297,9 +332,17 @@ public class WorkingDirectoryResolver
                 }
             }
         }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            Log.Debug(ex, "WMI 获取命令行失败（COM 异常）PID={Pid}", processId);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Log.Debug(ex, "WMI 获取命令行失败（权限不足）PID={Pid}", processId);
+        }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 获取命令行失败 PID={Pid}: {Message}", processId, ex.Message);
+            Log.Debug(ex, "获取命令行失败 PID={Pid}: {Message}", processId, ex.Message);
         }
 
         return null;
