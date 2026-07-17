@@ -206,9 +206,13 @@ public class ServerDetector : IServerDetector
                 var info = AnalyzeStartupScript(file);
                 scripts.Add(info);
             }
+            catch (IOException ex)
+            {
+                Log.Debug(ex, "启动脚本 IO 异常，跳过: {File}", file);
+            }
             catch (Exception ex)
             {
-                Log.Error(ex, "💥 fuck: 启动脚本分析失败: {File}: {Message}", file, ex.Message);
+                Log.Debug(ex, "启动脚本分析失败，跳过: {File}: {Message}", file, ex.Message);
             }
         }
 
@@ -221,9 +225,13 @@ public class ServerDetector : IServerDetector
                 var info = AnalyzeStartupScript(file);
                 scripts.Add(info);
             }
+            catch (IOException ex)
+            {
+                Log.Debug(ex, "启动脚本 IO 异常，跳过: {File}", file);
+            }
             catch (Exception ex)
             {
-                Log.Error(ex, "💥 fuck: 启动脚本分析失败: {File}: {Message}", file, ex.Message);
+                Log.Debug(ex, "启动脚本分析失败，跳过: {File}: {Message}", file, ex.Message);
             }
         }
 
@@ -236,7 +244,22 @@ public class ServerDetector : IServerDetector
     /// </summary>
     private StartupScriptInfo AnalyzeStartupScript(string filePath)
     {
-        var content = File.ReadAllText(filePath);
+        // 注意：用 FileShare.ReadWrite 打开，避免与正在写文件的进程冲突
+        // .bat/.sh 脚本一般不会被独占写，但用户用编辑器打开时可能锁定
+        string content;
+        try
+        {
+            using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var sr = new StreamReader(fs);
+            content = sr.ReadToEnd();
+        }
+        catch (IOException ex)
+        {
+            // 文件被占用或不可读，降级为 Debug，避免刷屏
+            Log.Debug(ex, "启动脚本不可读，跳过: {File}", filePath);
+            return new StartupScriptInfo { ScriptPath = filePath, ScriptName = Path.GetFileName(filePath) };
+        }
+
         var info = StartupScriptDetector.Analyze(content);
 
         // 补充文件路径和名称信息
