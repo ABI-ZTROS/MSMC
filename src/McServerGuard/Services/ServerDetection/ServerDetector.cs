@@ -256,7 +256,7 @@ public class ServerDetector : IServerDetector
                 {
                     try
                     {
-                        await DetectServersAsync(token);
+                        await DetectAllAsync();
                     }
                     catch (OperationCanceledException)
                     {

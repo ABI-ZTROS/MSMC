@@ -219,7 +219,7 @@ public partial class ConfigEditorViewModel : ObservableObject
                             WorkingDirectory = ks.WorkingDirectory,
                             ServerJarPath = ks.ServerJarPath,
                             ServerPort = ks.Port,
-                            DisplayName = ks.Name
+                            ServerType = ServerType.Unknown
                         });
                     }
                 }
@@ -281,9 +281,9 @@ public partial class ConfigEditorViewModel : ObservableObject
         var dirName = Path.GetFileName(path);
         var server = new ServerInstance
         {
-            DisplayName = dirName,
             ServerJarName = dirName,
-            WorkingDirectory = path
+            WorkingDirectory = path,
+            ServerType = ServerType.Unknown
         };
 
         // 尝试查找 JAR 文件
@@ -294,7 +294,6 @@ public partial class ConfigEditorViewModel : ObservableObject
             {
                 server.ServerJarPath = jarFiles[0];
                 server.ServerJarName = Path.GetFileName(jarFiles[0]);
-                server.DisplayName = Path.GetFileNameWithoutExtension(jarFiles[0]);
             }
         }
         catch

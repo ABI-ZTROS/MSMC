@@ -20,7 +20,6 @@ public class MemoryMonitor
     private MemorySystemInfo? _cachedMemoryInfo;
     private readonly object _cacheLock = new();
     private PerformanceCounter? _availableMemoryCounter;
-    private PerformanceCounter? _committedBytesCounter;
     private readonly object _counterLock = new();
     private MEMORYSTATUSEX _lastMemStatus;
     private DateTime _lastMemStatusTime = DateTime.MinValue;

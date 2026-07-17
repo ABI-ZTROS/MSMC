@@ -31,6 +31,14 @@ public class PrivilegeService : IPrivilegeService
 
     public event EventHandler<bool>? PrivilegeChanged;
 
+    /// <summary>
+    /// 触发权限变更事件（保留接口契约，实际运行时权限不会动态变化）
+    /// </summary>
+    private void OnPrivilegeChanged(bool isAdmin)
+    {
+        PrivilegeChanged?.Invoke(this, isAdmin);
+    }
+
     public PrivilegeService()
     {
         _isRunningAsAdmin = CheckIsAdmin();

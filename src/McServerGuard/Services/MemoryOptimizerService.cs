@@ -102,9 +102,9 @@ public class MemoryOptimizerService : IDisposable
                 GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
 
                 // 强制完整回收，包括所有代
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true, true);
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
                 GC.WaitForPendingFinalizers();
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true, true);
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
             }
             else
             {
@@ -228,7 +228,7 @@ public class MemoryOptimizerService : IDisposable
                     }, DispatcherPriority.Background);
                 }
 
-                if (status == GCNotificationStatus.Closed) break;
+                if (status == GCNotificationStatus.Canceled) break;
                 await Task.Delay(1000);
             }
         }
