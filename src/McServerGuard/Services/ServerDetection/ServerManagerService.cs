@@ -15,6 +15,7 @@ public interface IServerManagerService
     public bool StopServerByProcessId(int processId);
     public Process? FindServerProcess(ServerInstance server);
     public int? GetServerProcessId(string jarFilePath);
+    public bool AnyServerRunning();
 }
 
 public class ServerManagerService : IServerManagerService
@@ -471,5 +472,32 @@ public class ServerManagerService : IServerManagerService
         }
 
         return string.Empty;
+    }
+
+    public bool AnyServerRunning()
+    {
+        try
+        {
+            var processes = Process.GetProcessesByName("java");
+            foreach (var process in processes)
+            {
+                try
+                {
+                    var cmdLine = GetProcessCommandLine(process.Id);
+                    if (!string.IsNullOrEmpty(cmdLine) &&
+                        cmdLine.Contains("server", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+                catch { /* 跳过无权限的进程 */ }
+                finally { process.Dispose(); }
+            }
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
