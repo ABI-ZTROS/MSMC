@@ -35,7 +35,7 @@ public class ThemeSettings
     public string BorderColor { get; set; } = "#FF334155";
     public int CornerRadius { get; set; } = 12;
     public int AnimationDuration { get; set; } = 300;
-    public bool EnableAnimations { get; set; } = false;
+    public bool EnableAnimations { get; set; } = true;
 }
 
 public class ThemeService : IThemeService
@@ -49,7 +49,7 @@ public class ThemeService : IThemeService
     private Color _borderColor = Color.FromRgb(0x33, 0x41, 0x55);
     private int _cornerRadius = 12;
     private int _animationDuration = 300;
-    private bool _enableAnimations = false;
+    private bool _enableAnimations = true;
 
     private static string SettingsFilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -338,7 +338,7 @@ public class ThemeService : IThemeService
 
                     _cornerRadius = Math.Clamp(settings.CornerRadius, 0, 24);
                     _animationDuration = Math.Clamp(settings.AnimationDuration, 0, 2000);
-                    _enableAnimations = false;
+                    _enableAnimations = settings.EnableAnimations;
                 }
             }
 
