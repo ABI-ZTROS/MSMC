@@ -442,7 +442,7 @@
                         <TabItem>
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
-                                    <iconPacks:PackIconFontAwesome6 Kind="GaugesSolid" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <iconPacks:PackIconFontAwesome6 Kind="GaugeSolid" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,6,0" />
                                     <TextBlock Text="控制台" FontWeight="SemiBold" />
                                 </StackPanel>
                             </TabItem.Header>
