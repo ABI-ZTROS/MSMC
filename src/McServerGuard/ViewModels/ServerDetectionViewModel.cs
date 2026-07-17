@@ -65,8 +65,47 @@ public partial class ServerDetectionViewModel : ObservableObject
 
         LoadKnownServers();
 
+        // 📡 订阅自动检测事件 —— 后台每秒检测完会通知我们，然后刷新列表
+        _serverDetector.DetectionCompleted += OnAutoDetectCompleted;
+
         // 🔄 启动自动检测循环
         StartAutoDetect();
+    }
+
+    /// <summary>
+    /// 自动检测完成回调 —— 在后台线程触发，需要切回 UI 线程更新绑定
+    /// </summary>
+    private void OnAutoDetectCompleted(object? sender, DetectionResult result)
+    {
+        // 不在 IsBusy 时才更新，避免和手动操作冲突
+        if (IsBusy) return;
+
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher)
+        {
+            if (!dispatcher.CheckAccess())
+            {
+                dispatcher.BeginInvoke(new Action(() => UpdateDetectionResult(result)));
+                return;
+            }
+        }
+        UpdateDetectionResult(result);
+    }
+
+    /// <summary>
+    /// 将检测结果更新到绑定属性，触发列表刷新
+    /// </summary>
+    private void UpdateDetectionResult(DetectionResult result)
+    {
+        if (IsBusy) return;
+
+        DetectionResult = result;
+
+        // 保留之前的选中（如果还在）
+        if (SelectedServer == null ||
+            !result.Servers.Any(s => s.ServerJarPath == SelectedServer.ServerJarPath))
+        {
+            SelectedServer = result.Servers.Count > 0 ? result.Servers[0] : null;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════

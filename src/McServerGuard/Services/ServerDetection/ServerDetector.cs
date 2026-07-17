@@ -18,6 +18,11 @@ public class ServerDetector : IServerDetector
     private readonly WorkingDirectoryResolver _workingDirResolver;
     private readonly ConfigFileScanner _configScanner;
 
+    /// <summary>
+    /// 自动检测完成时触发
+    /// </summary>
+    public event EventHandler<DetectionResult>? DetectionCompleted;
+
     public ServerDetector(
         ProcessScanner processScanner,
         WorkingDirectoryResolver workingDirResolver,
@@ -256,7 +261,9 @@ public class ServerDetector : IServerDetector
                 {
                     try
                     {
-                        await DetectAllAsync();
+                        var result = await DetectAllAsync();
+                        // 通知订阅者：检测完成了，快来刷新列表
+                        DetectionCompleted?.Invoke(this, result);
                     }
                     catch (OperationCanceledException)
                     {

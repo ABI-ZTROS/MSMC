@@ -11,6 +11,12 @@ using McServerGuard.Models;
 public interface IServerDetector : IDisposable
 {
     /// <summary>
+    /// 自动检测完成时触发（无论结果是否变化）
+    /// ViewModel 订阅此事件来刷新运行中服务器列表
+    /// </summary>
+    event EventHandler<DetectionResult>? DetectionCompleted;
+
+    /// <summary>
     /// 执行完整的服务器检测流程
     /// 包括进程扫描、工作目录解析、配置文件扫描等全套服务
     /// </summary>
