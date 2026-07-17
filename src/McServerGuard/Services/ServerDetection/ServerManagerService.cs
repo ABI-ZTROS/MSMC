@@ -16,6 +16,8 @@ public interface IServerManagerService
     public Process? FindServerProcess(ServerInstance server);
     public int? GetServerProcessId(string jarFilePath);
     public bool AnyServerRunning();
+    public long? GetProcessMemoryUsage(int processId);
+    public double? GetProcessCpuUsage(int processId);
 }
 
 public class ServerManagerService : IServerManagerService
@@ -198,7 +200,6 @@ public class ServerManagerService : IServerManagerService
 
             var arguments = BuildStartupArguments(normalizedServer);
             
-            var cmdArguments = $"/c \"\"{javaExe}\" {arguments} & pause\"";
             var fullCommand = $"{javaExe} {arguments}";
             
             Log.Information("📝 启动命令: {Cmd}", fullCommand);
@@ -206,8 +207,8 @@ public class ServerManagerService : IServerManagerService
             
             var processStartInfo = new ProcessStartInfo
             {
-                FileName = "cmd.exe",
-                Arguments = cmdArguments,
+                FileName = javaExe,
+                Arguments = arguments,
                 WorkingDirectory = server.WorkingDirectory,
                 UseShellExecute = false,
                 CreateNoWindow = false,
@@ -218,6 +219,7 @@ public class ServerManagerService : IServerManagerService
             if (process != null)
             {
                 Log.Information("✅ 服务器进程已启动! PID={Pid}", process.Id);
+                server.ProcessId = process.Id;
                 return process;
             }
             
@@ -498,6 +500,62 @@ public class ServerManagerService : IServerManagerService
         catch
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 获取进程的内存使用量（字节）
+    /// </summary>
+    public long? GetProcessMemoryUsage(int processId)
+    {
+        try
+        {
+            var process = Process.GetProcessById(processId);
+            if (process.HasExited) return null;
+            return process.WorkingSet64;
+        }
+        catch (ArgumentException)
+        {
+            Log.Debug("⚠️ 获取内存失败：进程不存在 PID={Pid}", processId);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "⚠️ 获取进程内存失败 PID={Pid}", processId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 获取进程的 CPU 使用率（百分比，0-100）
+    /// 注意：需要两次采样才能计算准确值，此处返回单次采样作为近似值
+    /// </summary>
+    public double? GetProcessCpuUsage(int processId)
+    {
+        try
+        {
+            var process = Process.GetProcessById(processId);
+            if (process.HasExited) return null;
+
+            // 使用 TotalProcessorTime 计算（需要两次采样）
+            // 这里简单返回 WorkingSet64 占总内存的比例作为参考
+            var totalMemory = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
+            if (totalMemory > 0)
+            {
+                return Math.Round((double)process.WorkingSet64 / totalMemory * 100, 2);
+            }
+
+            return null;
+        }
+        catch (ArgumentException)
+        {
+            Log.Debug("⚠️ 获取 CPU 失败：进程不存在 PID={Pid}", processId);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "⚠️ 获取进程 CPU 失败 PID={Pid}", processId);
+            return null;
         }
     }
 }

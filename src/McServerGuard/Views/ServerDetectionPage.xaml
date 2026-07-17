@@ -87,10 +87,10 @@
                                 Foreground="White"
                                 Padding="14,8"
                                 Margin="0,0,8,0"
-                                ToolTip="扫描运行中的服务器进程">
+                                ToolTip="刷新服务器列表">
                             <StackPanel Orientation="Horizontal">
-                                <iconPacks:PackIconFontAwesome6 Kind="MagnifyingGlassSolid" Width="14" Height="14" />
-                                <TextBlock Text="开始检测" Margin="6,0,0,0" FontWeight="SemiBold" />
+                                <iconPacks:PackIconFontAwesome6 Kind="RotateSolid" Width="14" Height="14" />
+                                <TextBlock Text="刷新" Margin="6,0,0,0" FontWeight="SemiBold" />
                             </StackPanel>
                         </Button>
 

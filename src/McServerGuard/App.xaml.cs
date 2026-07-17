@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using McServerGuard.Services;
 using McServerGuard.Services.AIService;
 using McServerGuard.Services.ConfigManagement;
+using McServerGuard.Services.Privilege;
 using McServerGuard.Services.ServerDetection;
 using McServerGuard.Services.SystemMonitoring;
 using McServerGuard.ViewModels;
@@ -64,6 +65,10 @@ public partial class App : Application
         services.AddSingleton<ProcessScanner>();
         services.AddSingleton<WorkingDirectoryResolver>();
         services.AddSingleton<ConfigFileScanner>();
+
+        // 🔐 管理员权限服务 —— "你有权限这么做吗？"
+        Log.Information("🔐 注册管理员权限服务...");
+        services.AddSingleton<AdminPrivilegeService>();
 
         // 📋 配置管理服务 —— "server.properties？spigot.yml？通通给我拿来"
         Log.Information("📋 注册配置管理服务组...");
@@ -137,6 +142,31 @@ public partial class App : Application
             }
 
             Log.Information("✅ 用户已同意协议");
+        }
+
+        // 🔐 检查管理员权限
+        var adminService = _serviceProvider.GetRequiredService<AdminPrivilegeService>();
+        var isAdmin = adminService.IsRunningAsAdmin();
+        if (!isAdmin)
+        {
+            Log.Warning("⚠️ 当前未以管理员身份运行，部分功能可能受限");
+            var result = MessageBox.Show(
+                "检测到当前未以管理员身份运行。\n\n" +
+                "部分功能（如完整的进程监控、内存分析等）可能无法正常工作。\n\n" +
+                "是否立即以管理员身份重启程序？\n\n" +
+                "是 - 以管理员身份重启\n" +
+                "否 - 继续以普通权限运行",
+                "管理员权限提醒",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                Log.Information("🔐 用户请求以管理员身份重启");
+                adminService.RestartAsAdmin();
+                Shutdown();
+                return;
+            }
         }
 
         // 🪟 创建主窗口，从 DI 获取真正的 MainViewModel 作为 DataContext

@@ -5,6 +5,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using McServerGuard.Constants;
@@ -25,6 +26,7 @@ public partial class ServerDetectionViewModel : ObservableObject
     private readonly IServerImporterService _serverImporter;
     private readonly IAiSelfLearningService _aiLearning;
     private readonly ObservableCollection<ServerInstance> _runningServersInternal;
+    private readonly DispatcherTimer _autoDetectTimer;
 
     public ServerDetectionViewModel(
         IServerDetector serverDetector,
@@ -62,6 +64,13 @@ public partial class ServerDetectionViewModel : ObservableObject
         FilteredKnownServers.Filter = obj => MatchesSearch(obj, false);
 
         _runningServersInternal = runningSource;
+
+        // ⏱️ 初始化自动检测定时器（默认关闭）
+        _autoDetectTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(AutoDetectIntervalSeconds)
+        };
+        _autoDetectTimer.Tick += OnAutoDetectTimerTick;
 
         LoadKnownServers();
     }
@@ -821,6 +830,64 @@ public partial class ServerDetectionViewModel : ObservableObject
     }
 
     private bool CanDetect() => !IsBusy;
+
+    // ═══════════════════════════════════════════════════════════════
+    // ⏱️ 自动检测功能（默认关闭，可配置）
+    // ═══════════════════════════════════════════════════════════════
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AutoDetectStatusText))]
+    private bool _isAutoDetectEnabled;
+
+    [ObservableProperty]
+    private int _autoDetectIntervalSeconds = 30;
+
+    public string AutoDetectStatusText => IsAutoDetectEnabled
+        ? $"自动检测中 ({AutoDetectIntervalSeconds}s)"
+        : "自动检测已关闭";
+
+    partial void OnIsAutoDetectEnabledChanged(bool value)
+    {
+        if (value)
+        {
+            _autoDetectTimer.Interval = TimeSpan.FromSeconds(Math.Max(5, AutoDetectIntervalSeconds));
+            _autoDetectTimer.Start();
+            Log.Information("⏱️ 自动检测已开启，间隔 {Interval} 秒", AutoDetectIntervalSeconds);
+        }
+        else
+        {
+            _autoDetectTimer.Stop();
+            Log.Information("⏱️ 自动检测已关闭");
+        }
+        OnPropertyChanged(nameof(AutoDetectStatusText));
+    }
+
+    partial void OnAutoDetectIntervalSecondsChanged(int value)
+    {
+        if (IsAutoDetectEnabled)
+        {
+            _autoDetectTimer.Interval = TimeSpan.FromSeconds(Math.Max(5, value));
+        }
+    }
+
+    private async void OnAutoDetectTimerTick(object? sender, EventArgs e)
+    {
+        if (IsBusy) return;
+        try
+        {
+            await DetectAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "⏱️ 自动检测失败: {Message}", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleAutoDetect()
+    {
+        IsAutoDetectEnabled = !IsAutoDetectEnabled;
+    }
 
     partial void OnSelectedServerChanged(ServerInstance? value)
     {

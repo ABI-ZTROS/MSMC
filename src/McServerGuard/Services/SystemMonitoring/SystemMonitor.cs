@@ -1,10 +1,13 @@
 // 🖥️ 系统监控实现 —— 像贴身管家一样时刻关注你服务器的健康状况
 // 采集 CPU、内存、磁盘、Java 进程等各项指标
-// 注意：PerformanceCounter 在 Linux 上不可用，所以我们用 try-catch 保护，优雅降级 😌
+// 注意：PerformanceCounter 在某些环境下可能不可用，所以我们用 try-catch 保护，优雅降级 😌
 namespace McServerGuard.Services.SystemMonitoring;
 
 using System.Diagnostics;
+using System.Management;
+using System.Runtime.InteropServices;
 using McServerGuard.Models;
+using McServerGuard.Services.Privilege;
 using Serilog;
 
 /// <summary>
@@ -21,13 +24,16 @@ public class SystemMonitor : ISystemMonitor
     private bool _isMonitoring;
     private readonly object _monitorLock = new();
 
+    private static bool IsWindows =>
+        RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
     public SystemMonitor(
         DiskSpaceMonitor diskMonitor,
         MemoryMonitor memoryMonitor,
         ThreadAnalyzer threadAnalyzer)
     {
-        // 日志：初始化
         Log.Information("📊 SystemMonitor 初始化");
+        Log.Information("🪟 系统版本: {Version}", AdminPrivilegeService.GetWindowsVersion());
         _diskMonitor = diskMonitor;
         _memoryMonitor = memoryMonitor;
         _threadAnalyzer = threadAnalyzer;
@@ -37,12 +43,12 @@ public class SystemMonitor : ISystemMonitor
         {
             _cpuCounter = new PerformanceCounter(
                 "Processor", "% Processor Time", "_Total", true);
-            _cpuCounter.NextValue(); // 预热
+            _cpuCounter.NextValue();
             Log.Debug("CPU 计数器已预热");
         }
         catch (Exception ex)
         {
-            Log.Debug("CPU 计数器预热失败（可能是 Linux 环境）: {Msg}", ex.Message);
+            Log.Warning("CPU 计数器预热失败，将使用 WMI 备用方案: {Msg}", ex.Message);
         }
     }
 
@@ -205,30 +211,57 @@ public class SystemMonitor : ISystemMonitor
 
     /// <summary>
     /// 获取 CPU 使用率百分比
-    /// 使用 PerformanceCounter，Linux 上不可用所以需要 try-catch
-    /// 注意：不再使用 Thread.Sleep，而是使用预热的计数器
+    /// 主方案：PerformanceCounter
+    /// 备用方案：WMI Win32_Processor LoadPercentage
     /// </summary>
     private double GetCpuUsage()
     {
+        // 方案1：PerformanceCounter
         try
         {
-            // 使用缓存的计数器避免每次重新创建
             if (_cpuCounter == null)
             {
                 _cpuCounter = new PerformanceCounter(
                     "Processor", "% Processor Time", "_Total", true);
-                // 第一次调用 NextValue() 返回 0，预热一下
                 _cpuCounter.NextValue();
             }
-            // 第二次调用返回真实值
-            return _cpuCounter.NextValue();
+            var value = _cpuCounter.NextValue();
+            if (value >= 0 && value <= 100)
+                return Math.Round(value, 2);
         }
         catch (Exception ex)
         {
-            // Linux 或者其他不支持 PerformanceCounter 的环境下会走到这里
-            Log.Debug("PerformanceCounter 不可用（可能是 Linux 环境）: {Msg}", ex.Message);
-            return 0;
+            Log.Debug("PerformanceCounter 获取 CPU 失败: {Msg}", ex.Message);
         }
+
+        // 方案2：WMI
+        if (IsWindows)
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT LoadPercentage FROM Win32_Processor");
+                using var collection = searcher.Get();
+                double totalLoad = 0;
+                int coreCount = 0;
+                foreach (var obj in collection)
+                {
+                    if (obj["LoadPercentage"] is ushort load && load <= 100)
+                    {
+                        totalLoad += load;
+                        coreCount++;
+                    }
+                }
+                if (coreCount > 0)
+                    return Math.Round(totalLoad / coreCount, 2);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug("WMI 获取 CPU 失败: {Msg}", ex.Message);
+            }
+        }
+
+        return 0;
     }
 
     // CPU 计数器缓存

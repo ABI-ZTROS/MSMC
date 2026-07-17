@@ -1,41 +1,83 @@
-// 🧠 内存监控器 —— 使用 Windows kernel32.dll 的 GlobalMemoryStatusEx 来获取精确内存数据
+// 🧠 内存监控器 —— 使用多种方式获取内存数据，确保兼容性和可靠性
 namespace McServerGuard.Services.SystemMonitoring;
 
+using System.Diagnostics;
 using System.Management;
 using System.Runtime.InteropServices;
 using McServerGuard.Models.Hardware;
 using Serilog;
 
 /// <summary>
-/// 内存监控器 —— 使用 kernel32.dll 的 GlobalMemoryStatusEx 获取物理内存信息
+/// 内存监控器
+/// 主方案：kernel32.dll 的 GlobalMemoryStatusEx
+/// 备用方案A：PerformanceCounter
+/// 备用方案B：WMI Win32_OperatingSystem
 /// 增强：通过 WMI Win32_PhysicalMemory 获取内存频率、类型、插槽数
 /// </summary>
 public class MemoryMonitor
 {
     private MemorySystemInfo? _cachedMemoryInfo;
     private readonly object _cacheLock = new();
+    private PerformanceCounter? _availableMemoryCounter;
+    private PerformanceCounter? _committedBytesCounter;
+    private readonly object _counterLock = new();
 
     private static bool IsWindows =>
         RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
     /// <summary>
     /// 获取总物理内存（字节）
+    /// 优先使用 GlobalMemoryStatusEx，失败则降级到 WMI
     /// </summary>
     public long GetTotalPhysicalMemory()
     {
         if (!IsWindows) return 0;
 
+        // 方案1：GlobalMemoryStatusEx
         try
         {
             var memStatus = new MEMORYSTATUSEX();
+            memStatus.dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>();
             if (GlobalMemoryStatusEx(ref memStatus))
+            {
+                Log.Debug("💾 GlobalMemoryStatusEx 成功，总内存: {Total} GB",
+                    (double)memStatus.ullTotalPhys / (1024 * 1024 * 1024));
                 return (long)memStatus.ullTotalPhys;
+            }
+            else
+            {
+                var error = Marshal.GetLastWin32Error();
+                Log.Warning("💾 GlobalMemoryStatusEx 返回失败，错误码: {ErrorCode}", error);
+            }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "内存监控失败: {Message}", ex.Message);
+            Log.Error(ex, "💾 GlobalMemoryStatusEx 调用失败: {Message}", ex.Message);
         }
 
+        // 方案2：WMI
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                "SELECT TotalVisibleMemorySize FROM Win32_OperatingSystem");
+            using var collection = searcher.Get();
+            foreach (var obj in collection)
+            {
+                if (long.TryParse(obj["TotalVisibleMemorySize"]?.ToString(), out var kb))
+                {
+                    var bytes = kb * 1024;
+                    Log.Information("💾 通过 WMI 获取总内存成功: {Total} GB",
+                        (double)bytes / (1024 * 1024 * 1024));
+                    return bytes;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "💾 WMI 获取总内存失败: {Message}", ex.Message);
+        }
+
+        Log.Error("💾 所有获取总内存的方案都失败了");
         return 0;
     }
 
@@ -46,15 +88,78 @@ public class MemoryMonitor
     {
         if (!IsWindows) return 0;
 
+        var total = GetTotalPhysicalMemory();
+        var free = GetAvailableMemory();
+        if (total > 0 && free >= 0)
+            return Math.Max(0, total - free);
+
+        return 0;
+    }
+
+    /// <summary>
+    /// 获取可用内存（字节）
+    /// 优先使用 GlobalMemoryStatusEx，失败则降级
+    /// </summary>
+    public long GetAvailableMemory()
+    {
+        if (!IsWindows) return 0;
+
+        // 方案1：GlobalMemoryStatusEx
         try
         {
             var memStatus = new MEMORYSTATUSEX();
+            memStatus.dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>();
             if (GlobalMemoryStatusEx(ref memStatus))
-                return (long)(memStatus.ullTotalPhys - memStatus.ullAvailPhys);
+            {
+                return (long)memStatus.ullAvailPhys;
+            }
+            else
+            {
+                var error = Marshal.GetLastWin32Error();
+                Log.Debug("💾 GlobalMemoryStatusEx 返回失败，错误码: {ErrorCode}", error);
+            }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "内存监控失败: {Message}", ex.Message);
+            Log.Debug("💾 GlobalMemoryStatusEx 调用失败: {Message}", ex.Message);
+        }
+
+        // 方案2：PerformanceCounter
+        try
+        {
+            lock (_counterLock)
+            {
+                _availableMemoryCounter ??= new PerformanceCounter(
+                    "Memory", "Available MBytes", true);
+                var mb = _availableMemoryCounter.NextValue();
+                if (mb > 0)
+                {
+                    return (long)(mb * 1024 * 1024);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug("💾 PerformanceCounter 获取可用内存失败: {Message}", ex.Message);
+        }
+
+        // 方案3：WMI
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                "SELECT FreePhysicalMemory FROM Win32_OperatingSystem");
+            using var collection = searcher.Get();
+            foreach (var obj in collection)
+            {
+                if (long.TryParse(obj["FreePhysicalMemory"]?.ToString(), out var kb))
+                {
+                    return kb * 1024;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug("💾 WMI 获取可用内存失败: {Message}", ex.Message);
         }
 
         return 0;
@@ -67,15 +172,27 @@ public class MemoryMonitor
     {
         if (!IsWindows) return 0;
 
+        // 方案1：GlobalMemoryStatusEx（直接返回 dwMemoryLoad）
         try
         {
             var memStatus = new MEMORYSTATUSEX();
+            memStatus.dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>();
             if (GlobalMemoryStatusEx(ref memStatus))
+            {
                 return memStatus.dwMemoryLoad;
+            }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "内存监控失败: {Message}", ex.Message);
+            Log.Debug("💾 GlobalMemoryStatusEx 获取使用率失败: {Message}", ex.Message);
+        }
+
+        // 方案2：手动计算
+        var total = GetTotalPhysicalMemory();
+        var free = GetAvailableMemory();
+        if (total > 0 && free >= 0)
+        {
+            return Math.Round((double)(total - free) / total * 100, 2);
         }
 
         return 0;
@@ -253,11 +370,6 @@ public class MemoryMonitor
         public ulong ullAvailVirtual;
         public ulong ullTotalPageFile;
         public ulong ullAvailPageFile;
-
-        public MEMORYSTATUSEX()
-        {
-            dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>();
-        }
     }
 
     [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
