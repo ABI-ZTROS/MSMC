@@ -271,7 +271,7 @@ public class ThemeService : IThemeService
         // ✏️ 字体 —— 嵌入 Space Grotesk
         try
         {
-            var fontFamily = new FontFamily("pack://application:,,,/McServerGuard;component/Resources/Fonts/#Space Grotesk");
+            var fontFamily = new FontFamily("pack://application:,,,/McServerGuard;component/Resources/Fonts/#Space Grotesk Light");
             resources["AppFontFamily"] = fontFamily;
 
             // 覆盖 MaterialDesign 字体

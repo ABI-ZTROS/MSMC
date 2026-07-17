@@ -139,7 +139,7 @@
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
     <!-- ✏️ AppFontFamily: 全局字体族（嵌入 Space Grotesk） -->
-    <FontFamily x:Key="AppFontFamily">pack://application:,,,/McServerGuard;component/Resources/Fonts/#Space Grotesk</FontFamily>
+    <FontFamily x:Key="AppFontFamily">pack://application:,,,/McServerGuard;component/Resources/Fonts/#Space Grotesk Light</FontFamily>
 
     <!-- ✏️ AppMonospaceFontFamily: 等宽字体族（终端/代码/日志） -->
     <FontFamily x:Key="AppMonospaceFontFamily">Consolas, Courier New</FontFamily>
