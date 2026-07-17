@@ -112,7 +112,7 @@
                     <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource ConfigValueTextBoxStyle}">
                         <TextBox.InputBindings>
-                            <KeyBinding Key="Enter" Command="{Binding DataContext.SaveConfigCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" />
+                            <KeyBinding Key="Enter" Command="{Binding DataContext.SaveConfigCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
                         </TextBox.InputBindings>
                         <TextBox.ToolTip>
                             <StackPanel>
@@ -136,7 +136,7 @@
                     <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource ConfigValueTextBoxStyle}">
                         <TextBox.InputBindings>
-                            <KeyBinding Key="Enter" Command="{Binding DataContext.SaveConfigCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" />
+                            <KeyBinding Key="Enter" Command="{Binding DataContext.SaveConfigCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
                         </TextBox.InputBindings>
                         <materialDesign:HintAssist.Hint>输入文本</materialDesign:HintAssist.Hint>
                     </TextBox>
