@@ -133,6 +133,8 @@
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <Grid Grid.Row="1" Grid.Column="0"
               x:Name="NavSidebar"
+              Width="48"
+              ClipToBounds="True"
               Background="{DynamicResource CardBackgroundBrush}"
               BorderBrush="{DynamicResource CardSubtleBorderBrush}"
               BorderThickness="0,0,1,0"

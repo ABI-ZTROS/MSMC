@@ -150,13 +150,6 @@ public partial class MainViewModel : ObservableObject
         _ => DetectionPage
     };
 
-    /// <summary>
-    /// 导航面板是否展开 —— 汉堡按钮控制，true 展开 false 收起
-    /// 默认展开，毕竟导航栏就是为了让人看到的嘛 😏
-    /// </summary>
-    [ObservableProperty]
-    private bool _isNavOpen = true;
-
     // ─── 状态栏 ──────────────────────────────────────────────────────
 
     /// <summary>
