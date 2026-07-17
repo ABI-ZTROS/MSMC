@@ -43,10 +43,9 @@ public partial class App : Application
         // ⚠️ 再挂全局异常钩子 —— 后面出啥事都有人兜着
         SetupGlobalExceptionHandling();
 
-        // 🔧 强制软件渲染 —— 禁用硬件加速以避免 DUCE 通道渲染资源崩溃
-        // 崩溃堆栈中的 RenderData.ReleaseOnChannel 和 Freezable.HandlerRemove
-        // 都与 WPF 硬件加速的 DUCE 通道有关，软件渲染可绕过此问题
-        RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
+        // 注：之前曾尝试 RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly
+        // 但崩溃根因是 Color="{DynamicResource ...Brush}" 类型不匹配（已修复），
+        // 软件渲染并不能解决问题，反而导致编译错误，已移除。
 
         try
         {
