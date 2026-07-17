@@ -138,8 +138,11 @@
     <!-- 🌈 自定义笔刷 —— 苍穹蓝 + 水蓝色，清新科技感 -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
-    <!-- ✏️ AppFontFamily: 全局字体族（嵌入 Space Grotesk） -->
-    <FontFamily x:Key="AppFontFamily">pack://application:,,,/McServerGuard;component/Resources/Fonts/#Space Grotesk Light</FontFamily>
+    <!-- ✏️ AppFontFamily: 全局字体族（嵌入 Space Grotesk + 简体中文回退） -->
+    <!-- 使用 baseUri,familyNames 字符串语法，等价于 new FontFamily(BaseUri, FamilyNames)。
+         Space Grotesk 是纯英文字体不含中文字形，必须显式指定 Microsoft YaHei UI 作为中文回退，
+         否则 WPF 会走系统字体回退可能选到繁体字体（如 MingLiU）。 -->
+    <FontFamily x:Key="AppFontFamily">pack://application:,,,/McServerGuard;component/Resources/Fonts/,./#Space Grotesk Light,Microsoft YaHei UI</FontFamily>
 
     <!-- ✏️ AppMonospaceFontFamily: 等宽字体族（终端/代码/日志） -->
     <FontFamily x:Key="AppMonospaceFontFamily">Consolas, Courier New</FontFamily>

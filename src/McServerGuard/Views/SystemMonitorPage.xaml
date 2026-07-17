@@ -18,10 +18,14 @@
                 <Button Content="开始监控"
                         Style="{StaticResource MaterialDesignRaisedButton}"
                         Command="{Binding StartMonitoringCommand}"
+                        Padding="16,10"
+                        FontSize="13"
                         Margin="0,0,8,0" />
                 <Button Content="停止监控"
                         Style="{StaticResource MaterialDesignOutlinedButton}"
                         Command="{Binding StopMonitoringCommand}"
+                        Padding="16,10"
+                        FontSize="13"
                         Margin="0,0,8,0" />
             </StackPanel>
 
