@@ -4,9 +4,30 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using McServerGuard.Models;
 using McServerGuard.Services.ConfigManagement;
+using McServerGuard.Services.ServerDetection;
 using Serilog;
 
 namespace McServerGuard.ViewModels;
+
+/// <summary>
+/// 配置文件项 —— 用于左侧文件树展示
+/// </summary>
+public sealed class ConfigFileItem
+{
+    public string FileName { get; init; }
+    public string FullPath { get; init; }
+    public string RelativePath { get; init; }
+    public bool IsDirectory { get; init; }
+    public List<ConfigFileItem> Children { get; init; } = [];
+
+    public ConfigFileItem(string fileName, string fullPath, string relativePath, bool isDirectory = false)
+    {
+        FileName = fileName;
+        FullPath = fullPath;
+        RelativePath = relativePath;
+        IsDirectory = isDirectory;
+    }
+}
 
 /// <summary>
 /// 配置项分组 —— 用于 UI 的 Expander 展示
@@ -29,10 +50,14 @@ public sealed class ConfigEntryGroup
 /// 负责加载、编辑、保存 Minecraft 服务器的配置文件。
 /// 支持加载 ServerConfigDescriptor（中文说明+约束验证），
 /// 让用户知道每个参数到底是干嘛的，而不是对着 server.properties 一脸懵。
+/// 
+/// 增强：支持选择服务器 + 目录遍历 + 递归扫描配置文件
 /// </summary>
 public partial class ConfigEditorViewModel : ObservableObject
 {
     private readonly IConfigManager _configManager;
+    private readonly IServerDetector? _serverDetector;
+    private readonly IAppConfigService? _appConfigService;
 
     /// <summary>记住原始配置的副本 —— 用于"撤销修改"（ResetChanges）</summary>
     private Dictionary<string, string> _originalConfig = new();
@@ -61,7 +86,46 @@ public partial class ConfigEditorViewModel : ObservableObject
         ConfigEntries.CollectionChanged += (s, e) => ScheduleGroupUpdate();
     }
 
+    public ConfigEditorViewModel(
+        IConfigManager configManager,
+        IServerDetector serverDetector,
+        IAppConfigService appConfigService) : this(configManager)
+    {
+        _serverDetector = serverDetector;
+        _appConfigService = appConfigService;
+    }
+
     // ─── 核心属性 ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 可选服务器列表（运行中的 + 已知的）
+    /// </summary>
+    [ObservableProperty]
+    private List<ServerInstance> _availableServers = [];
+
+    /// <summary>
+    /// 当前选中的服务器名称（用于下拉框显示）
+    /// </summary>
+    [ObservableProperty]
+    private string? _selectedServerName;
+
+    /// <summary>
+    /// 当前服务器的工作目录
+    /// </summary>
+    [ObservableProperty]
+    private string _serverWorkingDirectory = string.Empty;
+
+    /// <summary>
+    /// 配置文件树（递归扫描后的目录结构）
+    /// </summary>
+    [ObservableProperty]
+    private List<ConfigFileItem> _configFileTree = [];
+
+    /// <summary>
+    /// 配置文件列表（扁平化，用于快速选择）
+    /// </summary>
+    [ObservableProperty]
+    private List<string> _configFiles = [];
 
     /// <summary>
     /// 当前操作的服务器实例
@@ -109,6 +173,152 @@ public partial class ConfigEditorViewModel : ObservableObject
     public string ConfigFileCountText => ConfigFiles.Count > 0
         ? $"共 {ConfigFiles.Count} 个配置文件"
         : "未找到配置文件";
+
+    /// <summary>
+    /// 是否有选中的服务器目录
+    /// </summary>
+    public bool HasServerDirectory => !string.IsNullOrEmpty(ServerWorkingDirectory) && Directory.Exists(ServerWorkingDirectory);
+
+    // ─── 服务器选择和目录扫描命令 ─────────────────────────────────────
+
+    /// <summary>
+    /// 刷新可用服务器列表
+    /// </summary>
+    [RelayCommand]
+    private async Task RefreshServerListAsync()
+    {
+        Log.Information("🔄 刷新配置编辑器的服务器列表...");
+        var servers = new List<ServerInstance>();
+
+        try
+        {
+            // 从检测器获取运行中的服务器
+            if (_serverDetector != null)
+            {
+                var result = await _serverDetector.DetectAllAsync();
+                foreach (var s in result.Servers)
+                {
+                    if (!string.IsNullOrEmpty(s.WorkingDirectory) && Directory.Exists(s.WorkingDirectory))
+                        servers.Add(s);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "获取运行中服务器列表失败");
+        }
+
+        // 从已知服务器添加
+        if (_appConfigService != null)
+        {
+            foreach (var ks in _appConfigService.GetAllKnownServers())
+            {
+                if (!string.IsNullOrEmpty(ks.WorkingDirectory) && Directory.Exists(ks.WorkingDirectory))
+                {
+                    // 避免重复（检查是否已经有相同工作目录的）
+                    if (!servers.Any(s => string.Equals(s.WorkingDirectory, ks.WorkingDirectory, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        servers.Add(new ServerInstance
+                        {
+                            ServerJarName = ks.Name,
+                            WorkingDirectory = ks.WorkingDirectory,
+                            ServerJarPath = ks.ServerJarPath,
+                            ServerPort = ks.Port,
+                            DisplayName = ks.Name
+                        });
+                    }
+                }
+            }
+        }
+
+        AvailableServers = servers;
+        Log.Information("✅ 服务器列表刷新完成，共 {Count} 个服务器", servers.Count);
+    }
+
+    /// <summary>
+    /// 选择指定的服务器并扫描配置文件
+    /// </summary>
+    partial void OnSelectedServerNameChanged(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+
+        var server = AvailableServers.FirstOrDefault(s =>
+            s.DisplayName == value || s.ServerJarName == value);
+
+        if (server != null)
+        {
+            Server = server;
+        }
+    }
+
+    /// <summary>
+    /// 浏览并选择服务器目录（通过选择 JAR 文件推断）
+    /// </summary>
+    [RelayCommand]
+    private void BrowseServerDirectory()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "Minecraft 服务器核心 (*.jar)|*.jar|所有文件 (*.*)|*.*",
+            Title = "选择服务器 JAR 文件（将自动识别所在目录）",
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            var jarPath = dialog.FileName;
+            var dirPath = Path.GetDirectoryName(jarPath);
+            if (!string.IsNullOrEmpty(dirPath) && Directory.Exists(dirPath))
+            {
+                Log.Information("📂 用户选择服务器目录: {Path}", dirPath);
+                LoadServerFromDirectory(dirPath);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 从目录加载服务器配置
+    /// </summary>
+    private void LoadServerFromDirectory(string path)
+    {
+        if (!Directory.Exists(path)) return;
+
+        var dirName = Path.GetFileName(path);
+        var server = new ServerInstance
+        {
+            DisplayName = dirName,
+            ServerJarName = dirName,
+            WorkingDirectory = path
+        };
+
+        // 尝试查找 JAR 文件
+        try
+        {
+            var jarFiles = Directory.GetFiles(path, "*.jar", SearchOption.TopDirectoryOnly);
+            if (jarFiles.Length > 0)
+            {
+                server.ServerJarPath = jarFiles[0];
+                server.ServerJarName = Path.GetFileName(jarFiles[0]);
+                server.DisplayName = Path.GetFileNameWithoutExtension(jarFiles[0]);
+            }
+        }
+        catch
+        {
+            // 忽略 JAR 搜索错误
+        }
+
+        Server = server;
+    }
+
+    /// <summary>
+    /// 重新扫描当前服务器目录的配置文件
+    /// </summary>
+    [RelayCommand]
+    private void RescanConfigFiles()
+    {
+        if (Server == null || string.IsNullOrEmpty(Server.WorkingDirectory)) return;
+        ScanDirectoryForConfigFiles(Server.WorkingDirectory);
+    }
 
     /// <summary>
     /// 是否有未保存的修改 —— 用户改了配置但还没保存时的"脏数据"标志
@@ -241,7 +451,7 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 当 Server 变化时 —— 刷新配置文件列表
+    /// 当 Server 变化时 —— 刷新配置文件列表（递归扫描目录）
     /// 新服务器来了，它的配置文件列表当然也要换新的
     /// </summary>
     partial void OnServerChanged(ServerInstance? value)
@@ -255,14 +465,147 @@ public partial class ConfigEditorViewModel : ObservableObject
         if (value is null)
         {
             ConfigFiles = [];
+            ConfigFileTree = [];
+            ServerWorkingDirectory = string.Empty;
             return;
         }
 
-        ConfigFiles = value.ConfigFiles
-            .Where(f => !f.EndsWith('/') && !f.EndsWith('\\'))
-            .Select(f => Path.GetRelativePath(value.WorkingDirectory, f))
-            .ToList();
+        ServerWorkingDirectory = value.WorkingDirectory;
+        SelectedServerName = value.DisplayName;
+
+        // 递归扫描服务器目录下的配置文件
+        if (!string.IsNullOrEmpty(value.WorkingDirectory) && Directory.Exists(value.WorkingDirectory))
+        {
+            ScanDirectoryForConfigFiles(value.WorkingDirectory);
+        }
+        else
+        {
+            // 回退到旧方式：从 Server.ConfigFiles 中获取
+            ConfigFiles = value.ConfigFiles
+                .Where(f => !f.EndsWith('/') && !f.EndsWith('\\'))
+                .Select(f => Path.GetRelativePath(value.WorkingDirectory, f))
+                .ToList();
+        }
+
         OnPropertyChanged(nameof(ConfigFileCountText));
+        OnPropertyChanged(nameof(HasServerDirectory));
+    }
+
+    /// <summary>
+    /// 递归扫描目录，查找所有配置文件
+    /// 支持的格式：.properties, .yml, .yaml, .json, .cfg, .conf, .toml
+    /// </summary>
+    private void ScanDirectoryForConfigFiles(string rootPath)
+    {
+        if (!Directory.Exists(rootPath))
+        {
+            ConfigFiles = [];
+            ConfigFileTree = [];
+            return;
+        }
+
+        Log.Information("🔍 递归扫描配置文件目录: {Path}", rootPath);
+
+        var supportedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".properties", ".yml", ".yaml", ".json", ".cfg", ".conf",
+            ".toml", ".ini", ".txt"
+        };
+
+        var flatList = new List<string>();
+        var treeRoot = new List<ConfigFileItem>();
+
+        try
+        {
+            BuildConfigFileTree(rootPath, rootPath, supportedExtensions, treeRoot, flatList, 0);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "扫描配置文件目录失败: {Message}", ex.Message);
+        }
+
+        ConfigFiles = flatList;
+        ConfigFileTree = treeRoot;
+        OnPropertyChanged(nameof(ConfigFileCountText));
+
+        Log.Information("✅ 扫描完成，找到 {Count} 个配置文件", flatList.Count);
+    }
+
+    /// <summary>
+    /// 递归构建配置文件树
+    /// </summary>
+    private static void BuildConfigFileTree(
+        string currentPath,
+        string rootPath,
+        HashSet<string> supportedExtensions,
+        List<ConfigFileItem> parentList,
+        List<string> flatList,
+        int depth)
+    {
+        // 限制最大深度，防止目录太深或符号链接循环
+        if (depth > 10) return;
+
+        try
+        {
+            // 先添加子目录
+            var directories = Directory.GetDirectories(currentPath);
+            foreach (var dir in directories)
+            {
+                var dirName = Path.GetFileName(dir);
+
+                // 跳过一些常见的非配置目录
+                if (dirName.Equals("mods", StringComparison.OrdinalIgnoreCase) && depth > 0) continue;
+                if (dirName.Equals("world", StringComparison.OrdinalIgnoreCase)) continue;
+                if (dirName.Equals("world_nether", StringComparison.OrdinalIgnoreCase)) continue;
+                if (dirName.Equals("world_the_end", StringComparison.OrdinalIgnoreCase)) continue;
+                if (dirName.Equals("logs", StringComparison.OrdinalIgnoreCase)) continue;
+                if (dirName.Equals("cache", StringComparison.OrdinalIgnoreCase)) continue;
+                if (dirName.Equals("libraries", StringComparison.OrdinalIgnoreCase)) continue;
+                if (dirName.StartsWith('.')) continue; // 隐藏目录
+
+                var dirItem = new ConfigFileItem(
+                    dirName,
+                    dir,
+                    Path.GetRelativePath(rootPath, dir),
+                    isDirectory: true);
+
+                BuildConfigFileTree(dir, rootPath, supportedExtensions, dirItem.Children, flatList, depth + 1);
+
+                // 只添加有配置文件的目录（或者是根目录下的一级目录）
+                if (dirItem.Children.Count > 0 || depth == 0)
+                {
+                    parentList.Add(dirItem);
+                }
+            }
+
+            // 再添加文件
+            var files = Directory.GetFiles(currentPath);
+            foreach (var file in files)
+            {
+                var ext = Path.GetExtension(file);
+                if (!supportedExtensions.Contains(ext)) continue;
+
+                var fileName = Path.GetFileName(file);
+                var relativePath = Path.GetRelativePath(rootPath, file);
+
+                var fileItem = new ConfigFileItem(
+                    fileName,
+                    file,
+                    relativePath,
+                    isDirectory: false);
+
+                parentList.Add(fileItem);
+                flatList.Add(relativePath);
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // 没有权限访问的目录，跳过
+        }
+        catch (Exception ex)
+        {
+            Log.Debug("扫描目录 {Path} 时出错: {Message}", currentPath, ex.Message);
+        }
     }
 
     /// <summary>

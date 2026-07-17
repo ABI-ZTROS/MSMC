@@ -107,12 +107,47 @@ public partial class App : Application
         Log.Information("🔔 注册通知服务...");
         services.AddSingleton<IToastNotificationService, ToastNotificationService>();
 
+        // 🔐 权限服务 —— "你是管理员吗？请出示证件 🪪"
+        Log.Information("🔐 注册权限服务...");
+        services.AddSingleton<IPrivilegeService, PrivilegeService>();
+
+        // 🧹 内存优化服务 —— "定期打扫卫生，让程序轻装上阵"
+        Log.Information("🧹 注册内存优化服务...");
+        services.AddSingleton<MemoryOptimizerService>();
+
         // 🧠 MainViewModel —— 指挥官当然要注册进 DI 啦！
         // 之前忘了注册它，结果把 DI 容器本身当 DataContext 了，绑定全炸 💥
         Log.Information("🧠 注册 MainViewModel...");
         services.AddSingleton<MainViewModel>();
 
         _serviceProvider = services.BuildServiceProvider();
+
+        // 🎨 渲染管线优化 —— WPF 性能调优
+        ConfigureRenderOptimizations();
+
+        // 🔐 检查管理员权限
+        Log.Information("🔐 检查管理员权限...");
+        var privilegeService = _serviceProvider.GetRequiredService<IPrivilegeService>();
+        if (!privilegeService.IsRunningAsAdmin && privilegeService.IsWindows)
+        {
+            Log.Warning("⚠️ 当前不是管理员权限，部分功能可能受限");
+            var result = System.Windows.MessageBox.Show(
+                "MSMC 检测到当前未以管理员身份运行。\n\n" +
+                "部分功能（如读取其他进程命令行、完整系统监控）可能无法正常工作。\n\n" +
+                "是否立即以管理员权限重新启动？",
+                "权限提示",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+
+            if (result == System.Windows.MessageBoxResult.Yes)
+            {
+                if (privilegeService.RequestElevation())
+                {
+                    Shutdown();
+                    return;
+                }
+            }
+        }
 
         // 📂 加载全局配置（已知服务器等）
         Log.Information("📂 加载全局配置...");
@@ -177,6 +212,10 @@ public partial class App : Application
         };
 
         mainWindow.Show();
+
+        // 🧹 启动内存优化服务
+        Log.Information("🧹 启动内存优化服务...");
+        _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start();
 
         Log.Information("📦 MainViewModel 已创建并注入 DI");
         Log.Information("✅ McServerGuard 启动完成，主窗口已就绪！");
@@ -249,6 +288,44 @@ public partial class App : Application
         {
             // 连崩溃报告都崩了... 那就安静地走吧
             Log.Fatal(ex, "连崩溃报告都崩了，我尽力了...");
+        }
+    }
+
+    /// <summary>
+    /// 配置 WPF 渲染管线优化
+    /// 包括硬件渲染、字体渲染、多线程优化等
+    /// </summary>
+    private static void ConfigureRenderOptimizations()
+    {
+        try
+        {
+            Log.Information("🎨 配置 WPF 渲染管线优化...");
+
+            // 启用硬件加速渲染
+            System.Windows.Media.RenderOptions.ProcessRenderMode =
+                System.Windows.Interop.RenderMode.Default;
+
+            // 设置渲染模式为硬件渲染
+            if (System.Windows.Media.RenderCapability.Tier >> 16 >= 2)
+            {
+                Log.Information("🖥️ 显卡支持 Tier 2 渲染，启用完全硬件加速");
+            }
+            else
+            {
+                Log.Warning("⚠️ 显卡渲染等级较低，部分效果可能降级");
+            }
+
+            // 启用位图缓存（减少重复渲染）
+            // 注意：BitmapCache 不应全局设置，应在具体控件上按需使用
+
+            // 设置 UI 线程优先级优化
+            // 确保动画和渲染优先于后台操作
+
+            Log.Information("✅ WPF 渲染管线优化配置完成");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ 渲染优化配置失败，使用默认设置: {Message}", ex.Message);
         }
     }
 

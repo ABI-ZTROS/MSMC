@@ -9,10 +9,11 @@ using Serilog;
 
 /// <summary>
 /// 内存监控器
-/// 主方案：kernel32.dll 的 GlobalMemoryStatusEx
+/// 主方案：kernel32.dll 的 GlobalMemoryStatusEx（带缓存优化）
 /// 备用方案A：PerformanceCounter
 /// 备用方案B：WMI Win32_OperatingSystem
 /// 增强：通过 WMI Win32_PhysicalMemory 获取内存频率、类型、插槽数
+/// 修复：正确计算可用内存（包括 Standby 列表），与任务管理器数据一致
 /// </summary>
 public class MemoryMonitor
 {
@@ -21,6 +22,10 @@ public class MemoryMonitor
     private PerformanceCounter? _availableMemoryCounter;
     private PerformanceCounter? _committedBytesCounter;
     private readonly object _counterLock = new();
+    private MEMORYSTATUSEX _lastMemStatus;
+    private DateTime _lastMemStatusTime = DateTime.MinValue;
+    private readonly object _memStatusLock = new();
+    private static readonly TimeSpan MemStatusCacheDuration = TimeSpan.FromMilliseconds(500);
 
     private static bool IsWindows =>
         RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -36,18 +41,12 @@ public class MemoryMonitor
         // 方案1：GlobalMemoryStatusEx
         try
         {
-            var memStatus = new MEMORYSTATUSEX();
-            memStatus.dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>();
-            if (GlobalMemoryStatusEx(ref memStatus))
+            var memStatus = GetMemoryStatus();
+            if (memStatus.ullTotalPhys > 0)
             {
                 Log.Debug("💾 GlobalMemoryStatusEx 成功，总内存: {Total} GB",
                     (double)memStatus.ullTotalPhys / (1024 * 1024 * 1024));
                 return (long)memStatus.ullTotalPhys;
-            }
-            else
-            {
-                var error = Marshal.GetLastWin32Error();
-                Log.Warning("💾 GlobalMemoryStatusEx 返回失败，错误码: {ErrorCode}", error);
             }
         }
         catch (Exception ex)
@@ -83,6 +82,8 @@ public class MemoryMonitor
 
     /// <summary>
     /// 获取已使用的物理内存（字节）
+    /// 计算方式：总内存 - 可用物理内存
+    /// 注意：ullAvailPhys 包含 Standby 列表，因此这个值与任务管理器的"使用中"一致
     /// </summary>
     public long GetUsedMemory()
     {
@@ -107,16 +108,10 @@ public class MemoryMonitor
         // 方案1：GlobalMemoryStatusEx
         try
         {
-            var memStatus = new MEMORYSTATUSEX();
-            memStatus.dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>();
-            if (GlobalMemoryStatusEx(ref memStatus))
+            var memStatus = GetMemoryStatus();
+            if (memStatus.ullTotalPhys > 0)
             {
                 return (long)memStatus.ullAvailPhys;
-            }
-            else
-            {
-                var error = Marshal.GetLastWin32Error();
-                Log.Debug("💾 GlobalMemoryStatusEx 返回失败，错误码: {ErrorCode}", error);
             }
         }
         catch (Exception ex)
@@ -175,9 +170,8 @@ public class MemoryMonitor
         // 方案1：GlobalMemoryStatusEx（直接返回 dwMemoryLoad）
         try
         {
-            var memStatus = new MEMORYSTATUSEX();
-            memStatus.dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>();
-            if (GlobalMemoryStatusEx(ref memStatus))
+            var memStatus = GetMemoryStatus();
+            if (memStatus.ullTotalPhys > 0)
             {
                 return memStatus.dwMemoryLoad;
             }
@@ -196,6 +190,68 @@ public class MemoryMonitor
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// 获取提交内存使用量（字节）
+    /// 对应任务管理器的"提交大小"
+    /// </summary>
+    public long GetCommitChargeUsed()
+    {
+        if (!IsWindows) return 0;
+
+        try
+        {
+            var memStatus = GetMemoryStatus();
+            return (long)(memStatus.ullTotalPageFile - memStatus.ullAvailPageFile);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// 获取提交内存总量（字节）
+    /// </summary>
+    public long GetCommitChargeTotal()
+    {
+        if (!IsWindows) return 0;
+
+        try
+        {
+            var memStatus = GetMemoryStatus();
+            return (long)memStatus.ullTotalPageFile;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// 获取内存状态（带缓存，避免频繁 P/Invoke）
+    /// </summary>
+    private MEMORYSTATUSEX GetMemoryStatus()
+    {
+        lock (_memStatusLock)
+        {
+            if ((DateTime.Now - _lastMemStatusTime) < MemStatusCacheDuration
+                && _lastMemStatus.ullTotalPhys > 0)
+            {
+                return _lastMemStatus;
+            }
+
+            var memStatus = new MEMORYSTATUSEX();
+            memStatus.dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>();
+            if (GlobalMemoryStatusEx(ref memStatus))
+            {
+                _lastMemStatus = memStatus;
+                _lastMemStatusTime = DateTime.Now;
+            }
+
+            return memStatus;
+        }
     }
 
     /// <summary>

@@ -87,10 +87,21 @@
                                 Foreground="White"
                                 Padding="14,8"
                                 Margin="0,0,8,0"
-                                ToolTip="刷新服务器列表">
+                                ToolTip="立即刷新服务器列表">
                             <StackPanel Orientation="Horizontal">
-                                <iconPacks:PackIconFontAwesome6 Kind="RotateSolid" Width="14" Height="14" />
+                                <iconPacks:PackIconFontAwesome6 Kind="ArrowsRotateSolid" Width="14" Height="14" />
                                 <TextBlock Text="刷新" Margin="6,0,0,0" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ToggleAutoDetectCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="10,8"
+                                Margin="0,0,8,0"
+                                ToolTip="{Binding AutoDetectStatusText}">
+                            <StackPanel Orientation="Horizontal">
+                                <iconPacks:PackIconFontAwesome6 Kind="{Binding AutoDetectIcon}" Width="12" Height="12" />
+                                <TextBlock Text="{Binding AutoDetectStatusText}" Margin="6,0,0,0" FontSize="12" />
                             </StackPanel>
                         </Button>
 

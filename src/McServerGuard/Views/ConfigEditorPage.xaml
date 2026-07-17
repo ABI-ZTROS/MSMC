@@ -145,15 +145,15 @@
         </selectors:ConfigEditorTemplateSelector>
     </UserControl.Resources>
 
-    <!-- 📐 Grid 两列布局：左侧文件列表（260px）+ 右侧编辑区 -->
+    <!-- 📐 Grid 两列布局：左侧文件列表（280px）+ 右侧编辑区 -->
     <Grid Margin="12">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260" />  <!-- 📁 左侧：配置文件列表 -->
+            <ColumnDefinition Width="280" />  <!-- 📁 左侧：配置文件列表 -->
             <ColumnDefinition Width="*" />     <!-- ✏️ 右侧：配置编辑区 -->
         </Grid.ColumnDefinitions>
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!-- 📁 左侧 Card：配置文件列表 -->
+        <!-- 📁 左侧 Card：服务器选择 + 配置文件列表 -->
         <!-- ═══════════════════════════════════════════════════ -->
         <materialDesign:Card Grid.Column="0"
                              Margin="0,0,12,0"
@@ -176,6 +176,69 @@
                                    FontWeight="Bold"
                                    VerticalAlignment="Center"
                                    Foreground="White" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 🖥️ 服务器选择区 -->
+                <Border DockPanel.Dock="Top"
+                        Padding="12,10"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource CardSubtleBorderBrush}"
+                        Background="{DynamicResource CardBackgroundBrush}">
+                    <StackPanel>
+                        <TextBlock Text="选择服务器"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.6"
+                                   Margin="0,0,0,6" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <ComboBox Grid.Column="0"
+                                      ItemsSource="{Binding AvailableServers}"
+                                      SelectedItem="{Binding Server}"
+                                      DisplayMemberPath="DisplayName"
+                                      materialDesign:HintAssist.Hint="选择服务器..."
+                                      Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                      Height="32"
+                                      FontSize="12"
+                                      Margin="0,0,4,0" />
+
+                            <Button Grid.Column="1"
+                                    Command="{Binding RescanConfigFilesCommand}"
+                                    Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                    ToolTip="重新扫描配置文件"
+                                    Height="32"
+                                    Width="32"
+                                    Padding="0"
+                                    Margin="0,0,4,0">
+                                <iconPacks:PackIconFontAwesome6 Kind="ArrowsRotateSolid"
+                                                        Width="14" Height="14" />
+                            </Button>
+
+                            <Button Grid.Column="2"
+                                    Command="{Binding BrowseServerDirectoryCommand}"
+                                    Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                    ToolTip="浏览文件夹..."
+                                    Height="32"
+                                    Width="32"
+                                    Padding="0">
+                                <iconPacks:PackIconFontAwesome6 Kind="FolderPlusSolid"
+                                                        Width="14" Height="14" />
+                            </Button>
+                        </Grid>
+
+                        <!-- 当前目录路径 -->
+                        <TextBlock Text="{Binding ServerWorkingDirectory}"
+                                   FontSize="10"
+                                   Opacity="0.5"
+                                   TextTrimming="CharacterEllipsis"
+                                   Margin="0,6,0,0"
+                                   ToolTip="{Binding ServerWorkingDirectory}" />
                     </StackPanel>
                 </Border>
 

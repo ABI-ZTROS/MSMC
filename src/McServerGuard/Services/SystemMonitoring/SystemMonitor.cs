@@ -79,7 +79,7 @@ public class SystemMonitor : ISystemMonitor
         var diskInfo = _diskMonitor.GetDiskInfo(diskRoot);
 
         // Java 进程统计
-        var (javaCount, javaWorkingSet, javaThreadCount) = GetJavaProcessStats();
+        var (javaCount, javaWorkingSet, javaPrivateBytes, javaThreadCount) = GetJavaProcessStats();
 
         // 线程信息
         var totalThreads = _threadAnalyzer.GetTotalThreadCount();
@@ -269,35 +269,85 @@ public class SystemMonitor : ISystemMonitor
 
     /// <summary>
     /// 获取 Java 进程统计信息 —— 进程数量、总内存占用、总线程数
+    /// 修复：正确释放 Process 对象，避免资源泄漏；处理进程退出的竞态条件
     /// </summary>
-    private static (int ProcessCount, long WorkingSetBytes, int ThreadCount) GetJavaProcessStats()
+    private static (int ProcessCount, long WorkingSetBytes, long PrivateBytes, int ThreadCount) GetJavaProcessStats()
     {
-        var javaProcesses = Process.GetProcessesByName("java")
-            .Concat(Process.GetProcessesByName("javaw"))
-            .ToList();
+        var javaProcesses = new List<Process>();
+        try
+        {
+            javaProcesses.AddRange(Process.GetProcessesByName("java"));
+            javaProcesses.AddRange(Process.GetProcessesByName("javaw"));
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "获取 Java 进程列表失败");
+        }
 
         long totalWorkingSet = 0;
+        long totalPrivateBytes = 0;
         int totalThreadCount = 0;
+        int validProcessCount = 0;
 
         foreach (var proc in javaProcesses)
         {
-            using (proc)
+            try
             {
+                if (proc.HasExited)
+                {
+                    proc.Dispose();
+                    continue;
+                }
+
                 try
                 {
                     totalWorkingSet += proc.WorkingSet64;
-                    totalThreadCount += proc.Threads.Count;
-                    // 日志：Java 进程统计
-                    Log.Debug("☕ Java 进程: PID={Pid} 线程数={Threads}", proc.Id, proc.Threads.Count);
                 }
-                catch (InvalidOperationException ex)
+                catch
                 {
-                    // 进程已退出 —— 这不是错误，只是进程生命周期正常现象
-                    Log.Debug("Java 进程已退出，跳过统计: {Message}", ex.Message);
+                    // WorkingSet 读取失败，跳过
                 }
+
+                try
+                {
+                    totalPrivateBytes += proc.PrivateMemorySize64;
+                }
+                catch
+                {
+                    // 私有内存读取失败，跳过
+                }
+
+                try
+                {
+                    totalThreadCount += proc.Threads.Count;
+                }
+                catch
+                {
+                    // 线程数读取失败，跳过
+                }
+
+                validProcessCount++;
+                Log.Debug("☕ Java 进程: PID={Pid} 工作集={Ws}MB 私有内存={Pm}MB 线程数={Threads}",
+                    proc.Id,
+                    proc.WorkingSet64 >> 20,
+                    proc.PrivateMemorySize64 >> 20,
+                    proc.Threads.Count);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // 进程已退出 —— 正常现象，不算错误
+                Log.Debug("Java 进程已退出，跳过统计: {Message}", ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug("读取 Java 进程信息失败: {Message}", ex.Message);
+            }
+            finally
+            {
+                proc.Dispose();
             }
         }
 
-        return (javaProcesses.Count, totalWorkingSet, totalThreadCount);
+        return (validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);
     }
 }
