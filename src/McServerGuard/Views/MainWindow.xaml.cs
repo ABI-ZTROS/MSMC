@@ -241,7 +241,6 @@ public partial class MainWindow : Window
         NavItemText1.Opacity = opacity;
         NavItemText2.Opacity = opacity;
         NavItemText3.Opacity = opacity;
-        NavItemText4.Opacity = opacity;
         NavItemText5.Opacity = opacity;
     }
 
@@ -261,7 +260,6 @@ public partial class MainWindow : Window
         Animate(NavItemText1);
         Animate(NavItemText2);
         Animate(NavItemText3);
-        Animate(NavItemText4);
         Animate(NavItemText5);
     }
 
