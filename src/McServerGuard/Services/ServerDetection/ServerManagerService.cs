@@ -237,19 +237,23 @@ public class ServerManagerService : IServerManagerService
     {
         Log.Information("🛑 尝试停止服务器: {JarName}", server.ServerJarName);
 
+        // 优先用 jar 名匹配当前运行中的进程
         var process = FindServerProcess(server);
         if (process != null)
         {
             return StopProcessTree(process.Id);
         }
 
+        // jar 名匹配不到，再尝试用记录的 PID 直接终止
         if (server.ProcessId > 0)
         {
             return StopServerByProcessId(server.ProcessId);
         }
 
-        Log.Warning("⚠️ 未找到运行中的服务器进程");
-        return false;
+        // 既匹配不到 jar 名，也没有有效 PID —— 说明进程本来就不在了
+        // 目标状态（服务器停止）已经达成，应当视为成功，而不是报失败吓唬用户
+        Log.Information("ℹ️ 未找到运行中的服务器进程，视为已停止: {JarName}", server.ServerJarName);
+        return true;
     }
 
     public bool StopServerByProcessId(int processId)
@@ -384,8 +388,9 @@ public class ServerManagerService : IServerManagerService
     {
         try
         {
+            // 先递归终止子进程（防止 java.exe 的子进程继续跑）
             var childProcessIds = GetChildProcessIds(parentProcessId);
-            
+
             foreach (var childId in childProcessIds)
             {
                 try
@@ -398,18 +403,38 @@ public class ServerManagerService : IServerManagerService
                         Log.Information("🔫 已终止子进程: PID={Pid}", childId);
                     }
                 }
+                catch (ArgumentException)
+                {
+                    // 子进程已退出，GetProcessById 会抛 ArgumentException，正常情况
+                    Log.Debug("子进程已退出: PID={Pid}", childId);
+                }
                 catch (Exception ex)
                 {
-                    Log.Warning("⚠️ 终止子进程失败 PID={Pid}: {Msg}", childId, ex.Message);
+                    Log.Debug(ex, "终止子进程跳过 PID={Pid}: {Msg}", childId, ex.Message);
                 }
             }
 
-            var parentProcess = Process.GetProcessById(parentProcessId);
-            if (!parentProcess.HasExited)
+            // 终止父进程
+            try
             {
+                var parentProcess = Process.GetProcessById(parentProcessId);
+                if (parentProcess.HasExited)
+                {
+                    // 进程已经退出 —— 目标状态已达成，视为成功
+                    Log.Information("ℹ️ 进程已退出（无需终止）: PID={Pid}", parentProcessId);
+                    return true;
+                }
+
                 parentProcess.Kill();
                 parentProcess.WaitForExit(5000);
                 Log.Information("🔫 已终止父进程: PID={Pid}", parentProcessId);
+                return true;
+            }
+            catch (ArgumentException)
+            {
+                // GetProcessById 找不到进程会抛 ArgumentException
+                // 说明进程已经不在了 —— 目标状态已达成，视为成功
+                Log.Information("ℹ️ 进程已不存在（视为已停止）: PID={Pid}", parentProcessId);
                 return true;
             }
         }

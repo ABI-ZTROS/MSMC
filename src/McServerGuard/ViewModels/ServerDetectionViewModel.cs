@@ -671,7 +671,9 @@ public partial class ServerDetectionViewModel : ObservableObject
         try
         {
             var success = await Task.Run(() => _serverManager.StopServer(server));
-            OperationMessage = success ? "✅ 服务器已停止" : "⚠️ 停止失败，可能需要手动关闭";
+            // success=true 表示目标状态达成（进程已不在，无论是否由我们杀的）
+            // 不再用"可能需要手动关闭"吓唬新手 —— 真失败时 ex 会被 catch 到下面的异常分支
+            OperationMessage = success ? "✅ 服务器已停止" : "⚠️ 停止失败，进程可能仍在运行，请检查任务管理器";
 
             if (success)
             {
