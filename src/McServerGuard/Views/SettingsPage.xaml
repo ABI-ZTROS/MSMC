@@ -550,12 +550,11 @@
                                     CornerRadius="16"
                                     Background="{DynamicResource PrimarySubtleBorderBrush}"
                                     HorizontalAlignment="Center">
-                                <Viewbox Width="40" Height="40"
-                                         HorizontalAlignment="Center"
-                                         VerticalAlignment="Center">
-                                    <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
-                                                            Foreground="{DynamicResource AccentTextBrush}" />
-                                </Viewbox>
+                                <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
+                                                        Width="40" Height="40"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Foreground="{DynamicResource AccentTextBrush}" />
                             </Border>
                             <TextBlock Text="MSMC"
                                        FontSize="20"
