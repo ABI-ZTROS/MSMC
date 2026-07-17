@@ -134,7 +134,7 @@ public partial class UserAgreementWindow : Window
         _shakeTimer.Start();
 
         // 弹出 20 个错误窗口（非模态，随机位置，无标题栏无关闭按钮）
-        for (int i = 0; i < 20; i++)
+        for (int i = 0; i < 40; i++)
         {
             var troll = CreateTrollWindow();
             _trollWindows.Add(troll);
@@ -190,7 +190,7 @@ public partial class UserAgreementWindow : Window
 
         var title = new System.Windows.Controls.TextBlock
         {
-            Text = "没同意用户协议你你妈呢傻逼玩意???",
+            Text = "没同意用户协议用你妈呢傻逼玩意???",
             FontSize = 14,
             FontWeight = FontWeights.Bold,
             Foreground = System.Windows.Media.Brushes.OrangeRed,
