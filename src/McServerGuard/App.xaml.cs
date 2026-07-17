@@ -1,6 +1,7 @@
 // 🚀 应用程序入口 —— 一切从这里开始，像 Minecraft 一样加载世界 🌍
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using McServerGuard.Services;
 using McServerGuard.Services.AIService;
@@ -41,6 +42,11 @@ public partial class App : Application
 
         // ⚠️ 再挂全局异常钩子 —— 后面出啥事都有人兜着
         SetupGlobalExceptionHandling();
+
+        // 🔧 强制软件渲染 —— 禁用硬件加速以避免 DUCE 通道渲染资源崩溃
+        // 崩溃堆栈中的 RenderData.ReleaseOnChannel 和 Freezable.HandlerRemove
+        // 都与 WPF 硬件加速的 DUCE 通道有关，软件渲染可绕过此问题
+        RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
 
         try
         {

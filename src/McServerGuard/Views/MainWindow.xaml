@@ -149,13 +149,10 @@
                 </Grid.RowDefinitions>
 
                 <!-- 🏷️ 导航头部 - 仅展开时显示文字部分 -->
-                <Border Grid.Row="0" Padding="12,16,12,12">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="{DynamicResource PrimarySubtleBackgroundBrush}" Offset="0" />
-                            <GradientStop Color="Transparent" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
+                <!-- 修复：原 GradientStop.Color 绑定到 Brush 资源（类型不匹配）导致
+                     Freezable.HandlerRemove 崩溃。改用纯色 DynamicResource。 -->
+                <Border Grid.Row="0" Padding="12,16,12,12"
+                        Background="{DynamicResource PrimarySubtleBorderBrush}">
                     <StackPanel Orientation="Horizontal">
                         <Border Width="32" Height="32"
                                 CornerRadius="8"
