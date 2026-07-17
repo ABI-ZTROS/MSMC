@@ -898,7 +898,7 @@ public partial class ServerDetectionViewModel : ObservableObject
         // 🚨 二次校验：正在运行的服务器不允许删除
         try
         {
-            if (File.Exists(server.ServerJarPath) && _serverManager.IsJarFileLocked(server.ServerJarPath))
+            if (File.Exists(server.ServerJarPath) && _serverManager.IsServerRunningByJarPath(server.ServerJarPath))
             {
                 OperationMessage = "❌ 服务器正在运行，无法删除";
                 Log.Warning("❌ 拒绝删除正在运行的服务器: {Name}", server.Name);
