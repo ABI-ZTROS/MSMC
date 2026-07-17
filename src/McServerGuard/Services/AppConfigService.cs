@@ -23,6 +23,23 @@ public class AppConfigService : IAppConfigService
             {
                 var json = File.ReadAllText(ConfigPath);
                 Config = JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
+
+                // 🧹 历史数据迁移：早期版本把带 PID 的 DisplayName 存进了 KnownServer.Name，
+                // 导致"已知服务器"列表显示了 PID（如 "Folia @ test (PID: 17044)"）。
+                // 已知服务器是静态档案，PID 是运行时概念，不该混在一起。
+                // 加载时统一清理一遍，避免用户看到幽灵 PID 紧张。
+                foreach (var ks in Config.KnownServers)
+                {
+                    if (!string.IsNullOrEmpty(ks.Name) && ks.Name.Contains("(PID:"))
+                    {
+                        ks.Name = System.Text.RegularExpressions.Regex.Replace(
+                            ks.Name,
+                            @"\s*\(PID:\s*\d+\)\s*$",
+                            string.Empty).Trim();
+                        Log.Information("🧹 已清理已知服务器名称中的 PID 后缀: {Name}", ks.Name);
+                    }
+                }
+
                 Log.Information("📂 全局配置已加载，已知服务器 {Count} 个", Config.KnownServers.Count);
             }
             else

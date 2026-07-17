@@ -949,8 +949,10 @@ public partial class ServerDetectionViewModel : ObservableObject
 
             if (existing != null)
             {
+                // 注意：KnownServer.Name 是静态档案名，不应该用带 PID 的 DisplayName 初始化。
+                // 如果原来 Name 为空，用"类型 @ 目录名"格式命名，不包含运行时 PID。
                 existing.Name = string.IsNullOrEmpty(existing.Name)
-                    ? SelectedServer.DisplayName
+                    ? $"{SelectedServer.ServerType} @ {System.IO.Path.GetFileName(SelectedServer.WorkingDirectory)}"
                     : existing.Name;
                 existing.WorkingDirectory = SelectedServer.WorkingDirectory;
                 existing.JavaPath = SelectedServer.JavaPath;
@@ -965,7 +967,9 @@ public partial class ServerDetectionViewModel : ObservableObject
             {
                 var known = new KnownServer
                 {
-                    Name = SelectedServer.DisplayName,
+                    // 用"类型 @ 目录名"作为默认名称，不含运行时 PID。
+                    // KnownServer 是静态档案，PID 是运行时概念，两者不应混在一起。
+                    Name = $"{SelectedServer.ServerType} @ {System.IO.Path.GetFileName(SelectedServer.WorkingDirectory)}",
                     ServerJarPath = SelectedServer.ServerJarPath,
                     WorkingDirectory = SelectedServer.WorkingDirectory,
                     JavaPath = SelectedServer.JavaPath,
