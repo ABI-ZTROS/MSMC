@@ -210,6 +210,7 @@ public partial class ServerDetectionViewModel : ObservableObject
 
     private bool MatchesSearch(object obj, bool isRunning)
     {
+        if (obj is null) return false;
         if (string.IsNullOrWhiteSpace(SearchKeyword))
             return true;
 
@@ -218,7 +219,7 @@ public partial class ServerDetectionViewModel : ObservableObject
         {
             return (si.ServerJarName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
                 || (si.WorkingDirectory?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
-                || si.DisplayName.Contains(keyword, StringComparison.OrdinalIgnoreCase);
+                || (si.DisplayName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false);
         }
         if (!isRunning && obj is KnownServer ks)
         {
@@ -231,10 +232,15 @@ public partial class ServerDetectionViewModel : ObservableObject
 
     private void RefreshFilteredRunningServers()
     {
+        // 防御性拷贝：避免在枚举时 DetectionResult.Servers 被另一线程修改导致 NRE
+        var snapshot = DetectionResult?.Servers is { } servers
+            ? servers.ToList()
+            : new List<ServerInstance>();
+
         _runningServersInternal.Clear();
-        if (DetectionResult?.Servers is { } servers)
+        foreach (var s in snapshot)
         {
-            foreach (var s in servers) _runningServersInternal.Add(s);
+            if (s is not null) _runningServersInternal.Add(s);
         }
         FilteredRunningServers.Refresh();
     }
