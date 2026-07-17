@@ -58,7 +58,7 @@
             <RowDefinition Height="Auto" />  <!-- 📊 底部状态栏 -->
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" /> <!-- 🧭 导航面板（可自动展开/折叠） -->
+            <ColumnDefinition Width="56" x:Name="NavColumn" /> <!-- 🧭 导航面板（可自动展开/折叠） -->
             <ColumnDefinition Width="*" />    <!-- 📄 主内容区 -->
         </Grid.ColumnDefinitions>
 
@@ -133,34 +133,20 @@
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1" Grid.Column="0"
                 x:Name="NavSidebar"
-                Width="56"
-                ClipToBounds="True"
+                Width="240"
+                HorizontalAlignment="Left"
+                Panel.ZIndex="10"
+                SnapsToDevicePixels="True"
                 Background="{DynamicResource CardBackgroundBrush}"
                 BorderBrush="{DynamicResource CardSubtleBorderBrush}"
                 BorderThickness="0,0,1,0"
                 MouseEnter="NavSidebar_MouseEnter"
                 MouseLeave="NavSidebar_MouseLeave">
-            <Border.RenderTransform>
-                <TranslateTransform X="0" />
-            </Border.RenderTransform>
-            <Border.Resources>
-                <Storyboard x:Key="ExpandSidebarStoryboard">
-                    <DoubleAnimation Storyboard.TargetName="NavSidebar"
-                                     Storyboard.TargetProperty="Width"
-                                     To="240"
-                                     Duration="0:0:0.25"
-                                     EasingFunction="{StaticResource StandardEase}" />
-                </Storyboard>
-                <Storyboard x:Key="CollapseSidebarStoryboard">
-                    <DoubleAnimation Storyboard.TargetName="NavSidebar"
-                                     Storyboard.TargetProperty="Width"
-                                     To="56"
-                                     Duration="0:0:0.25"
-                                     EasingFunction="{StaticResource StandardEase}" />
-                </Storyboard>
-            </Border.Resources>
+            <Border.Clip>
+                <RectangleGeometry x:Name="NavSidebarClip" Rect="0,0,56,10000" />
+            </Border.Clip>
 
-            <Grid Width="240" HorizontalAlignment="Left">
+            <Grid Width="240">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -179,12 +165,11 @@
                         <Border Width="32" Height="32"
                                 CornerRadius="8"
                                 Background="{DynamicResource PrimarySubtleBorderBrush}">
-                            <Viewbox Width="20" Height="20"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Center">
-                                <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
-                                                        Foreground="{DynamicResource NavItemSelectedBrush}" />
-                            </Viewbox>
+                            <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
+                                                    Width="20" Height="20"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    Foreground="{DynamicResource NavItemSelectedBrush}" />
                         </Border>
                         <StackPanel Margin="10,0,0,0" VerticalAlignment="Center"
                                     x:Name="NavHeaderText"
@@ -211,6 +196,7 @@
                          Foreground="{DynamicResource MaterialDesignBody}"
                          Style="{StaticResource ModernNavListBoxStyle}"
                          ItemContainerStyle="{StaticResource ModernNavListBoxItemStyle}"
+                         VirtualizingStackPanel.IsVirtualizing="False"
                          Margin="0,4,0,0">
 
                     <ListBoxItem ToolTip="服务器管理">
