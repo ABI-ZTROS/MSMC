@@ -10,7 +10,6 @@ using CommunityToolkit.Mvvm.Input;
 using McServerGuard.Constants;
 using McServerGuard.Models;
 using McServerGuard.Services;
-using McServerGuard.Services.AIService;
 using McServerGuard.Services.ServerDetection;
 using Microsoft.Win32;
 using Serilog;
@@ -23,22 +22,19 @@ public partial class ServerDetectionViewModel : ObservableObject
     private readonly IAppConfigService _appConfigService;
     private readonly IServerManagerService _serverManager;
     private readonly IServerImporterService _serverImporter;
-    private readonly IAiSelfLearningService _aiLearning;
     private readonly ObservableCollection<ServerInstance> _runningServersInternal;
 
     public ServerDetectionViewModel(
         IServerDetector serverDetector,
         IAppConfigService appConfigService,
         IServerManagerService serverManager,
-        IServerImporterService serverImporter,
-        IAiSelfLearningService aiLearning)
+        IServerImporterService serverImporter)
     {
         Log.Information("📡 ServerDetectionViewModel 初始化");
         _serverDetector = serverDetector;
         _appConfigService = appConfigService;
         _serverManager = serverManager;
         _serverImporter = serverImporter;
-        _aiLearning = aiLearning;
 
         SelectedArguments = new ObservableCollection<string>();
         AllArgumentCategories = new ObservableCollection<ArgumentCategory>(Enum.GetValues<ArgumentCategory>());
@@ -842,13 +838,6 @@ public partial class ServerDetectionViewModel : ObservableObject
                 SelectedKnownServer = known;
                 OperationMessage = $"✅ 服务器已添加到列表: {serverType}（点击启动按钮开始运行）";
             }
-
-            // 后台异步执行 AI 自学习
-            _ = Task.Run(async () =>
-            {
-                try { await _aiLearning.AutoLearnFromServerAsync(server); }
-                catch (Exception ex) { Log.Error(ex, "❌ AI 自学习失败: {Message}", ex.Message); }
-            });
 
             StartCurrentServerCommand.NotifyCanExecuteChanged();
             StopCurrentServerCommand.NotifyCanExecuteChanged();

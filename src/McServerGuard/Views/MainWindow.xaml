@@ -209,12 +209,6 @@
                             <TextBlock x:Name="NavItemText3" Text="系统监控" FontSize="13" VerticalAlignment="Center" />
                         </StackPanel>
                     </ListBoxItem>
-                    <ListBoxItem ToolTip="AI 守护">
-                        <StackPanel Orientation="Horizontal" Margin="4,4">
-                            <iconPacks:PackIconFontAwesome6 Kind="ShieldHalvedSolid" Width="22" Height="22" Margin="0,0,12,0" />
-                            <TextBlock x:Name="NavItemText4" Text="AI 守护" FontSize="13" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </ListBoxItem>
                     <ListBoxItem ToolTip="设置">
                         <StackPanel Orientation="Horizontal" Margin="4,4">
                             <iconPacks:PackIconFontAwesome6 Kind="GearSolid" Width="22" Height="22" Margin="0,0,12,0" />
@@ -274,9 +268,6 @@
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:SystemMonitorViewModel}">
                     <local:SystemMonitorPage />
-                </DataTemplate>
-                <DataTemplate DataType="{x:Type vm:AIGuardViewModel}">
-                    <local:AIGuardPage />
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
                     <local:SettingsPage />

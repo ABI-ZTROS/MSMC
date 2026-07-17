@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.Input;
 using MaterialDesignThemes.Wpf;
 using McServerGuard.Models;
 using McServerGuard.Services;
-using McServerGuard.Services.AIService;
 using McServerGuard.Services.ConfigManagement;
 using McServerGuard.Services.ServerDetection;
 using McServerGuard.Services.SystemMonitoring;
@@ -15,7 +14,7 @@ namespace McServerGuard.ViewModels;
 /// <summary>
 /// 🏠 主窗口 ViewModel —— 整个应用的大脑/指挥中心
 /// 
-/// 负责四大子页面的调度和导航，像指挥官一样把检测到的 Server
+/// 负责各大子页面的调度和导航，像指挥官一样把检测到的 Server
 /// 分发给各个子页面。毕竟 Server 只需检测一次，但谁都要用它。
 /// </summary>
 public partial class MainViewModel : ObservableObject
@@ -24,10 +23,8 @@ public partial class MainViewModel : ObservableObject
     private readonly IServerDetector _serverDetector;
     private readonly IConfigManager _configManager;
     private readonly ISystemMonitor _systemMonitor;
-    private readonly IAiGuardService _aiGuardService;
     private readonly IServerImporterService _serverImporter;
     private readonly IServerManagerService _serverManager;
-    private readonly IAiSelfLearningService _aiLearning;
     private readonly IThemeService _themeService;
     private readonly IToastNotificationService _toastService;
     private readonly IAppConfigService _appConfigService;
@@ -35,43 +32,38 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>
     /// 主窗口 ViewModel 构造函数
-    /// 通过构造函数注入所有服务 + 初始化五大子页面
+    /// 通过构造函数注入所有服务 + 初始化子页面
     /// </summary>
     public MainViewModel(
         IServerDetector serverDetector,
         IConfigManager configManager,
         ISystemMonitor systemMonitor,
-        IAiGuardService aiGuardService,
         IServerImporterService serverImporter,
         IServerManagerService serverManager,
-        IAiSelfLearningService aiLearning,
         IThemeService themeService,
         IToastNotificationService toastService,
         IAppConfigService appConfigService,
         IPrivilegeService privilegeService)
     {
-        Log.Information("🧠 MainViewModel 初始化，注入 {ServiceCount} 个服务", 11);
+        Log.Information("🧠 MainViewModel 初始化，注入 {ServiceCount} 个服务", 9);
 
         _serverDetector = serverDetector;
         _configManager = configManager;
         _systemMonitor = systemMonitor;
-        _aiGuardService = aiGuardService;
         _serverImporter = serverImporter;
         _serverManager = serverManager;
-        _aiLearning = aiLearning;
         _themeService = themeService;
         _toastService = toastService;
         _appConfigService = appConfigService;
         _privilegeService = privilegeService;
 
         // 📦 初始化子页面 ViewModel
-        DetectionPage = new ServerDetectionViewModel(serverDetector, appConfigService, serverManager, serverImporter, aiLearning);
+        DetectionPage = new ServerDetectionViewModel(serverDetector, appConfigService, serverManager, serverImporter);
         ConfigPage = new ConfigEditorViewModel(configManager, serverDetector, appConfigService);
         MonitorPage = new SystemMonitorViewModel(systemMonitor);
-        AIGuardPage = new AIGuardViewModel(aiGuardService);
         SettingsPage = new SettingsViewModel(themeService, toastService);
 
-        // 📡 订阅检测页的选中服务器变化，同步到配置页/监控页/AI页
+        // 📡 订阅检测页的选中服务器变化，同步到配置页/监控页
         DetectionPage.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName == nameof(ServerDetectionViewModel.SelectedServer))
@@ -79,7 +71,6 @@ public partial class MainViewModel : ObservableObject
                 var server = DetectionPage.SelectedServer;
                 ConfigPage.Server = server;
                 MonitorPage.Server = server;
-                AIGuardPage.Server = server;
             }
         };
 
@@ -124,7 +115,6 @@ public partial class MainViewModel : ObservableObject
     public SnackbarMessageQueue SnackbarMessages { get; } = new(TimeSpan.FromSeconds(3));
 
     // ─── 子页面 ViewModel ─────────────────────────────────────────
-    // 四个 Tab，四个世界 🌍
 
     /// <summary>🔍 服务器检测页 —— "你的服务器在哪？让我找找"</summary>
     public ServerDetectionViewModel DetectionPage { get; }
@@ -135,9 +125,6 @@ public partial class MainViewModel : ObservableObject
     /// <summary>📊 系统监控页 —— "你的服务器还能撑多久？"</summary>
     public SystemMonitorViewModel MonitorPage { get; }
 
-    /// <summary>🤖 AI 守护页 —— "我是 AI，我来保护你的服务器"</summary>
-    public AIGuardViewModel AIGuardPage { get; }
-
     /// <summary>⚙️ 设置页 —— "自定义外观和行为"</summary>
     public SettingsViewModel SettingsPage { get; }
 
@@ -145,8 +132,8 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>
     /// 当前选中的 Tab 索引
-    /// 0=检测, 1=配置, 2=监控, 3=AI守护
-    /// 改变它就能切换页面，WPF 的 TabControl 绑定就靠这个了
+    /// 0=检测, 1=配置, 2=监控, 3=设置
+    /// 改变它就能切换页面
     /// </summary>
     [ObservableProperty]
     private int _selectedTabIndex;
@@ -160,8 +147,7 @@ public partial class MainViewModel : ObservableObject
         0 => DetectionPage,
         1 => ConfigPage,
         2 => MonitorPage,
-        3 => AIGuardPage,
-        4 => SettingsPage,
+        3 => SettingsPage,
         _ => DetectionPage
     };
 
@@ -213,7 +199,7 @@ public partial class MainViewModel : ObservableObject
     /// 流程：
     /// 1. 调用 DetectionPage.DetectCommand（子页面自己会更新 UI）
     /// 2. 等检测结果回来
-    /// 3. 如果检测到了服务器，把第一个（或用户选中的）塞给其他三个子页面
+    /// 3. 如果检测到了服务器，把第一个（或用户选中的）塞给其他子页面
     /// 
     /// 为什么不直接在这里调 IServerDetector？因为 DetectionPage 自己也要显示进度啊
     /// </summary>
@@ -241,7 +227,6 @@ public partial class MainViewModel : ObservableObject
                 var firstServer = result.Servers[0];
                 ConfigPage.Server = firstServer;
                 MonitorPage.Server = firstServer;
-                AIGuardPage.Server = firstServer;
 
                 // 自动选中第一个服务器
                 DetectionPage.SelectedServer = firstServer;
@@ -280,7 +265,7 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>
     /// 局部方法：当 SelectedTabIndex 变化时更新状态栏
-    /// 虽然可以放 OnSelectedTabIndexChanged 里，但partial method
+    /// 虽然可以放 OnSelectedTabIndexChanged 里，但 partial method
     /// 被源生成器用了，咱就别手动写了，用 PropertyChanged 订阅
     /// </summary>
     partial void OnSelectedTabIndexChanged(int value)
@@ -300,10 +285,7 @@ public partial class MainViewModel : ObservableObject
             2 => MonitorPage.Server is not null
                 ? $"系统监控 —— 正在监控 {MonitorPage.Server.DisplayName} 📊"
                 : "系统监控 —— 请先检测并选择一个服务器 ⚠️",
-            3 => AIGuardPage.Server is not null
-                ? $"AI 守护 —— 正在守护 {AIGuardPage.Server.DisplayName} 🤖"
-                : "AI 守护 —— 请先检测并选择一个服务器 ⚠️",
-            4 => "设置 —— 自定义外观、主题和行为 ⚙️",
+            3 => "设置 —— 自定义外观、主题和行为 ⚙️",
             _ => StatusMessage
         };
     }

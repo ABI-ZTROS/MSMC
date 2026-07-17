@@ -4,7 +4,6 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
 using McServerGuard.Services;
-using McServerGuard.Services.AIService;
 using McServerGuard.Services.ConfigManagement;
 using McServerGuard.Services.Privilege;
 using McServerGuard.Services.ServerDetection;
@@ -81,15 +80,6 @@ public partial class App : Application
         services.AddSingleton<DiskSpaceMonitor>();
         services.AddSingleton<MemoryMonitor>();
         services.AddSingleton<ThreadAnalyzer>();
-
-        // 🤖 AI 守护服务 —— "我来帮你预测服务器什么时候炸"
-        Log.Information("🤖 注册 AI 守护服务组...");
-        services.AddSingleton<IAiGuardService, AiGuardOrchestrator>();
-        services.AddSingleton<IAiSelfLearningService>(sp => (IAiSelfLearningService)sp.GetRequiredService<IAiGuardService>());
-        services.AddSingleton<LogAnomalyDetector>();
-        services.AddSingleton<CrashPredictor>();
-        services.AddSingleton<ConfigOptimizer>();
-        services.AddSingleton<LogRootCauseAnalyzer>();
 
         // 🎨 主题服务 —— "换个皮肤，换个心情"
         Log.Information("🎨 注册主题服务...");
