@@ -13,12 +13,21 @@ public partial class UserAgreementWindow : Window
     private bool _hasScrolledToBottom = false;
     private const string AgreementVersion = "2.0.0";
 
+    private readonly DispatcherTimer _shakeTimer;
+    private readonly List<Window> _trollWindows = [];
+    private int _shakeRemainingMs;
+    private double _originalLeft;
+    private double _originalTop;
+    private static readonly Random _random = new();
+
     public UserAgreementWindow()
     {
         InitializeComponent();
         _userAgreementService = App.Services.GetRequiredService<IUserAgreementService>();
         _countdownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _countdownTimer.Tick += CountdownTimer_Tick;
+        _shakeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        _shakeTimer.Tick += ShakeTimer_Tick;
         Loaded += UserAgreementWindow_Loaded;
     }
 
@@ -109,14 +118,124 @@ public partial class UserAgreementWindow : Window
 
     private void DisagreeButton_Click(object sender, RoutedEventArgs e)
     {
-        var result = MessageBox.Show(
-            "如果您不同意本协议，软件将无法继续使用。确定要退出吗？",
-            "确认退出",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+        // 保存原始位置
+        _originalLeft = Left;
+        _originalTop = Top;
+        _shakeRemainingMs = 5000;
 
-        if (result == MessageBoxResult.Yes)
+        // 禁用按钮防止重复点击
+        DisagreeButton.IsEnabled = false;
+        AgreeButton.IsEnabled = false;
+
+        // 弹出 20 个错误窗口（非模态，随机位置）
+        for (int i = 0; i < 20; i++)
         {
+            var troll = CreateTrollWindow();
+            _trollWindows.Add(troll);
+            troll.Show();
+        }
+
+        // 开始抖动
+        _shakeTimer.Start();
+    }
+
+    private Window CreateTrollWindow()
+    {
+        var screenWidth = SystemParameters.PrimaryScreenWidth;
+        var screenHeight = SystemParameters.PrimaryScreenHeight;
+        const int w = 320;
+        const int h = 160;
+
+        var window = new Window
+        {
+            Title = "⚠️ 错误",
+            Width = w,
+            Height = h,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Left = _random.Next(0, (int)(screenWidth - w)),
+            Top = _random.Next(0, (int)(screenHeight - h)),
+            Topmost = true,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStyle = WindowStyle.SingleBorderWindow,
+            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1a, 0x00, 0x00)),
+            Foreground = System.Windows.Media.Brushes.White,
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+        };
+
+        var panel = new System.Windows.Controls.StackPanel
+        {
+            Margin = new Thickness(20),
+            Orientation = System.Windows.Controls.Orientation.Horizontal
+        };
+
+        var icon = new System.Windows.Controls.TextBlock
+        {
+            Text = "❌",
+            FontSize = 36,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 16, 0)
+        };
+
+        var textPanel = new System.Windows.Controls.StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var title = new System.Windows.Controls.TextBlock
+        {
+            Text = "没同意用户协议你用什么呢???",
+            FontSize = 14,
+            FontWeight = FontWeights.Bold,
+            Foreground = System.Windows.Media.Brushes.OrangeRed,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+
+        var sub = new System.Windows.Controls.TextBlock
+        {
+            Text = "不同意还点这么快？",
+            FontSize = 11,
+            Foreground = System.Windows.Media.Brushes.LightGray,
+            TextWrapping = TextWrapping.Wrap
+        };
+
+        textPanel.Children.Add(title);
+        textPanel.Children.Add(sub);
+        panel.Children.Add(icon);
+        panel.Children.Add(textPanel);
+        window.Content = panel;
+
+        return window;
+    }
+
+    private void ShakeTimer_Tick(object? sender, EventArgs e)
+    {
+        _shakeRemainingMs -= 50;
+
+        // 随机偏移抖动
+        int offsetX = _random.Next(-20, 21);
+        int offsetY = _random.Next(-20, 21);
+        Left = _originalLeft + offsetX;
+        Top = _originalTop + offsetY;
+
+        // 抖动时间到
+        if (_shakeRemainingMs <= 0)
+        {
+            _shakeTimer.Stop();
+
+            // 恢复位置
+            Left = _originalLeft;
+            Top = _originalTop;
+
+            // 关闭所有恶作剧窗口
+            foreach (var w in _trollWindows)
+            {
+                try { w.Close(); } catch { }
+            }
+            _trollWindows.Clear();
+
+            // 关闭主窗口 + 退出程序
             DialogResult = false;
             Application.Current.Shutdown();
         }
