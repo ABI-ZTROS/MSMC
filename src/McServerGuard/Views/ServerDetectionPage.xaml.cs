@@ -16,6 +16,7 @@ namespace McServerGuard.Views;
 public partial class ServerDetectionPage : UserControl
 {
     private readonly IThemeService _themeService;
+    private bool _animationPlayed;
 
     public ServerDetectionPage()
     {
@@ -26,6 +27,14 @@ public partial class ServerDetectionPage : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        // 防止 Loaded 重复触发（Tab 切换/布局变化都会触发）导致页面被反复设为透明
+        if (_animationPlayed)
+        {
+            Opacity = 1;
+            return;
+        }
+        _animationPlayed = true;
+
         var duration = _themeService.EnableAnimations ? _themeService.AnimationDuration : 0;
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {

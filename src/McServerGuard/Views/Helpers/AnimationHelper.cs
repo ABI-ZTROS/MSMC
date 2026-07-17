@@ -24,6 +24,7 @@ public static class AnimationHelper
         if (durationMs <= 0)
         {
             element.Opacity = 1;
+            if (element.RenderTransform is TranslateTransform t) t.Y = 0;
             return;
         }
 
@@ -34,17 +35,25 @@ public static class AnimationHelper
         var duration = TimeSpan.FromMilliseconds(durationMs);
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
+        // 使用 HoldEnd（默认）而非 Stop：动画结束保持终值，即使 Completed 丢失 Opacity 也是 1
         var opacityAnim = new DoubleAnimation(1, duration)
         {
-            EasingFunction = ease,
-            FillBehavior = FillBehavior.Stop
+            EasingFunction = ease
         };
         var yAnim = new DoubleAnimation(0, duration)
         {
-            EasingFunction = ease,
-            FillBehavior = FillBehavior.Stop
+            EasingFunction = ease
         };
-        yAnim.Completed += (_, _) => translate.Y = 0;
+        yAnim.Completed += (_, _) =>
+        {
+            translate.Y = 0;
+            translate.BeginAnimation(TranslateTransform.YProperty, null); // 清除动画持有，释放资源
+        };
+        opacityAnim.Completed += (_, _) =>
+        {
+            element.Opacity = 1;
+            element.BeginAnimation(UIElement.OpacityProperty, null);
+        };
 
         element.BeginAnimation(UIElement.OpacityProperty, opacityAnim, HandoffBehavior.SnapshotAndReplace);
         translate.BeginAnimation(TranslateTransform.YProperty, yAnim, HandoffBehavior.SnapshotAndReplace);
@@ -58,6 +67,7 @@ public static class AnimationHelper
         if (durationMs <= 0)
         {
             element.Opacity = 1;
+            if (element.RenderTransform is TranslateTransform t) t.X = 0;
             return;
         }
 
@@ -70,15 +80,22 @@ public static class AnimationHelper
 
         var opacityAnim = new DoubleAnimation(1, duration)
         {
-            EasingFunction = ease,
-            FillBehavior = FillBehavior.Stop
+            EasingFunction = ease
         };
         var xAnim = new DoubleAnimation(0, duration)
         {
-            EasingFunction = ease,
-            FillBehavior = FillBehavior.Stop
+            EasingFunction = ease
         };
-        xAnim.Completed += (_, _) => translate.X = 0;
+        xAnim.Completed += (_, _) =>
+        {
+            translate.X = 0;
+            translate.BeginAnimation(TranslateTransform.XProperty, null);
+        };
+        opacityAnim.Completed += (_, _) =>
+        {
+            element.Opacity = 1;
+            element.BeginAnimation(UIElement.OpacityProperty, null);
+        };
 
         element.BeginAnimation(UIElement.OpacityProperty, opacityAnim, HandoffBehavior.SnapshotAndReplace);
         translate.BeginAnimation(TranslateTransform.XProperty, xAnim, HandoffBehavior.SnapshotAndReplace);
@@ -98,10 +115,13 @@ public static class AnimationHelper
         element.Opacity = 0;
         var anim = new DoubleAnimation(1, TimeSpan.FromMilliseconds(durationMs))
         {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-            FillBehavior = FillBehavior.Stop
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
-        anim.Completed += (_, _) => element.Opacity = 1;
+        anim.Completed += (_, _) =>
+        {
+            element.Opacity = 1;
+            element.BeginAnimation(UIElement.OpacityProperty, null);
+        };
         element.BeginAnimation(UIElement.OpacityProperty, anim, HandoffBehavior.SnapshotAndReplace);
     }
 

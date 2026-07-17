@@ -13,6 +13,7 @@ namespace McServerGuard.Views;
 public partial class ConfigEditorPage : UserControl
 {
     private readonly IThemeService _themeService;
+    private bool _animationPlayed;
 
     public ConfigEditorPage()
     {
@@ -23,6 +24,13 @@ public partial class ConfigEditorPage : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        if (_animationPlayed)
+        {
+            Opacity = 1;
+            return;
+        }
+        _animationPlayed = true;
+
         var duration = _themeService.EnableAnimations ? _themeService.AnimationDuration : 0;
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {

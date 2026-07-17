@@ -257,10 +257,11 @@
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <!-- 📑 中间 ContentControl —— 六大页面切换（带动画）              -->
+        <!-- 初始 Opacity=1：入场动画由子页面的 Loaded 事件接管，避免开场空白 -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <ContentControl Grid.Row="1" Grid.Column="1" Margin="8"
                         Content="{Binding CurrentPage}"
-                        Opacity="0"
+                        Opacity="1"
                         x:Name="MainContent">
             <ContentControl.Resources>
                 <DataTemplate DataType="{x:Type vm:ServerDetectionViewModel}">
