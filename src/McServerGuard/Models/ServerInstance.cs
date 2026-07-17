@@ -6,7 +6,7 @@ namespace McServerGuard.Models;
 /// <summary>🎯 一个被检测到的 Minecraft 服务器实例 —— 我们的"猎物"档案</summary>
 public partial class ServerInstance : ObservableObject
 {
-    public int ProcessId { get; init; }
+    public int ProcessId { get; set; }
 
     [ObservableProperty] private ServerType _serverType = ServerType.Unknown;
     [ObservableProperty] private string _workingDirectory = string.Empty;
