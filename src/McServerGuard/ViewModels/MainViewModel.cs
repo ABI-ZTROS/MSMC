@@ -281,7 +281,7 @@ public partial class MainViewModel : ObservableObject
             0 => "服务器管理 —— 检测、导入、启动你的 Minecraft 服务器 🎮",
             1 => ConfigPage.Server is not null
                 ? $"配置编辑 —— 正在编辑 {ConfigPage.Server.DisplayName} 的配置 ⚙️"
-                : "配置编辑 —— 请先检测并选择一个服务器 ⚠️",
+                : "配置编辑 —— 选择左侧的配置文件即可开始编辑（无需服务器运行）📝",
             2 => "系统监控 —— 常驻采集 CPU / 内存 / 磁盘 / Java 进程指标 📊",
             3 => "设置 —— 自定义外观、主题和行为 ⚙️",
             _ => StatusMessage
