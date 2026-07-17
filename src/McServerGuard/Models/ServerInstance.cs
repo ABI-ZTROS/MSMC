@@ -27,7 +27,12 @@ public partial class ServerInstance : ObservableObject
     public DateTime DetectedAt { get; init; } = DateTime.Now;
 
     // 📛 显示名称 —— 在 UI 上让玩家一眼认出自己的服务器
-    public string DisplayName => $"{ServerType} @ {System.IO.Path.GetFileName(WorkingDirectory)} (PID: {ProcessId})";
+    // 注意：ProcessId 只在服务器实际运行时才有意义。
+    // 已知服务器（未运行）从 KnownServer 构造时 ProcessId 为默认值 0，
+    // 此时不应该显示 "PID: 0"，否则新手会误以为有幽灵进程。
+    public string DisplayName => ProcessId > 0
+        ? $"{ServerType} @ {System.IO.Path.GetFileName(WorkingDirectory)} (PID: {ProcessId})"
+        : $"{ServerType} @ {System.IO.Path.GetFileName(WorkingDirectory)}";
 
     // 📊 格式化内存 —— 把字节变成人类能看懂的东西
     public string FormattedMaxMemory => FormatBytes(MaxHeapMemoryBytes);
