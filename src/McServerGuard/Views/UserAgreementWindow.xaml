@@ -6,8 +6,12 @@
         Title="用户协议与法律声明"
         Width="760" Height="720"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="CanMinimize"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="False"
         Background="#1a0000"
+        BorderBrush="#8B0000"
+        BorderThickness="2"
         FontFamily="{DynamicResource AppFontFamily}">
 
     <Window.Resources>
@@ -71,8 +75,10 @@
 
         <!-- 顶部标题栏 -->
         <Border Grid.Row="0"
+                x:Name="TitleBar"
                 Background="#8B0000"
-                Padding="24,22">
+                Padding="24,22"
+                Cursor="Hand">
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <iconPacks:PackIconFontAwesome6 Kind="TriangleExclamationSolid"

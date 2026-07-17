@@ -37,6 +37,9 @@ public partial class UserAgreementWindow : Window
         _countdownTimer.Start();
         AgreeButton.IsEnabled = false;
 
+        // 自定义标题栏拖动
+        TitleBar.MouseLeftButtonDown += (_, _) => DragMove();
+
         var scrollViewer = FindScrollViewer(AgreementContent);
         if (scrollViewer != null)
         {
