@@ -573,7 +573,7 @@
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
-        </Setter.Template>
+        </Setter>
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{DynamicResource NavItemHoverBrush}" />
