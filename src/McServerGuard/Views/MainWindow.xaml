@@ -261,6 +261,8 @@
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <ContentControl Grid.Row="1" Grid.Column="1" Margin="8"
                         Content="{Binding CurrentPage}"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch"
                         Opacity="1"
                         x:Name="MainContent">
             <ContentControl.Resources>
