@@ -22,7 +22,6 @@ public partial class MainWindow : Window
     private MainViewModel? _vm;
     private readonly DispatcherTimer _collapseTimer;
     private bool _isSidebarExpanded;
-    private bool _isAnimating;
 
     public MainWindow()
     {
@@ -40,7 +39,6 @@ public partial class MainWindow : Window
         DataContextChanged += MainWindow_DataContextChanged;
         Closing += MainWindow_Closing;
         StateChanged += MainWindow_StateChanged;
-        SizeChanged += MainWindow_SizeChanged;
 
         Log.Information("✅ MainWindow 初始化完成");
     }
@@ -185,7 +183,6 @@ public partial class MainWindow : Window
             NavSidebar.UpdateLayout();
             if (durationMs > 0)
             {
-                _isAnimating = true;
                 var widthAnim = new DoubleAnimation(240, TimeSpan.FromMilliseconds(durationMs))
                 {
                     EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
@@ -193,7 +190,6 @@ public partial class MainWindow : Window
                 };
                 widthAnim.Completed += (_, _) =>
                 {
-                    _isAnimating = false;
                     NavSidebar.Width = 240;
                 };
                 NavSidebar.BeginAnimation(WidthProperty, widthAnim, HandoffBehavior.SnapshotAndReplace);
@@ -218,7 +214,6 @@ public partial class MainWindow : Window
             NavSidebar.UpdateLayout();
             if (durationMs > 0)
             {
-                _isAnimating = true;
                 var widthAnim = new DoubleAnimation(56, TimeSpan.FromMilliseconds(durationMs))
                 {
                     EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
@@ -226,7 +221,6 @@ public partial class MainWindow : Window
                 };
                 widthAnim.Completed += (_, _) =>
                 {
-                    _isAnimating = false;
                     NavSidebar.Width = 56;
                 };
                 NavSidebar.BeginAnimation(WidthProperty, widthAnim, HandoffBehavior.SnapshotAndReplace);
