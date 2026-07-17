@@ -1,6 +1,10 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Windows;
+using System.Windows.Data;
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using McServerGuard.Constants;
@@ -20,6 +24,7 @@ public partial class ServerDetectionViewModel : ObservableObject
     private readonly IServerManagerService _serverManager;
     private readonly IServerImporterService _serverImporter;
     private readonly IAiSelfLearningService _aiLearning;
+    private readonly ObservableCollection<ServerInstance> _runningServersInternal;
 
     public ServerDetectionViewModel(
         IServerDetector serverDetector,
@@ -49,44 +54,201 @@ public partial class ServerDetectionViewModel : ObservableObject
             SelectedArguments.Add(BuildFullArgument(arg));
         }
 
+        // 🔍 初始化带过滤功能的服务器列表视图
+        var runningSource = new ObservableCollection<ServerInstance>();
+        FilteredRunningServers = new CollectionViewSource { Source = runningSource }.View;
+        FilteredRunningServers.Filter = obj => MatchesSearch(obj, true);
+        FilteredKnownServers = new CollectionViewSource { Source = KnownServers }.View;
+        FilteredKnownServers.Filter = obj => MatchesSearch(obj, false);
+
+        _runningServersInternal = runningSource;
+
         LoadKnownServers();
     }
 
-    // ─── 检测相关属性 ─────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+    // 🔒 统一功能锁 —— 任何时候只能有一个操作在进行
+    // ═══════════════════════════════════════════════════════════════
 
-    [ObservableProperty] private DetectionResult? _detectionResult;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsIdle))]
+    [NotifyPropertyChangedFor(nameof(BusyReasonText))]
+    [NotifyPropertyChangedFor(nameof(CanShowOperation))]
+    private ServerOperation _activeOperation = ServerOperation.None;
 
-    [ObservableProperty] private ServerInstance? _selectedServer;
+    /// <summary>是否空闲（无操作进行中）</summary>
+    public bool IsIdle => ActiveOperation == ServerOperation.None;
 
-    [ObservableProperty] private bool _isDetecting;
+    /// <summary>是否忙碌（任何操作进行中）</summary>
+    public bool IsBusy => ActiveOperation != ServerOperation.None;
+
+    /// <summary>忙碌原因文案（显示在 UI）</summary>
+    public string BusyReasonText => ActiveOperation switch
+    {
+        ServerOperation.Detecting => "🔍 正在扫描服务器进程...",
+        ServerOperation.Importing => "📦 正在导入服务器...",
+        ServerOperation.Starting => "🚀 正在启动服务器...",
+        ServerOperation.Stopping => "🛑 正在停止服务器...",
+        ServerOperation.SavingConfig => "💾 正在保存配置...",
+        ServerOperation.Deleting => "🗑️ 正在删除...",
+        _ => string.Empty
+    };
+
+    public bool CanShowOperation => IsBusy;
+
+    partial void OnActiveOperationChanged(ServerOperation value)
+    {
+        // 任何命令的 CanExecute 都依赖 IsBusy，统统通知刷新
+        DetectCommand.NotifyCanExecuteChanged();
+        StartCurrentServerCommand.NotifyCanExecuteChanged();
+        StopCurrentServerCommand.NotifyCanExecuteChanged();
+        SaveAsKnownServerCommand.NotifyCanExecuteChanged();
+        StartKnownServerCommand.NotifyCanExecuteChanged();
+        RemoveKnownServerCommand.NotifyCanExecuteChanged();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🔍 检测相关属性
+    // ═══════════════════════════════════════════════════════════════
+
+    [ObservableProperty]
+    private DetectionResult? _detectionResult;
+
+    [ObservableProperty]
+    private ServerInstance? _selectedServer;
 
     public string DetectionLog => DetectionResult is not null
         ? string.Join(Environment.NewLine, DetectionResult.LogMessages)
         : string.Empty;
 
-    // ─── 已知服务器 ────────────────────────────────────────────────
+    partial void OnDetectionResultChanged(DetectionResult? value)
+    {
+        OnPropertyChanged(nameof(DetectionLog));
+        RefreshFilteredRunningServers();
+        RefreshCurrentStatus();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🚦 选中服务器的运行状态
+    // ═══════════════════════════════════════════════════════════════
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentServerStatusText))]
+    [NotifyPropertyChangedFor(nameof(CurrentServerStatusBrush))]
+    [NotifyPropertyChangedFor(nameof(CurrentServerStatusIcon))]
+    [NotifyPropertyChangedFor(nameof(HasSelectedServer))]
+    [NotifyPropertyChangedFor(nameof(SelectedServerSubtitle))]
+    private ServerStatus _currentServerStatus = ServerStatus.Unknown;
+
+    public string CurrentServerStatusText => CurrentServerStatus switch
+    {
+        ServerStatus.Running => $"🟢 运行中{(GetActiveServer() is { } s && s.ProcessId > 0 ? $" (PID: {s.ProcessId})" : string.Empty)}",
+        ServerStatus.Starting => "🟡 启动中...",
+        ServerStatus.Stopping => "🟠 停止中...",
+        ServerStatus.Stopped => "⚫ 已停止",
+        ServerStatus.Error => "🔴 异常",
+        _ => "❓ 未知"
+    };
+
+    public Brush CurrentServerStatusBrush => CurrentServerStatus switch
+    {
+        ServerStatus.Running => new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50)),
+        ServerStatus.Starting => new SolidColorBrush(Color.FromRgb(0xFF, 0xC1, 0x07)),
+        ServerStatus.Stopping => new SolidColorBrush(Color.FromRgb(0xFF, 0x98, 0x00)),
+        ServerStatus.Stopped => new SolidColorBrush(Color.FromRgb(0x75, 0x75, 0x75)),
+        ServerStatus.Error => new SolidColorBrush(Color.FromRgb(0xF4, 0x43, 0x36)),
+        _ => new SolidColorBrush(Color.FromRgb(0x9E, 0x9E, 0x9E))
+    };
+
+    public string CurrentServerStatusIcon => CurrentServerStatus switch
+    {
+        ServerStatus.Running => "CirclePlaySolid",
+        ServerStatus.Starting => "SpinnerSolid",
+        ServerStatus.Stopping => "CircleStopSolid",
+        ServerStatus.Stopped => "CirclePauseSolid",
+        ServerStatus.Error => "CircleExclamationSolid",
+        _ => "CircleQuestionSolid"
+    };
+
+    public bool HasSelectedServer => SelectedServer != null || SelectedKnownServer != null;
+
+    public string SelectedServerSubtitle => GetActiveServer() is { } active
+        ? active.DisplayName
+        : "未选择服务器";
+
+    // ═══════════════════════════════════════════════════════════════
+    // 📚 已知服务器
+    // ═══════════════════════════════════════════════════════════════
 
     public ObservableCollection<KnownServer> KnownServers { get; } = [];
 
     public bool HasKnownServers => KnownServers.Count > 0;
 
-    [ObservableProperty] private KnownServer? _selectedKnownServer;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedServer))]
+    [NotifyPropertyChangedFor(nameof(SelectedServerSubtitle))]
+    private KnownServer? _selectedKnownServer;
 
-    [ObservableProperty] private bool _isStartingKnown;
+    // ═══════════════════════════════════════════════════════════════
+    // 🔍 搜索过滤
+    // ═══════════════════════════════════════════════════════════════
 
-    [ObservableProperty] private string _startStatusMessage = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSearchKeyword))]
+    private string _searchKeyword = string.Empty;
 
-    private void LoadKnownServers()
+    public bool HasSearchKeyword => !string.IsNullOrWhiteSpace(SearchKeyword);
+
+    public ICollectionView FilteredRunningServers { get; }
+    public ICollectionView FilteredKnownServers { get; }
+
+    partial void OnSearchKeywordChanged(string value)
     {
-        KnownServers.Clear();
-        foreach (var server in _appConfigService.GetAllKnownServers())
-        {
-            KnownServers.Add(server);
-        }
-        OnPropertyChanged(nameof(HasKnownServers));
+        FilteredRunningServers.Refresh();
+        FilteredKnownServers.Refresh();
     }
 
-    // ─── JVM 参数编辑 ──────────────────────────────────────────────
+    private bool MatchesSearch(object obj, bool isRunning)
+    {
+        if (string.IsNullOrWhiteSpace(SearchKeyword))
+            return true;
+
+        var keyword = SearchKeyword.Trim();
+        if (isRunning && obj is ServerInstance si)
+        {
+            return (si.ServerJarName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (si.WorkingDirectory?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+                || si.DisplayName.Contains(keyword, StringComparison.OrdinalIgnoreCase);
+        }
+        if (!isRunning && obj is KnownServer ks)
+        {
+            return (ks.Name?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (ks.ServerJarPath?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (ks.Notes?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false);
+        }
+        return false;
+    }
+
+    private void RefreshFilteredRunningServers()
+    {
+        _runningServersInternal.Clear();
+        if (DetectionResult?.Servers is { } servers)
+        {
+            foreach (var s in servers) _runningServersInternal.Add(s);
+        }
+        FilteredRunningServers.Refresh();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 📑 右侧 Tab 切换
+    // ═══════════════════════════════════════════════════════════════
+
+    [ObservableProperty]
+    private int _selectedTabIndex;
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🧠 JVM 参数编辑
+    // ═══════════════════════════════════════════════════════════════
 
     [ObservableProperty] private string _initialMemory = "2G";
     [ObservableProperty] private string _maxMemory = "4G";
@@ -140,6 +302,7 @@ public partial class ServerDetectionViewModel : ObservableObject
     [RelayCommand]
     private void AddArgument(string flag)
     {
+        if (IsBusy) return;
         var argDef = JvmArgumentConstants.AllArguments.FirstOrDefault(a => a.Flag == flag);
         string fullArg = argDef != null ? BuildFullArgument(argDef) : flag;
 
@@ -153,6 +316,7 @@ public partial class ServerDetectionViewModel : ObservableObject
     [RelayCommand]
     private void RemoveArgument(string flag)
     {
+        if (IsBusy) return;
         if (SelectedArguments.Contains(flag))
         {
             SelectedArguments.Remove(flag);
@@ -169,6 +333,7 @@ public partial class ServerDetectionViewModel : ObservableObject
     [RelayCommand]
     private void StartEditArgument(string argument)
     {
+        if (IsBusy) return;
         if (string.IsNullOrWhiteSpace(argument)) return;
 
         SelectedArgumentToEdit = argument;
@@ -179,6 +344,7 @@ public partial class ServerDetectionViewModel : ObservableObject
     [RelayCommand]
     private void SaveEditArgument()
     {
+        if (IsBusy) return;
         if (string.IsNullOrWhiteSpace(SelectedArgumentToEdit)) return;
 
         var baseName = GetArgumentBaseName(SelectedArgumentToEdit);
@@ -209,6 +375,7 @@ public partial class ServerDetectionViewModel : ObservableObject
     [RelayCommand]
     private void AddCustomArgument()
     {
+        if (IsBusy) return;
         if (string.IsNullOrWhiteSpace(CustomArgument)) return;
 
         var (isValid, error) = JvmArgumentNormalizer.ValidateArgument(CustomArgument);
@@ -223,83 +390,93 @@ public partial class ServerDetectionViewModel : ObservableObject
     [RelayCommand]
     private void ApplyAikarPreset()
     {
-        SelectedArguments.Clear();
-        var aikarFlags = new List<string>
-        {
-            "-XX:+UseG1GC",
-            "-XX:+ParallelRefProcEnabled",
-            "-XX:MaxGCPauseMillis=200",
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:+DisableExplicitGC",
-            "-XX:+AlwaysPreTouch",
-            "-XX:G1NewSizePercent=30",
-            "-XX:G1MaxNewSizePercent=40",
-            "-XX:G1HeapRegionSize=8M",
-            "-XX:G1ReservePercent=20",
-            "-XX:G1HeapWastePercent=5",
-            "-XX:G1MixedGCCountTarget=4",
-            "-XX:InitiatingHeapOccupancyPercent=15",
-            "-XX:G1MixedGCLiveThresholdPercent=90",
-            "-XX:G1RSetUpdatingPauseTimePercent=5",
-            "-XX:SurvivorRatio=32",
-            "-XX:+PerfDisableSharedMem",
-            "-XX:MaxTenuringThreshold=1",
-            "-Dfile.encoding=UTF-8",
-            "-Dlog4j2.formatMsgNoLookups=true",
-            "-Dusing.aikars.flags=https://mcflags.emc.gs",
-            "-Daikars.new.flags=true"
-        };
-        foreach (var flag in aikarFlags) SelectedArguments.Add(flag);
-        Log.Information("🎯 应用 Aikar 预设参数");
+        if (IsBusy) return;
+        ApplyPreset(ApplyAikarFlags(), "Aikar");
     }
 
     [RelayCommand]
     private void ApplyG1GCPreset()
     {
-        SelectedArguments.Clear();
-        var g1gcFlags = new List<string>
-        {
-            "-XX:+UseG1GC",
-            "-XX:MaxGCPauseMillis=200",
-            "-XX:+AlwaysPreTouch",
-            "-XX:+DisableExplicitGC",
-            "-Dfile.encoding=UTF-8",
-            "-Dlog4j2.formatMsgNoLookups=true"
-        };
-        foreach (var flag in g1gcFlags) SelectedArguments.Add(flag);
-        Log.Information("🎯 应用 G1GC 预设参数");
+        if (IsBusy) return;
+        ApplyPreset(ApplyG1GCFlags(), "G1GC");
     }
 
     [RelayCommand]
     private void ApplyZgcPreset()
     {
-        SelectedArguments.Clear();
-        var zgcFlags = new List<string>
-        {
-            "-XX:+UseZGC",
-            "-XX:+ZGenerational",
-            "-XX:+DisableExplicitGC",
-            "-XX:+AlwaysPreTouch",
-            "-Dfile.encoding=UTF-8",
-            "-Dlog4j2.formatMsgNoLookups=true"
-        };
-        foreach (var flag in zgcFlags) SelectedArguments.Add(flag);
-        Log.Information("🎯 应用 ZGC 预设参数");
+        if (IsBusy) return;
+        ApplyPreset(ApplyZgcFlags(), "ZGC");
     }
 
-    // ─── 启动/停止当前选中服务器 ────────────────────────────────────
+    private static List<string> ApplyAikarFlags() =>
+    [
+        "-XX:+UseG1GC",
+        "-XX:+ParallelRefProcEnabled",
+        "-XX:MaxGCPauseMillis=200",
+        "-XX:+UnlockExperimentalVMOptions",
+        "-XX:+DisableExplicitGC",
+        "-XX:+AlwaysPreTouch",
+        "-XX:G1NewSizePercent=30",
+        "-XX:G1MaxNewSizePercent=40",
+        "-XX:G1HeapRegionSize=8M",
+        "-XX:G1ReservePercent=20",
+        "-XX:G1HeapWastePercent=5",
+        "-XX:G1MixedGCCountTarget=4",
+        "-XX:InitiatingHeapOccupancyPercent=15",
+        "-XX:G1MixedGCLiveThresholdPercent=90",
+        "-XX:G1RSetUpdatingPauseTimePercent=5",
+        "-XX:SurvivorRatio=32",
+        "-XX:+PerfDisableSharedMem",
+        "-XX:MaxTenuringThreshold=1",
+        "-Dfile.encoding=UTF-8",
+        "-Dlog4j2.formatMsgNoLookups=true",
+        "-Dusing.aikars.flags=https://mcflags.emc.gs",
+        "-Daikars.new.flags=true"
+    ];
 
-    [ObservableProperty] private bool _isStarting;
-    [ObservableProperty] private bool _isStopping;
+    private static List<string> ApplyG1GCFlags() =>
+    [
+        "-XX:+UseG1GC",
+        "-XX:MaxGCPauseMillis=200",
+        "-XX:+AlwaysPreTouch",
+        "-XX:+DisableExplicitGC",
+        "-Dfile.encoding=UTF-8",
+        "-Dlog4j2.formatMsgNoLookups=true"
+    ];
+
+    private static List<string> ApplyZgcFlags() =>
+    [
+        "-XX:+UseZGC",
+        "-XX:+ZGenerational",
+        "-XX:+DisableExplicitGC",
+        "-XX:+AlwaysPreTouch",
+        "-Dfile.encoding=UTF-8",
+        "-Dlog4j2.formatMsgNoLookups=true"
+    ];
+
+    private void ApplyPreset(List<string> flags, string name)
+    {
+        SelectedArguments.Clear();
+        foreach (var flag in flags) SelectedArguments.Add(flag);
+        Log.Information("🎯 应用 {Name} 预设参数", name);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🚀 启动/停止当前选中服务器（带功能锁）
+    // ═══════════════════════════════════════════════════════════════
+
     [ObservableProperty] private string _operationMessage = string.Empty;
 
     [RelayCommand(CanExecute = nameof(CanStartCurrent))]
     private async Task StartCurrentServerAsync()
     {
+        if (IsBusy) return;
         var server = GetActiveServer();
         if (server is null) return;
 
-        IsStarting = true;
+        var previousOperation = ActiveOperation;
+        ActiveOperation = ServerOperation.Starting;
+        CurrentServerStatus = ServerStatus.Starting;
         OperationMessage = "🚀 正在启动服务器...";
 
         try
@@ -328,8 +505,7 @@ public partial class ServerDetectionViewModel : ObservableObject
             {
                 OperationMessage = $"✅ 服务器启动成功! PID: {process.Id}";
                 Log.Information("🚀 服务器启动成功: PID={Pid}", process.Id);
-
-                SaveCurrentToKnown(jvmArgs);
+                CurrentServerStatus = ServerStatus.Running;
 
                 await Task.Delay(1500);
                 await DetectAsync();
@@ -338,33 +514,44 @@ public partial class ServerDetectionViewModel : ObservableObject
             {
                 OperationMessage = "❌ 服务器启动失败";
                 Log.Error("❌ 服务器启动失败");
+                CurrentServerStatus = ServerStatus.Error;
             }
         }
         catch (Exception ex)
         {
             OperationMessage = $"❌ 启动异常: {ex.Message}";
             Log.Error(ex, "💥 启动服务器异常");
+            CurrentServerStatus = ServerStatus.Error;
         }
         finally
         {
-            IsStarting = false;
+            // ⚠️ 注意：DetectAsync 完成后 ActiveOperation 已经是 Detecting，要还原
+            if (ActiveOperation == ServerOperation.Starting)
+            {
+                ActiveOperation = previousOperation;
+            }
+            RefreshCurrentStatus();
         }
     }
 
     private bool CanStartCurrent()
     {
+        if (IsBusy) return false;
         var server = GetActiveServer();
-        if (server is null || IsStarting || IsStopping) return false;
+        if (server is null) return false;
         return !_serverManager.IsServerRunning(server);
     }
 
     [RelayCommand(CanExecute = nameof(CanStopCurrent))]
     private async Task StopCurrentServerAsync()
     {
+        if (IsBusy) return;
         var server = GetActiveServer();
         if (server is null) return;
 
-        IsStopping = true;
+        var previousOperation = ActiveOperation;
+        ActiveOperation = ServerOperation.Stopping;
+        CurrentServerStatus = ServerStatus.Stopping;
         OperationMessage = "🛑 正在停止服务器...";
 
         try
@@ -385,14 +572,19 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
         finally
         {
-            IsStopping = false;
+            if (ActiveOperation == ServerOperation.Stopping)
+            {
+                ActiveOperation = previousOperation;
+            }
+            RefreshCurrentStatus();
         }
     }
 
     private bool CanStopCurrent()
     {
+        if (IsBusy) return false;
         var server = GetActiveServer();
-        if (server is null || IsStarting || IsStopping) return false;
+        if (server is null) return false;
         return _serverManager.IsServerRunning(server);
     }
 
@@ -416,49 +608,45 @@ public partial class ServerDetectionViewModel : ObservableObject
         return null;
     }
 
-    private void SaveCurrentToKnown(List<string> jvmArgs)
+    private void RefreshCurrentStatus()
     {
         var server = GetActiveServer();
-        if (server is null) return;
-
-        var existing = _appConfigService.FindByJarPath(server.ServerJarPath);
-        if (existing != null)
+        if (server is null)
         {
-            existing.WorkingDirectory = server.WorkingDirectory;
-            existing.JavaPath = server.JavaPath;
-            existing.InitialHeapMemoryBytes = ParseMemorySize(InitialMemory);
-            existing.MaxHeapMemoryBytes = ParseMemorySize(MaxMemory);
-            existing.JvmArguments = jvmArgs;
-            existing.Port = server.ServerPort;
-            existing.LastSeenAt = DateTime.Now;
-            _appConfigService.UpdateKnownServer(existing);
+            CurrentServerStatus = ServerStatus.Unknown;
+            return;
         }
-        else
+
+        try
         {
-            var known = new KnownServer
+            if (_serverManager.IsServerRunning(server))
             {
-                Name = string.IsNullOrEmpty(server.ServerJarName) ? "未命名服务器" : server.ServerJarName,
-                ServerJarPath = server.ServerJarPath,
-                WorkingDirectory = server.WorkingDirectory,
-                JavaPath = server.JavaPath,
-                InitialHeapMemoryBytes = ParseMemorySize(InitialMemory),
-                MaxHeapMemoryBytes = ParseMemorySize(MaxMemory),
-                JvmArguments = jvmArgs,
-                Port = server.ServerPort,
-                AddedAt = DateTime.Now,
-                LastSeenAt = DateTime.Now
-            };
-            _appConfigService.AddKnownServer(known);
+                CurrentServerStatus = ServerStatus.Running;
+            }
+            else
+            {
+                CurrentServerStatus = ServerStatus.Stopped;
+            }
+        }
+        catch
+        {
+            CurrentServerStatus = ServerStatus.Unknown;
         }
 
-        LoadKnownServers();
+        // 通知按钮 CanExecute 刷新
+        StartCurrentServerCommand.NotifyCanExecuteChanged();
+        StopCurrentServerCommand.NotifyCanExecuteChanged();
     }
 
-    // ─── 导入服务器（选 JAR） ─────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+    // 📦 导入服务器（仅导入到列表，不再自动启动）
+    // ═══════════════════════════════════════════════════════════════
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanImport))]
     private void BrowseAndImportServer()
     {
+        if (IsBusy) return;
+
         var openFileDialog = new OpenFileDialog
         {
             Filter = "Minecraft 服务器核心 (*.jar)|*.jar|所有文件 (*.*)|*.*",
@@ -476,84 +664,116 @@ public partial class ServerDetectionViewModel : ObservableObject
             return;
         }
 
-        var serverType = _serverImporter.DetectServerType(jarPath);
-        var workingDir = _serverImporter.GetServerWorkingDirectory(jarPath);
-        var pid = _serverManager.GetServerProcessId(jarPath);
+        var previousOperation = ActiveOperation;
+        ActiveOperation = ServerOperation.Importing;
+        OperationMessage = "📦 正在导入服务器...";
 
-        var jvmArgs = BuildCurrentJvmArguments();
-
-        var server = new ServerInstance
+        try
         {
-            ProcessId = pid ?? 0,
-            ServerType = serverType,
-            WorkingDirectory = workingDir ?? Path.GetDirectoryName(jarPath) ?? string.Empty,
-            ServerJarPath = jarPath,
-            ServerJarName = Path.GetFileName(jarPath),
-            JvmArguments = jvmArgs,
-            InitialHeapMemoryBytes = ParseMemorySize(InitialMemory),
-            MaxHeapMemoryBytes = ParseMemorySize(MaxMemory)
-        };
+            var serverType = _serverImporter.DetectServerType(jarPath);
+            var workingDir = _serverImporter.GetServerWorkingDirectory(jarPath);
+            var pid = _serverManager.GetServerProcessId(jarPath);
 
-        var existing = _appConfigService.FindByJarPath(jarPath);
-        if (existing != null)
-        {
-            SelectedKnownServer = existing;
-            InitialMemory = FormatMemory(existing.InitialHeapMemoryBytes);
-            MaxMemory = FormatMemory(existing.MaxHeapMemoryBytes);
-            if (existing.JvmArguments.Count > 0)
+            var jvmArgs = BuildCurrentJvmArguments();
+
+            var server = new ServerInstance
             {
-                SelectedArguments.Clear();
-                foreach (var arg in existing.JvmArguments)
-                    SelectedArguments.Add(arg);
-            }
-            OperationMessage = $"✅ 已加载已知服务器配置: {existing.Name}";
-        }
-        else
-        {
-            var known = new KnownServer
-            {
-                Name = server.ServerJarName,
+                ProcessId = pid ?? 0,
+                ServerType = serverType,
+                WorkingDirectory = workingDir ?? Path.GetDirectoryName(jarPath) ?? string.Empty,
                 ServerJarPath = jarPath,
-                WorkingDirectory = server.WorkingDirectory,
-                JavaPath = server.JavaPath,
-                InitialHeapMemoryBytes = server.InitialHeapMemoryBytes,
-                MaxHeapMemoryBytes = server.MaxHeapMemoryBytes,
+                ServerJarName = Path.GetFileName(jarPath),
                 JvmArguments = jvmArgs,
-                Port = server.ServerPort,
-                AddedAt = DateTime.Now,
-                LastSeenAt = DateTime.Now
+                InitialHeapMemoryBytes = ParseMemorySize(InitialMemory),
+                MaxHeapMemoryBytes = ParseMemorySize(MaxMemory)
             };
-            _appConfigService.AddKnownServer(known);
-            LoadKnownServers();
-            SelectedKnownServer = known;
-            OperationMessage = $"✅ 服务器已添加到列表: {serverType}";
+
+            var existing = _appConfigService.FindByJarPath(jarPath);
+            if (existing != null)
+            {
+                SelectedKnownServer = existing;
+                InitialMemory = FormatMemory(existing.InitialHeapMemoryBytes);
+                MaxMemory = FormatMemory(existing.MaxHeapMemoryBytes);
+                if (existing.JvmArguments.Count > 0)
+                {
+                    SelectedArguments.Clear();
+                    foreach (var arg in existing.JvmArguments)
+                        SelectedArguments.Add(arg);
+                }
+                OperationMessage = $"✅ 已加载已知服务器配置: {existing.Name}";
+            }
+            else
+            {
+                var known = new KnownServer
+                {
+                    Name = server.ServerJarName,
+                    ServerJarPath = jarPath,
+                    WorkingDirectory = server.WorkingDirectory,
+                    JavaPath = server.JavaPath,
+                    InitialHeapMemoryBytes = server.InitialHeapMemoryBytes,
+                    MaxHeapMemoryBytes = server.MaxHeapMemoryBytes,
+                    JvmArguments = jvmArgs,
+                    Port = server.ServerPort,
+                    AddedAt = DateTime.Now,
+                    LastSeenAt = DateTime.Now
+                };
+                _appConfigService.AddKnownServer(known);
+                LoadKnownServers();
+                SelectedKnownServer = known;
+                OperationMessage = $"✅ 服务器已添加到列表: {serverType}（点击启动按钮开始运行）";
+            }
+
+            // 后台异步执行 AI 自学习
+            _ = Task.Run(async () =>
+            {
+                try { await _aiLearning.AutoLearnFromServerAsync(server); }
+                catch (Exception ex) { Log.Error(ex, "❌ AI 自学习失败: {Message}", ex.Message); }
+            });
+
+            StartCurrentServerCommand.NotifyCanExecuteChanged();
+            StopCurrentServerCommand.NotifyCanExecuteChanged();
         }
-
-        _ = Task.Run(async () =>
+        catch (Exception ex)
         {
-            try { await _aiLearning.AutoLearnFromServerAsync(server); }
-            catch (Exception ex) { Log.Error(ex, "❌ AI 自学习失败: {Message}", ex.Message); }
-        });
-
-        StartCurrentServerCommand.NotifyCanExecuteChanged();
-        StopCurrentServerCommand.NotifyCanExecuteChanged();
+            OperationMessage = $"❌ 导入失败: {ex.Message}";
+            Log.Error(ex, "💥 导入服务器异常");
+        }
+        finally
+        {
+            ActiveOperation = previousOperation;
+        }
     }
 
-    // ─── 检测命令 ──────────────────────────────────────────────────
+    private bool CanImport() => !IsBusy;
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🔍 检测命令
+    // ═══════════════════════════════════════════════════════════════
 
     [RelayCommand(CanExecute = nameof(CanDetect))]
     private async Task DetectAsync()
     {
+        if (IsBusy) return;
         Log.Information("🔍 开始扫描服务器进程...");
-        IsDetecting = true;
-        DetectionResult = null;
+        ActiveOperation = ServerOperation.Detecting;
 
         try
         {
             DetectionResult = await _serverDetector.DetectAllAsync();
 
             if (DetectionResult.Servers.Count > 0)
-                SelectedServer = DetectionResult.Servers[0];
+            {
+                // 保留之前的选中（如果还在）
+                if (SelectedServer == null ||
+                    !DetectionResult.Servers.Any(s => s.ServerJarPath == SelectedServer.ServerJarPath))
+                {
+                    SelectedServer = DetectionResult.Servers[0];
+                }
+            }
+            else
+            {
+                SelectedServer = null;
+            }
 
             Log.Information("✅ 扫描完成，发现 {Count} 个服务器", DetectionResult.Servers.Count);
         }
@@ -568,22 +788,18 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
         finally
         {
-            IsDetecting = false;
-            StartCurrentServerCommand.NotifyCanExecuteChanged();
-            StopCurrentServerCommand.NotifyCanExecuteChanged();
+            ActiveOperation = ServerOperation.None;
         }
     }
 
-    private bool CanDetect() => !IsDetecting;
-
-    partial void OnDetectionResultChanged(DetectionResult? value)
-        => OnPropertyChanged(nameof(DetectionLog));
+    private bool CanDetect() => !IsBusy;
 
     partial void OnSelectedServerChanged(ServerInstance? value)
     {
         SaveAsKnownServerCommand.NotifyCanExecuteChanged();
         StartCurrentServerCommand.NotifyCanExecuteChanged();
         StopCurrentServerCommand.NotifyCanExecuteChanged();
+        RefreshCurrentStatus();
 
         if (value != null)
         {
@@ -601,79 +817,137 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
-    // ─── 已知服务器命令 ────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+    // 💾 保存为已知服务器
+    // ═══════════════════════════════════════════════════════════════
 
     [RelayCommand(CanExecute = nameof(CanSaveAsKnown))]
     private void SaveAsKnownServer()
     {
+        if (IsBusy) return;
         if (SelectedServer is null) return;
 
-        var jvmArgs = BuildCurrentJvmArguments();
-        var existing = _appConfigService.FindByJarPath(SelectedServer.ServerJarPath);
+        var previousOperation = ActiveOperation;
+        ActiveOperation = ServerOperation.SavingConfig;
+        OperationMessage = "💾 正在保存配置...";
 
-        if (existing != null)
+        try
         {
-            existing.Name = string.IsNullOrEmpty(existing.Name)
-                ? SelectedServer.DisplayName
-                : existing.Name;
-            existing.WorkingDirectory = SelectedServer.WorkingDirectory;
-            existing.JavaPath = SelectedServer.JavaPath;
-            existing.InitialHeapMemoryBytes = ParseMemorySize(InitialMemory);
-            existing.MaxHeapMemoryBytes = ParseMemorySize(MaxMemory);
-            existing.JvmArguments = jvmArgs;
-            existing.Port = SelectedServer.ServerPort;
-            existing.LastSeenAt = DateTime.Now;
-            _appConfigService.UpdateKnownServer(existing);
-        }
-        else
-        {
-            var known = new KnownServer
+            var jvmArgs = BuildCurrentJvmArguments();
+            var existing = _appConfigService.FindByJarPath(SelectedServer.ServerJarPath);
+
+            if (existing != null)
             {
-                Name = SelectedServer.DisplayName,
-                ServerJarPath = SelectedServer.ServerJarPath,
-                WorkingDirectory = SelectedServer.WorkingDirectory,
-                JavaPath = SelectedServer.JavaPath,
-                InitialHeapMemoryBytes = ParseMemorySize(InitialMemory),
-                MaxHeapMemoryBytes = ParseMemorySize(MaxMemory),
-                JvmArguments = jvmArgs,
-                Port = SelectedServer.ServerPort,
-                AddedAt = DateTime.Now,
-                LastSeenAt = DateTime.Now
-            };
-            _appConfigService.AddKnownServer(known);
-        }
+                existing.Name = string.IsNullOrEmpty(existing.Name)
+                    ? SelectedServer.DisplayName
+                    : existing.Name;
+                existing.WorkingDirectory = SelectedServer.WorkingDirectory;
+                existing.JavaPath = SelectedServer.JavaPath;
+                existing.InitialHeapMemoryBytes = ParseMemorySize(InitialMemory);
+                existing.MaxHeapMemoryBytes = ParseMemorySize(MaxMemory);
+                existing.JvmArguments = jvmArgs;
+                existing.Port = SelectedServer.ServerPort;
+                existing.LastSeenAt = DateTime.Now;
+                _appConfigService.UpdateKnownServer(existing);
+            }
+            else
+            {
+                var known = new KnownServer
+                {
+                    Name = SelectedServer.DisplayName,
+                    ServerJarPath = SelectedServer.ServerJarPath,
+                    WorkingDirectory = SelectedServer.WorkingDirectory,
+                    JavaPath = SelectedServer.JavaPath,
+                    InitialHeapMemoryBytes = ParseMemorySize(InitialMemory),
+                    MaxHeapMemoryBytes = ParseMemorySize(MaxMemory),
+                    JvmArguments = jvmArgs,
+                    Port = SelectedServer.ServerPort,
+                    AddedAt = DateTime.Now,
+                    LastSeenAt = DateTime.Now
+                };
+                _appConfigService.AddKnownServer(known);
+            }
 
-        LoadKnownServers();
-        Log.Information("💾 服务器已保存为已知服务器: {Name}", SelectedServer.DisplayName);
+            LoadKnownServers();
+            OperationMessage = $"💾 已保存到已知服务器: {SelectedServer.DisplayName}";
+            Log.Information("💾 服务器已保存为已知服务器: {Name}", SelectedServer.DisplayName);
+        }
+        catch (Exception ex)
+        {
+            OperationMessage = $"❌ 保存失败: {ex.Message}";
+            Log.Error(ex, "💥 保存已知服务器异常");
+        }
+        finally
+        {
+            ActiveOperation = previousOperation;
+        }
     }
 
-    private bool CanSaveAsKnown() => SelectedServer != null;
+    private bool CanSaveAsKnown() => !IsBusy && SelectedServer != null;
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🗑️ 已知服务器：删除 + 启动（带功能锁）
+    // ═══════════════════════════════════════════════════════════════
 
     [RelayCommand(CanExecute = nameof(CanRemoveKnown))]
     private void RemoveKnownServer(KnownServer? server)
     {
+        if (IsBusy) return;
         if (server is null) return;
-        _appConfigService.RemoveKnownServer(server.Id);
-        LoadKnownServers();
-        if (SelectedKnownServer == server)
-            SelectedKnownServer = null;
+
+        // 🚨 二次校验：正在运行的服务器不允许删除
+        try
+        {
+            if (File.Exists(server.ServerJarPath) && _serverManager.IsJarFileLocked(server.ServerJarPath))
+            {
+                OperationMessage = "❌ 服务器正在运行，无法删除";
+                Log.Warning("❌ 拒绝删除正在运行的服务器: {Name}", server.Name);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ 检查服务器运行状态失败，跳过删除前校验");
+        }
+
+        var previousOperation = ActiveOperation;
+        ActiveOperation = ServerOperation.Deleting;
+
+        try
+        {
+            _appConfigService.RemoveKnownServer(server.Id);
+            LoadKnownServers();
+            if (SelectedKnownServer == server)
+                SelectedKnownServer = null;
+            OperationMessage = $"🗑️ 已移除: {server.Name}";
+        }
+        catch (Exception ex)
+        {
+            OperationMessage = $"❌ 删除失败: {ex.Message}";
+            Log.Error(ex, "💥 删除已知服务器异常");
+        }
+        finally
+        {
+            ActiveOperation = previousOperation;
+        }
     }
 
-    private bool CanRemoveKnown(KnownServer? server) => server != null;
+    private bool CanRemoveKnown(KnownServer? server) => !IsBusy && server != null;
 
     [RelayCommand(CanExecute = nameof(CanStartKnownServer))]
     private async Task StartKnownServerAsync(KnownServer? server)
     {
+        if (IsBusy) return;
         if (server is null) return;
 
-        IsStartingKnown = true;
-        StartStatusMessage = "正在启动...";
+        var previousOperation = ActiveOperation;
+        ActiveOperation = ServerOperation.Starting;
 
         try
         {
             if (!File.Exists(server.ServerJarPath))
             {
-                StartStatusMessage = $"❌ JAR 文件不存在";
+                OperationMessage = $"❌ JAR 文件不存在: {server.ServerJarPath}";
                 return;
             }
 
@@ -693,7 +967,7 @@ public partial class ServerDetectionViewModel : ObservableObject
 
             if (process != null)
             {
-                StartStatusMessage = "✅ 启动成功！";
+                OperationMessage = $"✅ 启动成功！PID: {process.Id}";
                 server.LastSeenAt = DateTime.Now;
                 _appConfigService.UpdateKnownServer(server);
                 await Task.Delay(1500);
@@ -701,23 +975,26 @@ public partial class ServerDetectionViewModel : ObservableObject
             }
             else
             {
-                StartStatusMessage = "❌ 启动失败";
+                OperationMessage = "❌ 启动失败";
             }
         }
         catch (Exception ex)
         {
-            StartStatusMessage = $"❌ 启动异常：{ex.Message}";
+            OperationMessage = $"❌ 启动异常：{ex.Message}";
             Log.Error(ex, "💥 启动已知服务器异常");
         }
         finally
         {
-            IsStartingKnown = false;
+            if (ActiveOperation == ServerOperation.Starting)
+            {
+                ActiveOperation = previousOperation;
+            }
         }
     }
 
     private bool CanStartKnownServer(KnownServer? server)
     {
-        if (server is null || IsStartingKnown) return false;
+        if (server is null || IsBusy) return false;
         if (string.IsNullOrEmpty(server.ServerJarPath)) return false;
         return true;
     }
@@ -728,6 +1005,7 @@ public partial class ServerDetectionViewModel : ObservableObject
         RemoveKnownServerCommand.NotifyCanExecuteChanged();
         StartCurrentServerCommand.NotifyCanExecuteChanged();
         StopCurrentServerCommand.NotifyCanExecuteChanged();
+        RefreshCurrentStatus();
 
         if (value != null)
         {
@@ -745,10 +1023,43 @@ public partial class ServerDetectionViewModel : ObservableObject
         }
     }
 
-    partial void OnIsStartingKnownChanged(bool value)
-        => StartKnownServerCommand.NotifyCanExecuteChanged();
+    // ═══════════════════════════════════════════════════════════════
+    // 📋 复制启动命令
+    // ═══════════════════════════════════════════════════════════════
 
-    // ─── 辅助方法 ──────────────────────────────────────────────────
+    [RelayCommand]
+    private void CopyStartupCommand()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(StartupCommandPreview))
+            {
+                Clipboard.SetText(StartupCommandPreview);
+                OperationMessage = "📋 启动命令已复制到剪贴板";
+                Log.Debug("📋 启动命令已复制");
+            }
+        }
+        catch (Exception ex)
+        {
+            OperationMessage = $"❌ 复制失败: {ex.Message}";
+            Log.Error(ex, "💥 复制启动命令异常");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🔧 辅助方法
+    // ═══════════════════════════════════════════════════════════════
+
+    private void LoadKnownServers()
+    {
+        KnownServers.Clear();
+        foreach (var server in _appConfigService.GetAllKnownServers())
+        {
+            KnownServers.Add(server);
+        }
+        OnPropertyChanged(nameof(HasKnownServers));
+        FilteredKnownServers.Refresh();
+    }
 
     private static string GetArgumentBaseName(string argument)
     {

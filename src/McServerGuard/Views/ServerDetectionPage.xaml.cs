@@ -1,9 +1,12 @@
 // 🔍 服务器检测页面的 Code-Behind
 // 页面级入场动画由 code-behind 控制，跟随 ThemeService 设置
-// 卡片级入场动画保留在 XAML Style 里（快速的视觉修饰）
+// 列表项点击事件也在此处理（避免复杂 binding 逻辑）
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using McServerGuard.Models;
 using McServerGuard.Services;
+using McServerGuard.ViewModels;
 using McServerGuard.Views.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,5 +27,42 @@ public partial class ServerDetectionPage : UserControl
     {
         var duration = _themeService.EnableAnimations ? _themeService.AnimationDuration : 0;
         AnimationHelper.FadeAndSlideInFromLeft(this, duration);
+    }
+
+    /// <summary>
+    /// 🖱️ 点击运行中服务器项 → 设为当前选中
+    /// </summary>
+    private void RunningItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe &&
+            fe.Tag is ServerInstance server &&
+            DataContext is ServerDetectionViewModel vm)
+        {
+            vm.SelectedServer = server;
+        }
+    }
+
+    /// <summary>
+    /// 🖱️ 点击已知服务器项 → 设为当前选中
+    /// </summary>
+    private void KnownItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe &&
+            fe.Tag is KnownServer server &&
+            DataContext is ServerDetectionViewModel vm)
+        {
+            vm.SelectedKnownServer = server;
+        }
+    }
+
+    /// <summary>
+    /// 🧹 清空搜索关键字
+    /// </summary>
+    private void ClearSearch_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is ServerDetectionViewModel vm)
+        {
+            vm.SearchKeyword = string.Empty;
+        }
     }
 }
