@@ -56,6 +56,7 @@ jobs:
 
       - name: Upload Test Results
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v5
         with:
           name: test-results
@@ -92,11 +93,21 @@ jobs:
 
       - name: Upload Artifact
         if: success() || failure()
+        id: upload-artifact
+        continue-on-error: true
         uses: actions/upload-artifact@v5
         with:
           name: MSMC-win-x64-singlefile
           path: publish/win-x64/
           retention-days: 30
+
+      - name: Artifact upload fallback notice
+        if: steps.upload-artifact.outcome == 'failure'
+        shell: pwsh
+        run: |
+          echo "⚠️ Artifact 上传失败（GitHub 网络问题 ECONNRESET）"
+          echo "   构建本身已成功，产物已通过 Verify Artifact 检查"
+          echo "   可重新运行 CI 或从 Release 页面下载"
 
       - name: Final status check
         if: steps.test.outcome != 'success'
