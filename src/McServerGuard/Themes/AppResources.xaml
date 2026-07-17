@@ -3,7 +3,45 @@
 <!-- 统一管理视觉风格，改一个地方全家桶都变色 🌈 -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+                    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+                    xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks">
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 🔧 PackIcon 模板覆盖 —— 移除 Viewbox 防止 Freezable 崩溃       -->
+    <!--                                                                  -->
+    <!-- 崩溃根因：PackIcon 默认模板 Grid>Viewbox>Canvas>Path，其中       -->
+    <!-- Viewbox.ArrangeOverride 会调用 Visual.set_VisualTransform，      -->
+    <!-- 触发 Freezable.HandlerRemove 异常。                              -->
+    <!--                                                                  -->
+    <!-- 修复：用 Path Stretch="Uniform" 替代 Viewbox 实现等比缩放。      -->
+    <!-- PackIcon 是 Control 子类，有 Data(FrameworkProperty) 和          -->
+    <!-- Foreground 属性，无 Fill/Stroke 属性。                           -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Style TargetType="{x:Type iconPacks:PackIconFontAwesome6}"
+           BasedOn="{StaticResource {x:Type iconPacks:PackIconFontAwesome6}}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type iconPacks:PackIconFontAwesome6}">
+                    <Path Data="{TemplateBinding Data}"
+                          Fill="{TemplateBinding Foreground}"
+                          Stretch="Uniform" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type iconPacks:PackIconMaterial}"
+           BasedOn="{StaticResource {x:Type iconPacks:PackIconMaterial}}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type iconPacks:PackIconMaterial}">
+                    <Path Data="{TemplateBinding Data}"
+                          Fill="{TemplateBinding Foreground}"
+                          Stretch="Uniform" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- ✨ 统一动画资源 —— 全项目共用，改一处全局生效 -->

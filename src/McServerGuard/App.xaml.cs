@@ -17,7 +17,6 @@ namespace McServerGuard;
 public partial class App : Application
 {
     private ServiceProvider? _serviceProvider;
-    private int _layoutRecoveryAttempts;
 
     /// <summary>全局 DI 容器 —— 供 View 层按需解析服务（如 IThemeService）</summary>
     public static IServiceProvider Services
@@ -167,28 +166,6 @@ public partial class App : Application
         DispatcherUnhandledException += (sender, e) =>
         {
             Log.Fatal(e.Exception, "💥 UI 线程未处理异常");
-
-            var isLayoutOrRenderException = IsLayoutOrRenderException(e.Exception);
-            if (isLayoutOrRenderException && _layoutRecoveryAttempts < 3)
-            {
-                _layoutRecoveryAttempts++;
-                try
-                {
-                    Current?.MainWindow?.Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-                    {
-                        try { Current.MainWindow.UpdateLayout(); }
-                        catch { /* 忽略恢复过程中的二次异常 */ }
-                    });
-                    Log.Information("🔧 布局/渲染异常，已调度 UpdateLayout 恢复 (尝试 {Attempt})", _layoutRecoveryAttempts);
-                    e.Handled = true;
-                    return;
-                }
-                catch (Exception recoveryEx)
-                {
-                    Log.Error(recoveryEx, "🔧 尝试恢复布局失败");
-                }
-            }
-
             e.Handled = true;
             ShowCrashReport(e.Exception);
         };
@@ -209,23 +186,6 @@ public partial class App : Application
             Log.Error(e.Exception, "⚠️ Task未观察异常（火忘了灭）");
             e.SetObserved(); // 标记已观察，不让进程崩
         };
-    }
-
-    /// <summary>
-    /// 判断异常是否为布局/渲染类异常（可尝试通过 UpdateLayout 恢复）
-    /// </summary>
-    private static bool IsLayoutOrRenderException(Exception ex)
-    {
-        if (ex is ArgumentException &&
-            (ex.StackTrace?.Contains("ContextLayoutManager") == true ||
-             ex.StackTrace?.Contains("ArrangeOverride") == true ||
-             ex.StackTrace?.Contains("RenderData") == true ||
-             ex.StackTrace?.Contains("Viewbox") == true ||
-             ex.StackTrace?.Contains("Freezable") == true))
-        {
-            return true;
-        }
-        return ex.InnerException != null && IsLayoutOrRenderException(ex.InnerException);
     }
 
     /// <summary>
