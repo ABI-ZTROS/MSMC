@@ -268,10 +268,15 @@ public class ThemeService : IThemeService
         resources["ErrorTextBrush"] = errorTextBrush;
         resources["PrimarySubtleBackgroundBrush"] = primarySubtleBgBrush;
 
-        // ✏️ 字体 —— 嵌入 Space Grotesk
+        // ✏️ 字体 —— 嵌入 Space Grotesk + 简体中文回退
+        // Space Grotesk 是纯英文字体，不含中文字形。
+        // 如果不指定回退字体，WPF 会走系统字体回退，可能选到繁体字体（如 MingLiU），
+        // 导致界面中文显示为繁体字形。这里显式指定 Microsoft YaHei UI 作为中文回退。
         try
         {
-            var fontFamily = new FontFamily("pack://application:,,,/McServerGuard;component/Resources/Fonts/#Space Grotesk Light");
+            var fontFamily = new FontFamily(
+                new Uri("pack://application:,,,/McServerGuard;component/Resources/Fonts/"),
+                "./#Space Grotesk Light, Microsoft YaHei UI");
             resources["AppFontFamily"] = fontFamily;
 
             // 覆盖 MaterialDesign 字体
@@ -286,7 +291,7 @@ public class ThemeService : IThemeService
         }
         catch
         {
-            var defaultFont = new FontFamily("Segoe UI");
+            var defaultFont = new FontFamily("Microsoft YaHei UI, Segoe UI");
             resources["AppFontFamily"] = defaultFont;
         }
     }
