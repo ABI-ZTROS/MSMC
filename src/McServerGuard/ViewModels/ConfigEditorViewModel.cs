@@ -3,6 +3,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using McServerGuard.Models;
+using McServerGuard.Services;
 using McServerGuard.Services.ConfigManagement;
 using McServerGuard.Services.ServerDetection;
 using Serilog;
@@ -120,12 +121,6 @@ public partial class ConfigEditorViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     private List<ConfigFileItem> _configFileTree = [];
-
-    /// <summary>
-    /// 配置文件列表（扁平化，用于快速选择）
-    /// </summary>
-    [ObservableProperty]
-    private List<string> _configFiles = [];
 
     /// <summary>
     /// 当前操作的服务器实例
