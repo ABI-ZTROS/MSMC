@@ -454,7 +454,6 @@
                                             <TextBlock Text="🚀 服务器控制" FontSize="15" FontWeight="Bold" Margin="0,0,0,12" />
                                             <StackPanel Orientation="Horizontal">
                                                 <Button Command="{Binding StartCurrentServerCommand}"
-                                                        IsEnabled="{Binding CanStartCurrent}"
                                                         Style="{StaticResource MaterialDesignRaisedButton}"
                                                         Background="{DynamicResource PrimaryHueMidBrush}"
                                                         Foreground="White"
@@ -467,7 +466,6 @@
                                                 </Button>
 
                                                 <Button Command="{Binding StopCurrentServerCommand}"
-                                                        IsEnabled="{Binding CanStopCurrent}"
                                                         Style="{StaticResource MaterialDesignRaisedButton}"
                                                         Background="#E53935"
                                                         Foreground="White"
