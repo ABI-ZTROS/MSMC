@@ -30,6 +30,18 @@ public partial class SystemMonitorViewModel : ObservableObject
     {
         Log.Information("📊 SystemMonitorViewModel 初始化");
         _systemMonitor = systemMonitor;
+
+        // 🚀 常驻监控 —— 采集的是 CPU/内存/磁盘/Java 进程等系统级指标，
+        //    与具体服务器实例无关。软件一启动就开始跑，让用户进监控页立刻看到数据。
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(500); // 等待 UI/Dispatcher 就绪
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            {
+                try { StartMonitoring(); }
+                catch (Exception ex) { Log.Error(ex, "💥 常驻监控自动启动失败"); }
+            });
+        });
     }
 
     // ─── 核心属性 ────────────────────────────────────────────────────
@@ -99,7 +111,9 @@ public partial class SystemMonitorViewModel : ObservableObject
         MetricsHistory = [];
     }
 
-    private bool CanStartMonitoring() => Server is not null && !IsMonitoring;
+    // 注意：监控的是系统级指标（CPU/内存/磁盘/Java 进程），不依赖具体服务器实例。
+    // 因此不再要求 Server 非空——软件启动即可常驻监控。
+    private bool CanStartMonitoring() => !IsMonitoring;
 
     [RelayCommand(CanExecute = nameof(CanStopMonitoring))]
     private void StopMonitoring()
@@ -115,31 +129,10 @@ public partial class SystemMonitorViewModel : ObservableObject
 
     partial void OnServerChanged(ServerInstance? value)
     {
-        Log.Information("📡 切换到服务器: {Name}", value?.ServerType);
-        if (IsMonitoring)
-            StopMonitoring();
-        CurrentMetrics = null;
-        MetricsHistory = [];
-        // 🧹 服务器切换了，所有派生属性一起重置
-        OnPropertyChanged(nameof(MemoryInfoText));
-        OnPropertyChanged(nameof(DiskInfoText));
-        OnPropertyChanged(nameof(CpuDataPoints));
-        OnPropertyChanged(nameof(MemoryDataPoints));
-
-        // 🚀 自动开始监控 —— 让用户一进来就能看到数据
-        if (value is not null)
-        {
-            Log.Information("🚀 自动启动监控...");
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(300); // 等待 UI 完全加载
-                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-                {
-                    try { StartMonitoring(); }
-                    catch (Exception ex) { Log.Error(ex, "💥 自动启动监控失败"); }
-                });
-            });
-        }
+        // 监控的是系统级指标（CPU/内存/磁盘/Java 进程），与具体服务器实例无关。
+        // 切换/取消选中服务器不应启停监控、也不应清空历史曲线——数据连续性更重要。
+        Log.Information("📡 关注的服务器切换为: {Name}（系统监控不受影响，继续常驻运行）",
+            value?.ServerType ?? "(无)");
     }
 
     // ─── 私有方法 ────────────────────────────────────────────────────
