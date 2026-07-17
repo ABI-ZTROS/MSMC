@@ -585,6 +585,8 @@ public partial class ServerDetectionViewModel : ObservableObject
                 CurrentServerStatus = ServerStatus.Running;
 
                 await Task.Delay(1500);
+                // 先解除忙碌状态，否则 DetectAsync 会被 IsBusy 拦截直接 return
+                ActiveOperation = ServerOperation.None;
                 await DetectAsync();
             }
             else
@@ -639,6 +641,8 @@ public partial class ServerDetectionViewModel : ObservableObject
             if (success)
             {
                 await Task.Delay(800);
+                // 先解除忙碌状态，否则 DetectAsync 会被 IsBusy 拦截直接 return
+                ActiveOperation = ServerOperation.None;
                 await DetectAsync();
             }
         }
@@ -1048,6 +1052,8 @@ public partial class ServerDetectionViewModel : ObservableObject
                 server.LastSeenAt = DateTime.Now;
                 _appConfigService.UpdateKnownServer(server);
                 await Task.Delay(1500);
+                // 先解除忙碌状态，否则 DetectAsync 会被 IsBusy 拦截直接 return
+                ActiveOperation = ServerOperation.None;
                 await DetectAsync();
             }
             else
