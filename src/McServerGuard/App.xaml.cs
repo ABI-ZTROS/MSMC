@@ -179,31 +179,6 @@ public partial class App : Application
             Log.Information("✅ 用户已同意协议");
         }
 
-        // 🔐 检查管理员权限
-        var adminService = _serviceProvider.GetRequiredService<AdminPrivilegeService>();
-        var isAdmin = adminService.IsRunningAsAdmin();
-        if (!isAdmin)
-        {
-            Log.Warning("⚠️ 当前未以管理员身份运行，部分功能可能受限");
-            var result = MessageBox.Show(
-                "检测到当前未以管理员身份运行。\n\n" +
-                "部分功能（如完整的进程监控、内存分析等）可能无法正常工作。\n\n" +
-                "是否立即以管理员身份重启程序？\n\n" +
-                "是 - 以管理员身份重启\n" +
-                "否 - 继续以普通权限运行",
-                "管理员权限提醒",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                Log.Information("🔐 用户请求以管理员身份重启");
-                adminService.RestartAsAdmin();
-                Shutdown();
-                return;
-            }
-        }
-
         // 🪟 创建主窗口，从 DI 获取真正的 MainViewModel 作为 DataContext
         Log.Information("🪟 创建主窗口并注入 DI 服务...");
         var mainWindow = new MainWindow
