@@ -131,19 +131,19 @@
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <!-- 🧭 左侧导航面板 —— 鼠标悬停自动展开/折叠                       -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <Grid Grid.Row="1" Grid.Column="0"
-              x:Name="NavSidebar"
-              Width="48"
-              ClipToBounds="True"
-              Background="{DynamicResource CardBackgroundBrush}"
-              BorderBrush="{DynamicResource CardSubtleBorderBrush}"
-              BorderThickness="0,0,1,0"
-              MouseEnter="NavSidebar_MouseEnter"
-              MouseLeave="NavSidebar_MouseLeave">
-            <Grid.RenderTransform>
+        <Border Grid.Row="1" Grid.Column="0"
+                x:Name="NavSidebar"
+                Width="48"
+                ClipToBounds="True"
+                Background="{DynamicResource CardBackgroundBrush}"
+                BorderBrush="{DynamicResource CardSubtleBorderBrush}"
+                BorderThickness="0,0,1,0"
+                MouseEnter="NavSidebar_MouseEnter"
+                MouseLeave="NavSidebar_MouseLeave">
+            <Border.RenderTransform>
                 <TranslateTransform X="0" />
-            </Grid.RenderTransform>
-            <Grid.Resources>
+            </Border.RenderTransform>
+            <Border.Resources>
                 <Storyboard x:Key="ExpandSidebarStoryboard">
                     <DoubleAnimation Storyboard.TargetName="NavSidebar"
                                      Storyboard.TargetProperty="Width"
@@ -158,7 +158,7 @@
                                      Duration="0:0:0.25"
                                      EasingFunction="{StaticResource StandardEase}" />
                 </Storyboard>
-            </Grid.Resources>
+            </Border.Resources>
 
             <Grid Width="240" HorizontalAlignment="Left">
                 <Grid.RowDefinitions>
@@ -275,7 +275,7 @@
                     </Border>
                 </Border>
             </Grid>
-        </Grid>
+        </Border>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <!-- 📑 中间 ContentControl —— 六大页面切换（带动画）              -->
