@@ -418,31 +418,18 @@
             </Border>
 
             <!-- ═══ 📝 配置项：按分类分组的 Expander 列表 ═══ -->
-            <!-- 注意：禁用虚拟化以避免 VirtualizingStackPanel 布局异常 -->
-            <!-- 配置项数量 < 100，虚拟化收益低但风险高 -->
-            <ListBox Grid.Row="1"
-                     ItemsSource="{Binding GroupedConfigEntries}"
-                     Background="Transparent"
-                     BorderThickness="0"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     ScrollViewer.CanContentScroll="True"
-                     VirtualizingPanel.IsVirtualizing="False">
-                <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel />
-                    </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="Background" Value="Transparent" />
-                        <Setter Property="BorderThickness" Value="0" />
-                        <Setter Property="Padding" Value="0" />
-                        <Setter Property="Margin" Value="0" />
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                    </Style>
-                </ListBox.ItemContainerStyle>
-                    <ListBox.ItemTemplate>
+            <!-- 用 ScrollViewer + ItemsControl 替代 ListBox：
+                 - 不需要 ListBox 的选中功能（无 SelectedItem 绑定）
+                 - ScrollViewer 直接处理滚轮，100% 可靠
+                 - 绕开 ListBox + StackPanel + CanContentScroll 的滚轮吞事件问题 -->
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding GroupedConfigEntries}"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              Padding="0">
+                    <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <!-- 📂 每个 Category 一个 Expander -->
                             <Expander IsExpanded="True"
@@ -570,8 +557,9 @@
                                 </ItemsControl>
                             </Expander>
                         </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
 
             <!-- ⏳ 加载中指示器 -->
             <Border Grid.Row="1"
