@@ -64,6 +64,55 @@ public partial class ServerDetectionViewModel : ObservableObject
         _runningServersInternal = runningSource;
 
         LoadKnownServers();
+
+        // 🔄 启动自动检测循环（每秒一次）
+        StartAutoDetect();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🔄 自动检测控制
+    // ═══════════════════════════════════════════════════════════════
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AutoDetectStatusText))]
+    [NotifyPropertyChangedFor(nameof(AutoDetectIcon))]
+    private bool _isAutoDetectEnabled;
+
+    public string AutoDetectStatusText => IsAutoDetectEnabled ? "自动检测中" : "自动检测已暂停";
+
+    public string AutoDetectIcon => IsAutoDetectEnabled ? "PauseSolid" : "PlaySolid";
+
+    [RelayCommand]
+    private void ToggleAutoDetect()
+    {
+        if (IsAutoDetectEnabled)
+        {
+            StopAutoDetect();
+        }
+        else
+        {
+            StartAutoDetect();
+        }
+    }
+
+    private void StartAutoDetect()
+    {
+        if (_serverDetector.IsAutoDetectRunning)
+        {
+            IsAutoDetectEnabled = true;
+            return;
+        }
+
+        _serverDetector.StartAutoDetect();
+        IsAutoDetectEnabled = true;
+        Log.Information("⏱️ 自动检测已启动");
+    }
+
+    private void StopAutoDetect()
+    {
+        _serverDetector.StopAutoDetect();
+        IsAutoDetectEnabled = false;
+        Log.Information("⏹️ 自动检测已暂停");
     }
 
     // ═══════════════════════════════════════════════════════════════

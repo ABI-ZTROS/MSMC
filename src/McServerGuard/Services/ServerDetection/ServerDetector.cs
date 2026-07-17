@@ -222,4 +222,88 @@ public class ServerDetector : IServerDetector
 
         return info;
     }
+
+    // 🔄 自动检测循环控制
+    private CancellationTokenSource? _autoDetectCts;
+    private Task? _autoDetectTask;
+    private readonly object _autoDetectLock = new();
+
+    /// <summary>
+    /// 自动检测是否正在运行
+    /// </summary>
+    public bool IsAutoDetectRunning => _autoDetectTask != null && !_autoDetectTask.IsCompleted;
+
+    /// <summary>
+    /// 启动自动检测（每秒一次死循环）
+    /// </summary>
+    public void StartAutoDetect()
+    {
+        lock (_autoDetectLock)
+        {
+            if (IsAutoDetectRunning)
+            {
+                Log.Warning("⚠️ 自动检测已经在运行了！");
+                return;
+            }
+
+            _autoDetectCts = new CancellationTokenSource();
+            var token = _autoDetectCts.Token;
+
+            _autoDetectTask = Task.Run(async () =>
+            {
+                Log.Information("⏱️ 自动检测循环已启动，每秒检测一次服务器");
+                while (!token.IsCancellationRequested)
+                {
+                    try
+                    {
+                        await DetectServersAsync(token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Log.Information("⏹️ 自动检测循环已取消");
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "❌ 自动检测循环出错: {Message}", ex.Message);
+                    }
+
+                    try
+                    {
+                        await Task.Delay(1000, token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                }
+                Log.Information("⏹️ 自动检测循环已停止");
+            }, token);
+        }
+    }
+
+    /// <summary>
+    /// 停止自动检测
+    /// </summary>
+    public void StopAutoDetect()
+    {
+        lock (_autoDetectLock)
+        {
+            if (_autoDetectCts == null) return;
+
+            Log.Information("⏹️ 正在停止自动检测循环...");
+            _autoDetectCts.Cancel();
+            _autoDetectCts.Dispose();
+            _autoDetectCts = null;
+        }
+    }
+
+    /// <summary>
+    /// 释放资源
+    /// </summary>
+    public void Dispose()
+    {
+        StopAutoDetect();
+        GC.SuppressFinalize(this);
+    }
 }

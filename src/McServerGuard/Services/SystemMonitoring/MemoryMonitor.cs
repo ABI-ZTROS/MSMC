@@ -9,11 +9,16 @@ using Serilog;
 /// <summary>
 /// 内存监控器 —— 使用 kernel32.dll 的 GlobalMemoryStatusEx 获取物理内存信息
 /// 增强：通过 WMI Win32_PhysicalMemory 获取内存频率、类型、插槽数
+/// 修复：正确计算可用内存（包括 Standby 列表），与任务管理器数据一致
 /// </summary>
 public class MemoryMonitor
 {
     private MemorySystemInfo? _cachedMemoryInfo;
     private readonly object _cacheLock = new();
+    private MEMORYSTATUSEX _lastMemStatus;
+    private DateTime _lastMemStatusTime = DateTime.MinValue;
+    private readonly object _memStatusLock = new();
+    private static readonly TimeSpan MemStatusCacheDuration = TimeSpan.FromMilliseconds(500);
 
     private static bool IsWindows =>
         RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -27,9 +32,8 @@ public class MemoryMonitor
 
         try
         {
-            var memStatus = new MEMORYSTATUSEX();
-            if (GlobalMemoryStatusEx(ref memStatus))
-                return (long)memStatus.ullTotalPhys;
+            var memStatus = GetMemoryStatus();
+            return (long)memStatus.ullTotalPhys;
         }
         catch (Exception ex)
         {
@@ -41,6 +45,8 @@ public class MemoryMonitor
 
     /// <summary>
     /// 获取已使用的物理内存（字节）
+    /// 计算方式：总内存 - 可用物理内存
+    /// 注意：ullAvailPhys 包含 Standby 列表，因此这个值与任务管理器的"使用中"一致
     /// </summary>
     public long GetUsedMemory()
     {
@@ -48,9 +54,28 @@ public class MemoryMonitor
 
         try
         {
-            var memStatus = new MEMORYSTATUSEX();
-            if (GlobalMemoryStatusEx(ref memStatus))
-                return (long)(memStatus.ullTotalPhys - memStatus.ullAvailPhys);
+            var memStatus = GetMemoryStatus();
+            return (long)(memStatus.ullTotalPhys - memStatus.ullAvailPhys);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "内存监控失败: {Message}", ex.Message);
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// 获取可用物理内存（字节）
+    /// </summary>
+    public long GetAvailableMemory()
+    {
+        if (!IsWindows) return 0;
+
+        try
+        {
+            var memStatus = GetMemoryStatus();
+            return (long)memStatus.ullAvailPhys;
         }
         catch (Exception ex)
         {
@@ -69,9 +94,8 @@ public class MemoryMonitor
 
         try
         {
-            var memStatus = new MEMORYSTATUSEX();
-            if (GlobalMemoryStatusEx(ref memStatus))
-                return memStatus.dwMemoryLoad;
+            var memStatus = GetMemoryStatus();
+            return memStatus.dwMemoryLoad;
         }
         catch (Exception ex)
         {
@@ -79,6 +103,67 @@ public class MemoryMonitor
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// 获取提交内存使用量（字节）
+    /// 对应任务管理器的"提交大小"
+    /// </summary>
+    public long GetCommitChargeUsed()
+    {
+        if (!IsWindows) return 0;
+
+        try
+        {
+            var memStatus = GetMemoryStatus();
+            return (long)(memStatus.ullTotalPageFile - memStatus.ullAvailPageFile);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// 获取提交内存总量（字节）
+    /// </summary>
+    public long GetCommitChargeTotal()
+    {
+        if (!IsWindows) return 0;
+
+        try
+        {
+            var memStatus = GetMemoryStatus();
+            return (long)memStatus.ullTotalPageFile;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// 获取内存状态（带缓存，避免频繁 P/Invoke）
+    /// </summary>
+    private MEMORYSTATUSEX GetMemoryStatus()
+    {
+        lock (_memStatusLock)
+        {
+            if ((DateTime.Now - _lastMemStatusTime) < MemStatusCacheDuration
+                && _lastMemStatus.ullTotalPhys > 0)
+            {
+                return _lastMemStatus;
+            }
+
+            var memStatus = new MEMORYSTATUSEX();
+            if (GlobalMemoryStatusEx(ref memStatus))
+            {
+                _lastMemStatus = memStatus;
+                _lastMemStatusTime = DateTime.Now;
+            }
+
+            return memStatus;
+        }
     }
 
     /// <summary>

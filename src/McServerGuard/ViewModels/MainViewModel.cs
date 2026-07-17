@@ -31,6 +31,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IThemeService _themeService;
     private readonly IToastNotificationService _toastService;
     private readonly IAppConfigService _appConfigService;
+    private readonly IPrivilegeService _privilegeService;
 
     /// <summary>
     /// 主窗口 ViewModel 构造函数
@@ -46,9 +47,10 @@ public partial class MainViewModel : ObservableObject
         IAiSelfLearningService aiLearning,
         IThemeService themeService,
         IToastNotificationService toastService,
-        IAppConfigService appConfigService)
+        IAppConfigService appConfigService,
+        IPrivilegeService privilegeService)
     {
-        Log.Information("🧠 MainViewModel 初始化，注入 {ServiceCount} 个服务", 10);
+        Log.Information("🧠 MainViewModel 初始化，注入 {ServiceCount} 个服务", 11);
 
         _serverDetector = serverDetector;
         _configManager = configManager;
@@ -60,10 +62,11 @@ public partial class MainViewModel : ObservableObject
         _themeService = themeService;
         _toastService = toastService;
         _appConfigService = appConfigService;
+        _privilegeService = privilegeService;
 
         // 📦 初始化子页面 ViewModel
         DetectionPage = new ServerDetectionViewModel(serverDetector, appConfigService, serverManager, serverImporter, aiLearning);
-        ConfigPage = new ConfigEditorViewModel(configManager);
+        ConfigPage = new ConfigEditorViewModel(configManager, serverDetector, appConfigService);
         MonitorPage = new SystemMonitorViewModel(systemMonitor);
         AIGuardPage = new AIGuardViewModel(aiGuardService);
         SettingsPage = new SettingsViewModel(themeService, toastService);
@@ -164,6 +167,25 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     private string _currentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+    /// <summary>
+    /// 当前权限模式文本 —— 显示在状态栏
+    /// </summary>
+    public string PrivilegeStatusText => _privilegeService.IsRunningAsAdmin
+        ? "🔒 管理员模式"
+        : "⚠️ 受限模式";
+
+    /// <summary>
+    /// 是否为管理员模式
+    /// </summary>
+    public bool IsAdminMode => _privilegeService.IsRunningAsAdmin;
+
+    [RelayCommand]
+    private void RequestElevation()
+    {
+        Log.Information("🔐 用户请求提权...");
+        _privilegeService.RequestElevation();
+    }
 
     // ─── 检测命令 ────────────────────────────────────────────────────
 

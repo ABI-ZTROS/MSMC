@@ -8,7 +8,7 @@ using McServerGuard.Models;
 /// 服务器检测器接口
 /// 实现这个接口，你就拥有了"找到 Minecraft 服务器"的超能力
 /// </summary>
-public interface IServerDetector
+public interface IServerDetector : IDisposable
 {
     /// <summary>
     /// 执行完整的服务器检测流程
@@ -24,4 +24,19 @@ public interface IServerDetector
     /// <param name="directory">要扫描的目录</param>
     /// <returns>检测到的启动脚本信息列表</returns>
     public Task<List<StartupScriptInfo>> ScanStartupScriptsAsync(string directory);
+
+    /// <summary>
+    /// 自动检测是否正在运行
+    /// </summary>
+    bool IsAutoDetectRunning { get; }
+
+    /// <summary>
+    /// 启动自动检测（每秒一次）
+    /// </summary>
+    void StartAutoDetect();
+
+    /// <summary>
+    /// 停止自动检测
+    /// </summary>
+    void StopAutoDetect();
 }
