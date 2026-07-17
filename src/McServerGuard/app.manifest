@@ -33,20 +33,13 @@
   </compatibility>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- 🖥️ 高 DPI 支持 —— 让程序在高分屏上不模糊                    -->
+  <!-- 🖥️ 高 DPI 支持 + 长路径支持                                  -->
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
-    <windowsSettings>
-      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/PM</dpiAware>
-      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2, PerMonitor</dpiAwareness>
-    </windowsSettings>
-  </application>
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- 🎨 长路径支持 —— Windows 10 1607+ 支持超过 260 字符的路径   -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <application xmlns="urn:schemas-microsoft-com:asm.v3">
-    <windowsSettings xmlns:ws2016="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
+    <windowsSettings xmlns:ws2005="http://schemas.microsoft.com/SMI/2005/WindowsSettings"
+                     xmlns:ws2016="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
+      <ws2005:dpiAware>true/PM</ws2005:dpiAware>
+      <ws2016:dpiAwareness>PerMonitorV2, PerMonitor</ws2016:dpiAwareness>
       <ws2016:longPathAware>true</ws2016:longPathAware>
     </windowsSettings>
   </application>
