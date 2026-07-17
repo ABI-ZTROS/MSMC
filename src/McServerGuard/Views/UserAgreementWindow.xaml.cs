@@ -127,16 +127,16 @@ public partial class UserAgreementWindow : Window
         DisagreeButton.IsEnabled = false;
         AgreeButton.IsEnabled = false;
 
-        // 弹出 20 个错误窗口（非模态，随机位置）
+        // 先启动抖动（和弹窗同时执行）
+        _shakeTimer.Start();
+
+        // 弹出 20 个错误窗口（非模态，随机位置，无标题栏无关闭按钮）
         for (int i = 0; i < 20; i++)
         {
             var troll = CreateTrollWindow();
             _trollWindows.Add(troll);
             troll.Show();
         }
-
-        // 开始抖动
-        _shakeTimer.Start();
     }
 
     private Window CreateTrollWindow()
@@ -156,11 +156,14 @@ public partial class UserAgreementWindow : Window
             Top = _random.Next(0, (int)(screenHeight - h)),
             Topmost = true,
             ResizeMode = ResizeMode.NoResize,
-            WindowStyle = WindowStyle.SingleBorderWindow,
+            WindowStyle = WindowStyle.None,
+            AllowsTransparency = false,
             Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1a, 0x00, 0x00)),
             Foreground = System.Windows.Media.Brushes.White,
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,
+            BorderThickness = new Thickness(2),
+            BorderBrush = System.Windows.Media.Brushes.Red,
         };
 
         var panel = new System.Windows.Controls.StackPanel
@@ -213,9 +216,9 @@ public partial class UserAgreementWindow : Window
     {
         _shakeRemainingMs -= 50;
 
-        // 随机偏移抖动
-        int offsetX = _random.Next(-20, 21);
-        int offsetY = _random.Next(-20, 21);
+        // 随机偏移抖动（±50px 大幅度）
+        int offsetX = _random.Next(-50, 51);
+        int offsetY = _random.Next(-50, 51);
         Left = _originalLeft + offsetX;
         Top = _originalTop + offsetY;
 
