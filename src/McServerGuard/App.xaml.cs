@@ -17,6 +17,7 @@ namespace McServerGuard;
 public partial class App : Application
 {
     private ServiceProvider? _serviceProvider;
+    private int _layoutRecoveryAttempts;
 
     /// <summary>全局 DI 容器 —— 供 View 层按需解析服务（如 IThemeService）</summary>
     public static IServiceProvider Services
@@ -42,13 +43,14 @@ public partial class App : Application
         // ⚠️ 再挂全局异常钩子 —— 后面出啥事都有人兜着
         SetupGlobalExceptionHandling();
 
-        base.OnStartup(e);
+        try
+        {
+            base.OnStartup(e);
+            Log.Information("🚀 McServerGuard 正在启动...");
 
-        Log.Information("🚀 McServerGuard 正在启动...");
-
-        // 🏗️ 搭建 DI 容器 —— 各位服务请排队注册，一个一个来 🎫
-        Log.Information("🏗️ 开始搭建 DI 容器...");
-        var services = new ServiceCollection();
+            // 🏗️ 搭建 DI 容器 —— 各位服务请排队注册，一个一个来 🎫
+            Log.Information("🏗️ 开始搭建 DI 容器...");
+            var services = new ServiceCollection();
 
         // 🎯 服务器检测服务 —— "让我看看你电脑上藏了几个服务器"
         Log.Information("🎯 注册服务器检测服务组...");
@@ -144,6 +146,15 @@ public partial class App : Application
 
         Log.Information("📦 MainViewModel 已创建并注入 DI");
         Log.Information("✅ McServerGuard 启动完成，主窗口已就绪！");
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "💥 启动过程发生致命异常");
+            WriteCrashDump(ex);
+            MessageBox.Show($"启动失败：{ex.Message}\n\n{ex.StackTrace}",
+                "MSMC 启动失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            Current.Shutdown();
+        }
     }
 
     /// <summary>
@@ -158,15 +169,17 @@ public partial class App : Application
             Log.Fatal(e.Exception, "💥 UI 线程未处理异常");
 
             var isLayoutOrRenderException = IsLayoutOrRenderException(e.Exception);
-            if (isLayoutOrRenderException)
+            if (isLayoutOrRenderException && _layoutRecoveryAttempts < 3)
             {
+                _layoutRecoveryAttempts++;
                 try
                 {
-                    Current?.MainWindow?.Dispatcher.Invoke(() =>
+                    Current?.MainWindow?.Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
                     {
-                        Current.MainWindow.UpdateLayout();
-                    }, DispatcherPriority.Background);
-                    Log.Information("🔧 布局/渲染异常，已尝试 UpdateLayout 恢复");
+                        try { Current.MainWindow.UpdateLayout(); }
+                        catch { /* 忽略恢复过程中的二次异常 */ }
+                    });
+                    Log.Information("🔧 布局/渲染异常，已调度 UpdateLayout 恢复 (尝试 {Attempt})", _layoutRecoveryAttempts);
                     e.Handled = true;
                     return;
                 }
