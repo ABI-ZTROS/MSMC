@@ -217,7 +217,7 @@ public partial class MainWindow : Window
         var durationMs = _themeService.EnableAnimations ? 250 : 0;
         if (durationMs > 0)
         {
-            var widthAnim = new DoubleAnimation(48, TimeSpan.FromMilliseconds(durationMs))
+            var widthAnim = new DoubleAnimation(56, TimeSpan.FromMilliseconds(durationMs))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
             };
@@ -226,7 +226,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            NavSidebar.Width = 48;
+            NavSidebar.Width = 56;
             SetTextElementsOpacity(0);
         }
     }

@@ -8,7 +8,7 @@
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanMinimize"
         Background="#1a0000"
-        FontFamily="{DynamicResource MaterialDesignFont}">
+        FontFamily="{DynamicResource AppFontFamily}">
 
     <Window.Resources>
         <SolidColorBrush x:Key="BloodRed" Color="#8B0000" />

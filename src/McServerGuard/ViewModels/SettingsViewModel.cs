@@ -56,27 +56,6 @@ public partial class SettingsViewModel : ObservableObject
     private bool _enableAnimations = true;
 
     [ObservableProperty]
-    private string _fontFamily = "Segoe UI";
-
-    public List<string> SystemFonts
-    {
-        get
-        {
-            try
-            {
-                return System.Windows.Media.Fonts.SystemFontFamilies
-                    .Select(f => f.Source)
-                    .OrderBy(s => s)
-                    .ToList();
-            }
-            catch
-            {
-                return new List<string> { "Segoe UI", "Arial", "Calibri" };
-            }
-        }
-    }
-
-    [ObservableProperty]
     private string _statusMessage = string.Empty;
 
     public string PrimaryColorHex
@@ -201,7 +180,6 @@ public partial class SettingsViewModel : ObservableObject
         CornerRadius = _themeService.CornerRadius;
         AnimationDuration = _themeService.AnimationDuration;
         EnableAnimations = _themeService.EnableAnimations;
-        FontFamily = _themeService.FontFamily;
 
         StatusMessage = "设置已加载";
         Log.Information("⚙️ 设置页面已加载");
@@ -311,7 +289,6 @@ public partial class SettingsViewModel : ObservableObject
             _themeService.CornerRadius = CornerRadius;
             _themeService.AnimationDuration = AnimationDuration;
             _themeService.EnableAnimations = EnableAnimations;
-            _themeService.FontFamily = FontFamily;
 
             StatusMessage = "主题已应用";
             Log.Information("🎨 主题设置已应用");
@@ -407,7 +384,6 @@ public partial class SettingsViewModel : ObservableObject
             CornerRadius = _themeService.CornerRadius;
             AnimationDuration = _themeService.AnimationDuration;
             EnableAnimations = _themeService.EnableAnimations;
-            FontFamily = _themeService.FontFamily;
             OnPropertyChanged(nameof(PrimaryColorHex));
             OnPropertyChanged(nameof(AccentColorHex));
             OnPropertyChanged(nameof(BackgroundColorHex));

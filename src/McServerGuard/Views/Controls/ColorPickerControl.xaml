@@ -20,7 +20,7 @@
                 BorderThickness="1"
                 Margin="0,0,0,12">
             <Border.Background>
-                <SolidColorBrush x:Name="PreviewBrush" Color="#FF3B82F6" />
+                <SolidColorBrush x:Name="PreviewBrush" Color="{DynamicResource NavItemSelectedBrush}" />
             </Border.Background>
         </Border>
 
@@ -68,8 +68,8 @@
             <TextBlock Text="HEX" VerticalAlignment="Center" Width="30"
                        Foreground="{DynamicResource MaterialDesignBodyLight}" />
             <TextBox x:Name="HexTextBox"
-                     materialDesign:HintAssist.Hint="#FF3B82F6"
-                     FontFamily="Consolas"
+                     materialDesign:HintAssist.Hint="HEX"
+                     FontFamily="{DynamicResource AppMonospaceFontFamily}"
                      FontSize="12"
                      Padding="8,4"
                      Margin="8,0,0,0"

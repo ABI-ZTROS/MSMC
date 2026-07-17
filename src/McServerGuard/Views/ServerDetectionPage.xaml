@@ -184,7 +184,7 @@
                     <!-- 完整命令 -->
                     <TextBlock Grid.Column="1"
                                Text="{Binding StartupCommandPreview}"
-                               FontFamily="Consolas, Courier New"
+                               FontFamily="{DynamicResource AppMonospaceFontFamily}"
                                FontSize="11"
                                VerticalAlignment="Center"
                                Margin="10,0"
@@ -297,7 +297,7 @@
                                                         <!-- 状态点 -->
                                                         <Ellipse Grid.Column="0"
                                                                  Style="{StaticResource StatusDotStyle}"
-                                                                 Fill="#4CAF50" />
+                                                                 Fill="{DynamicResource GaugeGreenBrush}" />
 
                                                         <!-- 名称 -->
                                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -467,7 +467,7 @@
 
                                                 <Button Command="{Binding StopCurrentServerCommand}"
                                                         Style="{StaticResource MaterialDesignRaisedButton}"
-                                                        Background="#E53935"
+                                                        Background="{DynamicResource DangerBrush}"
                                                         Foreground="White"
                                                         Padding="18,10"
                                                         Margin="0,0,8,0">
@@ -539,7 +539,7 @@
                                                          VerticalScrollBarVisibility="Auto"
                                                          MinHeight="120"
                                                          MaxHeight="200"
-                                                         FontFamily="Consolas"
+                                                         FontFamily="{DynamicResource AppMonospaceFontFamily}"
                                                          FontSize="11"
                                                          Foreground="{DynamicResource SuccessInputForegroundBrush}"
                                                          Background="Transparent"
@@ -677,7 +677,7 @@
                                                                     <ColumnDefinition Width="*" />
                                                                     <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
-                                                                <TextBlock Grid.Column="0" Text="{Binding}" FontSize="11" FontFamily="Consolas"
+                                                                <TextBlock Grid.Column="0" Text="{Binding}" FontSize="11" FontFamily="{DynamicResource AppMonospaceFontFamily}"
                                                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                                                                     <Button Command="{Binding DataContext.StartEditArgumentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -735,7 +735,7 @@
                                         CornerRadius="8" Padding="16">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                                         <TextBlock Text="{Binding StartupCommandPreview}"
-                                                   FontFamily="Consolas, Courier New"
+                                                   FontFamily="{DynamicResource AppMonospaceFontFamily}"
                                                    FontSize="13"
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource SuccessInputForegroundBrush}" />

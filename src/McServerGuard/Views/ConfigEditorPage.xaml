@@ -459,7 +459,7 @@
                                                                    Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                                    Opacity="0.5"
                                                                    Margin="0,4,0,0"
-                                                                   FontFamily="Consolas" />
+                                                                   FontFamily="{DynamicResource AppMonospaceFontFamily}" />
                                                     </StackPanel>
 
                                                     <!-- ✏️ 右侧：编辑控件（根据类型动态选择模板） -->

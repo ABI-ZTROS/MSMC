@@ -18,7 +18,7 @@
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextOptions.TextFormattingMode="Ideal"
         TextOptions.TextRenderingMode="Auto"
-        FontFamily="{DynamicResource MaterialDesignFont}">
+        FontFamily="{DynamicResource AppFontFamily}">
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0"
@@ -133,7 +133,7 @@
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1" Grid.Column="0"
                 x:Name="NavSidebar"
-                Width="48"
+                Width="56"
                 ClipToBounds="True"
                 Background="{DynamicResource CardBackgroundBrush}"
                 BorderBrush="{DynamicResource CardSubtleBorderBrush}"
@@ -154,7 +154,7 @@
                 <Storyboard x:Key="CollapseSidebarStoryboard">
                     <DoubleAnimation Storyboard.TargetName="NavSidebar"
                                      Storyboard.TargetProperty="Width"
-                                     To="48"
+                                     To="56"
                                      Duration="0:0:0.25"
                                      EasingFunction="{StaticResource StandardEase}" />
                 </Storyboard>
@@ -171,7 +171,7 @@
                 <Border Grid.Row="0" Padding="12,16,12,12">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#1A3B82F6" Offset="0" />
+                            <GradientStop Color="{DynamicResource PrimarySubtleBackgroundBrush}" Offset="0" />
                             <GradientStop Color="Transparent" Offset="1" />
                         </LinearGradientBrush>
                     </Border.Background>
@@ -214,31 +214,31 @@
                          Margin="0,4,0,0">
 
                     <ListBoxItem ToolTip="服务器管理">
-                        <StackPanel Orientation="Horizontal" Margin="8,6">
+                        <StackPanel Orientation="Horizontal" Margin="4,4">
                             <iconPacks:PackIconFontAwesome6 Kind="ServerSolid" Width="22" Height="22" Margin="0,0,12,0" />
                             <TextBlock x:Name="NavItemText1" Text="服务器管理" FontSize="13" VerticalAlignment="Center" />
                         </StackPanel>
                     </ListBoxItem>
                     <ListBoxItem ToolTip="配置编辑">
-                        <StackPanel Orientation="Horizontal" Margin="8,6">
+                        <StackPanel Orientation="Horizontal" Margin="4,4">
                             <iconPacks:PackIconFontAwesome6 Kind="FilePenSolid" Width="22" Height="22" Margin="0,0,12,0" />
                             <TextBlock x:Name="NavItemText2" Text="配置编辑" FontSize="13" VerticalAlignment="Center" />
                         </StackPanel>
                     </ListBoxItem>
                     <ListBoxItem ToolTip="系统监控">
-                        <StackPanel Orientation="Horizontal" Margin="8,6">
+                        <StackPanel Orientation="Horizontal" Margin="4,4">
                             <iconPacks:PackIconFontAwesome6 Kind="GaugeHighSolid" Width="22" Height="22" Margin="0,0,12,0" />
                             <TextBlock x:Name="NavItemText3" Text="系统监控" FontSize="13" VerticalAlignment="Center" />
                         </StackPanel>
                     </ListBoxItem>
                     <ListBoxItem ToolTip="AI 守护">
-                        <StackPanel Orientation="Horizontal" Margin="8,6">
+                        <StackPanel Orientation="Horizontal" Margin="4,4">
                             <iconPacks:PackIconFontAwesome6 Kind="ShieldHalvedSolid" Width="22" Height="22" Margin="0,0,12,0" />
                             <TextBlock x:Name="NavItemText4" Text="AI 守护" FontSize="13" VerticalAlignment="Center" />
                         </StackPanel>
                     </ListBoxItem>
                     <ListBoxItem ToolTip="设置">
-                        <StackPanel Orientation="Horizontal" Margin="8,6">
+                        <StackPanel Orientation="Horizontal" Margin="4,4">
                             <iconPacks:PackIconFontAwesome6 Kind="GearSolid" Width="22" Height="22" Margin="0,0,12,0" />
                             <TextBlock x:Name="NavItemText5" Text="设置" FontSize="13" VerticalAlignment="Center" />
                         </StackPanel>

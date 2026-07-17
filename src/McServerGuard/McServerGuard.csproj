@@ -63,6 +63,7 @@
 
   <ItemGroup>
     <Resource Include="Resources\Images\yanlanxiang.jpg" />
+    <Resource Include="Resources\Fonts\SpaceGrotesk.ttf" />
   </ItemGroup>
 
   <ItemGroup>

@@ -18,7 +18,6 @@ public interface IThemeService
     int CornerRadius { get; set; }
     int AnimationDuration { get; set; }
     bool EnableAnimations { get; set; }
-    string FontFamily { get; set; }
 
     void ApplyTheme();
     void LoadSettings();
@@ -37,7 +36,6 @@ public class ThemeSettings
     public int CornerRadius { get; set; } = 12;
     public int AnimationDuration { get; set; } = 300;
     public bool EnableAnimations { get; set; } = true;
-    public string FontFamily { get; set; } = "Segoe UI";
 }
 
 public class ThemeService : IThemeService
@@ -52,7 +50,6 @@ public class ThemeService : IThemeService
     private int _cornerRadius = 12;
     private int _animationDuration = 300;
     private bool _enableAnimations = true;
-    private string _fontFamily = "Segoe UI";
 
     private static string SettingsFilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -139,16 +136,6 @@ public class ThemeService : IThemeService
     {
         get => _enableAnimations;
         set => _enableAnimations = value;
-    }
-
-    public string FontFamily
-    {
-        get => _fontFamily;
-        set
-        {
-            _fontFamily = value;
-            ApplyTheme();
-        }
     }
 
     public void ApplyTheme()
@@ -259,10 +246,32 @@ public class ThemeService : IThemeService
         accentGradient.Freeze();
         resources["AccentGradientBrush"] = accentGradient;
 
-        // ✏️ 字体 —— 全局字体族
+        // 🚦 信号灯色族 + 危险色 + 主色半透明
+        var gaugeGreen = new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50));
+        gaugeGreen.Freeze();
+        var gaugeYellow = new SolidColorBrush(Color.FromRgb(0xFF, 0xC1, 0x07));
+        gaugeYellow.Freeze();
+        var gaugeRed = new SolidColorBrush(Color.FromRgb(0xF4, 0x36, 0x4C));
+        gaugeRed.Freeze();
+        var dangerBrush = new SolidColorBrush(Color.FromRgb(0xE5, 0x39, 0x35));
+        dangerBrush.Freeze();
+        var errorTextBrush = new SolidColorBrush(_accentColor);
+        errorTextBrush.Freeze();
+        var primarySubtleBgBrush = new SolidColorBrush(
+            Color.FromArgb(0x1A, _primaryColor.R, _primaryColor.G, _primaryColor.B));
+        primarySubtleBgBrush.Freeze();
+
+        resources["GaugeGreenBrush"] = gaugeGreen;
+        resources["GaugeYellowBrush"] = gaugeYellow;
+        resources["GaugeRedBrush"] = gaugeRed;
+        resources["DangerBrush"] = dangerBrush;
+        resources["ErrorTextBrush"] = errorTextBrush;
+        resources["PrimarySubtleBackgroundBrush"] = primarySubtleBgBrush;
+
+        // ✏️ 字体 —— 嵌入 Space Grotesk
         try
         {
-            var fontFamily = new FontFamily(_fontFamily);
+            var fontFamily = new FontFamily("pack://application:,,,/McServerGuard;component/Resources/Fonts/#Space Grotesk");
             resources["AppFontFamily"] = fontFamily;
 
             // 覆盖 MaterialDesign 字体
@@ -330,9 +339,6 @@ public class ThemeService : IThemeService
                     _cornerRadius = Math.Clamp(settings.CornerRadius, 0, 24);
                     _animationDuration = Math.Clamp(settings.AnimationDuration, 0, 2000);
                     _enableAnimations = settings.EnableAnimations;
-
-                    if (!string.IsNullOrEmpty(settings.FontFamily))
-                        _fontFamily = settings.FontFamily;
                 }
             }
 
@@ -376,8 +382,7 @@ public class ThemeService : IThemeService
                 BorderColor = _borderColor.ToString(),
                 CornerRadius = _cornerRadius,
                 AnimationDuration = _animationDuration,
-                EnableAnimations = _enableAnimations,
-                FontFamily = _fontFamily
+                EnableAnimations = _enableAnimations
             };
 
             var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
@@ -406,7 +411,6 @@ public class ThemeService : IThemeService
         _cornerRadius = 12;
         _animationDuration = 300;
         _enableAnimations = true;
-        _fontFamily = "Segoe UI";
 
         ApplyTheme();
         SaveSettings();

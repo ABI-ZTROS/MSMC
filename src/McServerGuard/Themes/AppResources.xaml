@@ -129,8 +129,11 @@
     <!-- 🌈 自定义笔刷 —— 苍穹蓝 + 水蓝色，清新科技感 -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
-    <!-- ✏️ AppFontFamily: 全局字体族，运行时由 ThemeService 覆盖 -->
-    <FontFamily x:Key="AppFontFamily">Segoe UI</FontFamily>
+    <!-- ✏️ AppFontFamily: 全局字体族（嵌入 Space Grotesk） -->
+    <FontFamily x:Key="AppFontFamily">pack://application:,,,/McServerGuard;component/Resources/Fonts/#Space Grotesk</FontFamily>
+
+    <!-- ✏️ AppMonospaceFontFamily: 等宽字体族（终端/代码/日志） -->
+    <FontFamily x:Key="AppMonospaceFontFamily">Consolas, Courier New</FontFamily>
 
     <!-- 🟦 AccentGradientBrush: 苍穹蓝 → 水蓝 渐变，用于标题栏、按钮等高亮区域 -->
     <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,0">
@@ -196,6 +199,12 @@
     <!-- 🎯 ErrorTextBrush: 错误文字珊瑚红 -->
     <SolidColorBrush x:Key="ErrorTextBrush" Color="#FB7185" />
 
+    <!-- 🎯 DangerBrush: 危险/删除按钮红色（ThemeService 运行时覆盖） -->
+    <SolidColorBrush x:Key="DangerBrush" Color="#E53935" />
+
+    <!-- 🎯 PrimarySubtleBackgroundBrush: 主色半透明背景（ThemeService 运行时覆盖） -->
+    <SolidColorBrush x:Key="PrimarySubtleBackgroundBrush" Color="#1A3B82F6" />
+
     <!-- 🎯 NavItemSelectedIndicatorBrush: 导航选中竖线指示器（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="NavItemSelectedIndicatorBrush" Color="#3B82F6" />
 
@@ -215,8 +224,8 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="14,10" />
-        <Setter Property="Margin" Value="6,3" />
+        <Setter Property="Padding" Value="8,8" />
+        <Setter Property="Margin" Value="2,3" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>
@@ -355,7 +364,7 @@
         <Setter Property="ItemContainerStyle" Value="{StaticResource ModernNavListBoxItemStyle}" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="VerticalAlignment" Value="Top" />
-        <Setter Property="Margin" Value="8,8" />
+        <Setter Property="Margin" Value="4,4" />
         <Setter Property="Padding" Value="0,4" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
     </Style>
@@ -561,7 +570,7 @@
         <Setter Property="Width" Value="40" />
         <Setter Property="Height" Value="32" />
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>

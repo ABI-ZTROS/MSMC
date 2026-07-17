@@ -39,9 +39,9 @@
         </Style>
 
         <Style x:Key="ColorSwatchStyle" TargetType="Button">
-            <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
-            <Setter Property="Margin" Value="0,0,8,8" />
+            <Setter Property="Width" Value="48" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="Margin" Value="0,0,10,10" />
             <Setter Property="BorderThickness" Value="2" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Padding" Value="0" />
@@ -68,7 +68,7 @@
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="border" Property="RenderTransform">
                                     <Setter.Value>
-                                        <ScaleTransform ScaleX="0.9" ScaleY="0.9" CenterX="20" CenterY="20" />
+                                        <ScaleTransform ScaleX="0.9" ScaleY="0.9" CenterX="24" CenterY="24" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
@@ -112,7 +112,7 @@
                                     <Border x:Name="PrimaryColorPreview"
                                             Background="{Binding PrimaryColorBrush}" 
                                             BorderBrush="{DynamicResource SwatchHoverBorderBrush}" BorderThickness="2"
-                                            CornerRadius="8" Width="50" Height="50"
+                                            CornerRadius="8" Width="54" Height="54"
                                             Margin="0,0,12,0"
                                             Cursor="Hand"
                                             ToolTip="点击打开取色器"
@@ -124,7 +124,7 @@
                                                  Width="120"
                                                  Padding="8,4"
                                                  LostFocus="PrimaryColorHex_LostFocus" />
-                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="10" 
+                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="11" 
                                                    Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </StackPanel>
@@ -183,7 +183,7 @@
                                     <Border x:Name="AccentColorPreview"
                                             Background="{Binding AccentColorBrush}" 
                                             BorderBrush="{DynamicResource SwatchHoverBorderBrush}" BorderThickness="2"
-                                            CornerRadius="8" Width="50" Height="50"
+                                            CornerRadius="8" Width="54" Height="54"
                                             Margin="0,0,12,0"
                                             Cursor="Hand"
                                             ToolTip="点击打开取色器"
@@ -195,7 +195,7 @@
                                                  Width="120"
                                                  Padding="8,4"
                                                  LostFocus="AccentColorHex_LostFocus" />
-                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="10" 
+                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="11" 
                                                    Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </StackPanel>
@@ -239,11 +239,11 @@
                                             Command="{Binding SetAccentColorCommand}"
                                             CommandParameter="#FFFF5722"
                                             ToolTip="深橙" />
-                                    <Button Style="{StaticResource ColorSwatchStyle}" 
-                                            Background="#E91E63"
+                                    <Button Style="{StaticResource ColorSwatchStyle}"
+                                            Background="#6366F1"
                                             Command="{Binding SetAccentColorCommand}"
-                                            CommandParameter="#FFE91E63"
-                                            ToolTip="粉红" />
+                                            CommandParameter="#FF6366F1"
+                                            ToolTip="靛蓝" />
                                 </WrapPanel>
                             </StackPanel>
                         </Grid>
@@ -254,16 +254,16 @@
                             <WrapPanel Orientation="Horizontal">
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="SkyBlue"
                                         Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
-                                        Padding="12,6">
+                                        Padding="16,10">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#3B82F6" Width="20" Height="20" CornerRadius="4" />
-                                        <Border Background="#FB7185" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" />
+                                        <Border Background="{DynamicResource AccentTextBrush}" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" />
                                         <TextBlock Text="苍穹蓝" Margin="8,0,0,0" />
                                     </StackPanel>
                                 </Button>
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="BlueOrange"
                                         Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
-                                        Padding="12,6">
+                                        Padding="16,10">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#1565C0" Width="20" Height="20" CornerRadius="4" />
                                         <Border Background="#FF9800" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" />
@@ -272,7 +272,7 @@
                                 </Button>
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="TealPink"
                                         Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
-                                        Padding="12,6">
+                                        Padding="16,10">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#00897B" Width="20" Height="20" CornerRadius="4" />
                                         <Border Background="#E91E63" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" />
@@ -281,11 +281,20 @@
                                 </Button>
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="RedYellow"
                                         Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
-                                        Padding="12,6">
+                                        Padding="16,10">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#C62828" Width="20" Height="20" CornerRadius="4" />
                                         <Border Background="#FFD600" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" />
                                         <TextBlock Text="火焰红" Margin="8,0,0,0" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding SetPresetCommand}" CommandParameter="OceanBlue"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
+                                        Padding="16,10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Background="#0097A7" Width="20" Height="20" CornerRadius="4" />
+                                        <Border Background="#FFD740" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" />
+                                        <TextBlock Text="海洋蓝" Margin="8,0,0,0" />
                                     </StackPanel>
                                 </Button>
                             </WrapPanel>
@@ -316,18 +325,27 @@
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <Border Background="{Binding BackgroundColorBrush}"
                                             BorderBrush="{DynamicResource SwatchHoverBorderBrush}" BorderThickness="2"
-                                            CornerRadius="8" Width="50" Height="50"
+                                            CornerRadius="8" Width="54" Height="54"
                                             Margin="0,0,12,0" />
                                     <StackPanel>
                                         <TextBox Text="{Binding BackgroundColorHex}"
                                                  materialDesign:HintAssist.Hint="{Binding BackgroundColorHex}"
                                                  FontSize="12" Width="120" Padding="8,4"
                                                  LostFocus="BackgroundColorHex_LostFocus" />
-                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="10"
+                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="11"
                                                    Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="窗口与页面底色" Style="{StaticResource SettingValueStyle}" />
+                                <TextBlock Text="预设" FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,8,0,4" />
+                                <WrapPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#020617" Command="{Binding SetBackgroundColorCommand}" CommandParameter="#FF020617" ToolTip="Slate Black" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#0D1117" Command="{Binding SetBackgroundColorCommand}" CommandParameter="#FF0D1117" ToolTip="GitHub Dark" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#1A1A2E" Command="{Binding SetBackgroundColorCommand}" CommandParameter="#FF1A1A2E" ToolTip="Midnight" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#0F0F1A" Command="{Binding SetBackgroundColorCommand}" CommandParameter="#FF0F0F1A" ToolTip="Deep Void" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#171717" Command="{Binding SetBackgroundColorCommand}" CommandParameter="#FF171717" ToolTip="Neutral Dark" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#1B2838" Command="{Binding SetBackgroundColorCommand}" CommandParameter="#FF1B2838" ToolTip="Steam Blue" />
+                                </WrapPanel>
                             </StackPanel>
 
                             <!-- 🃏 卡片色 -->
@@ -336,18 +354,27 @@
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <Border Background="{Binding CardColorBrush}"
                                             BorderBrush="{DynamicResource SwatchHoverBorderBrush}" BorderThickness="2"
-                                            CornerRadius="8" Width="50" Height="50"
+                                            CornerRadius="8" Width="54" Height="54"
                                             Margin="0,0,12,0" />
                                     <StackPanel>
                                         <TextBox Text="{Binding CardColorHex}"
                                                  materialDesign:HintAssist.Hint="{Binding CardColorHex}"
                                                  FontSize="12" Width="120" Padding="8,4"
                                                  LostFocus="CardColorHex_LostFocus" />
-                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="10"
+                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="11"
                                                    Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="所有卡片与终端背景" Style="{StaticResource SettingValueStyle}" />
+                                <TextBlock Text="预设" FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,8,0,4" />
+                                <WrapPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#0F172A" Command="{Binding SetCardColorCommand}" CommandParameter="#FF0F172A" ToolTip="Slate Card" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#161B22" Command="{Binding SetCardColorCommand}" CommandParameter="#FF161B22" ToolTip="GitHub Card" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#1E293B" Command="{Binding SetCardColorCommand}" CommandParameter="#FF1E293B" ToolTip="Slate Lighter" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#1A1A2E" Command="{Binding SetCardColorCommand}" CommandParameter="#FF1A1A2E" ToolTip="Midnight Card" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#262626" Command="{Binding SetCardColorCommand}" CommandParameter="#FF262626" ToolTip="Neutral Card" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#1B2838" Command="{Binding SetCardColorCommand}" CommandParameter="#FF1B2838" ToolTip="Steam Card" />
+                                </WrapPanel>
                             </StackPanel>
 
                             <!-- ✏️ 文字色 -->
@@ -356,18 +383,27 @@
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <Border Background="{Binding TextColorBrush}"
                                             BorderBrush="{DynamicResource SwatchHoverBorderBrush}" BorderThickness="2"
-                                            CornerRadius="8" Width="50" Height="50"
+                                            CornerRadius="8" Width="54" Height="54"
                                             Margin="0,0,12,0" />
                                     <StackPanel>
                                         <TextBox Text="{Binding TextColorHex}"
                                                  materialDesign:HintAssist.Hint="{Binding TextColorHex}"
                                                  FontSize="12" Width="120" Padding="8,4"
                                                  LostFocus="TextColorHex_LostFocus" />
-                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="10"
+                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="11"
                                                    Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="正文与次要文字" Style="{StaticResource SettingValueStyle}" />
+                                <TextBlock Text="预设" FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,8,0,4" />
+                                <WrapPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#E2E8F0" Command="{Binding SetTextColorCommand}" CommandParameter="#FFE2E8F0" ToolTip="Slate Light" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#FFFFFF" Command="{Binding SetTextColorCommand}" CommandParameter="#FFFFFFFF" ToolTip="Pure White" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#F0F0F0" Command="{Binding SetTextColorCommand}" CommandParameter="#FFF0F0F0" ToolTip="Light Gray" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#D1D5DB" Command="{Binding SetTextColorCommand}" CommandParameter="#FFD1D5DB" ToolTip="Cool Gray" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#CBD5E1" Command="{Binding SetTextColorCommand}" CommandParameter="#FFCBD5E1" ToolTip="Slate Mist" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#B0B8C4" Command="{Binding SetTextColorCommand}" CommandParameter="#FFB0B8C4" ToolTip="Muted" />
+                                </WrapPanel>
                             </StackPanel>
 
                             <!-- 📏 边框色 -->
@@ -376,18 +412,27 @@
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <Border Background="{Binding BorderColorBrush}"
                                             BorderBrush="{DynamicResource SwatchHoverBorderBrush}" BorderThickness="2"
-                                            CornerRadius="8" Width="50" Height="50"
+                                            CornerRadius="8" Width="54" Height="54"
                                             Margin="0,0,12,0" />
                                     <StackPanel>
                                         <TextBox Text="{Binding BorderColorHex}"
                                                  materialDesign:HintAssist.Hint="{Binding BorderColorHex}"
                                                  FontSize="12" Width="120" Padding="8,4"
                                                  LostFocus="BorderColorHex_LostFocus" />
-                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="10"
+                                        <TextBlock Text="输入 HEX 值后失焦生效" FontSize="11"
                                                    Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="卡片与输入框边框" Style="{StaticResource SettingValueStyle}" />
+                                <TextBlock Text="预设" FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,8,0,4" />
+                                <WrapPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#334155" Command="{Binding SetBorderColorCommand}" CommandParameter="#FF334155" ToolTip="Slate Border" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#475569" Command="{Binding SetBorderColorCommand}" CommandParameter="#FF475569" ToolTip="Slate Light Border" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#3A3A3A" Command="{Binding SetBorderColorCommand}" CommandParameter="#FF3A3A3A" ToolTip="Neutral Border" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#2D3748" Command="{Binding SetBorderColorCommand}" CommandParameter="#FF2D3748" ToolTip="Deep Border" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#45596B" Command="{Binding SetBorderColorCommand}" CommandParameter="#FF45596B" ToolTip="Steel Border" />
+                                    <Button Style="{StaticResource ColorSwatchStyle}" Background="#1E293B" Command="{Binding SetBorderColorCommand}" CommandParameter="#FF1E293B" ToolTip="Dark Border" />
+                                </WrapPanel>
                             </StackPanel>
                         </Grid>
                     </StackPanel>
@@ -430,45 +475,6 @@
                                     <TextBlock Text="输入框" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" />
                                 </Border>
                             </StackPanel>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- ✏️ 字体设置 -->
-                <Border Style="{StaticResource CardBorderStyle}">
-                    <StackPanel>
-                        <TextBlock Text="字体设置" Style="{StaticResource SectionTitleStyle}" />
-
-                        <TextBlock Text="字体族" Style="{StaticResource SettingLabelStyle}" />
-                        <ComboBox ItemsSource="{Binding SystemFonts}"
-                                  SelectedItem="{Binding FontFamily}"
-                                  Width="300"
-                                  materialDesign:HintAssist.Hint="选择字体" />
-                        <TextBlock Text="更改全局字体（需点击应用后生效）" 
-                                   FontSize="12" Foreground="{DynamicResource MaterialDesignBodyLight}" 
-                                   Margin="0,4,0,0" />
-
-                        <!-- 字体预览 -->
-                        <StackPanel Margin="0,16,0,0">
-                            <TextBlock Text="预览" FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,0,0,6" />
-                            <Border Background="{DynamicResource CardBackgroundBrush}"
-                                    BorderBrush="{DynamicResource SubtleBorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="16,12">
-                                <StackPanel>
-                                    <TextBlock FontSize="18" FontWeight="Bold"
-                                               FontFamily="{Binding FontFamily}"
-                                               Text="MSMC 字体预览" />
-                                    <TextBlock FontSize="14" Margin="0,8,0,0"
-                                               FontFamily="{Binding FontFamily}"
-                                               Text="快速的棕色狐狸跳过了懒狗。The quick brown fox jumps over the lazy dog." />
-                                    <TextBlock FontSize="12" Margin="0,8,0,0"
-                                               FontFamily="{Binding FontFamily}"
-                                               Foreground="{DynamicResource MaterialDesignBodyLight}"
-                                               Text="1234567890 !@#$%^&amp;*() 测试数字和符号" />
-                                </StackPanel>
-                            </Border>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -615,7 +621,7 @@
                                                                      Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                                      VerticalAlignment="Center" />
                                             <TextBlock Text="github.com/ABI-ZTROS"
-                                                       FontSize="10"
+                                                       FontSize="11"
                                                        Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                        Margin="4,0,0,0"
                                                        VerticalAlignment="Center" />
@@ -631,12 +637,12 @@
                                         HorizontalAlignment="Center">
                                 <iconPacks:PackIconFontAwesome6 Kind="HeartSolid"
                                                         Width="20" Height="20"
-                                                        Foreground="#FB7185"
+                                                        Foreground="{DynamicResource AccentTextBrush}"
                                                         VerticalAlignment="Center"
                                                         HorizontalAlignment="Center" />
                                 <TextBlock Text="💞"
-                                           FontSize="10"
-                                           Foreground="#FB7185"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AccentTextBrush}"
                                            Margin="0,2,0,0"
                                            HorizontalAlignment="Center" />
                             </StackPanel>
@@ -662,16 +668,16 @@
                                                    Foreground="{DynamicResource MaterialDesignBody}" />
                                         <TextBlock Text="情绪支持"
                                                    FontSize="11"
-                                                   Foreground="#FB7185" />
+                                                   Foreground="{DynamicResource AccentTextBrush}" />
                                         <StackPanel Orientation="Horizontal"
                                                     Margin="0,4,0,0">
                                             <iconPacks:PackIconFontAwesome6 Kind="HeartSolid"
                                                                      Width="12" Height="12"
-                                                                     Foreground="#FB7185"
+                                                                     Foreground="{DynamicResource AccentTextBrush}"
                                                                      Opacity="0.7"
                                                                      VerticalAlignment="Center" />
                                             <TextBlock Text="Special Thanks 💖"
-                                                       FontSize="10"
+                                                       FontSize="11"
                                                        Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                        Margin="4,0,0,0"
                                                        VerticalAlignment="Center" />
@@ -712,7 +718,7 @@
                                                                  Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                                  VerticalAlignment="Center" />
                                         <TextBlock Text="github.com/Gglaoguan"
-                                                   FontSize="10"
+                                                   FontSize="11"
                                                    Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                    Margin="4,0,0,0"
                                                    VerticalAlignment="Center" />
@@ -752,7 +758,7 @@
                                                HorizontalAlignment="Center"
                                                Margin="0,8,0,2" />
                                     <TextBlock Text="Debug · 功能建议"
-                                               FontSize="10"
+                                               FontSize="11"
                                                Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                HorizontalAlignment="Center" />
                                     <StackPanel Orientation="Horizontal"
@@ -794,7 +800,7 @@
                                                HorizontalAlignment="Center"
                                                Margin="0,8,0,2" />
                                     <TextBlock Text="测试环境"
-                                               FontSize="10"
+                                               FontSize="11"
                                                Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                HorizontalAlignment="Center" />
                                     <StackPanel Orientation="Horizontal"
