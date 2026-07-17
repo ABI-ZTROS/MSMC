@@ -49,33 +49,8 @@ public partial class MainWindow : Window
     {
         _isSidebarExpanded = false;
         SetTextElementsOpacity(0);
-        NavSidebarClip.Rect = new Rect(0, 0, 56, NavSidebar.ActualHeight);
 
-        var duration = _themeService.EnableAnimations ? _themeService.AnimationDuration : 0;
-        if (duration > 0)
-        {
-            var fadeIn = new DoubleAnimation
-            {
-                From = 0,
-                To = 1,
-                Duration = TimeSpan.FromMilliseconds(duration),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-                FillBehavior = FillBehavior.Stop
-            };
-            fadeIn.Completed += (_, _) => MainContent.Opacity = 1;
-            MainContent.BeginAnimation(UIElement.OpacityProperty, fadeIn, HandoffBehavior.SnapshotAndReplace);
-        }
-        else
-        {
-            MainContent.Opacity = 1;
-        }
-    }
-
-    private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        if (_isAnimating) return;
-        var width = _isSidebarExpanded ? 240 : 56;
-        NavSidebarClip.Rect = new Rect(0, 0, width, NavSidebar.ActualHeight);
+        MainContent.Opacity = 1;
     }
 
     private void MainWindow_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -220,20 +195,13 @@ public partial class MainWindow : Window
                 {
                     _isAnimating = false;
                     NavSidebar.Width = 240;
-                    NavSidebarClip.Rect = new Rect(0, 0, 240, NavSidebar.ActualHeight);
                 };
                 NavSidebar.BeginAnimation(WidthProperty, widthAnim, HandoffBehavior.SnapshotAndReplace);
-                NavSidebarClip.BeginAnimation(RectangleGeometry.RectProperty,
-                    new RectAnimation(new Rect(0, 0, 240, NavSidebar.ActualHeight),
-                        TimeSpan.FromMilliseconds(durationMs))
-                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } },
-                    HandoffBehavior.SnapshotAndReplace);
                 AnimateTextOpacity(1, durationMs);
             }
             else
             {
                 NavSidebar.Width = 240;
-                NavSidebarClip.Rect = new Rect(0, 0, 240, NavSidebar.ActualHeight);
                 SetTextElementsOpacity(1);
             }
         });
@@ -260,20 +228,13 @@ public partial class MainWindow : Window
                 {
                     _isAnimating = false;
                     NavSidebar.Width = 56;
-                    NavSidebarClip.Rect = new Rect(0, 0, 56, NavSidebar.ActualHeight);
                 };
                 NavSidebar.BeginAnimation(WidthProperty, widthAnim, HandoffBehavior.SnapshotAndReplace);
-                NavSidebarClip.BeginAnimation(RectangleGeometry.RectProperty,
-                    new RectAnimation(new Rect(0, 0, 56, NavSidebar.ActualHeight),
-                        TimeSpan.FromMilliseconds(durationMs))
-                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } },
-                    HandoffBehavior.SnapshotAndReplace);
                 AnimateTextOpacity(0, durationMs);
             }
             else
             {
                 NavSidebar.Width = 56;
-                NavSidebarClip.Rect = new Rect(0, 0, 56, NavSidebar.ActualHeight);
                 SetTextElementsOpacity(0);
             }
         });

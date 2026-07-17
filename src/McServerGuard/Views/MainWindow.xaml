@@ -140,9 +140,6 @@
                 BorderThickness="0,0,1,0"
                 MouseEnter="NavSidebar_MouseEnter"
                 MouseLeave="NavSidebar_MouseLeave">
-            <Border.Clip>
-                <RectangleGeometry x:Name="NavSidebarClip" Rect="0,0,56,10000" />
-            </Border.Clip>
 
             <Grid Width="240" HorizontalAlignment="Left">
                 <Grid.RowDefinitions>
