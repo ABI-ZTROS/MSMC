@@ -132,7 +132,7 @@ public partial class SystemMonitorViewModel : ObservableObject
         // 监控的是系统级指标（CPU/内存/磁盘/Java 进程），与具体服务器实例无关。
         // 切换/取消选中服务器不应启停监控、也不应清空历史曲线——数据连续性更重要。
         Log.Information("📡 关注的服务器切换为: {Name}（系统监控不受影响，继续常驻运行）",
-            value?.ServerType ?? "(无)");
+            value is null ? "(无)" : value.ServerType.ToString());
     }
 
     // ─── 私有方法 ────────────────────────────────────────────────────
