@@ -24,10 +24,56 @@ public class ServerManagerService : IServerManagerService
         if (!string.IsNullOrEmpty(server.ServerJarPath))
         {
             if (IsJarFileLocked(server.ServerJarPath))
-                return true;
+            {
+                try
+                {
+                    var runningProcess = FindServerProcess(server);
+                    if (runningProcess != null)
+                    {
+                        try
+                        {
+                            if (!runningProcess.HasExited)
+                            {
+                                server.ProcessId = runningProcess.Id;
+                                return true;
+                            }
+                            Log.Warning("⚠️ 进程 PID={Pid} 已退出", runningProcess.Id);
+                        }
+                        finally
+                        {
+                            runningProcess.Dispose();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "⚠️ 检查 JAR 锁定状态时出错: {JarPath}", server.ServerJarPath);
+                }
+                
+                Log.Warning("⚠️ JAR 文件被锁定，但未找到对应的服务器进程 PID={StoredPid}", server.ProcessId);
+                return false;
+            }
             
-            if (FindServerProcess(server) != null)
-                return true;
+            try
+            {
+                var runningProcess = FindServerProcess(server);
+                if (runningProcess != null)
+                {
+                    try
+                    {
+                        if (!runningProcess.HasExited)
+                            return true;
+                    }
+                    finally
+                    {
+                        runningProcess.Dispose();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "⚠️ 查找服务器进程时出错: {JarPath}", server.ServerJarPath);
+            }
         }
 
         if (server.ProcessId > 0)
@@ -37,10 +83,16 @@ public class ServerManagerService : IServerManagerService
                 var process = Process.GetProcessById(server.ProcessId);
                 if (!process.HasExited)
                     return true;
+                
+                Log.Information("⚠️ 进程 PID={Pid} 已退出", server.ProcessId);
             }
-            catch
+            catch (ArgumentException)
             {
-                // Process not found
+                Log.Information("⚠️ 进程 PID={Pid} 不存在", server.ProcessId);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "⚠️ 检查进程状态时出错 PID={Pid}", server.ProcessId);
             }
         }
 
@@ -53,7 +105,14 @@ public class ServerManagerService : IServerManagerService
             return false;
 
         if (IsJarFileLocked(jarFilePath))
-            return true;
+        {
+            var processId = GetServerProcessId(jarFilePath);
+            if (processId != null)
+                return true;
+            
+            Log.Warning("⚠️ JAR 文件被锁定，但未找到对应的服务器进程: {JarPath}", jarFilePath);
+            return false;
+        }
 
         if (GetServerProcessId(jarFilePath) != null)
             return true;
