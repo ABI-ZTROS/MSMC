@@ -714,7 +714,7 @@
                                     <TextBlock Text="命令预览" FontWeight="SemiBold" />
                                 </StackPanel>
                             </TabItem.Header>
-                            <Grid Padding="16">
+                            <Grid Margin="16">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
