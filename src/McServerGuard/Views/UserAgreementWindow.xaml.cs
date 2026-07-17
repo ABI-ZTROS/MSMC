@@ -190,7 +190,7 @@ public partial class UserAgreementWindow : Window
 
         var title = new System.Windows.Controls.TextBlock
         {
-            Text = "没同意用户协议你用什么呢???",
+            Text = "没同意用户协议你你妈呢傻逼玩意???",
             FontSize = 14,
             FontWeight = FontWeights.Bold,
             Foreground = System.Windows.Media.Brushes.OrangeRed,
@@ -200,7 +200,7 @@ public partial class UserAgreementWindow : Window
 
         var sub = new System.Windows.Controls.TextBlock
         {
-            Text = "不同意还点这么快？",
+            Text = "爱用就用不用给老子爬",
             FontSize = 11,
             Foreground = System.Windows.Media.Brushes.LightGray,
             TextWrapping = TextWrapping.Wrap
