@@ -232,17 +232,39 @@ public partial class ServerDetectionViewModel : ObservableObject
 
     private void RefreshFilteredRunningServers()
     {
-        // 防御性拷贝：避免在枚举时 DetectionResult.Servers 被另一线程修改导致 NRE
+        // 防御性拷贝：避免在枚举时 DetectionResult.Servers 被另一线程修改
         var snapshot = DetectionResult?.Servers is { } servers
-            ? servers.ToList()
+            ? servers.Where(s => s is not null).ToList()
             : new List<ServerInstance>();
 
-        _runningServersInternal.Clear();
-        foreach (var s in snapshot)
+        // 直接重建 ObservableCollection 内容，CollectionView 会通过 CollectionChanged
+        // 自动响应，无需手动 Refresh（手动 Refresh 的 PrepareLocalArray 在并发场景下
+        // 会抛 NRE）。确保在 UI 线程执行。
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher
+            && !dispatcher.CheckAccess())
         {
-            if (s is not null) _runningServersInternal.Add(s);
+            dispatcher.BeginInvoke(new Action(RebuildRunningServers));
+            return;
         }
-        FilteredRunningServers.Refresh();
+        RebuildRunningServers();
+
+        void RebuildRunningServers()
+        {
+            _runningServersInternal.Clear();
+            foreach (var s in snapshot)
+            {
+                _runningServersInternal.Add(s);
+            }
+            // Refresh 仅在搜索关键字非空时才需要（触发 Filter 重新过滤）
+            if (!string.IsNullOrWhiteSpace(SearchKeyword))
+            {
+                try { FilteredRunningServers.Refresh(); }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "⚠️ FilteredRunningServers.Refresh 失败，已忽略");
+                }
+            }
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
