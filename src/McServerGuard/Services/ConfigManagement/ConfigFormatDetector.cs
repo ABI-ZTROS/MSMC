@@ -29,14 +29,10 @@ public static class ConfigFormatDetector
         if (string.IsNullOrWhiteSpace(content))
             return ConfigFormat.Unknown;
 
-        var trimmed = content.TrimStart();
+        var trimmed = TrimBomAndWhitespace(content);
 
         // JSON：以 { 或 [ 开头
         if (trimmed.StartsWith('{') || trimmed.StartsWith('['))
-            return ConfigFormat.Json;
-
-        // 尝试完整 JSON 解析（某些 JSON 文件可能有 BOM 或前导空格）
-        if (TryParseJson(trimmed))
             return ConfigFormat.Json;
 
         // YAML 特征：有缩进的 "key: value" 行（冒号后有空格或冒号在行尾）
@@ -49,6 +45,24 @@ public static class ConfigFormatDetector
             return ConfigFormat.Properties;
 
         return ConfigFormat.Unknown;
+    }
+
+    private static string TrimBomAndWhitespace(string content)
+    {
+        if (content.Length == 0)
+            return content;
+
+        int start = 0;
+
+        // 跳过 UTF-8 BOM (\uFEFF)
+        if (content[0] == '\uFEFF')
+            start = 1;
+
+        // 跳过空白字符
+        while (start < content.Length && char.IsWhiteSpace(content[start]))
+            start++;
+
+        return start == 0 ? content : content.Substring(start);
     }
 
     /// <summary>
