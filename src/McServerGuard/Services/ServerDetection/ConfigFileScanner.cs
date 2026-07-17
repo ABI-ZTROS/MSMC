@@ -98,9 +98,13 @@ public class ConfigFileScanner
         {
             Log.Warning("⚠️ 权限不足，跳过目录: {Dir}", directory);
         }
+        catch (IOException ex)
+        {
+            Log.Debug(ex, "IO 跳过: {Message}", ex.Message);
+        }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 扫描目录 {Dir} 失败: {Message}", directory, ex.Message);
+            Log.Debug(ex, "扫描目录跳过: {Message}", ex.Message);
         }
     }
 
@@ -131,9 +135,13 @@ public class ConfigFileScanner
         {
             Log.Warning("⚠️ 权限不足，跳过目录: {Dir}", directory);
         }
+        catch (IOException ex)
+        {
+            Log.Debug(ex, "IO 跳过: {Message}", ex.Message);
+        }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 扫描目录 {Dir} 失败: {Message}", directory, ex.Message);
+            Log.Debug(ex, "扫描目录跳过: {Message}", ex.Message);
         }
     }
 
@@ -206,9 +214,13 @@ public class ConfigFileScanner
         {
             Log.Warning("⚠️ 权限不足，跳过目录: {Dir}", directory);
         }
+        catch (IOException ex)
+        {
+            Log.Debug(ex, "IO 跳过: {Message}", ex.Message);
+        }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 扫描目录 {Dir} 失败: {Message}", directory, ex.Message);
+            Log.Debug(ex, "扫描目录跳过: {Message}", ex.Message);
         }
     }
 
@@ -239,9 +251,13 @@ public class ConfigFileScanner
         {
             Log.Warning("⚠️ 权限不足，跳过目录: {Dir}", directory);
         }
+        catch (IOException ex)
+        {
+            Log.Debug(ex, "IO 跳过: {Message}", ex.Message);
+        }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 扫描目录 {Dir} 失败: {Message}", directory, ex.Message);
+            Log.Debug(ex, "扫描目录跳过: {Message}", ex.Message);
         }
     }
 

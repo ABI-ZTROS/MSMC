@@ -312,8 +312,7 @@
                         Visibility="{Binding IsAdminMode, Converter={StaticResource InvertBoolToVisibilityConverter}}"
                         Style="{StaticResource MaterialDesignIconForegroundButton}"
                         ToolTip="点击以管理员权限重新启动"
-                        Height="24"
-                        Padding="8,0"
+                        Padding="8,4"
                         Margin="0,0,12,0">
                     <StackPanel Orientation="Horizontal">
                         <iconPacks:PackIconFontAwesome6 Kind="ShieldHalvedSolid"

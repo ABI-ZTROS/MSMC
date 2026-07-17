@@ -95,6 +95,9 @@ public partial class ConfigEditorViewModel : ObservableObject
     {
         _serverDetector = serverDetector;
         _appConfigService = appConfigService;
+
+        // 启动时加载可用服务器列表（运行中 + 已知）
+        _ = RefreshServerListAsync();
     }
 
     // ─── 核心属性 ────────────────────────────────────────────────────

@@ -63,7 +63,7 @@ public class ServerDetector : IServerDetector
             };
         }
 
-        // 第二步：对每个进程执行深度检测
+        // 第二步：对每个进程执行深度检测（带 PID 缓存，避免每秒全量扫描）
         int i = 0;
         foreach (var (processId, commandLine) in processResults)
         {
@@ -71,11 +71,36 @@ public class ServerDetector : IServerDetector
             Log.Debug("🔄 正在检查第 {Index} 个 Java 进程: PID={Pid}", i, processId);
             try
             {
+                // 先查缓存：5 秒内已检测过的进程直接复用结果，避免重复扫描
+                if (_detectionCache.TryGetValue(processId, out var cached)
+                    && (DateTime.Now - cached.timestamp) < DetectionCacheTtl)
+                {
+                    // 验证进程是否仍在运行 —— Process.GetProcessById 在进程不存在时会抛 ArgumentException
+                    try
+                    {
+                        using var p = Process.GetProcessById(processId);
+                        // 进程仍在运行，复用缓存的 ServerInstance
+                        Log.Debug("♻️ 命中缓存: PID={Pid} Type={Type}", processId, cached.server.ServerType);
+                        servers.Add(cached.server);
+                        continue;
+                    }
+                    catch (ArgumentException)
+                    {
+                        // 进程已退出，从缓存中移除
+                        _detectionCache.Remove(processId);
+                        Log.Debug("🗑️ 进程 PID={Pid} 已退出，从缓存中移除", processId);
+                        continue;
+                    }
+                }
+
+                // 缓存未命中，执行完整的深度检测
                 var server = await BuildServerInstanceAsync(processId, commandLine);
                 if (server is not null)
                 {
                     Log.Debug("✅ 识别到服务器: {Type} @ {Dir}", server.ServerType, server.WorkingDirectory);
                     servers.Add(server);
+                    // 加入缓存，避免下一秒重复扫描
+                    _detectionCache[processId] = (server, DateTime.Now);
                 }
             }
             catch (Exception ex)
@@ -227,6 +252,10 @@ public class ServerDetector : IServerDetector
 
         return info;
     }
+
+    // 🗃️ 检测结果缓存 —— 自动检测每秒一次太频繁，用 PID 缓存避免重复扫描
+    private static readonly TimeSpan DetectionCacheTtl = TimeSpan.FromSeconds(5);
+    private readonly Dictionary<int, (ServerInstance server, DateTime timestamp)> _detectionCache = new();
 
     // 🔄 自动检测循环控制
     private CancellationTokenSource? _autoDetectCts;

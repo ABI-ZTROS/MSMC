@@ -93,7 +93,7 @@ public class ProcessScanner
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "💥 fuck: 处理进程 PID={Pid} 失败: {Message}", process.Id, ex.Message);
+                Log.Debug(ex, "进程扫描跳过: {Message}", ex.Message);
             }
             finally
             {

@@ -71,6 +71,18 @@ public partial class MainViewModel : ObservableObject
         AIGuardPage = new AIGuardViewModel(aiGuardService);
         SettingsPage = new SettingsViewModel(themeService, toastService);
 
+        // 📡 订阅检测页的选中服务器变化，同步到配置页/监控页/AI页
+        DetectionPage.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(ServerDetectionViewModel.SelectedServer))
+            {
+                var server = DetectionPage.SelectedServer;
+                ConfigPage.Server = server;
+                MonitorPage.Server = server;
+                AIGuardPage.Server = server;
+            }
+        };
+
         // 🔔 初始化通知服务
         _toastService.Initialize();
 

@@ -82,7 +82,7 @@ public class WorkingDirectoryResolver
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 解析策略失败: {Message}", ex.Message);
+            Log.Debug(ex, "解析策略跳过: {Message}", ex.Message);
         }
 
         // 策略3: 用进程自己的当前工作目录（通过WMI查询，而不是本程序的工作目录）
@@ -105,7 +105,7 @@ public class WorkingDirectoryResolver
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 解析策略失败: {Message}", ex.Message);
+            Log.Debug(ex, "解析策略跳过: {Message}", ex.Message);
         }
 
         // 策略4（终极大招）：在常见位置搜索
@@ -365,7 +365,7 @@ public class WorkingDirectoryResolver
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 解析策略失败: {Message}", ex.Message);
+            Log.Debug(ex, "解析策略跳过: {Message}", ex.Message);
             return null;
         }
     }
@@ -482,7 +482,7 @@ public class WorkingDirectoryResolver
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 解析策略失败: {Message}", ex.Message);
+            Log.Debug(ex, "解析策略跳过: {Message}", ex.Message);
         }
 
         return null;
