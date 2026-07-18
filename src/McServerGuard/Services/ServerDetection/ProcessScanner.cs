@@ -29,6 +29,12 @@ public class ProcessScanner
     /// </summary>
     private static readonly string[] ShellProcessNames = ["cmd", "powershell", "pwsh"];
 
+    /// <summary>本次扫描因权限不足或 WMI 失败而跳过的进程数</summary>
+    public int LastSkippedCount { get; private set; }
+
+    /// <summary>最近一次跳过的原因（用于 UI 提示）</summary>
+    public string? LastSkipReason { get; private set; }
+
     /// <summary>
     /// 扫描系统中所有Java进程，筛选并返回疑似Minecraft服务器进程列表
     /// </summary>
@@ -42,6 +48,9 @@ public class ProcessScanner
     /// </remarks>
     public List<(int ProcessId, string CommandLine)> ScanServerProcesses()
     {
+        LastSkippedCount = 0;
+        LastSkipReason = null;
+
         var results = new List<(int ProcessId, string CommandLine)>();
 
         var javaProcesses = Process.GetProcessesByName("java")
@@ -69,7 +78,8 @@ public class ProcessScanner
 
                 if (string.IsNullOrWhiteSpace(commandLine))
                 {
-                    Log.Debug("进程 PID={Pid} 没有命令行信息，跳过", process.Id);
+                    Log.Warning("⚠️ 跳过 Java 进程 PID={Pid}（无法获取命令行，可能权限不足或跨用户进程）", process.Id);
+                    LastSkippedCount++;
                     continue;
                 }
 
@@ -274,19 +284,24 @@ public class ProcessScanner
                     return cmdLine;
                 }
             }
+            // WMI 查询成功但 CommandLine 为空（可能是系统进程或跨用户权限边界）
+            Log.Warning("⚠️ PID={Pid} 的 CommandLine 为空（可能是跨用户/服务进程）", processId);
+            LastSkipReason = "进程命令行为空（跨用户/服务进程）";
         }
         catch (System.Runtime.InteropServices.COMException ex)
         {
-            // WMI服务异常（如RPC服务器不可用），降级为Debug级别日志
-            Log.Debug(ex, "🔧 WMI 查询失败（COM 异常）PID={Pid}", processId);
+            Log.Warning(ex, "⚠️ WMI 查询失败（COM 异常）PID={Pid}: {Message}", processId, ex.Message);
+            LastSkipReason = "WMI 服务异常";
         }
         catch (UnauthorizedAccessException ex)
         {
-            Log.Debug(ex, "🔧 WMI 查询失败（权限不足）PID={Pid}", processId);
+            Log.Warning(ex, "⚠️ WMI 查询失败（权限不足）PID={Pid}: {Message}", processId, ex.Message);
+            LastSkipReason = "权限不足，无法读取进程命令行";
         }
         catch (Exception ex)
         {
-            Log.Debug(ex, "🔧 获取命令行失败 PID={Pid}: {Message}", processId, ex.Message);
+            Log.Warning(ex, "⚠️ 获取命令行失败 PID={Pid}: {Message}", processId, ex.Message);
+            LastSkipReason = ex.Message;
         }
 
         return string.Empty;

@@ -65,4 +65,15 @@ public interface IServerDetector : IDisposable
     /// 停止自动检测
     /// </summary>
     void StopAutoDetect();
+
+    /// <summary>
+    /// 最近一次扫描因权限不足或 WMI 失败而跳过的进程数
+    /// </summary>
+    /// <remarks>用于 UI 状态栏提示，帮助用户理解"扫不到"的原因。</remarks>
+    int LastSkippedProcessCount { get; }
+
+    /// <summary>
+    /// 最近一次跳过进程的原因
+    /// </summary>
+    string? LastSkipReason { get; }
 }

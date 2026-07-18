@@ -204,6 +204,17 @@ public partial class MainViewModel : ObservableObject
     public bool IsAdminMode => _privilegeService.IsRunningAsAdmin;
 
     /// <summary>
+    /// 进程扫描跳过警告文本（用于状态栏提示）
+    /// </summary>
+    /// <remarks>
+    /// 当 WMI 查询因权限不足或跨用户访问失败时，ProcessScanner 会跳过对应进程。
+    /// 此属性将跳过计数暴露给 UI，帮助用户理解"扫不到"的原因。
+    /// </remarks>
+    public string ScanSkipWarning => _serverDetector.LastSkippedProcessCount > 0
+        ? $"⚠️ 已跳过 {_serverDetector.LastSkippedProcessCount} 个无法访问的进程（{_serverDetector.LastSkipReason ?? "未知原因"}）"
+        : string.Empty;
+
+    /// <summary>
     /// 请求管理员权限提升命令
     /// </summary>
     /// <remarks>

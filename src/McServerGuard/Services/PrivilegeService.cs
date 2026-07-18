@@ -100,10 +100,18 @@ public class PrivilegeService : IPrivilegeService
     /// 检测当前进程是否以管理员身份运行
     /// </summary>
     /// <returns>是否为管理员权限</returns>
+    /// <remarks>
+    /// 采用双层检测策略：优先通过 <see cref="IsProcessElevated"/> 查询进程令牌的
+    /// TokenElevation 信息（最可靠），失败时回退到 <see cref="WindowsPrincipal.IsInRole"/> 方案。
+    /// </remarks>
     private static bool CheckIsAdmin()
     {
         try
         {
+            // 优先用 TokenElevation 检测真实提权状态（最可靠）
+            if (IsProcessElevated()) return true;
+
+            // 回退到 IsInRole（兼容非 Windows 或 P/Invoke 失败场景）
             using var identity = WindowsIdentity.GetCurrent();
             var principal = new WindowsPrincipal(identity);
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
@@ -111,6 +119,59 @@ public class PrivilegeService : IPrivilegeService
         catch (Exception ex)
         {
             Log.Warning(ex, "⚠️ 检查管理员权限失败");
+            return false;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    // P/Invoke: TokenElevation 检测（比 IsInRole 更可靠）
+    // ═════════════════════════════════════════════════════════════════
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetTokenInformation(IntPtr TokenHandle, int TokenInformationClass,
+        out int TokenInformation, int TokenInformationLength, out int ReturnLength);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr hObject);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetCurrentProcess();
+
+    private const uint TOKEN_QUERY = 0x0008;
+    private const int TokenElevation = 20;  // TOKEN_INFORMATION_CLASS.TokenElevation
+
+    /// <summary>
+    /// 用 TokenElevation 检测进程令牌是否真正被提升
+    /// </summary>
+    /// <returns>进程已提权返回 <c>true</c>，否则返回 <c>false</c></returns>
+    private static bool IsProcessElevated()
+    {
+        try
+        {
+            if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, out var tokenHandle))
+                return false;
+            try
+            {
+                if (GetTokenInformation(tokenHandle, TokenElevation, out var elevation,
+                    sizeof(int), out _))
+                {
+                    return elevation != 0;
+                }
+                return false;
+            }
+            finally
+            {
+                CloseHandle(tokenHandle);
+            }
+        }
+        catch
+        {
             return false;
         }
     }

@@ -63,6 +63,12 @@ public class ServerDetector : IServerDetector
         Log.Information("🕵️ ServerDetector 初始化完毕，准备出击");
     }
 
+    /// <inheritdoc />
+    public int LastSkippedProcessCount => _processScanner.LastSkippedCount;
+
+    /// <inheritdoc />
+    public string? LastSkipReason => _processScanner.LastSkipReason;
+
     /// <summary>
     /// 执行完整的服务器检测流程
     /// </summary>
