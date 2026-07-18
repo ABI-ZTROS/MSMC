@@ -118,7 +118,7 @@ public class MemoryOptimizerService : IDisposable
     }
 
     /// <summary>
-    /// 强制执行垃圾回收
+    /// 强制执行垃圾回收（异步执行，避免阻塞 UI 线程）
     /// </summary>
     /// <param name="deep">是否深度回收（压缩 LOH + 等待终结器完成）</param>
     public void ForceGC(bool deep = false)
@@ -129,53 +129,57 @@ public class MemoryOptimizerService : IDisposable
             _isOptimizing = true;
         }
 
-        try
+        // 将 GC 操作封送到线程池执行，避免阻塞 UI 线程
+        _ = Task.Run(() =>
         {
-            var before = GC.GetTotalMemory(false);
-
-            if (deep)
+            try
             {
-                Log.Information("🧹 执行深度垃圾回收 (LOH 压缩)...");
+                var before = GC.GetTotalMemory(false);
 
-                // 设置 LOH 压缩模式
-                GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+                if (deep)
+                {
+                    Log.Information("🧹 执行深度垃圾回收 (LOH 压缩)...");
 
-                // 强制完整回收，包括所有代
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-                GC.WaitForPendingFinalizers();
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+                    // 设置 LOH 压缩模式
+                    GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+
+                    // 强制完整回收，包括所有代
+                    GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+                }
+                else
+                {
+                    Log.Debug("🧹 执行轻量垃圾回收...");
+                    GC.Collect(2, GCCollectionMode.Optimized, false, false);
+                }
+
+                var after = GC.GetTotalMemory(true);
+                var freed = before - after;
+
+                if (freed > 0)
+                {
+                    Log.Information("🧹 垃圾回收完成，释放 {FreedMB:F2} MB ({BeforeMB:F2} → {AfterMB:F2} MB)",
+                        freed / (1024.0 * 1024.0),
+                        before / (1024.0 * 1024.0),
+                        after / (1024.0 * 1024.0));
+                }
+
+                _lastMemoryBytes = after;
+                _lastCollectTime = DateTime.Now;
             }
-            else
+            catch (Exception ex)
             {
-                Log.Debug("🧹 执行轻量垃圾回收...");
-                GC.Collect(2, GCCollectionMode.Optimized, false, false);
+                Log.Error(ex, "🧹 垃圾回收执行异常: {Message}", ex.Message);
             }
-
-            var after = GC.GetTotalMemory(true);
-            var freed = before - after;
-
-            if (freed > 0)
+            finally
             {
-                Log.Information("🧹 垃圾回收完成，释放 {FreedMB:F2} MB ({BeforeMB:F2} → {AfterMB:F2} MB)",
-                    freed / (1024.0 * 1024.0),
-                    before / (1024.0 * 1024.0),
-                    after / (1024.0 * 1024.0));
+                lock (_gcLock)
+                {
+                    _isOptimizing = false;
+                }
             }
-
-            _lastMemoryBytes = after;
-            _lastCollectTime = DateTime.Now;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "🧹 垃圾回收执行异常: {Message}", ex.Message);
-        }
-        finally
-        {
-            lock (_gcLock)
-            {
-                _isOptimizing = false;
-            }
-        }
+        });
     }
 
     /// <summary>

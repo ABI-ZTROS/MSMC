@@ -63,19 +63,25 @@ public sealed class ConfigManager : IConfigManager
             throw new FileNotFoundException($"配置文件不存在: {filePath}", filePath);
         }
 
-        // 异步读取文件内容
-        var content = await File.ReadAllTextAsync(filePath);
+        // 异步读取文件内容（FileShare.ReadWrite 避免与服务器进程冲突）
+        string content;
+        using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        using (var reader = new StreamReader(fs))
+        {
+            content = await reader.ReadToEndAsync().ConfigureAwait(false);
+        }
 
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
         var format = ConfigFormatDetector.Resolve(content, extension);
 
-        var result = format switch
+        // CPU 密集型解析放到线程池执行，避免阻塞 UI 线程
+        var result = await Task.Run(() => format switch
         {
             ConfigFormat.Properties => ParseProperties(content),
             ConfigFormat.Yaml => FlattenYaml(content),
             ConfigFormat.Json => FlattenJson(content),
             _ => throw HandleUnsupportedFormat(extension)
-        };
+        }).ConfigureAwait(false);
 
         Log.Information("✅ 配置解析完成，共 {Count} 个键值对", result.Count);
 
@@ -101,26 +107,15 @@ public sealed class ConfigManager : IConfigManager
         // 保存时优先使用扩展名判断（写文件时内容尚未生成，无法进行内容检测）
         var format = ConfigFormatDetector.DetectByExtension(extension);
 
-        string content;
-        switch (format)
+        // CPU 密集型序列化放到线程池执行，避免阻塞 UI 线程
+        var content = await Task.Run(() => format switch
         {
-            case ConfigFormat.Properties:
-                content = PropertiesParser.Serialize(config);
-                break;
-
-            case ConfigFormat.Yaml:
-                content = SerializeYaml(config);
-                break;
-
-            case ConfigFormat.Json:
-                content = SerializeJson(config);
-                break;
-
-            default:
-                Log.Warning("❌ 不支持的配置文件格式: {Ext}", extension);
-                throw new NotSupportedException(
-                    $"不支持的配置文件格式: {extension} —— 我不会写这种格式啦 🙅");
-        }
+            ConfigFormat.Properties => PropertiesParser.Serialize(config),
+            ConfigFormat.Yaml => SerializeYaml(config),
+            ConfigFormat.Json => SerializeJson(config),
+            _ => throw new NotSupportedException(
+                $"不支持的配置文件格式: {extension} —— 我不会写这种格式啦 🙅")
+        }).ConfigureAwait(false);
 
         // 确保目标目录存在
         var directory = Path.GetDirectoryName(filePath);
@@ -129,7 +124,12 @@ public sealed class ConfigManager : IConfigManager
             Directory.CreateDirectory(directory);
         }
 
-        await File.WriteAllTextAsync(filePath, content);
+        // 用 FileShare.ReadWrite 写入，避免与服务器进程冲突
+        using (var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+        using (var writer = new StreamWriter(fs))
+        {
+            await writer.WriteAsync(content).ConfigureAwait(false);
+        }
 
         Log.Information("配置文件 {FilePath} 已保存，共 {Count} 个配置项 ✅",
             filePath, config.Count);

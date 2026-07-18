@@ -38,11 +38,7 @@
                         <Storyboard>
                             <DoubleAnimation Storyboard.TargetProperty="(UIElement.Opacity)"
                                              From="0" To="1"
-                                             Duration="0:0:0.25"
-                                             EasingFunction="{StaticResource ConfigCardEase}" />
-                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                                             From="12" To="0"
-                                             Duration="0:0:0.3"
+                                             Duration="0:0:0.15"
                                              EasingFunction="{StaticResource ConfigCardEase}" />
                         </Storyboard>
                     </BeginStoryboard>
@@ -477,11 +473,20 @@
                  - 绕开 ListBox + StackPanel + CanContentScroll 的滚轮吞事件问题 -->
             <ScrollViewer Grid.Row="1"
                           VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
+                          HorizontalScrollBarVisibility="Disabled"
+                          IsDeferredScrollingEnabled="True"
+                          CanContentScroll="True">
                 <ItemsControl ItemsSource="{Binding GroupedConfigEntries}"
                               Background="Transparent"
                               BorderThickness="0"
-                              Padding="0">
+                              Padding="0"
+                              VirtualizingStackPanel.IsVirtualizing="True"
+                              VirtualizingStackPanel.VirtualizationMode="Recycling">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel IsVirtualizing="True" VirtualizationMode="Recycling" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <!-- 📂 每个 Category 一个 Expander -->

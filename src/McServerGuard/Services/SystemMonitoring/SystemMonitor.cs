@@ -164,6 +164,19 @@ public class SystemMonitor : ISystemMonitor
     }
 
     /// <summary>
+    /// 异步采集一次系统指标快照 —— 将 WMI/PerformanceCounter 调用放到线程池执行
+    /// </summary>
+    /// <returns>包含 CPU、内存、磁盘、线程等指标的系统快照</returns>
+    /// <remarks>
+    /// 内部通过 <see cref="Task.Run"/> 将同步的 WMI 查询与 <see cref="System.Diagnostics.PerformanceCounter"/> 
+    /// 调用封送到线程池，避免阻塞调用线程（特别是 UI 线程）。
+    /// </remarks>
+    public async Task<SystemMetrics> CollectSnapshotAsync()
+    {
+        return await Task.Run(() => CollectSnapshot()).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// 启动持续监控
     /// </summary>
     /// <param name="interval">采样间隔</param>
@@ -225,8 +238,23 @@ public class SystemMonitor : ISystemMonitor
                     return;
                 }
 
-                var metrics = CollectSnapshot();
-                callback(metrics);
+                // 异步采集快照，避免 WMI/PerformanceCounter 同步调用阻塞线程池
+                _ = CollectSnapshotAsync().ContinueWith(t =>
+                {
+                    if (t.IsCompletedSuccessfully)
+                    {
+                        try { callback(t.Result); }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "💥 fuck: 回调执行失败: {Message}", ex.Message);
+                        }
+                    }
+                    else if (t.IsFaulted)
+                    {
+                        Log.Error(t.Exception, "💥 fuck: 定时采集失败: {Message}",
+                            t.Exception?.GetBaseException().Message);
+                    }
+                }, TaskScheduler.Default);
             }
             catch (Exception ex)
             {

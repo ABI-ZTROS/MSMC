@@ -98,6 +98,9 @@ public partial class ConfigEditorViewModel : ObservableObject
     /// <summary>编辑历史栈 —— 记录每次值变更前的条目引用与原始值，支持逐步撤销</summary>
     private readonly Stack<(ServerConfigEntry Entry, string PreviousValue)> _undoStack = new();
 
+    /// <summary>已修改条目计数器 —— O(1) 替代 O(n) 的 ConfigEntries.Any(...) 扫描</summary>
+    private int _modifiedCount;
+
     /// <summary>撤销操作进行中标志 —— 防止撤销恢复值时再次触发压栈</summary>
     private bool _isUndoing;
 
@@ -356,10 +359,10 @@ public partial class ConfigEditorViewModel : ObservableObject
     /// 副作用：递归扫描当前服务器工作目录，更新配置文件列表与目录树。
     /// </remarks>
     [RelayCommand]
-    private void RescanConfigFiles()
+    private async Task RescanConfigFilesAsync()
     {
         if (Server == null || string.IsNullOrEmpty(Server.WorkingDirectory)) return;
-        ScanDirectoryForConfigFiles(Server.WorkingDirectory);
+        await ScanDirectoryForConfigFilesAsync(Server.WorkingDirectory);
     }
 
     /// <summary>
@@ -491,6 +494,7 @@ public partial class ConfigEditorViewModel : ObservableObject
         }
 
         HasUnsavedChanges = false;
+        _modifiedCount = 0;
         _undoStack.Clear();
         UndoCommand.NotifyCanExecuteChanged();
         SaveStatusMessage = null;
@@ -563,13 +567,14 @@ public partial class ConfigEditorViewModel : ObservableObject
     /// <remarks>在 UI 线程上执行，按配置条目分类重新分组并更新 <see cref="GroupedConfigEntries"/>。</remarks>
     private void UpdateGroupedEntries()
     {
-        System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+        // 用 BeginInvoke 替代 Invoke，避免阻塞线程池线程等待 UI 空闲
+        System.Windows.Application.Current?.Dispatcher?.BeginInvoke(new Action(() =>
         {
             GroupedConfigEntries = ConfigEntries
                 .GroupBy(e => e.Descriptor?.Category ?? "其他")
                 .Select(g => new ConfigEntryGroup(g.Key, g.ToList()))
                 .ToList();
-        });
+        }));
     }
 
     /// <summary>
@@ -580,12 +585,13 @@ public partial class ConfigEditorViewModel : ObservableObject
     /// 切换服务器时清空当前配置状态，递归扫描新服务器目录下的配置文件，
     /// 并更新 <see cref="ConfigFiles"/>、<see cref="ConfigFileTree"/> 及相关派生属性。
     /// </remarks>
-    partial void OnServerChanged(ServerInstance? value)
+    partial async void OnServerChanged(ServerInstance? value)
     {
         ConfigEntries.Clear();
         SelectedConfigFile = null;
         _currentFilePath = string.Empty;
         HasUnsavedChanges = false;
+        _modifiedCount = 0;
         _undoStack.Clear();
         UndoCommand.NotifyCanExecuteChanged();
         _originalConfig.Clear();
@@ -603,7 +609,7 @@ public partial class ConfigEditorViewModel : ObservableObject
 
         if (!string.IsNullOrEmpty(value.WorkingDirectory) && Directory.Exists(value.WorkingDirectory))
         {
-            ScanDirectoryForConfigFiles(value.WorkingDirectory);
+            await ScanDirectoryForConfigFilesAsync(value.WorkingDirectory);
         }
         else
         {
@@ -625,7 +631,7 @@ public partial class ConfigEditorViewModel : ObservableObject
     /// 支持格式：.properties、.yml、.yaml、.json、.cfg、.conf、.toml、.ini、.txt。
     /// 自动跳过 mods、world、logs、cache、libraries 等非配置目录与隐藏目录。
     /// </remarks>
-    private void ScanDirectoryForConfigFiles(string rootPath)
+    private async Task ScanDirectoryForConfigFilesAsync(string rootPath)
     {
         if (!Directory.Exists(rootPath))
         {
@@ -636,23 +642,26 @@ public partial class ConfigEditorViewModel : ObservableObject
 
         Log.Information("🔍 递归扫描配置文件目录: {Path}", rootPath);
 
-        var supportedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        // 将同步递归扫描放到线程池执行，避免阻塞 UI 线程
+        var (flatList, treeRoot) = await Task.Run(() =>
         {
-            ".properties", ".yml", ".yaml", ".json", ".cfg", ".conf",
-            ".toml", ".ini", ".txt"
-        };
-
-        var flatList = new List<string>();
-        var treeRoot = new List<ConfigFileItem>();
-
-        try
-        {
-            BuildConfigFileTree(rootPath, rootPath, supportedExtensions, treeRoot, flatList, 0);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "扫描配置文件目录失败: {Message}", ex.Message);
-        }
+            var flat = new List<string>();
+            var tree = new List<ConfigFileItem>();
+            var supportedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".properties", ".yml", ".yaml", ".json", ".cfg", ".conf",
+                ".toml", ".ini", ".txt"
+            };
+            try
+            {
+                BuildConfigFileTree(rootPath, rootPath, supportedExtensions, tree, flat, 0);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "扫描配置文件目录失败: {Message}", ex.Message);
+            }
+            return (flat, tree);
+        }).ConfigureAwait(true);  // 回到 UI 线程更新属性
 
         ConfigFiles = flatList;
         ConfigFileTree = treeRoot;
@@ -829,13 +838,21 @@ public partial class ConfigEditorViewModel : ObservableObject
                 return;
             }
 
+            // 取消旧 entry 的事件订阅，避免内存泄漏
+            foreach (var oldEntry in ConfigEntries)
+            {
+                oldEntry.PropertyChanging -= OnConfigEntryChanging;
+                oldEntry.PropertyChanged -= OnConfigEntryChanged;
+            }
             ConfigEntries.Clear();
+            _modifiedCount = 0;
             _originalConfig = new Dictionary<string, string>(config);
             HasUnsavedChanges = false;
+            _modifiedCount = 0;
             _undoStack.Clear();
             UndoCommand.NotifyCanExecuteChanged();
 
-            const int batchSize = 5;
+            const int batchSize = 10;  // 从 5 提高到 10，减少调度次数
             int total = processedEntries.Count;
             int processed = 0;
 
@@ -855,10 +872,11 @@ public partial class ConfigEditorViewModel : ObservableObject
                     entry.PropertyChanged += OnConfigEntryChanged;
                     ConfigEntries.Add(entry);
                     processed++;
-                    LoadProgress = (int)(processed * 100.0 / total);
                 }
+                // 每批结束才更新进度，减少 PropertyChanged 通知次数
+                LoadProgress = (int)(processed * 100.0 / total);
 
-                await Task.Delay(8, cancellationToken);
+                await Task.Yield();  // 让 UI 线程喘息，但不强制延迟
             }
 
             Log.Information("✅ 配置加载完成，共 {Count} 项配置", total);
@@ -908,12 +926,17 @@ public partial class ConfigEditorViewModel : ObservableObject
         if (sender is not ServerConfigEntry entry || e.PropertyName != nameof(ServerConfigEntry.Value))
             return;
 
+        // 用计数器 O(1) 替代 ConfigEntries.Any(...) 的 O(n) 扫描
+        var wasModified = entry.IsModified;
         entry.IsModified = !string.Equals(entry.Value, entry.OriginalValue, StringComparison.Ordinal);
+
+        if (entry.IsModified && !wasModified) _modifiedCount++;
+        else if (!entry.IsModified && wasModified) _modifiedCount--;
 
         entry.IsValid = entry.Descriptor is null ||
                         _configManager.ValidateValue(entry.Key, entry.SourceFile, entry.Value);
 
-        HasUnsavedChanges = ConfigEntries.Any(ce => ce.IsModified);
+        HasUnsavedChanges = _modifiedCount > 0;
         UndoCommand.NotifyCanExecuteChanged();
     }
 }
