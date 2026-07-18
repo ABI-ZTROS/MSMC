@@ -1,38 +1,30 @@
-# 🔮 MSMC — Minecraft Server Management Client
+# MSMC — Minecraft Server Management Client
 
-> *"吾等守护者，以代码为刃，以算法为盾，誓要在这片由方块构成的世界里，守护每一台服务器的安宁。"*
+MSMC 是一款基于 .NET 9.0 WPF 的 Minecraft Java Edition 服务器管理桌面应用。
 
----MSMC 是一款 .NET 10.0 WPF 桌面应用，为 Minecraft Java Edition 服务器而生。
-它不是普通的控制面板——它是你服务器的 **守护灵**。
-它能感知进程的呼吸，解析配置的灵魂，预知崩溃的命运。
+## 功能
 
-## ✨ 守护之力
-
-| 领域 | 能力 |
+| 模块 | 说明 |
 |------|------|
-| **服务器感知** | 自动探测运行中的 MC 服务器 —— Vanilla / Spigot / Paper / Forge / Fabric，无一遁形 |
-| **配置编辑** | 可视化管理服务器配置，所有参数翻译为自然中文，附带值域约束与校验 |
-| **系统监控** | CPU / 内存 / 磁盘 / 线程 —— 实时感知服务器硬件的每一次脉动 |
-| **AI 预知** | MLP 神经网络引擎，分析日志异常、预测崩溃风险、优化配置参数 |
-| **启动脚本洞察** | 不看文件名，只看灵魂 —— 通过内容架构分析识别启动脚本 |
+| 服务器检测 | 自动扫描运行中的 MC 服务器进程，识别 Vanilla / Spigot / Paper / Forge / Fabric 等类型 |
+| 配置编辑 | 可视化编辑服务器配置文件，参数附带中文说明与值域校验，支持 properties / yaml / json 等格式 |
+| 系统监控 | 实时监控 CPU、内存、磁盘占用与线程状态 |
+| 启动脚本识别 | 通过脚本内容分析识别启动脚本，提取 JAR 名称与 JVM 参数 |
+| 权限管理 | 启动时检查管理员权限，支持 UAC 提权重启 |
+| 内存优化 | 定期 GC 回收与工作集整理，降低长时间运行的内存占用 |
 
-## 🏗️ 铸造之术
+## 技术栈
 
-```
-.NET 10.0  WPF  MaterialDesignInXAML (暗夜紫翠主题)
-ML.NET  +  ONNX Runtime  (MLP 神经网络推理引擎)
-CommunityToolkit.Mvvm  (源生成器驱动的 MVVM)
-Serilog  (日志即命运)
-YamlDotNet  (万物皆可解析)
-```
+- .NET 9.0 (Windows 10.0.22000.0 目标)
+- WPF + MaterialDesignInXAML
+- CommunityToolkit.Mvvm (源生成器 MVVM)
+- Serilog (日志)
+- YamlDotNet (YAML 解析)
+- Microsoft.Extensions.DependencyInjection (依赖注入)
 
-## 🚀 启动仪式
+## 构建
 
-**前置要求：** 需要安装 [.NET 10.0 SDK/Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
-
-从 GitHub Actions 的 [Artifacts](https://github.com/ABI-ZTROS/MSMC/actions) 下载 `MSMC-win-x64`，解压后双击 `McServerGuard.exe` 即可。
-
-或者从源码编译：
+需要 [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)。
 
 ```bash
 git clone https://github.com/ABI-ZTROS/MSMC.git
@@ -40,29 +32,38 @@ cd MSMC
 dotnet build McServerGuard.sln
 ```
 
-## 📂 封印之书（项目结构）
+也可从 GitHub Actions 的 [Artifacts](https://github.com/ABI-ZTROS/MSMC/actions) 下载预构建版本。
+
+## 项目结构
 
 ```
 src/McServerGuard/
-├── Constants/          # 常量封印 —— 服务器类型、JVM 参数
-├── Models/             # 数据模型 —— 服务器实体、配置条目、系统指标
+├── Constants/              # 常量定义（服务器类型、JVM 参数）
+├── Models/                 # 数据模型（服务器实例、配置条目、系统指标）
 ├── Services/
-│   ├── ServerDetection/    # 探知之眼 —— 进程扫描、命令行解析、脚本分析
-│   ├── ConfigManagement/   # 配置之书 —— 解析、翻译、校验
-│   ├── SystemMonitoring/   # 监控之塔 —— CPU/内存/磁盘/线程
-│   └── AIService/          # 预知之脑 —— 日志分析、崩溃预测、配置优化
-├── ViewModels/         # 意识中枢 —— MVVM 绑定
-├── Views/              # 显化之窗 —— WPF 界面
-└── Converters/         # 转化之术
+│   ├── ServerDetection/    # 服务器检测（进程扫描、命令行解析、脚本分析）
+│   ├── ConfigManagement/   # 配置管理（解析、翻译、校验）
+│   ├── SystemMonitoring/   # 系统监控（CPU / 内存 / 磁盘 / 线程）
+│   ├── HardwareInfo/       # 硬件信息识别
+│   ├── Privilege/          # 权限管理（管理员检测、UAC 提权）
+│   ├── AppConfigService.cs # 应用配置持久化
+│   ├── MemoryOptimizerService.cs  # 内存优化
+│   ├── ThemeService.cs     # 主题管理
+│   └── ToastNotificationService.cs # 通知服务
+├── ViewModels/             # MVVM ViewModel
+├── Views/                  # WPF 界面与自定义控件
+├── Converters/             # 值转换器
+└── Selectors/              # 模板选择器
 ```
 
-## ⚖️ 守护者契约
+## 许可声明
 
-本项目采用 MIT 许可证 —— 自由即正义。
+本软件**不是开源软件**，不遵循任何开源协议（包括但不限于 MIT、GPL、Apache、BSD 等）。
+
+源代码在 GitHub 上公开仅用于技术交流与透明度展示，不构成对任何权利的许可或放弃。未经开发者书面授权，不得复制、修改、分发、再许可或销售本软件。
+
+详细条款请参阅软件内的用户协议。
 
 ---
 
-<p align="center">
-  <sub>Forged by <strong>Wis'adel</strong> with code and conviction</sub><br/>
-  <sub>"每一行代码，都是对服务器的誓言。"</sub>
-</p>
+© 2026 ABI-ZTROS
