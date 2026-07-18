@@ -1,0 +1,30 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# .NET source files - use Windows line endings
+*.cs     text eol=crlf
+*.xaml   text eol=crlf
+*.csproj text eol=crlf
+*.sln    text eol=crlf
+*.json   text eol=crlf
+*.xml    text eol=crlf
+*.config text eol=crlf
+
+# Scripts and configuration - use Unix line endings
+*.sh     text eol=lf
+*.bash   text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.gitignore text eol=lf
+*.gitattributes text eol=lf
+
+# Binary files - never modify
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.dll    binary
+*.exe    binary
+*.zip    binary
+*.jar    binary
