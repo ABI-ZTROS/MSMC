@@ -51,6 +51,7 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
 
         <!-- 💬 配置描述文字样式 -->
@@ -80,6 +81,7 @@
         <Style x:Key="ConfigValueTextBoxStyle" TargetType="TextBox"
                BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
             <Setter Property="MinWidth" Value="180" />
+            <Setter Property="MaxWidth" Value="400" />
             <Setter Property="Height" Value="36" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Padding" Value="8,0" />
@@ -89,6 +91,7 @@
         <Style x:Key="ConfigComboBoxStyle" TargetType="ComboBox"
                BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
             <Setter Property="MinWidth" Value="180" />
+            <Setter Property="MaxWidth" Value="400" />
             <Setter Property="Height" Value="36" />
         </Style>
 
@@ -299,7 +302,7 @@
                     </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip="{Binding}" />
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
@@ -344,10 +347,11 @@
 
                     <!-- 🏷️ 左侧：当前文件名 + 状态 -->
                     <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding SelectedConfigFile}"
+                        <TextBlock Text="{Binding SelectedConfigFileName}"
                                    FontSize="16"
                                    FontWeight="Bold"
-                                   TextTrimming="CharacterEllipsis" />
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding SelectedConfigFile}" />
                         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                             <iconPacks:PackIconFontAwesome6 Kind="PenSolid"
                                                     Width="14" Height="14"
@@ -531,8 +535,8 @@
                                             <Border Style="{StaticResource ConfigItemCardStyle}">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="220" />
-                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" MinWidth="180" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
                                                     <!-- 🏷️ 左侧：配置名 + 描述 -->
@@ -540,7 +544,8 @@
                                                                 VerticalAlignment="Center">
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Text="{Binding FriendlyDisplayName}"
-                                                                       Style="{StaticResource ConfigNameStyle}" />
+                                                                       Style="{StaticResource ConfigNameStyle}"
+                                                                       ToolTip="{Binding FriendlyDisplayName}" />
                                                             <!-- ⚠️ 需要重启标识 -->
                                                             <iconPacks:PackIconFontAwesome6 Kind="RotateLeftSolid"
                                                                                     Width="14" Height="14"
@@ -565,7 +570,9 @@
                                                                    Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                                    Opacity="0.5"
                                                                    Margin="0,4,0,0"
-                                                                   FontFamily="{DynamicResource AppMonospaceFontFamily}" />
+                                                                   FontFamily="{DynamicResource AppMonospaceFontFamily}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="{Binding Key}" />
                                                     </StackPanel>
 
                                                     <!-- ✏️ 右侧：编辑控件（根据类型动态选择模板） -->

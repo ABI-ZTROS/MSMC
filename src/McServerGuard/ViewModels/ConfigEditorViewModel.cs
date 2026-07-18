@@ -179,6 +179,13 @@ public partial class ConfigEditorViewModel : ObservableObject
     private string? _selectedConfigFile;
 
     /// <summary>
+    /// 当前选中配置文件的纯文件名（不含路径），用于顶部标题显示
+    /// </summary>
+    public string? SelectedConfigFileName => string.IsNullOrEmpty(SelectedConfigFile)
+        ? SelectedConfigFile
+        : System.IO.Path.GetFileName(SelectedConfigFile);
+
+    /// <summary>
     /// 当前配置文件的条目集合
     /// </summary>
     /// <remarks>
@@ -743,6 +750,7 @@ public partial class ConfigEditorViewModel : ObservableObject
     partial void OnSelectedConfigFileChanged(string? value)
     {
         Log.Debug("📄 选中配置文件: {File}", value);
+        OnPropertyChanged(nameof(SelectedConfigFileName));
 
         if (Server is null || string.IsNullOrEmpty(value))
         {
