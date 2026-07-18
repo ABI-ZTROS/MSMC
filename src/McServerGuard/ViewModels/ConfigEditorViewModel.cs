@@ -585,7 +585,15 @@ public partial class ConfigEditorViewModel : ObservableObject
     /// 切换服务器时清空当前配置状态，递归扫描新服务器目录下的配置文件，
     /// 并更新 <see cref="ConfigFiles"/>、<see cref="ConfigFileTree"/> 及相关派生属性。
     /// </remarks>
-    partial async void OnServerChanged(ServerInstance? value)
+    partial void OnServerChanged(ServerInstance? value)
+    {
+        _ = HandleServerChangedAsync(value);
+    }
+
+    /// <summary>
+    /// 服务器切换的异步处理逻辑 —— 避免 partial 方法无法使用 async 修饰符的限制
+    /// </summary>
+    private async System.Threading.Tasks.Task HandleServerChangedAsync(ServerInstance? value)
     {
         ConfigEntries.Clear();
         SelectedConfigFile = null;
