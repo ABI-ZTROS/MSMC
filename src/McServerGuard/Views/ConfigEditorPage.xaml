@@ -5,7 +5,11 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
              xmlns:converters="clr-namespace:McServerGuard.Converters"
-             xmlns:selectors="clr-namespace:McServerGuard.Selectors">
+             xmlns:selectors="clr-namespace:McServerGuard.Selectors"
+             Focusable="True">
+    <UserControl.InputBindings>
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveConfigCommand}" />
+    </UserControl.InputBindings>
 
     <UserControl.Resources>
         <!-- 🎢 配置卡片入场动画缓动函数 -->
@@ -114,9 +118,6 @@
                 <DataTemplate>
                     <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource ConfigValueTextBoxStyle}">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Enter" Command="{Binding DataContext.SaveConfigCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
-                        </TextBox.InputBindings>
                         <TextBox.ToolTip>
                             <StackPanel>
                                 <TextBlock Text="默认值: ">
@@ -138,9 +139,6 @@
                 <DataTemplate>
                     <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource ConfigValueTextBoxStyle}">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Enter" Command="{Binding DataContext.SaveConfigCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
-                        </TextBox.InputBindings>
                         <materialDesign:HintAssist.Hint>输入文本</materialDesign:HintAssist.Hint>
                     </TextBox>
                 </DataTemplate>
