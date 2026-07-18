@@ -254,7 +254,7 @@
                             <WrapPanel Orientation="Horizontal">
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="SkyBlue"
                                         Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
-                                        Padding="16,10">
+                                        Padding="20,12" MinHeight="44">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#3B82F6" Width="20" Height="20" CornerRadius="4" />
                                         <Border Background="{DynamicResource AccentTextBrush}" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" />
@@ -263,7 +263,7 @@
                                 </Button>
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="BlueOrange"
                                         Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
-                                        Padding="16,10">
+                                        Padding="20,12" MinHeight="44">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#1565C0" Width="20" Height="20" CornerRadius="4" />
                                         <Border Background="#FF9800" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" />
@@ -272,7 +272,7 @@
                                 </Button>
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="TealPink"
                                         Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
-                                        Padding="16,10">
+                                        Padding="20,12" MinHeight="44">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#00897B" Width="20" Height="20" CornerRadius="4" />
                                         <Border Background="#E91E63" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" />
@@ -281,7 +281,7 @@
                                 </Button>
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="RedYellow"
                                         Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
-                                        Padding="16,10">
+                                        Padding="20,12" MinHeight="44">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#C62828" Width="20" Height="20" CornerRadius="4" />
                                         <Border Background="#FFD600" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" />
@@ -290,7 +290,7 @@
                                 </Button>
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="OceanBlue"
                                         Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
-                                        Padding="16,10">
+                                        Padding="20,12" MinHeight="44">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#0097A7" Width="20" Height="20" CornerRadius="4" />
                                         <Border Background="#FFD740" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" />
@@ -526,7 +526,7 @@
                         <Button Command="{Binding TestNotificationCommand}"
                                 Style="{StaticResource MaterialDesignOutlinedButton}"
                                 Margin="0,12,0,0"
-                                Padding="16,8"
+                                Padding="20,12" MinHeight="44"
                                 HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
                                 <iconPacks:PackIconFontAwesome6 Kind="BellSolid" Width="16" Height="16" />
@@ -825,7 +825,7 @@
                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                     <Button Command="{Binding ResetToDefaultCommand}"
                             Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Padding="16,10" Margin="0,0,8,0">
+                            Padding="20,12" MinHeight="44" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
                             <iconPacks:PackIconFontAwesome6 Kind="RotateSolid" Width="16" Height="16" />
                             <TextBlock Text="重置为默认" Margin="8,0,0,0" />
@@ -835,7 +835,7 @@
                             Style="{StaticResource MaterialDesignRaisedButton}"
                             Background="{DynamicResource AccentGradientBrush}"
                             Foreground="White"
-                            Padding="16,10">
+                            Padding="20,12" MinHeight="44">
                         <StackPanel Orientation="Horizontal">
                             <iconPacks:PackIconFontAwesome6 Kind="CheckSolid" Width="16" Height="16" />
                             <TextBlock Text="应用并保存" Margin="8,0,0,0" />
