@@ -95,6 +95,12 @@ public partial class ConfigEditorViewModel : ObservableObject
     /// <summary>分组更新防抖计时器</summary>
     private System.Timers.Timer? _groupUpdateTimer;
 
+    /// <summary>编辑历史栈 —— 记录每次值变更前的条目引用与原始值，支持逐步撤销</summary>
+    private readonly Stack<(ServerConfigEntry Entry, string PreviousValue)> _undoStack = new();
+
+    /// <summary>撤销操作进行中标志 —— 防止撤销恢复值时再次触发压栈</summary>
+    private bool _isUndoing;
+
     /// <summary>
     /// 初始化配置编辑器视图模型的新实例（最小依赖版本）
     /// </summary>
@@ -355,6 +361,14 @@ public partial class ConfigEditorViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasUnsavedChanges;
 
+    /// <summary>保存操作的状态消息（成功/失败提示）</summary>
+    [ObservableProperty]
+    private string? _saveStatusMessage;
+
+    /// <summary>指示保存状态消息是否为错误类型</summary>
+    [ObservableProperty]
+    private bool _isSaveError;
+
     /// <summary>是否正在加载配置文件</summary>
     [ObservableProperty]
     private bool _isLoading;
@@ -383,6 +397,30 @@ public partial class ConfigEditorViewModel : ObservableObject
 
         Log.Information("💾 开始保存配置到 {Path}", _currentFilePath);
 
+        // 保存前检查文件是否被占用
+        try
+        {
+            using var fs = new FileStream(
+                _currentFilePath,
+                FileMode.Open,
+                FileAccess.ReadWrite,
+                FileShare.Read);
+        }
+        catch (IOException ioEx)
+        {
+            IsSaveError = true;
+            SaveStatusMessage = $"文件被占用，保存失败：{ioEx.Message}（请关闭正在使用该文件的程序，如服务器进程或文本编辑器）";
+            Log.Warning(ioEx, "⚠️ 配置文件被占用: {Path}", _currentFilePath);
+            return;
+        }
+        catch (UnauthorizedAccessException authEx)
+        {
+            IsSaveError = true;
+            SaveStatusMessage = $"权限不足，保存失败：{authEx.Message}";
+            Log.Warning(authEx, "⚠️ 配置文件无写入权限: {Path}", _currentFilePath);
+            return;
+        }
+
         try
         {
             var currentConfig = ConfigEntries
@@ -396,13 +434,25 @@ public partial class ConfigEditorViewModel : ObservableObject
                 entry.IsModified = false;
             }
             HasUnsavedChanges = false;
+            _undoStack.Clear();
+            UndoCommand.NotifyCanExecuteChanged();
+
+            IsSaveError = false;
+            SaveStatusMessage = $"配置已保存，共 {currentConfig.Count} 项";
 
             Log.Information("✅ 配置保存成功，共保存 {Count} 项配置", currentConfig.Count);
         }
+        catch (IOException ex)
+        {
+            IsSaveError = true;
+            SaveStatusMessage = $"保存失败：{ex.Message}（文件可能被其他程序占用）";
+            Log.Error(ex, "💥 配置保存失败（IO异常）: {Message}", ex.Message);
+        }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"保存配置失败：{ex.Message}");
-            Log.Error(ex, "💥 fuck: 配置保存失败: {Message}", ex.Message);
+            IsSaveError = true;
+            SaveStatusMessage = $"保存失败：{ex.Message}";
+            Log.Error(ex, "💥 配置保存失败: {Message}", ex.Message);
         }
     }
 
@@ -434,6 +484,9 @@ public partial class ConfigEditorViewModel : ObservableObject
         }
 
         HasUnsavedChanges = false;
+        _undoStack.Clear();
+        UndoCommand.NotifyCanExecuteChanged();
+        SaveStatusMessage = null;
     }
 
     /// <summary>
@@ -441,6 +494,40 @@ public partial class ConfigEditorViewModel : ObservableObject
     /// </summary>
     /// <returns>若存在未保存变更则返回 true</returns>
     private bool CanResetChanges() => HasUnsavedChanges;
+
+    /// <summary>
+    /// 撤销最近一次配置编辑命令
+    /// </summary>
+    /// <remarks>
+    /// 从编辑历史栈弹出最近一次变更，将该条目的值恢复为变更前的值。
+    /// 支持连续多次撤销，直至栈空。
+    /// </remarks>
+    [RelayCommand(CanExecute = nameof(CanUndo))]
+    private void Undo()
+    {
+        if (_undoStack.Count == 0) return;
+
+        _isUndoing = true;
+        try
+        {
+            var (entry, previousValue) = _undoStack.Pop();
+            entry.Value = previousValue;
+            entry.IsModified = !string.Equals(entry.Value, entry.OriginalValue, StringComparison.Ordinal);
+        }
+        finally
+        {
+            _isUndoing = false;
+        }
+
+        HasUnsavedChanges = ConfigEntries.Any(ce => ce.IsModified);
+        UndoCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// 判断是否可执行撤销命令
+    /// </summary>
+    /// <returns>若编辑历史栈非空则返回 true</returns>
+    private bool CanUndo() => _undoStack.Count > 0;
 
     /// <summary>
     /// 配置条目集合变更回调 —— 由源生成器在属性赋值时调用
@@ -492,6 +579,8 @@ public partial class ConfigEditorViewModel : ObservableObject
         SelectedConfigFile = null;
         _currentFilePath = string.Empty;
         HasUnsavedChanges = false;
+        _undoStack.Clear();
+        UndoCommand.NotifyCanExecuteChanged();
         _originalConfig.Clear();
 
         if (value is null)
@@ -735,6 +824,8 @@ public partial class ConfigEditorViewModel : ObservableObject
             ConfigEntries.Clear();
             _originalConfig = new Dictionary<string, string>(config);
             HasUnsavedChanges = false;
+            _undoStack.Clear();
+            UndoCommand.NotifyCanExecuteChanged();
 
             const int batchSize = 5;
             int total = processedEntries.Count;
@@ -752,6 +843,7 @@ public partial class ConfigEditorViewModel : ObservableObject
 
                 foreach (var entry in batch)
                 {
+                    entry.PropertyChanging += OnConfigEntryChanging;
                     entry.PropertyChanged += OnConfigEntryChanged;
                     ConfigEntries.Add(entry);
                     processed++;
@@ -780,6 +872,22 @@ public partial class ConfigEditorViewModel : ObservableObject
     }
 
     /// <summary>
+    /// 配置条目属性变更前事件处理程序 —— 在值改变前将旧值压入撤销栈
+    /// </summary>
+    /// <param name="sender">事件源</param>
+    /// <param name="e">属性变更前事件参数</param>
+    private void OnConfigEntryChanging(object? sender, System.ComponentModel.PropertyChangingEventArgs e)
+    {
+        if (sender is not ServerConfigEntry entry || e.PropertyName != nameof(ServerConfigEntry.Value))
+            return;
+
+        if (!_isUndoing)
+        {
+            _undoStack.Push((entry, entry.Value));
+        }
+    }
+
+    /// <summary>
     /// 配置条目属性变更事件处理程序
     /// </summary>
     /// <param name="sender">事件源</param>
@@ -792,9 +900,12 @@ public partial class ConfigEditorViewModel : ObservableObject
         if (sender is not ServerConfigEntry entry || e.PropertyName != nameof(ServerConfigEntry.Value))
             return;
 
+        entry.IsModified = !string.Equals(entry.Value, entry.OriginalValue, StringComparison.Ordinal);
+
         entry.IsValid = entry.Descriptor is null ||
                         _configManager.ValidateValue(entry.Key, entry.SourceFile, entry.Value);
 
         HasUnsavedChanges = ConfigEntries.Any(ce => ce.IsModified);
+        UndoCommand.NotifyCanExecuteChanged();
     }
 }

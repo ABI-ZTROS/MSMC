@@ -333,13 +333,17 @@
                     Padding="16,12"
                     Margin="0,0,0,12">
                 <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
                     <!-- 🏷️ 左侧：当前文件名 + 状态 -->
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding SelectedConfigFile}"
                                    FontSize="16"
                                    FontWeight="Bold"
@@ -358,9 +362,36 @@
                     </StackPanel>
 
                     <!-- 🔘 右侧：操作按钮 -->
-                    <StackPanel Grid.Column="1"
+                    <StackPanel Grid.Row="0" Grid.Column="1"
                                 Orientation="Horizontal"
                                 VerticalAlignment="Center">
+                        <!-- ↩️ 撤销按钮 -->
+                        <Button Command="{Binding UndoCommand}"
+                                Margin="0,0,12,0"
+                                Padding="16,10"
+                                FontSize="13"
+                                materialDesign:ButtonAssist.CornerRadius="8"
+                                ToolTip="撤销最近一次编辑">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Opacity" Value="0.4" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <iconPacks:PackIconFontAwesome6 Kind="RotateLeftSolid"
+                                                        Width="16" Height="16"
+                                                        VerticalAlignment="Center"
+                                                        Margin="0,0,6,0" />
+                                <TextBlock Text="撤销"
+                                           FontSize="13"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
                         <!-- 🔄 重置按钮 -->
                         <Button Command="{Binding ResetChangesCommand}"
                                 Margin="0,0,12,0"
@@ -414,6 +445,26 @@
                             </StackPanel>
                         </Button>
                     </StackPanel>
+
+                    <!-- 💬 保存状态消息 -->
+                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
+                               Text="{Binding SaveStatusMessage}"
+                               FontSize="12"
+                               Margin="0,8,0,0"
+                               Visibility="{Binding SaveStatusMessage, Converter={StaticResource NullToVisibilityConverter}}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSaveError}" Value="True">
+                                        <Setter Property="Foreground" Value="#FF5252" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSaveError}" Value="False">
+                                        <Setter Property="Foreground" Value="#4CAF50" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </Grid>
             </Border>
 
