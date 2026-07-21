@@ -13,7 +13,7 @@
             <!-- ═══════════════════════════════════════════════ -->
             <!-- 🎛️ 控制按钮：开始/停止监控 -->
             <!-- ═══════════════════════════════════════════════ -->
-            <StackPanel Orientation="Horizontal"
+            <StackPanel x:Name="ControlButtonsPanel" Orientation="Horizontal"
                         Margin="0,0,0,12">
                 <Button Content="开始监控"
                         Style="{StaticResource MaterialDesignRaisedButton}"
@@ -33,7 +33,7 @@
             <!-- 🎛️ 圆环仪表盘：CPU / 内存 / 磁盘 —— 三大件一排站 -->
             <!-- 线程数没有圆环，用大号数字 + 图标就够了 -->
             <!-- ═══════════════════════════════════════════════ -->
-            <UniformGrid Columns="4" Margin="0,0,0,12">
+            <UniformGrid x:Name="GaugesGrid" Columns="4" Margin="0,0,0,12">
 
                 <!-- 🖥️ CPU 圆环仪表盘 —— 占满整个卡片，视觉效果拉满 -->
                 <materialDesign:Card Margin="4" Padding="8"
@@ -106,7 +106,7 @@
             <!-- ═══════════════════════════════════════════════ -->
             <!-- 📈 CPU 趋势折线图 —— 告别 TextBox，拥抱曲线之美 -->
             <!-- ═══════════════════════════════════════════════ -->
-            <materialDesign:Card Margin="0,0,0,12" Padding="16">
+            <materialDesign:Card x:Name="CpuChartCard" Margin="0,0,0,12" Padding="16">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal"
                                 Margin="0,0,0,8">
@@ -128,7 +128,7 @@
             <!-- ═══════════════════════════════════════════════ -->
             <!-- 📈 内存趋势折线图 —— 同样的配方，不同的味道 -->
             <!-- ═══════════════════════════════════════════════ -->
-            <materialDesign:Card Margin="0,0,0,12" Padding="16">
+            <materialDesign:Card x:Name="MemoryChartCard" Margin="0,0,0,12" Padding="16">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal"
                                 Margin="0,0,0,8">

@@ -8,6 +8,7 @@
 // -----------------------------------------------------------------------------
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using McServerGuard.Services;
 using McServerGuard.Views.Helpers;
@@ -17,7 +18,8 @@ namespace McServerGuard.Views;
 
 /// <summary>
 /// 系统监控页面代码隐藏类。
-/// 折线图控件及其数据绑定在 XAML 中声明，代码隐藏仅负责页面入场动画控制。
+/// 折线图控件及其数据绑定在 XAML 中声明，代码隐藏负责页面入场动画控制
+/// 以及卡片元素的错落入场动画。
 /// </summary>
 public partial class SystemMonitorPage : UserControl
 {
@@ -45,6 +47,42 @@ public partial class SystemMonitorPage : UserControl
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
             AnimationHelper.FadeAndSlideIn(this, duration);
+
+            if (_themeService.EnableAnimations)
+            {
+                Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+                {
+                    PlayStaggeredEntrance();
+                });
+            }
         });
+    }
+
+    // 播放卡片错落入场动画
+    private void PlayStaggeredEntrance()
+    {
+        int delay = 0;
+        const int stepMs = 60;
+        const int itemDurationMs = 300;
+
+        AnimationHelper.FadeAndSlideInWithDelay(ControlButtonsPanel, itemDurationMs, delay);
+        delay += stepMs;
+
+        // 依次动画 4 个仪表盘卡片
+        if (GaugesGrid != null)
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(GaugesGrid); i++)
+            {
+                if (VisualTreeHelper.GetChild(GaugesGrid, i) is UIElement child)
+                {
+                    AnimationHelper.FadeAndSlideInWithDelay(child, itemDurationMs, delay);
+                    delay += stepMs;
+                }
+            }
+        }
+
+        AnimationHelper.FadeAndSlideInWithDelay(CpuChartCard, itemDurationMs, delay);
+        delay += stepMs;
+        AnimationHelper.FadeAndSlideInWithDelay(MemoryChartCard, itemDurationMs, delay);
     }
 }
