@@ -145,4 +145,29 @@ public static class ServerConstants
     /// 标准值为 25565。
     /// </summary>
     public const int DefaultServerPort = 25565;
+
+    /// <summary>
+    /// 端口扫描起始端口（含）。覆盖标准 MC 端口及常见多实例偏移。
+    /// </summary>
+    public const int PortScanStart = 25565;
+
+    /// <summary>
+    /// 端口扫描结束端口（含）。扫描 25565-25575 共 11 个端口。
+    /// </summary>
+    public const int PortScanEnd = 25575;
+
+    /// <summary>
+    /// 单端口 TCP connect 超时（毫秒）。必须远小于 3 秒轮询周期。
+    /// </summary>
+    public const int PortScanTimeoutMs = 800;
+
+    /// <summary>
+    /// 端口扫描最大并发数。11 个端口用 50 并发绰绰有余。
+    /// </summary>
+    public const int PortScanMaxConcurrency = 50;
+
+    /// <summary>
+    /// 端口扫描结果缓存 TTL（秒）。比 3 秒轮询周期长，避免每轮都 TCP connect。
+    /// </summary>
+    public const int PortScanCacheTtlSeconds = 10;
 }

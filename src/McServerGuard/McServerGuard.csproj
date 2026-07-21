@@ -79,6 +79,7 @@
     <PackageReference Include="Serilog.Sinks.File" Version="6.*" />
     <PackageReference Include="YamlDotNet" Version="16.*" />
     <PackageReference Include="System.Management" Version="9.*" />
+    <PackageReference Include="Vanara.PInvoke.IpHlpApi" Version="5.*" />
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.*" />
     <!-- 🔍 .NET 代码分析器 —— 严格检查代码质量 -->
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.*">

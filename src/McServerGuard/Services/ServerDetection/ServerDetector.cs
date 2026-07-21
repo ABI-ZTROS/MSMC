@@ -42,6 +42,21 @@ public class ServerDetector : IServerDetector
     private readonly ConfigFileScanner _configScanner;
 
     /// <summary>
+    /// TCP 端口探测器 —— 网络套件核心组件，验证端口连通性
+    /// </summary>
+    private readonly PortScanner _portScanner;
+
+    /// <summary>
+    /// 端口→PID 反向绑定器 —— 通过 IP Helper API 查询监听端口的归属进程
+    /// </summary>
+    private readonly PortToProcessMapper _portToProcessMapper;
+
+    /// <summary>
+    /// 服务器配置端口解析器 —— 从 server.properties 解析真实监听端口
+    /// </summary>
+    private readonly ServerPortResolver _portResolver;
+
+    /// <summary>
     /// 检测完成事件 —— 当一轮自动检测完成时触发，携带本次检测的完整结果
     /// </summary>
     public event EventHandler<DetectionResult>? DetectionCompleted;
@@ -52,15 +67,24 @@ public class ServerDetector : IServerDetector
     /// <param name="processScanner">进程枚举器实例</param>
     /// <param name="workingDirResolver">工作目录解析器实例</param>
     /// <param name="configScanner">配置文件扫描器实例</param>
+    /// <param name="portScanner">TCP 端口探测器实例（网络套件）</param>
+    /// <param name="portToProcessMapper">端口→PID 反向绑定器实例</param>
+    /// <param name="portResolver">服务器配置端口解析器实例</param>
     public ServerDetector(
         ProcessScanner processScanner,
         WorkingDirectoryResolver workingDirResolver,
-        ConfigFileScanner configScanner)
+        ConfigFileScanner configScanner,
+        PortScanner portScanner,
+        PortToProcessMapper portToProcessMapper,
+        ServerPortResolver portResolver)
     {
         _processScanner = processScanner;
         _workingDirResolver = workingDirResolver;
         _configScanner = configScanner;
-        Log.Information("🕵️ ServerDetector 初始化完毕，准备出击");
+        _portScanner = portScanner;
+        _portToProcessMapper = portToProcessMapper;
+        _portResolver = portResolver;
+        Log.Information("🕵️ ServerDetector 初始化完毕，准备出击（含网络套件）");
     }
 
     /// <inheritdoc />
@@ -152,6 +176,20 @@ public class ServerDetector : IServerDetector
             }
         }
 
+        // === 阶段四：主动端口扫描 —— 发现 ProcessScanner 漏掉的实例 ===
+        // 典型场景：BungeeCord/Velocity 代理、非 Java 启动器启动的服务器
+        try
+        {
+            var knownPids = processResults.Select(p => p.ProcessId).ToHashSet();
+            var discoveredByPort = await DiscoverByPortScanAsync(knownPids, servers);
+            servers.AddRange(discoveredByPort);
+        }
+        catch (Exception ex)
+        {
+            // 端口扫描失败不影响主流程已识别的服务器
+            Log.Error(ex, "💥 fuck: 端口扫描阶段失败: {Message}", ex.Message);
+        }
+
         stopwatch.Stop();
         Log.Information("✅ 检测完成，共发现 {Count} 个服务器", servers.Count);
 
@@ -202,11 +240,26 @@ public class ServerDetector : IServerDetector
         // 服务器类型推断阶段（策略模式：JAR 名匹配 + 配置文件辅助）
         var serverType = ServerTypeClassifier.ClassifyByJarNameAndConfigFiles(jarName, workingDir);
 
-        Log.Information(
-            "构建服务器实例: PID={Pid}, Type={Type}, Jar={Jar}, Dir={Dir}",
-            processId, serverType, jarName, workingDir);
+        // === 网络套件：双向交叉验证 ===
+        // 1. 从 server.properties 解析配置端口
+        var configuredPort = _portResolver.ResolveConfiguredPort(workingDir ?? string.Empty);
 
-        Log.Debug("🔍 路径调试 - WorkingDirectory: {Dir} (长度={Len})", 
+        // 2. TCP 探测端口连通性 + PID 反查（走缓存，避免每轮 3 秒循环都 connect）
+        var (isPortOpen, listeningPid) = await ProbePortWithCacheAsync(configuredPort);
+
+        // 3. 双向交叉验证：配置端口开放但监听 PID 与进程 PID 不一致 → 端口被占用
+        if (isPortOpen && listeningPid.HasValue && listeningPid.Value != processId)
+        {
+            Log.Warning("⚠️ 端口 {Port} 开放但监听 PID={Actual} 与进程 PID={Expected} 不一致，端口可能被占用",
+                configuredPort, listeningPid.Value, processId);
+        }
+
+        Log.Information(
+            "构建服务器实例: PID={Pid}, Type={Type}, Jar={Jar}, Dir={Dir}, Port={Port} ({Status})",
+            processId, serverType, jarName, workingDir, configuredPort,
+            isPortOpen ? "开放" : "未开放");
+
+        Log.Debug("🔍 路径调试 - WorkingDirectory: {Dir} (长度={Len})",
             workingDir, workingDir?.Length ?? 0);
         Log.Debug("🔍 路径调试 - JarFilePath: {Path}", parsed.JarFilePath);
 
@@ -224,8 +277,105 @@ public class ServerDetector : IServerDetector
             GcType = parsed.GcType,
             UsesAikarFlags = parsed.UsesAikarFlags,
             ConfigFiles = configFiles,
+            ServerPort = configuredPort,
+            IsPortOpen = isPortOpen,
+            ActualListeningPid = listeningPid,
             DetectedAt = DateTime.Now,
         };
+    }
+
+    /// <summary>
+    /// 带缓存的端口探测 —— 先查缓存，未命中才 TCP connect + PID 反查
+    /// </summary>
+    /// <param name="port">目标端口</param>
+    /// <returns>（端口是否开放, 监听该端口的 PID）</returns>
+    /// <remarks>
+    /// 缓存 TTL 为 <see cref="ServerConstants.PortScanCacheTtlSeconds"/> 秒，
+    /// 比自动检测循环间隔（3 秒）长，避免每轮都 TCP connect。
+    /// TCP 探测与 PID 反查无依赖关系，并发执行降低延迟。
+    /// </remarks>
+    private async Task<(bool IsOpen, int? ListeningPid)> ProbePortWithCacheAsync(int port)
+    {
+        lock (_portScanCacheLock)
+        {
+            if (_portScanCache.TryGetValue(port, out var cached)
+                && (DateTime.Now - cached.Timestamp) < PortScanCacheTtl)
+            {
+                Log.Debug("♻️ 端口 {Port} 探测命中缓存: Open={Open}, Pid={Pid}",
+                    port, cached.IsOpen, cached.ListeningPid);
+                return (cached.IsOpen, cached.ListeningPid);
+            }
+        }
+
+        // 并发执行 TCP 探测 + PID 反查（两者无依赖，可并行）
+        var probeTask = _portScanner.ProbePortAsync(port);
+        var pidTask = Task.Run(() => _portToProcessMapper.GetPidByListeningPort(port));
+        await Task.WhenAll(probeTask, pidTask);
+
+        var isOpen = probeTask.Result;
+        var listeningPid = pidTask.Result;
+
+        lock (_portScanCacheLock)
+        {
+            _portScanCache[port] = (isOpen, listeningPid, DateTime.Now);
+        }
+
+        return (isOpen, listeningPid);
+    }
+
+    /// <summary>
+    /// 主动端口扫描 —— 发现 ProcessScanner 未识别但端口开放的服务器实例
+    /// </summary>
+    /// <param name="knownPids">ProcessScanner 已识别的 PID 集合</param>
+    /// <param name="existingServers">已识别的服务器实例列表</param>
+    /// <returns>通过端口扫描新发现的实例列表</returns>
+    /// <remarks>
+    /// 典型场景：BungeeCord/Velocity 代理、非 Java 启动器启动的服务器、
+    /// 以及命令行无法被 WMI 捕获的实例。扫描 25565-25575 端口范围，
+    /// 跳过已被现有服务器占用的端口与 PID。
+    /// </remarks>
+    private async Task<List<ServerInstance>> DiscoverByPortScanAsync(
+        HashSet<int> knownPids,
+        List<ServerInstance> existingServers)
+    {
+        var discovered = new List<ServerInstance>();
+        var existingPorts = existingServers.Select(s => s.ServerPort).ToHashSet();
+
+        var openPorts = await _portScanner.ScanRangeAsync(
+            ServerConstants.PortScanStart, ServerConstants.PortScanEnd);
+
+        foreach (var port in openPorts)
+        {
+            // 跳过已识别服务器占用的端口
+            if (existingPorts.Contains(port))
+            {
+                continue;
+            }
+
+            var listeningPid = _portToProcessMapper.GetPidByListeningPort(port);
+
+            // 跳过已知 PID（ProcessScanner 已识别的）
+            if (listeningPid.HasValue && knownPids.Contains(listeningPid.Value))
+            {
+                continue;
+            }
+
+            // 端口开放但 PID 未知或不在已知列表 —— 疑似新实例
+            Log.Information("📡 端口扫描发现新实例: 端口={Port} PID={Pid}", port, listeningPid);
+
+            discovered.Add(new ServerInstance
+            {
+                ProcessId = listeningPid ?? 0,
+                ServerType = ServerType.Unknown,
+                WorkingDirectory = string.Empty,
+                ServerPort = port,
+                IsPortOpen = true,
+                ActualListeningPid = listeningPid,
+                DetectedAt = DateTime.Now,
+            });
+        }
+
+        return discovered;
     }
 
     /// <summary>
@@ -347,6 +497,22 @@ public class ServerDetector : IServerDetector
     /// PID 生命周期缓存字典 —— Key 为进程 ID，Value 为（服务器实例, 缓存时间戳）元组
     /// </summary>
     private readonly Dictionary<int, (ServerInstance server, DateTime timestamp)> _detectionCache = new();
+
+    /// <summary>
+    /// 端口扫描结果缓存 TTL —— 比自动检测间隔长，避免每轮都 TCP connect
+    /// </summary>
+    private static readonly TimeSpan PortScanCacheTtl =
+        TimeSpan.FromSeconds(ServerConstants.PortScanCacheTtlSeconds);
+
+    /// <summary>
+    /// 端口扫描结果缓存 —— Key 为端口，Value 为（是否开放, 监听PID, 时间戳）
+    /// </summary>
+    private readonly Dictionary<int, (bool IsOpen, int? ListeningPid, DateTime Timestamp)> _portScanCache = new();
+
+    /// <summary>
+    /// 端口扫描缓存读写锁 —— 保护 <see cref="_portScanCache"/> 的并发访问
+    /// </summary>
+    private readonly object _portScanCacheLock = new();
 
     /// <summary>
     /// 自动检测循环的取消令牌源

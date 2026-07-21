@@ -82,6 +82,10 @@ public partial class App : Application
         services.AddSingleton<ProcessScanner>();
         services.AddSingleton<WorkingDirectoryResolver>();
         services.AddSingleton<ConfigFileScanner>();
+        // 网络套件 —— 端口探测 + PID 反查 + 配置端口解析
+        services.AddSingleton<PortScanner>();
+        services.AddSingleton<PortToProcessMapper>();
+        services.AddSingleton<ServerPortResolver>();
 
         // 管理员权限服务
         Log.Information("🔐 注册管理员权限服务...");

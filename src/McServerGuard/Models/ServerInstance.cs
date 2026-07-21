@@ -102,6 +102,19 @@ public partial class ServerInstance : ObservableObject
     [ObservableProperty] private int _serverPort = ServerConstants.DefaultServerPort;
 
     /// <summary>
+    /// 指示配置端口是否真的在监听（TCP connect 探测结果）。
+    /// 由网络套件的 PortScanner 探测后回填。
+    /// </summary>
+    [ObservableProperty] private bool _isPortOpen;
+
+    /// <summary>
+    /// 实际监听该端口的 PID（通过 IP Helper API 反查）。
+    /// 与 ProcessId 不同时，说明端口被其他程序占用。
+    /// 无监听时为 null。
+    /// </summary>
+    [ObservableProperty] private int? _actualListeningPid;
+
+    /// <summary>
     /// 实例检测时间戳，即对象创建的时刻。
     /// </summary>
     public DateTime DetectedAt { get; init; } = DateTime.Now;
@@ -120,6 +133,25 @@ public partial class ServerInstance : ObservableObject
     /// 自动将字节数转换为 GB/MB/KB 单位。
     /// </summary>
     public string FormattedMaxMemory => FormatBytes(MaxHeapMemoryBytes);
+
+    /// <summary>
+    /// 网络状态文本（用于 UI 展示）。
+    /// 🟢端口开放 | 🟡端口被占用 | 🔴端口未开放
+    /// </summary>
+    public string NetworkStatusText => (IsPortOpen, PortConflict) switch
+    {
+        (false, _)    => "🔴 端口未开放",
+        (true, false) => "🟢 端口开放",
+        (true, true)  => "🟡 端口被占用",
+    };
+
+    /// <summary>
+    /// 指示端口是否被其他进程占用（端口开放但监听 PID 与本实例 PID 不一致）。
+    /// 用于 UI DataTrigger 变色。
+    /// </summary>
+    public bool PortConflict => IsPortOpen
+        && ActualListeningPid.HasValue
+        && ActualListeningPid.Value != ProcessId;
 
     /// <summary>
     /// 将字节数格式化为人类可读的内存大小字符串。
@@ -153,4 +185,22 @@ public partial class ServerInstance : ObservableObject
     /// </summary>
     partial void OnMaxHeapMemoryBytesChanged(long value)
         => OnPropertyChanged(nameof(FormattedMaxMemory));
+
+    /// <summary>
+    /// IsPortOpen 变更回调，触发网络状态派生属性的通知。
+    /// </summary>
+    partial void OnIsPortOpenChanged(bool value)
+    {
+        OnPropertyChanged(nameof(NetworkStatusText));
+        OnPropertyChanged(nameof(PortConflict));
+    }
+
+    /// <summary>
+    /// ActualListeningPid 变更回调，触发端口冲突派生属性的通知。
+    /// </summary>
+    partial void OnActualListeningPidChanged(int? value)
+    {
+        OnPropertyChanged(nameof(NetworkStatusText));
+        OnPropertyChanged(nameof(PortConflict));
+    }
 }

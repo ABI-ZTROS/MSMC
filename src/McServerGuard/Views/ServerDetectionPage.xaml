@@ -305,18 +305,35 @@
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
 
-                                                        <!-- 状态点 -->
-                                                        <Ellipse Grid.Column="0"
-                                                                 Style="{StaticResource StatusDotStyle}"
-                                                                 Fill="{DynamicResource GaugeGreenBrush}" />
+                                                        <!-- 状态点（根据端口状态变色） -->
+                                                        <Ellipse Grid.Column="0">
+                                                            <Ellipse.Style>
+                                                                <Style TargetType="Ellipse" BasedOn="{StaticResource StatusDotStyle}">
+                                                                    <Setter Property="Fill" Value="{DynamicResource GaugeGreenBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsPortOpen}" Value="False">
+                                                                            <Setter Property="Fill" Value="{DynamicResource GaugeRedBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding PortConflict}" Value="True">
+                                                                            <Setter Property="Fill" Value="{DynamicResource GaugeYellowBrush}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Ellipse.Style>
+                                                        </Ellipse>
 
                                                         <!-- 名称 -->
                                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                             <TextBlock Text="{Binding DisplayName}"
                                                                        FontSize="11" FontWeight="Medium"
                                                                        TextTrimming="CharacterEllipsis" />
-                                                            <TextBlock Text="{Binding FormattedMaxMemory, StringFormat='内存 {0}'}"
-                                                                       FontSize="9" Opacity="0.6" />
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{Binding FormattedMaxMemory, StringFormat='内存 {0}'}"
+                                                                           FontSize="9" Opacity="0.6" />
+                                                                <TextBlock Text=" | " FontSize="9" Opacity="0.6" />
+                                                                <TextBlock Text="{Binding NetworkStatusText}"
+                                                                           FontSize="9" Opacity="0.6" />
+                                                            </StackPanel>
                                                         </StackPanel>
 
                                                         <!-- ▶ 快捷启动 -->
