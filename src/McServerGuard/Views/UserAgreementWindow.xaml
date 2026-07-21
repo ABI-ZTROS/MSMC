@@ -9,40 +9,29 @@
         ResizeMode="NoResize"
         WindowStyle="None"
         AllowsTransparency="False"
-        Background="#1a0000"
-        BorderBrush="#8B0000"
+        Background="{DynamicResource WarningRedBackgroundBrush}"
+        BorderBrush="{DynamicResource WarningRedBrush}"
         BorderThickness="2"
         FontFamily="{DynamicResource AppFontFamily}">
 
     <Window.Resources>
-        <SolidColorBrush x:Key="BloodRed" Color="#8B0000" />
-        <SolidColorBrush x:Key="BloodRedDark" Color="#5c0000" />
-        <SolidColorBrush x:Key="BloodRedLight" Color="#b22222" />
-        <SolidColorBrush x:Key="BloodRedBright" Color="#dc143c" />
-        <SolidColorBrush x:Key="BloodBackground" Color="#1a0000" />
-        <SolidColorBrush x:Key="BloodPanel" Color="#2d0a0a" />
-        <SolidColorBrush x:Key="BloodBorder" Color="#660000" />
-        <SolidColorBrush x:Key="BloodText" Color="#ffcccc" />
-        <SolidColorBrush x:Key="BloodTextDim" Color="#cc9999" />
-        <SolidColorBrush x:Key="BloodTextBright" Color="#ffffff" />
-
         <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="16" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Foreground" Value="#dc143c" />
+            <Setter Property="Foreground" Value="{DynamicResource WarningRedBrightBrush}" />
             <Setter Property="Margin" Value="0,18,0,8" />
         </Style>
 
         <Style x:Key="SubSectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="#ff6666" />
+            <Setter Property="Foreground" Value="{DynamicResource WarningRedLightBrush}" />
             <Setter Property="Margin" Value="0,12,0,4" />
         </Style>
 
         <Style x:Key="ArticleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Foreground" Value="#ffcccc" />
+            <Setter Property="Foreground" Value="{DynamicResource WarningRedTextBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="Margin" Value="12,2,0,4" />
             <Setter Property="LineHeight" Value="22" />
@@ -50,7 +39,7 @@
 
         <Style x:Key="LawRefStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11" />
-            <Setter Property="Foreground" Value="#cc9999" />
+            <Setter Property="Foreground" Value="{DynamicResource WarningRedTextDimBrush}" />
             <Setter Property="Opacity" Value="0.8" />
             <Setter Property="FontStyle" Value="Italic" />
             <Setter Property="Margin" Value="16,2,0,4" />
@@ -59,14 +48,14 @@
         <Style x:Key="WarningBoxStyle" TargetType="Border">
             <Setter Property="Margin" Value="0,16,0,0" />
             <Setter Property="Padding" Value="16,14" />
-            <Setter Property="Background" Value="#3d0a0a" />
-            <Setter Property="BorderBrush" Value="#8B0000" />
+            <Setter Property="Background" Value="{DynamicResource WarningRedBoxBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningRedBrush}" />
             <Setter Property="BorderThickness" Value="2" />
             <Setter Property="CornerRadius" Value="6" />
         </Style>
     </Window.Resources>
 
-    <Grid Background="#1a0000">
+    <Grid Background="{DynamicResource WarningRedBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -76,7 +65,7 @@
         <!-- 顶部标题栏 -->
         <Border Grid.Row="0"
                 x:Name="TitleBar"
-                Background="#8B0000"
+                Background="{DynamicResource WarningRedBrush}"
                 Padding="24,22"
                 Cursor="Hand">
             <StackPanel>
@@ -85,7 +74,7 @@
                                             Width="32" Height="32"
                                             VerticalAlignment="Center"
                                             Margin="0,0,14,0"
-                                            Foreground="#ff4444" />
+                                            Foreground="{DynamicResource WarningRedLightBrush}" />
                     <TextBlock Text="MSMC 用户协议与法律声明"
                                FontSize="20"
                                FontWeight="Bold"
@@ -95,14 +84,14 @@
                 <TextBlock x:Name="CountdownText"
                            Text="请务必仔细阅读协议（02:00）"
                            FontSize="12"
-                           Foreground="#ffaaaa"
+                           Foreground="{DynamicResource WarningRedTextBrush}"
                            Opacity="0.95"
                            Margin="0,10,0,0"
                            FontWeight="SemiBold" />
                 <TextBlock x:Name="ScrollHintText"
                            Text="请滚动至协议最底部"
                            FontSize="11"
-                           Foreground="#ff8888"
+                           Foreground="{DynamicResource WarningRedLightBrush}"
                            Opacity="0.8"
                            Margin="0,4,0,0" />
             </StackPanel>
@@ -113,7 +102,7 @@
                       x:Name="AgreementContent"
                       Padding="28,18"
                       VerticalScrollBarVisibility="Auto"
-                      Background="#1a0000">
+                      Background="{DynamicResource WarningRedBackgroundBrush}">
             <StackPanel>
 
                 <!-- 前言 -->
@@ -132,15 +121,15 @@
                         <TextBlock Text="⚠️ 重要声明：本软件不是开源软件"
                                    FontSize="14"
                                    FontWeight="Bold"
-                                   Foreground="#ff4444" />
+                                   Foreground="{DynamicResource WarningRedAccentBrush}" />
                         <TextBlock Text="尽管本软件的源代码在 GitHub 上公开可见，但这并不意味着本软件遵循任何开源协议。"
                                    FontSize="12"
-                                   Foreground="#ffcccc"
+                                   Foreground="{DynamicResource WarningRedTextBrush}"
                                    Margin="0,6,0,0"
                                    TextWrapping="Wrap" />
                         <TextBlock Text="源代码公开仅用于学习交流和透明度展示，您不因此获得任何开源许可下的权利。"
                                    FontSize="12"
-                                   Foreground="#ffaaaa"
+                                   Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="0,2,0,0"
                                    TextWrapping="Wrap" />
                     </StackPanel>
@@ -161,7 +150,7 @@
                 <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.2 开源状态特别说明" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
                     本软件的源代码虽在 GitHub 等平台上公开展示，但
-                    <Bold Foreground="#ff4444">本软件不是开源软件</Bold>
+                    <Bold Foreground="{DynamicResource WarningRedAccentBrush}">本软件不是开源软件</Bold>
                     ，不遵循任何开源协议（包括但不限于 MIT、GPL、Apache、BSD 等）。
                     源代码的公开仅出于技术交流、学习研究和透明度展示之目的，并不构成对任何权利的放弃或许可。
                 </TextBlock>
@@ -196,30 +185,30 @@
                         <TextBlock Text="🚫 作者严正声明：对盗版和二改收费深恶痛绝"
                                    FontSize="13"
                                    FontWeight="Bold"
-                                   Foreground="#ff3333" />
+                                   Foreground="{DynamicResource WarningRedHighlightBrush}" />
                         <TextBlock Text="以下行为均属于严重侵权，必将追究到底："
                                    FontSize="12"
-                                   Foreground="#ffcccc"
+                                   Foreground="{DynamicResource WarningRedTextBrush}"
                                    Margin="0,6,0,0" />
                         <TextBlock Text="• 将本软件以任何形式进行售卖、收费下载、会员制获取等牟利行为"
                                    FontSize="12"
-                                   Foreground="#ffaaaa"
+                                   Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="12,4,0,0" />
                         <TextBlock Text="• 对本软件进行修改、二次开发（二改）后，以任何形式收费或牟利"
                                    FontSize="12"
-                                   Foreground="#ffaaaa"
+                                   Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="12,2,0,0" />
                         <TextBlock Text="• 将本软件打包进任何收费产品、服务或套餐中"
                                    FontSize="12"
-                                   Foreground="#ffaaaa"
+                                   Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="12,2,0,0" />
                         <TextBlock Text="• 移除、修改或遮挡本软件的版权声明、作者信息、软件标识"
                                    FontSize="12"
-                                   Foreground="#ffaaaa"
+                                   Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="12,2,0,0" />
                         <TextBlock Text="• 谎称自己是本软件的作者或开发者，进行任何形式的欺诈"
                                    FontSize="12"
-                                   Foreground="#ffaaaa"
+                                   Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="12,2,0,0" />
                     </StackPanel>
                 </Border>
@@ -435,28 +424,28 @@
                         <TextBlock Text="⛔ 请您务必注意"
                                    FontSize="14"
                                    FontWeight="Bold"
-                                   Foreground="#ff3333" />
+                                   Foreground="{DynamicResource WarningRedHighlightBrush}" />
                         <TextBlock Text="本软件不是开源软件，源代码公开不等于开源。"
                                    FontSize="12"
-                                   Foreground="#ffcccc"
+                                   Foreground="{DynamicResource WarningRedTextBrush}"
                                    Margin="0,6,0,0"
                                    FontWeight="SemiBold"
                                    TextWrapping="Wrap" />
                         <TextBlock Text="盗版、二改收费、移除版权信息等行为必将被追究法律责任，绝不姑息。"
                                    FontSize="12"
-                                   Foreground="#ffaaaa"
+                                   Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="0,4,0,0"
                                    TextWrapping="Wrap" />
                         <TextBlock Text="如您有任何疑问，请咨询专业法律人士。"
                                    FontSize="12"
-                                   Foreground="#cc9999"
+                                   Foreground="{DynamicResource WarningRedTextDimBrush}"
                                    Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>
 
                 <TextBlock Text="—— 协议内容结束 ——"
                            FontSize="12"
-                           Foreground="#996666"
+                           Foreground="{DynamicResource WarningRedTextFaintBrush}"
                            Opacity="0.6"
                            HorizontalAlignment="Center"
                            Margin="0,24,0,12" />
@@ -467,8 +456,8 @@
         <!-- 底部按钮栏 -->
         <Border Grid.Row="2"
                 BorderThickness="0,2,0,0"
-                BorderBrush="#660000"
-                Background="#2d0a0a"
+                BorderBrush="{DynamicResource WarningRedBorderBrush}"
+                Background="{DynamicResource WarningRedPanelBrush}"
                 Padding="24,18">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -480,7 +469,7 @@
                 <TextBlock Grid.Column="0"
                            VerticalAlignment="Center"
                            FontSize="11"
-                           Foreground="#cc9999"
+                           Foreground="{DynamicResource WarningRedTextDimBrush}"
                            Opacity="0.8"
                            Text="点击「同意」即表示您已阅读并接受以上全部条款" />
 
@@ -490,9 +479,9 @@
                         Click="DisagreeButton_Click"
                         Width="100" Height="40"
                         Margin="0,0,12,0"
-                        Background="#3d1a1a"
-                        Foreground="#ff8888"
-                        BorderBrush="#8B0000"
+                        Background="{DynamicResource WarningRedButtonBgBrush}"
+                        Foreground="{DynamicResource WarningRedSoftBrush}"
+                        BorderBrush="{DynamicResource WarningRedBrush}"
                         BorderThickness="1"
                         FontSize="12"
                         FontWeight="SemiBold"
@@ -504,9 +493,9 @@
                         Click="AgreeButton_Click"
                         IsEnabled="False"
                         Width="120" Height="40"
-                        Background="#8B0000"
+                        Background="{DynamicResource WarningRedBrush}"
                         Foreground="White"
-                        BorderBrush="#b22222"
+                        BorderBrush="{DynamicResource WarningRedLightBrush}"
                         BorderThickness="1"
                         FontSize="12"
                         FontWeight="Bold"
@@ -527,14 +516,14 @@
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsEnabled" Value="False">
-                                                <Setter TargetName="border" Property="Background" Value="#3d1a1a" />
+                                                <Setter TargetName="border" Property="Background" Value="{DynamicResource WarningRedButtonBgBrush}" />
                                                 <Setter TargetName="border" Property="Opacity" Value="0.5" />
                                             </Trigger>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="border" Property="Background" Value="#a52a2a" />
+                                                <Setter TargetName="border" Property="Background" Value="{DynamicResource WarningRedHoverBrush}" />
                                             </Trigger>
                                             <Trigger Property="IsPressed" Value="True">
-                                                <Setter TargetName="border" Property="Background" Value="#5c0000" />
+                                                <Setter TargetName="border" Property="Background" Value="{DynamicResource WarningRedDarkBrush}" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>

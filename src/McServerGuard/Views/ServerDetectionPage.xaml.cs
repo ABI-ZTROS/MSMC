@@ -9,6 +9,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using McServerGuard.Models;
 using McServerGuard.Services;
@@ -50,7 +51,63 @@ public partial class ServerDetectionPage : UserControl
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
             AnimationHelper.FadeAndSlideInFromLeft(this, duration);
+
+            if (_themeService.EnableAnimations)
+            {
+                Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+                {
+                    PlayStaggeredEntrance();
+                });
+            }
         });
+    }
+
+    // 播放列表项错落入场动画
+    private void PlayStaggeredEntrance()
+    {
+        int delay = 0;
+        const int stepMs = 40;
+        const int itemDurationMs = 250;
+
+        AnimateItemsControl(RunningServersList, ref delay, stepMs, itemDurationMs);
+        AnimateItemsControl(KnownServersList, ref delay, stepMs, itemDurationMs);
+    }
+
+    // 遍历 ItemsControl 的可视化子项并应用错落入场动画
+    private static void AnimateItemsControl(ItemsControl itemsControl, ref int delay, int stepMs, int durationMs)
+    {
+        if (itemsControl == null || itemsControl.Items.Count == 0)
+            return;
+
+        for (int i = 0; i < itemsControl.Items.Count; i++)
+        {
+            if (itemsControl.ItemContainerGenerator.ContainerFromIndex(i) is ContentPresenter presenter)
+            {
+                var element = FindFirstVisualChild<UIElement>(presenter);
+                if (element != null)
+                {
+                    AnimationHelper.FadeAndSlideInWithDelay(element, durationMs, delay);
+                    delay += stepMs;
+                }
+            }
+        }
+    }
+
+    // 查找第一个可视化子元素
+    private static T? FindFirstVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        if (parent == null) return null;
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T typed)
+                return typed;
+            var result = FindFirstVisualChild<T>(child);
+            if (result != null)
+                return result;
+        }
+        return null;
     }
 
     /// <summary>

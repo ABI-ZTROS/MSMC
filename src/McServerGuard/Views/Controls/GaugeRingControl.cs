@@ -3,8 +3,9 @@
 // 命名空间: McServerGuard.Views.Controls
 // 功能描述: 圆环仪表盘自定义控件，基于 DrawingVisual 自绘实现。
 //           以 270 度圆弧展示 0-100 的百分比值，颜色随数值档位变化。
-//           采用静态 Brush/Pen/Typeface Freeze 缓存优化渲染性能。
-// 依赖组件: PresentationFramework, System.Windows.Media
+//           采用静态 Brush/Pen/Typeface Freeze 缓存 + 几何缓存优化渲染性能。
+//           新增数值平滑动画：Value 变化时 DisplayValue 平滑过渡，圆弧与数字同步动画。
+// 依赖组件: PresentationFramework, System.Windows.Media, System.Windows.Media.Animation
 // 设计模式: 自定义控件 (DependencyProperty), WPF 可视化树
 // -----------------------------------------------------------------------------
 namespace McServerGuard.Views.Controls;
@@ -12,35 +13,34 @@ namespace McServerGuard.Views.Controls;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 /// <summary>
 /// 圆环仪表盘自定义控件。
 /// 继承自 FrameworkElement，通过 DrawingVisual 进行低开销自绘。
 /// 使用 270 度圆弧（底部留有缺口）展示百分比数值，
 /// 数值在 0-60%、60-85%、85-100% 三档分别对应绿、黄、红语义色。
-/// 所有静态画笔与字体均在构造前 Freeze 缓存，以消除每帧 GC 分配。
+/// Value 变化时通过 DisplayValue 依赖属性进行 DoubleAnimation 平滑过渡，
+/// 所有静态画笔与字体均在构造前 Freeze 缓存，轨道几何按尺寸缓存，以消除每帧 GC 分配。
 /// </summary>
 public class GaugeRingControl : FrameworkElement
 {
     private readonly DrawingVisual _visual = new();
 
     // ─── 静态缓存：语义色 Brush/Pen/Typeface 只创建一次并 Freeze，避免每帧 GC ───
-    // 语义色（绿/黄/红）不随主题变化，保持静态；中性色（轨道/标签/白字）动态读取主题资源
 
-    // 三档语义色（不跟随主题，静态缓存）
-    private static readonly Brush GreenBrush = CreateFrozenBrush(Color.FromArgb(255, 76, 175, 80));   // #4CAF50
-    private static readonly Brush YellowBrush = CreateFrozenBrush(Color.FromArgb(255, 255, 193, 7));  // #FFC107
-    private static readonly Brush RedBrush = CreateFrozenBrush(Color.FromArgb(255, 244, 67, 54));     // #F44336
+    private static readonly Brush GreenBrush = CreateFrozenBrush(Color.FromArgb(255, 76, 175, 80));
+    private static readonly Brush YellowBrush = CreateFrozenBrush(Color.FromArgb(255, 255, 193, 7));
+    private static readonly Brush RedBrush = CreateFrozenBrush(Color.FromArgb(255, 244, 67, 54));
 
     private static readonly Pen GreenPen = CreateFrozenPen(GreenBrush, 12.0);
     private static readonly Pen YellowPen = CreateFrozenPen(YellowBrush, 12.0);
     private static readonly Pen RedPen = CreateFrozenPen(RedBrush, 12.0);
 
-    // 静态回退默认值（TryFindResource 在控件未加入逻辑树时返回 null）
     private static readonly Brush FallbackTrackBrush = CreateFrozenBrush(Color.FromArgb(255, 45, 45, 61));
     private static readonly Brush FallbackLabelBrush = CreateFrozenBrush(Color.FromArgb(180, 180, 180, 180));
     private static readonly Brush FallbackWhiteBrush = CreateFrozenBrush(Colors.White);
-    private static readonly double TrackPenThickness = 12.0;
+    private const double TrackPenThickness = 12.0;
 
     private static readonly Typeface NumTypeface = new(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal);
     private static readonly Typeface LabelTypeface = new(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
@@ -63,48 +63,155 @@ public class GaugeRingControl : FrameworkElement
         return p;
     }
 
-    /// <summary>
-    /// 从主题资源字典读取轨道画笔，读取失败时回退到静态默认值。
-    /// </summary>
     private Brush GetTrackBrush() => TryFindResource("CardHoverBrush") as Brush ?? FallbackTrackBrush;
     private Brush GetLabelBrush() => TryFindResource("MaterialDesignBodyLight") as Brush ?? FallbackLabelBrush;
     private Brush GetWhiteBrush() => TryFindResource("MaterialDesignBody") as Brush ?? FallbackWhiteBrush;
 
+    // ─── 实例级绘制缓存（按尺寸/颜色失效） ───
+
+    private Size _cachedSize = Size.Empty;
+    private StreamGeometry? _cachedTrackGeom;
+    private Pen? _cachedTrackPen;
+    private Brush? _cachedTrackBrush;
+    private FormattedText? _cachedNumText;
+    private string _cachedNumStr = string.Empty;
+    private double _cachedNumFontSize;
+    private Brush? _cachedWhiteBrush;
+    private FormattedText? _cachedLabelText;
+    private string _cachedLabelStr = string.Empty;
+    private double _cachedLabelFontSize;
+    private Brush? _cachedLabelBrush;
+
     // ─── 依赖属性 ──────────────────────────────────────────────────────
 
     /// <summary>
-    /// 数值依赖属性。取值范围 0-100，超出部分在绘制时自动截断。
-    /// 值变更时自动触发重绘。
+    /// 目标数值依赖属性。设置此值将触发平滑动画过渡到 DisplayValue。
     /// </summary>
     public static readonly DependencyProperty ValueProperty =
         DependencyProperty.Register(nameof(Value), typeof(double), typeof(GaugeRingControl),
+            new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsRender, OnValueChanged));
+
+    /// <summary>
+    /// 显示数值依赖属性（动画驱动）。绘制实际读取此值。
+    /// </summary>
+    public static readonly DependencyProperty DisplayValueProperty =
+        DependencyProperty.Register(nameof(DisplayValue), typeof(double), typeof(GaugeRingControl),
             new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    /// <summary>
-    /// 标签文本依赖属性。显示在仪表盘底部的说明文字。
-    /// </summary>
     public static readonly DependencyProperty LabelProperty =
         DependencyProperty.Register(nameof(Label), typeof(string), typeof(GaugeRingControl),
-            new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.AffectsRender, OnLabelChanged));
 
-    /// <summary>
-    /// 单位文本依赖属性。显示在数值右侧，默认值为 "%"。
-    /// </summary>
     public static readonly DependencyProperty UnitProperty =
         DependencyProperty.Register(nameof(Unit), typeof(string), typeof(GaugeRingControl),
-            new FrameworkPropertyMetadata("%", FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata("%", FrameworkPropertyMetadataOptions.AffectsRender, OnUnitChanged));
 
-    /// <summary>
-    /// 圆弧线宽依赖属性。控制进度弧与轨道弧的绘制厚度。
-    /// </summary>
     public static readonly DependencyProperty ArcThicknessProperty =
         DependencyProperty.Register(nameof(ArcThickness), typeof(double), typeof(GaugeRingControl),
             new FrameworkPropertyMetadata(12.0, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    public double Value { get => (double)GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
-    public string Label { get => (string)GetValue(LabelProperty); set => SetValue(LabelProperty, value); }
-    public string Unit { get => (string)GetValue(UnitProperty); set => SetValue(UnitProperty, value); }
-    public double ArcThickness { get => (double)GetValue(ArcThicknessProperty); set => SetValue(ArcThicknessProperty, value); }
+    /// <summary>
+    /// 动画时长依赖属性（毫秒）。Value 变化时的平滑过渡时长。
+    /// </summary>
+    public static readonly DependencyProperty AnimationDurationProperty =
+        DependencyProperty.Register(nameof(AnimationDuration), typeof(double), typeof(GaugeRingControl),
+            new FrameworkPropertyMetadata(600d));
+
+    /// <summary>
+    /// 是否启用动画。关闭时 Value 直接赋值给 DisplayValue。
+    /// </summary>
+    public static readonly DependencyProperty EnableAnimationProperty =
+        DependencyProperty.Register(nameof(EnableAnimation), typeof(bool), typeof(GaugeRingControl),
+            new FrameworkPropertyMetadata(true, OnEnableAnimationChanged));
+
+    public double Value
+    {
+        get => (double)GetValue(ValueProperty);
+        set => SetValue(ValueProperty, value);
+    }
+
+    public double DisplayValue
+    {
+        get => (double)GetValue(DisplayValueProperty);
+        set => SetValue(DisplayValueProperty, value);
+    }
+
+    public string Label
+    {
+        get => (string)GetValue(LabelProperty);
+        set => SetValue(LabelProperty, value);
+    }
+
+    public string Unit
+    {
+        get => (string)GetValue(UnitProperty);
+        set => SetValue(UnitProperty, value);
+    }
+
+    public double ArcThickness
+    {
+        get => (double)GetValue(ArcThicknessProperty);
+        set => SetValue(ArcThicknessProperty, value);
+    }
+
+    public double AnimationDuration
+    {
+        get => (double)GetValue(AnimationDurationProperty);
+        set => SetValue(AnimationDurationProperty, value);
+    }
+
+    public bool EnableAnimation
+    {
+        get => (bool)GetValue(EnableAnimationProperty);
+        set => SetValue(EnableAnimationProperty, value);
+    }
+
+    // ─── 依赖属性变更回调 ──────────────────────────────────────────────
+
+    private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var ctrl = (GaugeRingControl)d;
+        var newValue = (double)e.NewValue;
+
+        if (!ctrl.EnableAnimation)
+        {
+            ctrl.DisplayValue = newValue;
+            return;
+        }
+
+        var duration = TimeSpan.FromMilliseconds(ctrl.AnimationDuration);
+        var anim = new DoubleAnimation(newValue, duration)
+        {
+            EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut },
+            FillBehavior = FillBehavior.Stop
+        };
+        anim.Completed += (_, _) => ctrl.DisplayValue = newValue;
+
+        ctrl.BeginAnimation(DisplayValueProperty, anim, HandoffBehavior.SnapshotAndReplace);
+    }
+
+    private static void OnLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var ctrl = (GaugeRingControl)d;
+        ctrl._cachedLabelText = null;
+        ctrl._cachedLabelStr = (string)e.NewValue ?? string.Empty;
+    }
+
+    private static void OnUnitChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var ctrl = (GaugeRingControl)d;
+        ctrl._cachedNumText = null;
+    }
+
+    private static void OnEnableAnimationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var ctrl = (GaugeRingControl)d;
+        if (!(bool)e.NewValue)
+        {
+            ctrl.BeginAnimation(DisplayValueProperty, null);
+            ctrl.DisplayValue = ctrl.Value;
+        }
+    }
 
     // ─── 构造与可视化子元素 ────────────────────────────────────────────
 
@@ -120,17 +227,10 @@ public class GaugeRingControl : FrameworkElement
     }
 
     protected override int VisualChildrenCount => 1;
-
     protected override Visual GetVisualChild(int index) => _visual;
 
     // ─── 颜色档位映射 ─────────────────────────────────────────────────
 
-    /// <summary>
-    /// 根据数值获取对应档位的 Pen。
-    /// 0-60% 绿色，60-85% 黄色，85-100% 红色。
-    /// </summary>
-    /// <param name="v">数值（0-100）</param>
-    /// <returns>对应颜色的 Pen 实例</returns>
     private static Pen GetPenForValue(double v)
     {
         if (v < 60) return GreenPen;
@@ -140,10 +240,6 @@ public class GaugeRingControl : FrameworkElement
 
     // ─── 绘制 ─────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// OnRender 重写：调用 DrawGauge 完成仪表盘绘制。
-    /// </summary>
-    /// <param name="dc">绘制上下文</param>
     protected override void OnRender(DrawingContext dc)
     {
         DrawGauge();
@@ -151,8 +247,7 @@ public class GaugeRingControl : FrameworkElement
     }
 
     /// <summary>
-    /// 绘制完整仪表盘：背景轨道弧、进度弧、中心数值文本与底部标签。
-    /// 轨道色动态读取主题资源，进度色按数值档位取自静态缓存。
+    /// 绘制完整仪表盘。尽可能复用缓存对象（几何、画笔、文本）。
     /// </summary>
     private void DrawGauge()
     {
@@ -167,42 +262,64 @@ public class GaugeRingControl : FrameworkElement
         if (radius < 10)
             radius = 10;
 
+        var size = new Size(w, h);
+        var trackBrush = GetTrackBrush();
+
+        // 尺寸或轨道色变化时，失效轨道几何与轨道 Pen 缓存
+        if (size != _cachedSize || !ReferenceEquals(trackBrush, _cachedTrackBrush))
+        {
+            _cachedTrackGeom = null;
+            _cachedTrackPen = null;
+            _cachedSize = size;
+            _cachedTrackBrush = trackBrush;
+        }
+
+        // 构建/复用轨道几何
+        if (_cachedTrackGeom is null)
+        {
+            var bgGeom = new StreamGeometry();
+            using (var ctx = bgGeom.Open())
+            {
+                var startAngle = -135;
+                var endAngle = 135;
+                var startRad = startAngle * Math.PI / 180;
+                var endRad = endAngle * Math.PI / 180;
+
+                ctx.BeginFigure(new Point(cx + radius * Math.Cos(startRad), cy + radius * Math.Sin(startRad)), false, false);
+                ctx.ArcTo(new Point(cx + radius * Math.Cos(endRad), cy + radius * Math.Sin(endRad)),
+                    new Size(radius, radius), 0, false, SweepDirection.Clockwise, true, false);
+            }
+            bgGeom.Freeze();
+            _cachedTrackGeom = bgGeom;
+        }
+
+        // 构建/复用轨道 Pen
+        if (_cachedTrackPen is null)
+        {
+            var pen = new Pen(trackBrush, TrackPenThickness)
+            {
+                StartLineCap = PenLineCap.Round,
+                EndLineCap = PenLineCap.Round,
+            };
+            pen.Freeze();
+            _cachedTrackPen = pen;
+        }
+
         using var drawing = _visual.RenderOpen();
 
-        // 动态读取轨道色（跟随主题），每次创建 TrackPen（Pen 对象为轻量级）
-        var trackBrush = GetTrackBrush();
-        var trackPen = new Pen(trackBrush, TrackPenThickness)
-        {
-            StartLineCap = PenLineCap.Round,
-            EndLineCap = PenLineCap.Round,
-        };
+        // 第一步：绘制灰色背景轨道
+        drawing.DrawGeometry(null, _cachedTrackPen, _cachedTrackGeom);
 
-        // 第一步：绘制灰色背景轨道（270 度弧）
-        var bgGeom = new StreamGeometry();
-        using (var ctx = bgGeom.Open())
+        // 第二步：绘制彩色进度弧（使用 DisplayValue 作为动画驱动值）
+        var displayValue = Math.Clamp(DisplayValue, 0, 100);
+        if (displayValue > 0.1)
         {
-            var startAngle = -135;
-            var endAngle = 135;
-            var startRad = startAngle * Math.PI / 180;
-            var endRad = endAngle * Math.PI / 180;
-
-            ctx.BeginFigure(new Point(cx + radius * Math.Cos(startRad), cy + radius * Math.Sin(startRad)), false, false);
-            ctx.ArcTo(new Point(cx + radius * Math.Cos(endRad), cy + radius * Math.Sin(endRad)),
-                new Size(radius, radius), 0, false, SweepDirection.Clockwise, true, false);
-        }
-        bgGeom.Freeze();
-        drawing.DrawGeometry(null, trackPen, bgGeom);
-
-        // 第二步：绘制彩色进度弧（使用三档缓存 Pen）
-        var clampedValue = Math.Clamp(Value, 0, 100);
-        if (clampedValue > 0.1)
-        {
-            var sweepAngle = (clampedValue / 100) * 270;
+            var sweepAngle = (displayValue / 100) * 270;
             var valueRad = sweepAngle * Math.PI / 180;
             var startRad2 = -135 * Math.PI / 180;
             var endRad2 = startRad2 + valueRad;
 
-            var fgPen = GetPenForValue(clampedValue);
+            var fgPen = GetPenForValue(displayValue);
 
             var fgGeom = new StreamGeometry();
             using (var ctx = fgGeom.Open())
@@ -215,38 +332,51 @@ public class GaugeRingControl : FrameworkElement
             drawing.DrawGeometry(null, fgPen, fgGeom);
         }
 
-        // 第三步：绘制中心数字（FormattedText 需每次创建，但 Typeface 已静态缓存）
-        // 颜色动态读取主题资源
-        var valueText = clampedValue.ToString("F1", CultureInfo.CurrentCulture);
+        // 第三步：绘制中心数字（缓存 FormattedText）
+        var valueText = displayValue.ToString("F1", CultureInfo.CurrentCulture);
         var unitText = Unit ?? "%";
-        var labelText = Label ?? "";
+        var numStr = $"{valueText}{unitText}";
         var whiteBrush = GetWhiteBrush();
-        var labelBrush = GetLabelBrush();
-
         var numFontSize = Math.Min(28, radius * 0.5);
-        var numFormatted = new FormattedText($"{valueText}{unitText}",
-            CultureInfo.CurrentCulture,
-            FlowDirection.LeftToRight,
-            NumTypeface,
-            numFontSize,
-            whiteBrush, null, 1.0);
 
-        drawing.DrawText(numFormatted,
-            new Point(cx - numFormatted.Width / 2, cy - numFormatted.Height / 2 - 4));
-
-        // 底部标签文本（使用缓存 Typeface + 动态 LabelBrush）
-        if (!string.IsNullOrEmpty(labelText))
+        if (_cachedNumText is null || _cachedNumStr != numStr || _cachedNumFontSize != numFontSize || !ReferenceEquals(whiteBrush, _cachedWhiteBrush))
         {
-            var labelFontSize = Math.Min(12, radius * 0.22);
-            var labelFormatted = new FormattedText(labelText,
+            _cachedNumText = new FormattedText(numStr,
                 CultureInfo.CurrentCulture,
                 FlowDirection.LeftToRight,
-                LabelTypeface,
-                labelFontSize,
-                labelBrush, null, 1.0);
+                NumTypeface,
+                numFontSize,
+                whiteBrush, null, 1.0);
+            _cachedNumStr = numStr;
+            _cachedNumFontSize = numFontSize;
+            _cachedWhiteBrush = whiteBrush;
+        }
 
-            drawing.DrawText(labelFormatted,
-                new Point(cx - labelFormatted.Width / 2, cy + radius * 0.35));
+        drawing.DrawText(_cachedNumText,
+            new Point(cx - _cachedNumText.Width / 2, cy - _cachedNumText.Height / 2 - 4));
+
+        // 底部标签文本（缓存 FormattedText）
+        var labelText = Label ?? "";
+        if (!string.IsNullOrEmpty(labelText))
+        {
+            var labelBrush = GetLabelBrush();
+            var labelFontSize = Math.Min(12, radius * 0.22);
+
+            if (_cachedLabelText is null || _cachedLabelStr != labelText || _cachedLabelFontSize != labelFontSize || !ReferenceEquals(labelBrush, _cachedLabelBrush))
+            {
+                _cachedLabelText = new FormattedText(labelText,
+                    CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    LabelTypeface,
+                    labelFontSize,
+                    labelBrush, null, 1.0);
+                _cachedLabelStr = labelText;
+                _cachedLabelFontSize = labelFontSize;
+                _cachedLabelBrush = labelBrush;
+            }
+
+            drawing.DrawText(_cachedLabelText,
+                new Point(cx - _cachedLabelText.Width / 2, cy + radius * 0.35));
         }
     }
 }

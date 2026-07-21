@@ -143,6 +143,55 @@ public static class AnimationHelper
     }
 
     /// <summary>
+    /// 淡入 + 从下方滑入组合动画（带延迟，用于列表项错落入场）。
+    /// </summary>
+    /// <param name="element">目标 UI 元素</param>
+    /// <param name="durationMs">动画时长（毫秒）</param>
+    /// <param name="delayMs">延迟开始时间（毫秒）</param>
+    /// <param name="slideDistance">滑动距离（像素），默认 16</param>
+    public static void FadeAndSlideInWithDelay(UIElement element, int durationMs, int delayMs, double slideDistance = 16)
+    {
+        if (durationMs <= 0 && delayMs <= 0)
+        {
+            element.Opacity = 1;
+            if (element.RenderTransform is TranslateTransform t) t.Y = 0;
+            return;
+        }
+
+        element.Opacity = 0;
+        var translate = new TranslateTransform(0, slideDistance);
+        element.RenderTransform = translate;
+
+        var duration = TimeSpan.FromMilliseconds(durationMs);
+        var beginTime = TimeSpan.FromMilliseconds(delayMs);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+        var opacityAnim = new DoubleAnimation(1, duration)
+        {
+            BeginTime = beginTime,
+            EasingFunction = ease
+        };
+        var yAnim = new DoubleAnimation(0, duration)
+        {
+            BeginTime = beginTime,
+            EasingFunction = ease
+        };
+        yAnim.Completed += (_, _) =>
+        {
+            translate.Y = 0;
+            translate.BeginAnimation(TranslateTransform.YProperty, null);
+        };
+        opacityAnim.Completed += (_, _) =>
+        {
+            element.Opacity = 1;
+            element.BeginAnimation(UIElement.OpacityProperty, null);
+        };
+
+        element.BeginAnimation(UIElement.OpacityProperty, opacityAnim, HandoffBehavior.SnapshotAndReplace);
+        translate.BeginAnimation(TranslateTransform.YProperty, yAnim, HandoffBehavior.SnapshotAndReplace);
+    }
+
+    /// <summary>
     /// 页面交叉淡入淡出切换（CrossFade）。
     /// 前半段淡出旧元素，后半段淡入新元素，总时长由参数指定。
     /// </summary>

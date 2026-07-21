@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private MainViewModel? _vm;
     private readonly DispatcherTimer _collapseTimer;
     private bool _isSidebarExpanded;
+    private bool _isClosing;
 
     public MainWindow()
     {
@@ -44,6 +45,7 @@ public partial class MainWindow : Window
         _serverManager = App.Services.GetRequiredService<IServerManagerService>();
 
         MainContent.RenderTransform = new TranslateTransform();
+        Opacity = 0;
 
         _collapseTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
         _collapseTimer.Tick += CollapseTimer_Tick;
@@ -56,13 +58,37 @@ public partial class MainWindow : Window
         Log.Information("✅ MainWindow 初始化完成");
     }
 
-    // 窗口 Loaded 事件处理：初始化侧边栏折叠状态与文本透明度
+    // 窗口 Loaded 事件处理：初始化侧边栏折叠状态与文本透明度，播放入场动画
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         _isSidebarExpanded = false;
         SetTextElementsOpacity(0);
+        if (NavSidebar.RenderTransform is TranslateTransform tt)
+            tt.X = -184;
 
         MainContent.Opacity = 1;
+
+        if (_themeService.EnableAnimations)
+        {
+            var duration = TimeSpan.FromMilliseconds(300);
+            var ease = new QuarticEase { EasingMode = EasingMode.EaseOut };
+
+            var fadeIn = new DoubleAnimation(1, duration)
+            {
+                EasingFunction = ease,
+                FillBehavior = FillBehavior.Stop
+            };
+            fadeIn.Completed += (_, _) =>
+            {
+                Opacity = 1;
+                BeginAnimation(OpacityProperty, null);
+            };
+            BeginAnimation(OpacityProperty, fadeIn, HandoffBehavior.SnapshotAndReplace);
+        }
+        else
+        {
+            Opacity = 1;
+        }
     }
 
     // DataContext 变更事件处理：订阅/取消订阅 ViewModel 的 PropertyChanged 事件
@@ -206,7 +232,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 展开侧边栏动画。使用 DoubleAnimation 驱动 Width 属性，
+    /// 展开侧边栏动画。使用 TranslateTransform 驱动，零布局重排，
     /// 同时配合文本透明度渐变实现平滑过渡效果。
     /// </summary>
     private void ExpandSidebar()
@@ -217,31 +243,39 @@ public partial class MainWindow : Window
         var durationMs = _themeService.EnableAnimations ? 200 : 0;
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
-            NavSidebar.UpdateLayout();
             if (durationMs > 0)
             {
-                var widthAnim = new DoubleAnimation(240, TimeSpan.FromMilliseconds(durationMs))
+                var duration = TimeSpan.FromMilliseconds(durationMs);
+                var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+                if (NavSidebar.RenderTransform is TranslateTransform tt)
                 {
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-                    FillBehavior = FillBehavior.Stop
-                };
-                widthAnim.Completed += (_, _) =>
-                {
-                    NavSidebar.Width = 240;
-                };
-                NavSidebar.BeginAnimation(WidthProperty, widthAnim, HandoffBehavior.SnapshotAndReplace);
+                    var translateAnim = new DoubleAnimation(0, duration)
+                    {
+                        EasingFunction = ease,
+                        FillBehavior = FillBehavior.Stop
+                    };
+                    translateAnim.Completed += (_, _) =>
+                    {
+                        tt.X = 0;
+                        tt.BeginAnimation(TranslateTransform.XProperty, null);
+                    };
+                    tt.BeginAnimation(TranslateTransform.XProperty, translateAnim, HandoffBehavior.SnapshotAndReplace);
+                }
+
                 AnimateTextOpacity(1, durationMs);
             }
             else
             {
-                NavSidebar.Width = 240;
+                if (NavSidebar.RenderTransform is TranslateTransform tt)
+                    tt.X = 0;
                 SetTextElementsOpacity(1);
             }
         });
     }
 
     /// <summary>
-    /// 折叠侧边栏动画。与展开动画对称，宽度收缩至图标模式。
+    /// 折叠侧边栏动画。与展开动画对称，TranslateX 位移回折叠位置。
     /// </summary>
     private void CollapseSidebar()
     {
@@ -251,24 +285,32 @@ public partial class MainWindow : Window
         var durationMs = _themeService.EnableAnimations ? 200 : 0;
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
-            NavSidebar.UpdateLayout();
             if (durationMs > 0)
             {
-                var widthAnim = new DoubleAnimation(56, TimeSpan.FromMilliseconds(durationMs))
+                var duration = TimeSpan.FromMilliseconds(durationMs);
+                var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+                if (NavSidebar.RenderTransform is TranslateTransform tt)
                 {
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-                    FillBehavior = FillBehavior.Stop
-                };
-                widthAnim.Completed += (_, _) =>
-                {
-                    NavSidebar.Width = 56;
-                };
-                NavSidebar.BeginAnimation(WidthProperty, widthAnim, HandoffBehavior.SnapshotAndReplace);
+                    var translateAnim = new DoubleAnimation(-184, duration)
+                    {
+                        EasingFunction = ease,
+                        FillBehavior = FillBehavior.Stop
+                    };
+                    translateAnim.Completed += (_, _) =>
+                    {
+                        tt.X = -184;
+                        tt.BeginAnimation(TranslateTransform.XProperty, null);
+                    };
+                    tt.BeginAnimation(TranslateTransform.XProperty, translateAnim, HandoffBehavior.SnapshotAndReplace);
+                }
+
                 AnimateTextOpacity(0, durationMs);
             }
             else
             {
-                NavSidebar.Width = 56;
+                if (NavSidebar.RenderTransform is TranslateTransform tt)
+                    tt.X = -184;
                 SetTextElementsOpacity(0);
             }
         });
@@ -320,6 +362,9 @@ public partial class MainWindow : Window
     // 窗口 Closing 事件处理：若存在运行中的服务器则弹出确认提示
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
+        if (_isClosing)
+            return;
+
         if (_serverManager.AnyServerRunning())
         {
             var result = MessageBox.Show(
@@ -331,7 +376,30 @@ public partial class MainWindow : Window
             if (result == MessageBoxResult.No)
             {
                 e.Cancel = true;
+                return;
             }
         }
+
+        if (!_themeService.EnableAnimations)
+            return;
+
+        e.Cancel = true;
+        _isClosing = true;
+
+        var duration = TimeSpan.FromMilliseconds(200);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+
+        var fadeOut = new DoubleAnimation(0, duration)
+        {
+            EasingFunction = ease,
+            FillBehavior = FillBehavior.Stop
+        };
+        fadeOut.Completed += (_, _) =>
+        {
+            Opacity = 0;
+            BeginAnimation(OpacityProperty, null);
+            Close();
+        };
+        BeginAnimation(OpacityProperty, fadeOut, HandoffBehavior.SnapshotAndReplace);
     }
 }

@@ -291,7 +291,7 @@
                                             </Border>
                                         </Grid>
                                     </Expander.Header>
-                                    <ItemsControl ItemsSource="{Binding FilteredRunningServers}" Margin="0,4,0,0">
+                                    <ItemsControl x:Name="RunningServersList" ItemsSource="{Binding FilteredRunningServers}" Margin="0,4,0,0">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Border x:Name="RunningItemBorder"
@@ -305,22 +305,12 @@
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
 
-                                                        <!-- 状态点（根据端口状态变色） -->
-                                                        <Ellipse Grid.Column="0">
-                                                            <Ellipse.Style>
-                                                                <Style TargetType="Ellipse" BasedOn="{StaticResource StatusDotStyle}">
-                                                                    <Setter Property="Fill" Value="{DynamicResource GaugeGreenBrush}" />
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding IsPortOpen}" Value="False">
-                                                                            <Setter Property="Fill" Value="{DynamicResource GaugeRedBrush}" />
-                                                                        </DataTrigger>
-                                                                        <DataTrigger Binding="{Binding PortConflict}" Value="True">
-                                                                            <Setter Property="Fill" Value="{DynamicResource GaugeYellowBrush}" />
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Ellipse.Style>
-                                                        </Ellipse>
+                                                        <!-- 状态点（根据端口状态变色，三层叠加 + Opacity 动画实现平滑过渡） -->
+                                                        <Grid Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                            <Ellipse x:Name="GreenDot" Fill="{DynamicResource GaugeGreenBrush}" Opacity="1" />
+                                                            <Ellipse x:Name="YellowDot" Fill="{DynamicResource GaugeYellowBrush}" Opacity="0" />
+                                                            <Ellipse x:Name="RedDot" Fill="{DynamicResource GaugeRedBrush}" Opacity="0" />
+                                                        </Grid>
 
                                                         <!-- 名称 -->
                                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -350,6 +340,56 @@
                                                     <DataTrigger Binding="{Binding IsMouseOver, ElementName=RunningItemBorder}" Value="True">
                                                         <Setter TargetName="RunningItemBorder" Property="Background" Value="{DynamicResource MaterialDesignCardBackgroundBrush}" />
                                                     </DataTrigger>
+
+                                                    <!-- 端口关闭 → 红色 -->
+                                                    <DataTrigger Binding="{Binding IsPortOpen}" Value="False">
+                                                        <DataTrigger.EnterActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard Duration="0:0:0.3">
+                                                                    <DoubleAnimation Storyboard.TargetName="GreenDot" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <CubicEase EasingMode="EaseOut" />
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                    <DoubleAnimation Storyboard.TargetName="RedDot" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.3">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <CubicEase EasingMode="EaseOut" />
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                    <DoubleAnimation Storyboard.TargetName="YellowDot" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <CubicEase EasingMode="EaseOut" />
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </DataTrigger.EnterActions>
+                                                    </DataTrigger>
+
+                                                    <!-- 端口冲突 → 黄色 -->
+                                                    <DataTrigger Binding="{Binding PortConflict}" Value="True">
+                                                        <DataTrigger.EnterActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard Duration="0:0:0.3">
+                                                                    <DoubleAnimation Storyboard.TargetName="GreenDot" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <CubicEase EasingMode="EaseOut" />
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                    <DoubleAnimation Storyboard.TargetName="YellowDot" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.3">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <CubicEase EasingMode="EaseOut" />
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                    <DoubleAnimation Storyboard.TargetName="RedDot" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <CubicEase EasingMode="EaseOut" />
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </DataTrigger.EnterActions>
+                                                    </DataTrigger>
                                                 </DataTemplate.Triggers>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -378,7 +418,7 @@
                                             </Border>
                                         </Grid>
                                     </Expander.Header>
-                                    <ItemsControl ItemsSource="{Binding FilteredKnownServers}" Margin="0,4,0,0">
+                                    <ItemsControl x:Name="KnownServersList" ItemsSource="{Binding FilteredKnownServers}" Margin="0,4,0,0">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Border x:Name="KnownItemBorder"

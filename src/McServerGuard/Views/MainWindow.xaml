@@ -29,6 +29,10 @@
                       UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
 
+    <Window.RenderTransform>
+        <ScaleTransform ScaleX="1" ScaleY="1" CenterX="0.5" CenterY="0.5" />
+    </Window.RenderTransform>
+
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -58,7 +62,7 @@
             <RowDefinition Height="Auto" />  <!-- 📊 底部状态栏 -->
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" /> <!-- 🧭 导航面板（可自动展开/折叠） -->
+            <ColumnDefinition Width="56" /> <!-- 🧭 导航面板图标列（固定宽度，避免布局重排） -->
             <ColumnDefinition Width="*" />    <!-- 📄 主内容区 -->
         </Grid.ColumnDefinitions>
 
@@ -130,17 +134,22 @@
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <!-- 🧭 左侧导航面板 —— 鼠标悬停自动展开/折叠                       -->
+        <!-- 使用 TranslateTransform 驱动，零布局重排，极致性能 -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1" Grid.Column="0"
                 x:Name="NavSidebar"
-                Width="56"
+                Width="240"
                 SnapsToDevicePixels="True"
                 Background="{DynamicResource CardBackgroundBrush}"
                 BorderBrush="{DynamicResource CardSubtleBorderBrush}"
                 BorderThickness="0,0,1,0"
                 MouseEnter="NavSidebar_MouseEnter"
-                MouseLeave="NavSidebar_MouseLeave">
-
+                MouseLeave="NavSidebar_MouseLeave"
+                RenderTransformOrigin="0,0"
+                CacheMode="BitmapCache">
+            <Border.RenderTransform>
+                <TranslateTransform X="-184" Y="0" />
+            </Border.RenderTransform>
             <Grid Width="240" HorizontalAlignment="Left">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -258,7 +267,8 @@
                         HorizontalContentAlignment="Stretch"
                         VerticalContentAlignment="Stretch"
                         Opacity="1"
-                        x:Name="MainContent">
+                        x:Name="MainContent"
+                        CacheMode="BitmapCache">
             <ContentControl.Resources>
                 <DataTemplate DataType="{x:Type vm:ServerDetectionViewModel}">
                     <local:ServerDetectionPage />

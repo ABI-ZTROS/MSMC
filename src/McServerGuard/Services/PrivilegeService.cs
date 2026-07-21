@@ -259,7 +259,7 @@ public class PrivilegeService : IPrivilegeService
     {
         try
         {
-            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
             {
                 System.Windows.Application.Current.Shutdown();
             });

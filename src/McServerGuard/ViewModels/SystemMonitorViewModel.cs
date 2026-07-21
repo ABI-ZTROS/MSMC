@@ -51,7 +51,7 @@ public partial class SystemMonitorViewModel : ObservableObject
         _ = Task.Run(async () =>
         {
             await Task.Delay(500);
-            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
             {
                 try { StartMonitoring(); }
                 catch (Exception ex) { Log.Error(ex, "💥 常驻监控自动启动失败"); }
@@ -123,7 +123,7 @@ public partial class SystemMonitorViewModel : ObservableObject
 
         _systemMonitor.StartMonitoring(MonitorInterval, metrics =>
         {
-            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
             {
                 OnMetricsUpdate(metrics);
             });

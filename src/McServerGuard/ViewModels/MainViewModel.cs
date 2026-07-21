@@ -110,7 +110,7 @@ public partial class MainViewModel : ObservableObject
         {
             // 等待 UI 完全加载后执行
             await Task.Delay(500);
-            System.Windows.Application.Current?.Dispatcher.Invoke(async () =>
+            _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(async () =>
             {
                 try
                 {
