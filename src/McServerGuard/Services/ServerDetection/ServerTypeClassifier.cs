@@ -25,12 +25,25 @@ public static partial class ServerTypeClassifier
     private static readonly (string[] Patterns, ServerType Type)[] JarNameTypeMap =
     [
         (ServerConstants.VanillaJarPatterns, ServerType.Vanilla),
+        (ServerConstants.BukkitJarPatterns, ServerType.Bukkit),
         (ServerConstants.SpigotJarPatterns, ServerType.Spigot),
-        (ServerConstants.PaperJarPatterns, ServerType.Paper),
+        // Paper 系派生类优先（Folia > Purpur > Pufferfish > Paper）
         (ServerConstants.FoliaJarPatterns, ServerType.Folia),
+        (ServerConstants.PurpurJarPatterns, ServerType.Purpur),
+        (ServerConstants.PufferfishJarPatterns, ServerType.Pufferfish),
+        (ServerConstants.PaperJarPatterns, ServerType.Paper),
+        // Forge 系派生类优先（Mohist > Arclight > CatServer > NeoForge > Forge）
+        (ServerConstants.MohistJarPatterns, ServerType.Mohist),
+        (ServerConstants.ArclightJarPatterns, ServerType.Arclight),
+        (ServerConstants.CatServerJarPatterns, ServerType.CatServer),
+        (ServerConstants.NeoForgeJarPatterns, ServerType.NeoForge),
         (ServerConstants.ForgeJarPatterns, ServerType.Forge),
         (ServerConstants.FabricJarPatterns, ServerType.Fabric),
-        (ServerConstants.BukkitJarPatterns, ServerType.Bukkit),
+        // 代理端
+        (ServerConstants.BungeeCordJarPatterns, ServerType.BungeeCord),
+        (ServerConstants.VelocityJarPatterns, ServerType.Velocity),
+        // Sponge
+        (ServerConstants.SpongeJarPatterns, ServerType.Sponge),
     ];
 
     /// <summary>
@@ -125,12 +138,27 @@ public static partial class ServerTypeClassifier
         // 必须优先检查独有文件，避免共享文件导致的误判
         var uniqueChecks = new[]
         {
-            (ServerType.Folia,  new[] { "config/folia-global.yml" }),
-            (ServerType.Fabric, new[] { "fabric-server-launch.properties", ".fabric/" }),
-            (ServerType.Paper,  new[] { "config/paper-global.yml" }),
-            (ServerType.Forge,  new[] { "forge-server.toml" }),
-            (ServerType.Spigot, new[] { "spigot.yml" }),
-            (ServerType.Bukkit, new[] { "bukkit.yml" }),
+            // Paper 系派生类优先（共享 paper-global.yml，必须先检测派生类独有文件）
+            (ServerType.Folia,      new[] { "config/folia-global.yml" }),
+            (ServerType.Purpur,     new[] { "purpur.yml", "config/purpur.yml" }),
+            (ServerType.Pufferfish, new[] { "pufferfish.yml" }),
+            (ServerType.Paper,      new[] { "config/paper-global.yml" }),
+            // Forge 系派生类优先
+            (ServerType.Mohist,     new[] { "mohist-config.yml" }),
+            (ServerType.Arclight,   new[] { "arclight.yml" }),
+            (ServerType.CatServer,  new[] { "catserver.yml" }),
+            (ServerType.NeoForge,   new[] { "neoforge.yml", "config/neoforge/" }),
+            (ServerType.Forge,      new[] { "forge-server.toml" }),
+            // Fabric
+            (ServerType.Fabric,     new[] { "fabric-server-launch.properties", ".fabric/" }),
+            // Spigot / Bukkit
+            (ServerType.Spigot,     new[] { "spigot.yml" }),
+            (ServerType.Bukkit,     new[] { "bukkit.yml" }),
+            // 代理端
+            (ServerType.BungeeCord, new[] { "config.yml" }),
+            (ServerType.Velocity,   new[] { "velocity.toml" }),
+            // Sponge
+            (ServerType.Sponge,     new[] { "config/sponge/", "global.conf" }),
         };
 
         foreach (var (type, indicators) in uniqueChecks)

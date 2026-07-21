@@ -57,6 +57,11 @@ public class ServerDetector : IServerDetector
     private readonly ServerPortResolver _portResolver;
 
     /// <summary>
+    /// JAR Manifest 核心识别器 —— 第三级兜底，解包 JAR 读取 MANIFEST.MF
+    /// </summary>
+    private readonly JarCoreIdentifier _jarCoreIdentifier;
+
+    /// <summary>
     /// 检测完成事件 —— 当一轮自动检测完成时触发，携带本次检测的完整结果
     /// </summary>
     public event EventHandler<DetectionResult>? DetectionCompleted;
@@ -70,13 +75,15 @@ public class ServerDetector : IServerDetector
     /// <param name="portScanner">TCP 端口探测器实例（网络套件）</param>
     /// <param name="portToProcessMapper">端口→PID 反向绑定器实例</param>
     /// <param name="portResolver">服务器配置端口解析器实例</param>
+    /// <param name="jarCoreIdentifier">JAR Manifest 核心识别器实例（第三级兜底）</param>
     public ServerDetector(
         ProcessScanner processScanner,
         WorkingDirectoryResolver workingDirResolver,
         ConfigFileScanner configScanner,
         PortScanner portScanner,
         PortToProcessMapper portToProcessMapper,
-        ServerPortResolver portResolver)
+        ServerPortResolver portResolver,
+        JarCoreIdentifier jarCoreIdentifier)
     {
         _processScanner = processScanner;
         _workingDirResolver = workingDirResolver;
@@ -84,7 +91,8 @@ public class ServerDetector : IServerDetector
         _portScanner = portScanner;
         _portToProcessMapper = portToProcessMapper;
         _portResolver = portResolver;
-        Log.Information("🕵️ ServerDetector 初始化完毕，准备出击（含网络套件）");
+        _jarCoreIdentifier = jarCoreIdentifier;
+        Log.Information("🕵️ ServerDetector 初始化完毕，准备出击（含网络套件 + JAR Manifest 兜底）");
     }
 
     /// <inheritdoc />
@@ -239,6 +247,22 @@ public class ServerDetector : IServerDetector
 
         // 服务器类型推断阶段（策略模式：JAR 名匹配 + 配置文件辅助）
         var serverType = ServerTypeClassifier.ClassifyByJarNameAndConfigFiles(jarName, workingDir);
+
+        // === 第三级兜底：JAR Manifest 解包识别 ===
+        // 仅当 JAR 名 + 配置文件均无法识别（Unknown/Vanilla）时触发，避免不必要的解包开销
+        // 解决场景：JAR 被重命名（如 myserver.jar）、Paper 系互相混淆、混合端/代理端识别
+        if (serverType == ServerType.Unknown || serverType == ServerType.Vanilla)
+        {
+            if (!string.IsNullOrEmpty(parsed.JarFilePath) && File.Exists(parsed.JarFilePath))
+            {
+                var manifestType = await _jarCoreIdentifier.IdentifyAsync(parsed.JarFilePath);
+                if (manifestType != ServerType.Unknown)
+                {
+                    Log.Information("🔬 JAR Manifest 识别为核心类型: {Type}（覆盖原 {Old}）", manifestType, serverType);
+                    serverType = manifestType;
+                }
+            }
+        }
 
         // === 网络套件：双向交叉验证 ===
         // 1. 从 server.properties 解析配置端口

@@ -86,6 +86,8 @@ public partial class App : Application
         services.AddSingleton<PortScanner>();
         services.AddSingleton<PortToProcessMapper>();
         services.AddSingleton<ServerPortResolver>();
+        // JAR Manifest 核心识别器 —— 第三级兜底（解包 JAR 读取 MANIFEST.MF）
+        services.AddSingleton<JarCoreIdentifier>();
 
         // 管理员权限服务
         Log.Information("🔐 注册管理员权限服务...");

@@ -51,7 +51,52 @@ public enum ServerType
     /// <summary>
     /// Folia 服务端，基于 Paper 的多线程区域化服务端。
     /// </summary>
-    Folia
+    Folia,
+
+    /// <summary>
+    /// Purpur 服务端，基于 Paper 的高性能优化分支。
+    /// </summary>
+    Purpur,
+
+    /// <summary>
+    /// Pufferfish 服务端，基于 Paper 的异步优化分支。
+    /// </summary>
+    Pufferfish,
+
+    /// <summary>
+    /// NeoForge 服务端，Forge 的现代分支。
+    /// </summary>
+    NeoForge,
+
+    /// <summary>
+    /// BungeeCord 代理端，经典 Minecraft 代理。
+    /// </summary>
+    BungeeCord,
+
+    /// <summary>
+    /// Velocity 代理端，现代高性能代理。
+    /// </summary>
+    Velocity,
+
+    /// <summary>
+    /// Mohist 混合端，Forge + Bukkit 混合。
+    /// </summary>
+    Mohist,
+
+    /// <summary>
+    /// Arclight 混合端，可配置 Forge/NeoForge/Fabric + Bukkit 混合。
+    /// </summary>
+    Arclight,
+
+    /// <summary>
+    /// CatServer 混合端，Forge + Bukkit 混合。
+    /// </summary>
+    CatServer,
+
+    /// <summary>
+    /// Sponge 服务端，独立插件 API（SpongeVanilla）。
+    /// </summary>
+    Sponge
 }
 
 /// <summary>
@@ -72,13 +117,26 @@ public static class ServerConstants
     public static readonly string[] FabricJarPatterns = ["fabric-server-launch.jar", "fabric-server.jar"];
     public static readonly string[] BukkitJarPatterns = ["craftbukkit-*.jar"];
     public static readonly string[] FoliaJarPatterns = ["folia-*.jar", "folia.jar"];
+    public static readonly string[] PurpurJarPatterns = ["purpur-*.jar", "purpur.jar"];
+    public static readonly string[] PufferfishJarPatterns = ["pufferfish-*.jar", "pufferfish.jar"];
+    public static readonly string[] NeoForgeJarPatterns = ["neoforge-*.jar", "neoforge.jar"];
+    public static readonly string[] BungeeCordJarPatterns = ["bungeecord-*.jar", "bungeecord.jar"];
+    public static readonly string[] VelocityJarPatterns = ["velocity-*.jar", "velocity.jar"];
+    public static readonly string[] MohistJarPatterns = ["mohist-*.jar", "mohist.jar"];
+    public static readonly string[] ArclightJarPatterns = ["arclight-*.jar", "arclight.jar"];
+    public static readonly string[] CatServerJarPatterns = ["catserver-*.jar", "catserver.jar"];
+    public static readonly string[] SpongeJarPatterns = ["sponge-*.jar", "spongevanilla-*.jar", "spongeforge-*.jar"];
 
     /// <summary>
     /// 服务器 JAR 文件关键词列表。
     /// 用于从进程命令行中快速判定 JAR 是否为服务端而非客户端。
     /// 只要 JAR 名称包含其中任一关键词即判定为服务器。
     /// </summary>
-    public static readonly string[] ServerJarKeywords = ["minecraft_server", "server", "spigot", "paper", "forge", "fabric-server-launch", "craftbukkit", "folia"];
+    public static readonly string[] ServerJarKeywords = [
+        "minecraft_server", "server", "spigot", "paper", "forge", "fabric-server-launch",
+        "craftbukkit", "folia", "purpur", "pufferfish", "neoforge", "bungeecord", "velocity",
+        "mohist", "arclight", "catserver", "sponge", "spongevanilla"
+    ];
 
     /// <summary>
     /// 服务端进程标识特征。
@@ -106,6 +164,15 @@ public static class ServerConstants
         [ServerType.Fabric] = ["fabric-server-launch.properties", ".fabric/"],
         [ServerType.Bukkit] = ["bukkit.yml"],
         [ServerType.Folia] = ["config/paper-global.yml", "config/folia-global.yml"],
+        [ServerType.Purpur] = ["purpur.yml", "config/purpur.yml"],
+        [ServerType.Pufferfish] = ["pufferfish.yml"],
+        [ServerType.NeoForge] = ["neoforge.yml", "config/neoforge/"],
+        [ServerType.BungeeCord] = ["config.yml"],
+        [ServerType.Velocity] = ["velocity.toml"],
+        [ServerType.Mohist] = ["mohist-config.yml"],
+        [ServerType.Arclight] = ["arclight.yml"],
+        [ServerType.CatServer] = ["catserver.yml"],
+        [ServerType.Sponge] = ["config/sponge/", "global.conf"],
     };
 
     /// <summary>
