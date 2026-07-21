@@ -96,7 +96,87 @@ public enum ServerType
     /// <summary>
     /// Sponge 服务端，独立插件 API（SpongeVanilla）。
     /// </summary>
-    Sponge
+    Sponge,
+
+    /// <summary>
+    /// Waterfall 代理端，BungeeCord 的 PaperMC fork（已归档）。
+    /// </summary>
+    Waterfall,
+
+    /// <summary>
+    /// FlameCord 代理端，BungeeCord 的反机器人分支。
+    /// </summary>
+    FlameCord,
+
+    /// <summary>
+    /// HexaCord 代理端，支持基岩版协议的 BungeeCord fork。
+    /// </summary>
+    HexaCord,
+
+    /// <summary>
+    /// Quilt 模组加载器服务端，Fabric 的现代分支。
+    /// </summary>
+    Quilt,
+
+    /// <summary>
+    /// Airplane 服务端，Paper fork（已停止更新）。
+    /// </summary>
+    Airplane,
+
+    /// <summary>
+    /// Tuinity 服务端，Paper fork（已合并到 Paper）。
+    /// </summary>
+    Tuinity,
+
+    /// <summary>
+    /// Yatopia 服务端，Tuinity fork 极限优化。
+    /// </summary>
+    Yatopia,
+
+    /// <summary>
+    /// Akarin 服务端，Paper fork 多线程优化。
+    /// </summary>
+    Akarin,
+
+    /// <summary>
+    /// Kaiiju 服务端，Folia fork 优化版。
+    /// </summary>
+    Kaiiju,
+
+    /// <summary>
+    /// NachoSpigot 服务端，Paper fork。
+    /// </summary>
+    NachoSpigot,
+
+    /// <summary>
+    /// Magma 混合端，Forge + Bukkit（基于 Thermos）。
+    /// </summary>
+    Magma,
+
+    /// <summary>
+    /// Banner 混合端，Fabric + Bukkit（Mohist 团队新作）。
+    /// </summary>
+    Banner,
+
+    /// <summary>
+    /// SpongeForge 服务端，Sponge on Forge 实现。
+    /// </summary>
+    SpongeForge,
+
+    /// <summary>
+    /// Nukkit 服务端，基岩版 Java 实现。
+    /// </summary>
+    Nukkit,
+
+    /// <summary>
+    /// PowerNukkit 服务端，Nukkit fork。
+    /// </summary>
+    PowerNukkit,
+
+    /// <summary>
+    /// Glowstone 服务端，独立 Bukkit API 实现。
+    /// </summary>
+    Glowstone,
 }
 
 /// <summary>
@@ -126,6 +206,22 @@ public static class ServerConstants
     public static readonly string[] ArclightJarPatterns = ["arclight-*.jar", "arclight.jar"];
     public static readonly string[] CatServerJarPatterns = ["catserver-*.jar", "catserver.jar"];
     public static readonly string[] SpongeJarPatterns = ["sponge-*.jar", "spongevanilla-*.jar", "spongeforge-*.jar"];
+    public static readonly string[] WaterfallJarPatterns = ["waterfall-*.jar", "waterfall.jar"];
+    public static readonly string[] FlameCordJarPatterns = ["flamecord-*.jar", "flamecord.jar"];
+    public static readonly string[] HexaCordJarPatterns = ["hexacord-*.jar", "hexacord.jar"];
+    public static readonly string[] QuiltJarPatterns = ["quilt-server-launch.jar", "quilt-server.jar"];
+    public static readonly string[] AirplaneJarPatterns = ["airplane-*.jar", "airplane.jar"];
+    public static readonly string[] TuinityJarPatterns = ["tuinity-*.jar", "tuinity.jar"];
+    public static readonly string[] YatopiaJarPatterns = ["yatopia-*.jar", "yatopia.jar"];
+    public static readonly string[] AkarinJarPatterns = ["akarin-*.jar", "akarin.jar"];
+    public static readonly string[] KaiijuJarPatterns = ["kaiiju-*.jar", "kaiiju.jar"];
+    public static readonly string[] NachoSpigotJarPatterns = ["nacho-*.jar", "nachospigot-*.jar"];
+    public static readonly string[] MagmaJarPatterns = ["magma-*.jar", "magma.jar"];
+    public static readonly string[] BannerJarPatterns = ["banner-*.jar", "banner.jar"];
+    public static readonly string[] SpongeForgeJarPatterns = ["spongeforge-*.jar"];
+    public static readonly string[] NukkitJarPatterns = ["nukkit-*.jar", "nukkit.jar"];
+    public static readonly string[] PowerNukkitJarPatterns = ["powernukkit-*.jar", "powernukkit.jar"];
+    public static readonly string[] GlowstoneJarPatterns = ["glowstone-*.jar", "glowstone.jar"];
 
     /// <summary>
     /// 服务器 JAR 文件关键词列表。
@@ -135,7 +231,10 @@ public static class ServerConstants
     public static readonly string[] ServerJarKeywords = [
         "minecraft_server", "server", "spigot", "paper", "forge", "fabric-server-launch",
         "craftbukkit", "folia", "purpur", "pufferfish", "neoforge", "bungeecord", "velocity",
-        "mohist", "arclight", "catserver", "sponge", "spongevanilla"
+        "mohist", "arclight", "catserver", "sponge", "spongevanilla",
+        "waterfall", "flamecord", "hexacord", "quilt", "airplane", "tuinity", "yatopia",
+        "akarin", "kaiiju", "nacho", "nachospigot", "magma", "banner", "spongeforge",
+        "nukkit", "powernukkit", "glowstone"
     ];
 
     /// <summary>
@@ -173,6 +272,22 @@ public static class ServerConstants
         [ServerType.Arclight] = ["arclight.yml"],
         [ServerType.CatServer] = ["catserver.yml"],
         [ServerType.Sponge] = ["config/sponge/", "global.conf"],
+        [ServerType.Waterfall] = ["waterfall.yml"],
+        [ServerType.FlameCord] = ["flamecord.yml"],
+        [ServerType.HexaCord] = ["hexacord.yml"],
+        [ServerType.Quilt] = ["quilt-server-launch.properties"],
+        [ServerType.Airplane] = ["airplane.yml"],
+        [ServerType.Tuinity] = ["tuinity.yml"],
+        [ServerType.Yatopia] = ["yatopia.yml"],
+        [ServerType.Akarin] = ["akarin.yml"],
+        [ServerType.Kaiiju] = ["kaiiju.yml"],
+        [ServerType.NachoSpigot] = ["nacho.yml"],
+        [ServerType.Magma] = ["magma.conf", "plugins/Magma/"],
+        [ServerType.Banner] = ["banner.yml"],
+        [ServerType.SpongeForge] = ["config/sponge/"],
+        [ServerType.Nukkit] = ["nukkit.yml"],
+        [ServerType.PowerNukkit] = ["powernukkit.yml"],
+        [ServerType.Glowstone] = ["config/glowstone/"],
     };
 
     /// <summary>

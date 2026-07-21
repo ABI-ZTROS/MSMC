@@ -27,23 +27,42 @@ public static partial class ServerTypeClassifier
         (ServerConstants.VanillaJarPatterns, ServerType.Vanilla),
         (ServerConstants.BukkitJarPatterns, ServerType.Bukkit),
         (ServerConstants.SpigotJarPatterns, ServerType.Spigot),
-        // Paper 系派生类优先（Folia > Purpur > Pufferfish > Paper）
+        // Paper 系派生类优先（Folia > Kaiiju > Purpur > Pufferfish > Yatopia > Airplane > Tuinity > Akarin > NachoSpigot > Paper）
         (ServerConstants.FoliaJarPatterns, ServerType.Folia),
+        (ServerConstants.KaiijuJarPatterns, ServerType.Kaiiju),
         (ServerConstants.PurpurJarPatterns, ServerType.Purpur),
         (ServerConstants.PufferfishJarPatterns, ServerType.Pufferfish),
+        (ServerConstants.YatopiaJarPatterns, ServerType.Yatopia),
+        (ServerConstants.AirplaneJarPatterns, ServerType.Airplane),
+        (ServerConstants.TuinityJarPatterns, ServerType.Tuinity),
+        (ServerConstants.AkarinJarPatterns, ServerType.Akarin),
+        (ServerConstants.NachoSpigotJarPatterns, ServerType.NachoSpigot),
         (ServerConstants.PaperJarPatterns, ServerType.Paper),
-        // Forge 系派生类优先（Mohist > Arclight > CatServer > NeoForge > Forge）
+        // Forge 系派生类优先（Mohist > Arclight > CatServer > Magma > SpongeForge > NeoForge > Forge）
         (ServerConstants.MohistJarPatterns, ServerType.Mohist),
         (ServerConstants.ArclightJarPatterns, ServerType.Arclight),
         (ServerConstants.CatServerJarPatterns, ServerType.CatServer),
+        (ServerConstants.MagmaJarPatterns, ServerType.Magma),
+        (ServerConstants.SpongeForgeJarPatterns, ServerType.SpongeForge),
         (ServerConstants.NeoForgeJarPatterns, ServerType.NeoForge),
         (ServerConstants.ForgeJarPatterns, ServerType.Forge),
+        // Fabric 系
         (ServerConstants.FabricJarPatterns, ServerType.Fabric),
-        // 代理端
+        (ServerConstants.QuiltJarPatterns, ServerType.Quilt),
+        // Banner（基于 Fabric+Bukkit）
+        (ServerConstants.BannerJarPatterns, ServerType.Banner),
+        // 代理端派生类优先（Waterfall > FlameCord > HexaCord > BungeeCord）
+        (ServerConstants.WaterfallJarPatterns, ServerType.Waterfall),
+        (ServerConstants.FlameCordJarPatterns, ServerType.FlameCord),
+        (ServerConstants.HexaCordJarPatterns, ServerType.HexaCord),
         (ServerConstants.BungeeCordJarPatterns, ServerType.BungeeCord),
         (ServerConstants.VelocityJarPatterns, ServerType.Velocity),
         // Sponge
         (ServerConstants.SpongeJarPatterns, ServerType.Sponge),
+        // 基岩版 / 独立实现
+        (ServerConstants.NukkitJarPatterns, ServerType.Nukkit),
+        (ServerConstants.PowerNukkitJarPatterns, ServerType.PowerNukkit),
+        (ServerConstants.GlowstoneJarPatterns, ServerType.Glowstone),
     ];
 
     /// <summary>
@@ -139,26 +158,42 @@ public static partial class ServerTypeClassifier
         var uniqueChecks = new[]
         {
             // Paper 系派生类优先（共享 paper-global.yml，必须先检测派生类独有文件）
-            (ServerType.Folia,      new[] { "config/folia-global.yml" }),
-            (ServerType.Purpur,     new[] { "purpur.yml", "config/purpur.yml" }),
-            (ServerType.Pufferfish, new[] { "pufferfish.yml" }),
-            (ServerType.Paper,      new[] { "config/paper-global.yml" }),
+            (ServerType.Folia,        new[] { "config/folia-global.yml" }),
+            (ServerType.Kaiiju,       new[] { "kaiiju.yml", "config/kaiiju.yml" }),
+            (ServerType.Purpur,       new[] { "purpur.yml", "config/purpur.yml" }),
+            (ServerType.Pufferfish,   new[] { "pufferfish.yml" }),
+            (ServerType.Yatopia,      new[] { "yatopia.yml" }),
+            (ServerType.Airplane,     new[] { "airplane.yml" }),
+            (ServerType.Tuinity,      new[] { "tuinity.yml" }),
+            (ServerType.Akarin,       new[] { "akarin.yml" }),
+            (ServerType.NachoSpigot,  new[] { "nacho.yml" }),
+            (ServerType.Paper,        new[] { "config/paper-global.yml" }),
             // Forge 系派生类优先
-            (ServerType.Mohist,     new[] { "mohist-config.yml" }),
-            (ServerType.Arclight,   new[] { "arclight.yml" }),
-            (ServerType.CatServer,  new[] { "catserver.yml" }),
-            (ServerType.NeoForge,   new[] { "neoforge.yml", "config/neoforge/" }),
-            (ServerType.Forge,      new[] { "forge-server.toml" }),
-            // Fabric
-            (ServerType.Fabric,     new[] { "fabric-server-launch.properties", ".fabric/" }),
+            (ServerType.Mohist,       new[] { "mohist-config.yml" }),
+            (ServerType.Arclight,     new[] { "arclight.yml" }),
+            (ServerType.CatServer,    new[] { "catserver.yml" }),
+            (ServerType.Magma,        new[] { "magma.conf", "plugins/Magma/" }),
+            (ServerType.SpongeForge,  new[] { "config/sponge/" }),
+            (ServerType.NeoForge,     new[] { "neoforge.yml", "config/neoforge/" }),
+            (ServerType.Forge,        new[] { "forge-server.toml" }),
+            // Fabric 系
+            (ServerType.Fabric,       new[] { "fabric-server-launch.properties", ".fabric/" }),
+            (ServerType.Banner,       new[] { "banner.yml" }),
             // Spigot / Bukkit
-            (ServerType.Spigot,     new[] { "spigot.yml" }),
-            (ServerType.Bukkit,     new[] { "bukkit.yml" }),
+            (ServerType.Spigot,       new[] { "spigot.yml" }),
+            (ServerType.Bukkit,       new[] { "bukkit.yml" }),
             // 代理端
-            (ServerType.BungeeCord, new[] { "config.yml" }),
-            (ServerType.Velocity,   new[] { "velocity.toml" }),
+            (ServerType.Waterfall,    new[] { "waterfall.yml" }),
+            (ServerType.FlameCord,    new[] { "flamecord.yml" }),
+            (ServerType.HexaCord,     new[] { "hexacord.yml" }),
+            (ServerType.BungeeCord,   new[] { "config.yml" }),
+            (ServerType.Velocity,     new[] { "velocity.toml" }),
             // Sponge
-            (ServerType.Sponge,     new[] { "config/sponge/", "global.conf" }),
+            (ServerType.Sponge,       new[] { "global.conf" }),
+            // 基岩版 / 独立实现
+            (ServerType.Nukkit,       new[] { "nukkit.yml" }),
+            (ServerType.PowerNukkit,  new[] { "powernukkit.yml" }),
+            (ServerType.Glowstone,    new[] { "config/glowstone/" }),
         };
 
         foreach (var (type, indicators) in uniqueChecks)

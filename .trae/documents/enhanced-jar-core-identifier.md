@@ -21,7 +21,7 @@
 
 实施后，`ServerType` 枚举将从 17 个值扩展到 32 个值，`MainClassMap` 将覆盖所有已知 Main-Class，
 `DisambiguatePaperFamily` / `DisambiguateForgeFamily` / 新增的 `DisambiguateBungeeFamily` /
-`DisambiguateFabricFamily` 将通过包前缀消歧覆盖所有派生类。
+`DisambiguateNukkitFamily` 将通过包前缀消歧覆盖所有派生类。Quilt 拥有独立 Main-Class 无需消歧。
 
 ---
 
@@ -224,7 +224,8 @@ public static readonly string[] ServerJarKeywords = [
 ```csharp
 private static readonly Dictionary<string, ServerType> MainClassMap = new(StringComparer.OrdinalIgnoreCase)
 {
-    // === 现有 13 个条目保持不变 ===
+    // === 现有 12 个条目保持不变 ===
+    // (Vanilla×2, Spigot, Paper×2, Forge×2, Fabric×2, BungeeCord, Velocity, Sponge)
     
     // === 新增 ===
     // Quilt（独立 Main-Class，与 Fabric 不同）
@@ -282,11 +283,7 @@ private static ServerType DisambiguateForgeFamily(ZipArchive jar)
 {
     // 现有逻辑保持不变
     if (HasEntryPrefix(jar, "com/mohistmc/"))
-    {
-        // Mohist 派生：Banner（基于 Fabric 但用 Mohist 包前缀）——
-        // Banner 实际 Main-Class 与 Fabric 不同，已在 MainClassMap 中独立处理
         return ServerType.Mohist;
-    }
     if (HasEntryPrefix(jar, "io/izzel/arclight/"))
         return ServerType.Arclight;
     if (HasEntryPrefix(jar, "catserver/"))
@@ -303,6 +300,23 @@ private static ServerType DisambiguateForgeFamily(ZipArchive jar)
     if (HasEntryPrefix(jar, "net/neoforged/"))
         return ServerType.NeoForge;
     return ServerType.Forge;
+}
+```
+
+#### 3.3a Banner 的特殊处理
+
+Banner 是 Mohist 团队基于 Fabric + Bukkit 的混合端。其 Main-Class 可能与 Fabric 共享
+（`net.fabricmc.loader.impl.launch.server.FabricServerLauncher`），需通过包前缀消歧。
+在 `IdentifyCore` 中，当 `baseType == ServerType.Fabric` 时调用新增的包前缀检查：
+
+```csharp
+// 在 IdentifyCore 中追加（baseType == Fabric 分支）
+if (baseType == ServerType.Fabric)
+{
+    // Banner 混合端（Mohist 团队新作，Fabric + Bukkit）
+    if (HasEntryPrefix(jar, "com/mohistmc/banner/"))
+        return ServerType.Banner;
+    return ServerType.Fabric;
 }
 ```
 
@@ -353,6 +367,13 @@ if (baseType == ServerType.BungeeCord)
     return DisambiguateBungeeFamily(jar);
 if (baseType == ServerType.Nukkit)
     return DisambiguateNukkitFamily(jar);
+if (baseType == ServerType.Fabric)
+{
+    // Banner 混合端（Fabric + Bukkit）
+    if (HasEntryPrefix(jar, "com/mohistmc/banner/"))
+        return ServerType.Banner;
+    return ServerType.Fabric;
+}
 return baseType;
 ```
 
@@ -458,8 +479,7 @@ var uniqueChecks = new[]
 
 **文件**：`/workspace/src/McServerGuard/Services/ServerDetection/ServerDetector.cs`
 
-修改第三级兜底触发条件，将"仅 Unknown/Vanilla"扩展为"Unknown/Vanilla/Spigot/Bukkit"（因为 Spigot/Bukkit
-的 Main-Class 与 CraftBukkit 共享，无法识别为 Mohist/Arclight 等混合端）：
+修改第三级兜底触发条件，将"仅 Unknown/Vanilla"扩展为覆盖所有基类（因为派生类需 Manifest 区分）：
 
 ```csharp
 // 当前代码（L251-L265）：
@@ -473,9 +493,10 @@ if (serverType == ServerType.Unknown
     || serverType == ServerType.Vanilla
     || serverType == ServerType.Spigot    // CraftBukkit 共享 Main-Class，需 Manifest 区分混合端
     || serverType == ServerType.Bukkit
-    || serverType == ServerType.Paper     // Paper 系扩展需 Manifest 区分
-    || serverType == ServerType.Forge     // Forge 系扩展需 Manifest 区分
-    || serverType == ServerType.BungeeCord) // BungeeCord 系扩展需 Manifest 区分
+    || serverType == ServerType.Paper     // Paper 系扩展（Airplane/Tuinity/Yatopia 等）需 Manifest 区分
+    || serverType == ServerType.Forge     // Forge 系扩展（Magma/SpongeForge）需 Manifest 区分
+    || serverType == ServerType.Fabric    // Fabric 系扩展（Banner）需 Manifest 区分
+    || serverType == ServerType.BungeeCord) // BungeeCord 系扩展（Waterfall/FlameCord/HexaCord）需 Manifest 区分
 {
     if (!string.IsNullOrEmpty(parsed.JarFilePath) && File.Exists(parsed.JarFilePath))
     {
@@ -490,17 +511,24 @@ if (serverType == ServerType.Unknown
 ```
 
 **注意**：触发条件扩展意味着 JAR 解包更频繁，但因 5 分钟 TTL 缓存，实际开销可控。
+Vanilla 保留在触发条件中，因为 JAR 名 `server.jar` 可能是 Paper 等核心被重命名，需 Manifest 纠正。
 
 ### 步骤 6：ServerType 扩展的下游影响审计
 
-**待审计文件**（需要遍历搜索是否硬编码了 ServerType 的所有分支）：
+**基于代码探索的结论**（Phase 1 已确认）：
 
-1. **`ServerDetectionPage.xaml`** — DataTrigger 是否按 ServerType 变色，需为 15 个新枚举值补充颜色
-2. **`ServerInstance.cs`** — ServerType 属性的 toString 或 Description 特性是否需扩展
-3. **`ProcessScanner.cs`** — Java 进程命令行过滤逻辑是否受影响（应该不受影响）
-4. **本地化资源文件** — 如有 .resx 文件按 ServerType 索引翻译文本，需补全
+1. **`/workspace/src/McServerGuard/Views/ServerDetectionPage.xaml`** — **无需修改**。
+   探索确认该页面仅有 3 个 DataTrigger，全部绑定的是 `IsPortOpen` / `PortConflict` / `IsMouseOver`，
+   没有任何一个绑定到 `ServerType`。全项目 XAML 文件中没有任何 `ServerType` 引用。
+2. **本地化资源文件** — **无需修改**。探索确认项目完全没有 `.resx`/`.resw` 文件，
+   没有任何本地化基础设施。所有 UI 文本均为硬编码中文字符串，ServerType 在 UI 上没有对应的可读名称展示。
+3. **`ProcessScanner.cs`** — **无需修改**。Java 进程命令行过滤逻辑不依赖 ServerType 枚举值。
+4. **`ServerInstance.cs`** — **无需修改**。ServerType 属性作为枚举存储，无 toString/Description 特性扩展。
 
-具体修改范围需在执行阶段通过 Grep 全项目搜索 `ServerType.` 引用确认。
+**执行阶段仍需通过 Grep 全项目搜索 `ServerType.` 引用**，确认是否有遗漏的 switch 表达式或
+显式枚举遍历需要补充新值（特别是 `switch` 语句若无 `default` 分支可能因新增枚举值导致编译警告）。
+若 `TreatWarningsAsErrors=true` 触发 CS8509（switch 未覆盖所有枚举值），需补充 `default` 分支或
+新增 case。
 
 ### 步骤 7：编译验证 + 提交到 main
 
@@ -567,12 +595,13 @@ dotnet build -c Debug -r win-x64 --self-contained
 ### 6.2 静态验证清单
 
 - [ ] `ServerType` 枚举共 32 个值（17 现有 + 15 新增）
-- [ ] `MainClassMap` 共 16 个条目（13 现有 + 3 新增：Quilt / Nukkit / Glowstone）
+- [ ] `MainClassMap` 共 15 个条目（12 现有 + 3 新增：Quilt / Nukkit / Glowstone）
 - [ ] `JarNameTypeMap` 共 31 个条目（16 现有 + 15 新增）
 - [ ] `TypeIndicatorFiles` 字典覆盖所有 32 个核心（除 Vanilla 外）
 - [ ] `ServerJarKeywords` 包含全部关键词
 - [ ] `ServerDetector.BuildServerInstanceAsync` 触发条件已扩展
-- [ ] `ServerDetectionPage.xaml` DataTrigger 已为新增类型补充颜色（如有需要）
+- [ ] `ServerDetectionPage.xaml` 无需修改（无 ServerType DataTrigger）
+- [ ] 无 switch 表达式因新增枚举值触发 CS8509 警告
 
 ### 6.3 运行时验证（用户侧）
 

@@ -249,14 +249,21 @@ public class ServerDetector : IServerDetector
         var serverType = ServerTypeClassifier.ClassifyByJarNameAndConfigFiles(jarName, workingDir);
 
         // === 第三级兜底：JAR Manifest 解包识别 ===
-        // 仅当 JAR 名 + 配置文件均无法识别（Unknown/Vanilla）时触发，避免不必要的解包开销
-        // 解决场景：JAR 被重命名（如 myserver.jar）、Paper 系互相混淆、混合端/代理端识别
-        if (serverType == ServerType.Unknown || serverType == ServerType.Vanilla)
+        // 当 JAR 名 + 配置文件识别为基类或 Unknown/Vanilla 时触发，通过 Manifest 区分派生类
+        // 解决场景：JAR 被重命名、Paper 系/Forge 系/BungeeCord 系/Fabric 系派生类互相混淆
+        if (serverType == ServerType.Unknown
+            || serverType == ServerType.Vanilla
+            || serverType == ServerType.Spigot
+            || serverType == ServerType.Bukkit
+            || serverType == ServerType.Paper
+            || serverType == ServerType.Forge
+            || serverType == ServerType.Fabric
+            || serverType == ServerType.BungeeCord)
         {
             if (!string.IsNullOrEmpty(parsed.JarFilePath) && File.Exists(parsed.JarFilePath))
             {
                 var manifestType = await _jarCoreIdentifier.IdentifyAsync(parsed.JarFilePath);
-                if (manifestType != ServerType.Unknown)
+                if (manifestType != ServerType.Unknown && manifestType != serverType)
                 {
                     Log.Information("🔬 JAR Manifest 识别为核心类型: {Type}（覆盖原 {Old}）", manifestType, serverType);
                     serverType = manifestType;

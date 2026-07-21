@@ -49,7 +49,7 @@ public sealed class JarCoreIdentifier
         ["net.minecraft.server.MinecraftServer"] = ServerType.Vanilla,
         // Spigot / CraftBukkit（CraftBukkit 是 Spigot 的底层，共用 Main-Class）
         ["org.bukkit.craftbukkit.Main"] = ServerType.Spigot,
-        // Paper 系（Paperclip 包装器，Paper/Folia/Purpur/Pufferfish 共用，需特征类区分）
+        // Paper 系（Paperclip 包装器，Paper/Folia/Purpur/Pufferfish 及扩展 fork 共用，需特征类区分）
         ["io.papermc.paperclip.Paperclip"] = ServerType.Paper,
         ["io.papermc.paperclip.PaperClip"] = ServerType.Paper, // 大小写容错
         // Forge / NeoForge 系（1.13+ 共用 modlauncher，需特征类区分）
@@ -59,12 +59,18 @@ public sealed class JarCoreIdentifier
         // Fabric（fabric-loader 0.12+；旧版无 impl 子包）
         ["net.fabricmc.loader.impl.launch.server.FabricServerLauncher"] = ServerType.Fabric,
         ["net.fabricmc.loader.launch.server.FabricServerLauncher"] = ServerType.Fabric,
-        // BungeeCord 代理端
+        // Quilt（独立 Main-Class，Fabric 的现代分支）
+        ["org.quiltmc.loader.impl.launch.server.QuiltServerLauncher"] = ServerType.Quilt,
+        // BungeeCord 代理端（Waterfall/FlameCord/HexaCord 共享，需包前缀区分）
         ["net.md_5.bungee.Bootstrap"] = ServerType.BungeeCord,
         // Velocity 代理端
         ["com.velocitypowered.proxy.Velocity"] = ServerType.Velocity,
         // SpongeVanilla
         ["org.spongepowered.server.launch.VanillaServerLaunch"] = ServerType.Sponge,
+        // Nukkit / PowerNukkit（共享 Main-Class，需包前缀区分）
+        ["cn.nukkit.Nukkit"] = ServerType.Nukkit,
+        // Glowstone（独立 Bukkit API 实现）
+        ["net.glowstone.GlowServer"] = ServerType.Glowstone,
     };
 
     /// <summary>
@@ -169,13 +175,29 @@ public sealed class JarCoreIdentifier
                 return ServerType.Unknown;
             }
 
-            // Paper 系消歧（Folia/Purpur/Pufferfish/Paper）
+            // Paper 系消歧（Folia/Kaiiju/Purpur/Pufferfish/Yatopia/Airplane/Tuinity/Akarin/NachoSpigot/Paper）
             if (baseType == ServerType.Paper)
                 return DisambiguatePaperFamily(jar);
 
-            // Forge 系消歧（Mohist/Arclight/CatServer/NeoForge/Forge）
+            // Forge 系消歧（Mohist/Arclight/CatServer/Magma/SpongeForge/NeoForge/Forge）
             if (baseType == ServerType.Forge)
                 return DisambiguateForgeFamily(jar);
+
+            // BungeeCord 系消歧（Waterfall/FlameCord/HexaCord/BungeeCord）
+            if (baseType == ServerType.BungeeCord)
+                return DisambiguateBungeeFamily(jar);
+
+            // Nukkit 系消歧（PowerNukkit/Nukkit）
+            if (baseType == ServerType.Nukkit)
+                return DisambiguateNukkitFamily(jar);
+
+            // Fabric 系消歧（Banner/Fabric）
+            if (baseType == ServerType.Fabric)
+            {
+                if (HasEntryPrefix(jar, "com/mohistmc/banner/"))
+                    return ServerType.Banner;
+                return ServerType.Fabric;
+            }
 
             return baseType;
         }
@@ -222,23 +244,48 @@ public sealed class JarCoreIdentifier
     }
 
     /// <summary>
-    /// 消歧 Paper 系核心（Folia/Purpur/Pufferfish/Paper）
+    /// 消歧 Paper 系核心（Folia/Kaiiju/Purpur/Pufferfish/Yatopia/Airplane/Tuinity/Akarin/NachoSpigot/Paper）
     /// </summary>
     /// <param name="jar">已打开的 JAR ZipArchive</param>
     /// <returns>具体的核心类型</returns>
     /// <remarks>
-    /// Paper 系共享 Paperclip 包装器作为 Main-Class，需通过特征类区分：
+    /// Paper 系共享 Paperclip 包装器作为 Main-Class，需通过特征类/包前缀区分：
     /// - Folia：io.papermc.paper.threadedregions.RegionizedServer（多线程区域化）
+    /// - Kaiiju：Folia fork，org/kaiiju/ 包前缀
     /// - Purpur：org.purpurmc.purpur.PurpurConfig（Purpur 配置类）
     /// - Pufferfish：gg.pufferfish.pufferfish.PufferfishConfig（Pufferfish 配置类）
+    /// - Yatopia：org/yatopiamc/ 包前缀（Tuinity fork 极限优化）
+    /// - Airplane：gg/technove/ 包前缀
+    /// - Tuinity：net/tuinity/ 包前缀（已合并到 Paper，旧版仍存在）
+    /// - Akarin：io/akarin/ 包前缀（多线程优化）
+    /// - NachoSpigot：dev/c10dg/ 或 org/clayburn/ 包前缀
     /// - Paper：排除以上后默认
     ///
-    /// 派生类优先检测，确保 Folia/Purpur/Pufferfish 不会被误判为基类 Paper。
+    /// 派生类优先检测，确保 fork 不会被误判为基类 Paper。
     /// </remarks>
     private static ServerType DisambiguatePaperFamily(ZipArchive jar)
     {
+        // Folia 系（Folia 及其 fork Kaiiju）
         if (jar.GetEntry("io/papermc/paper/threadedregions/RegionizedServer.class") is not null)
+        {
+            if (HasEntryPrefix(jar, "org/kaiiju/"))
+                return ServerType.Kaiiju;
             return ServerType.Folia;
+        }
+
+        // Paper fork 扩展（包前缀检测，按 fork 层级优先）
+        if (HasEntryPrefix(jar, "org/yatopiamc/"))
+            return ServerType.Yatopia;
+        if (HasEntryPrefix(jar, "io/akarin/"))
+            return ServerType.Akarin;
+        if (HasEntryPrefix(jar, "gg/technove/"))
+            return ServerType.Airplane;
+        if (HasEntryPrefix(jar, "net/tuinity/"))
+            return ServerType.Tuinity;
+        if (HasEntryPrefix(jar, "dev/c10dg/") || HasEntryPrefix(jar, "org/clayburn/"))
+            return ServerType.NachoSpigot;
+
+        // Paper 直接派生类（特征类检测）
         if (jar.GetEntry("org/purpurmc/purpur/PurpurConfig.class") is not null)
             return ServerType.Purpur;
         if (jar.GetEntry("gg/pufferfish/pufferfish/PufferfishConfig.class") is not null)
@@ -247,7 +294,7 @@ public sealed class JarCoreIdentifier
     }
 
     /// <summary>
-    /// 消歧 Forge 系核心（Mohist/Arclight/CatServer/NeoForge/Forge）
+    /// 消歧 Forge 系核心（Mohist/Arclight/CatServer/Magma/SpongeForge/NeoForge/Forge）
     /// </summary>
     /// <param name="jar">已打开的 JAR ZipArchive</param>
     /// <returns>具体的核心类型</returns>
@@ -256,11 +303,13 @@ public sealed class JarCoreIdentifier
     /// - Mohist：com/mohistmc/ 包存在（混合端，Forge + Bukkit）
     /// - Arclight：io/izzel/arclight/ 包存在（混合端，可配置 Forge/NeoForge/Fabric + Bukkit）
     /// - CatServer：catserver/ 包存在（混合端，Forge + Bukkit）
+    /// - Magma：com/magmafoundation/ 包存在（混合端，基于 Thermos）
+    /// - SpongeForge：org/spongepowered/common/ 包存在（Sponge on Forge）
     /// - NeoForge：net/neoforged/ 包存在（Forge 的现代分支）
     /// - Forge：排除以上后默认
     ///
     /// 混合端没有单一特征类，需通过包前缀检测（遍历 Entries）。
-    /// 混合端优先检测，确保 Mohist/Arclight/CatServer 不会被误判为基类 Forge。
+    /// 混合端优先检测，确保 Mohist/Arclight/CatServer/Magma/SpongeForge 不会被误判为基类 Forge。
     /// </remarks>
     private static ServerType DisambiguateForgeFamily(ZipArchive jar)
     {
@@ -270,9 +319,53 @@ public sealed class JarCoreIdentifier
             return ServerType.Arclight;
         if (HasEntryPrefix(jar, "catserver/"))
             return ServerType.CatServer;
+        if (HasEntryPrefix(jar, "com/magmafoundation/"))
+            return ServerType.Magma;
+        if (HasEntryPrefix(jar, "org/spongepowered/common/"))
+            return ServerType.SpongeForge;
         if (HasEntryPrefix(jar, "net/neoforged/"))
             return ServerType.NeoForge;
         return ServerType.Forge;
+    }
+
+    /// <summary>
+    /// 消歧 BungeeCord 系核心（Waterfall/FlameCord/HexaCord/BungeeCord）
+    /// </summary>
+    /// <param name="jar">已打开的 JAR ZipArchive</param>
+    /// <returns>具体的核心类型</returns>
+    /// <remarks>
+    /// BungeeCord 系共享 net.md_5.bungee.Bootstrap 作为 Main-Class，需通过包前缀区分：
+    /// - Waterfall：io/github/waterfallmc/ 包前缀（PaperMC fork，已归档）
+    /// - FlameCord：_2lstudios/flamecord/ 包前缀（反机器人分支）
+    /// - HexaCord：fr/itchy/hexacord/ 或 net/md_5/bungee/hexacord/ 包前缀（基岩版协议支持）
+    /// - BungeeCord：排除以上后默认
+    /// </remarks>
+    private static ServerType DisambiguateBungeeFamily(ZipArchive jar)
+    {
+        if (HasEntryPrefix(jar, "io/github/waterfallmc/"))
+            return ServerType.Waterfall;
+        if (HasEntryPrefix(jar, "_2lstudios/flamecord/"))
+            return ServerType.FlameCord;
+        if (HasEntryPrefix(jar, "fr/itchy/hexacord/") || HasEntryPrefix(jar, "net/md_5/bungee/hexacord/"))
+            return ServerType.HexaCord;
+        return ServerType.BungeeCord;
+    }
+
+    /// <summary>
+    /// 消歧 Nukkit 系核心（PowerNukkit/Nukkit）
+    /// </summary>
+    /// <param name="jar">已打开的 JAR ZipArchive</param>
+    /// <returns>具体的核心类型</returns>
+    /// <remarks>
+    /// Nukkit 和 PowerNukkit 共享 cn.nukkit.Nukkit 作为 Main-Class，需通过包前缀区分：
+    /// - PowerNukkit：cn/powernukkitx/ 或 cn/powernukkit/ 包前缀
+    /// - Nukkit：排除以上后默认
+    /// </remarks>
+    private static ServerType DisambiguateNukkitFamily(ZipArchive jar)
+    {
+        if (HasEntryPrefix(jar, "cn/powernukkitx/") || HasEntryPrefix(jar, "cn/powernukkit/"))
+            return ServerType.PowerNukkit;
+        return ServerType.Nukkit;
     }
 
     /// <summary>
