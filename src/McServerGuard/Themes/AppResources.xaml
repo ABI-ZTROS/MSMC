@@ -8,6 +8,16 @@
                     xmlns:po="http://schemas.microsoft.com/winfx/2006/xaml/presentation/options">
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 🔗 合并 MaterialDesign 主题字典                                  -->
+    <!-- 确保本资源字典在任何地方被引用时，BasedOn 都能找到基础样式        -->
+    <!-- 避免设计器 XDG0010 / XDG0006 "找不到资源" 错误                  -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Dark.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- 🔧 PackIcon 模板 —— 使用 MahApps 默认模板（Grid>Viewbox>Canvas>Path） -->
     <!--                                                                  -->
     <!-- 之前的崩溃根因已确认是 Color="{DynamicResource ...Brush}"        -->

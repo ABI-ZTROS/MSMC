@@ -13,6 +13,11 @@
     </UserControl.InputBindings>
 
     <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/McServerGuard;component/Themes/AppResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
         <!-- 🎢 配置卡片入场动画缓动函数 -->
         <CubicEase x:Key="ConfigCardEase" EasingMode="EaseOut" />
 
@@ -131,6 +136,7 @@
                 </DataTemplate>
             </selectors:ConfigEditorTemplateSelector.StringTemplate>
         </selectors:ConfigEditorTemplateSelector>
+        </ResourceDictionary>
     </UserControl.Resources>
 
     <!-- 📐 Grid 两列布局：左侧文件列表（280px）+ 右侧编辑区 -->
