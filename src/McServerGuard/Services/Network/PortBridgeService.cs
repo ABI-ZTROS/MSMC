@@ -12,7 +12,8 @@ public class PortBridgeService : IPortBridgeService
     {
         try
         {
-            var args = $"interface portproxy add {rule.Protocol} " +
+            var protocol = string.IsNullOrEmpty(rule.Protocol) ? "v4tov4" : rule.Protocol;
+            var args = $"interface portproxy add {protocol} " +
                        $"listenaddress={rule.ListenAddress} " +
                        $"listenport={rule.ListenPort} " +
                        $"connectaddress={rule.ConnectAddress} " +
@@ -30,18 +31,40 @@ public class PortBridgeService : IPortBridgeService
                 RedirectStandardError = true
             });
 
-            process?.WaitForExit(5000);
-
-            if (process?.ExitCode == 0)
+            if (process == null)
             {
-                Log.Information("端口桥接规则添加成功: {Listen}:{LPort} -> {Connect}:{CPort}",
-                    rule.ListenAddress, rule.ListenPort, rule.ConnectAddress, rule.ConnectPort);
-                return true;
+                Log.Error("无法启动 netsh 进程");
+                return false;
             }
 
-            var error = process?.StandardError.ReadToEnd();
-            Log.Error("端口桥接规则添加失败: {Error}", error);
-            return false;
+            var exited = process.WaitForExit(10000);
+            if (!exited)
+            {
+                Log.Error("netsh 命令执行超时");
+                process.Kill();
+                return false;
+            }
+
+            var exitCode = process.ExitCode;
+            var error = process.StandardError.ReadToEnd();
+
+            if (exitCode != 0)
+            {
+                Log.Error("端口桥接规则添加失败 (ExitCode={ExitCode}): {Error}", exitCode, error);
+                return false;
+            }
+
+            Log.Information("端口桥接规则添加成功: {Listen}:{LPort} -> {Connect}:{CPort}",
+                rule.ListenAddress, rule.ListenPort, rule.ConnectAddress, rule.ConnectPort);
+
+            System.Threading.Thread.Sleep(200);
+            if (!BridgeRuleExists(rule.ListenAddress, rule.ListenPort))
+            {
+                Log.Error("规则添加后验证失败，可能权限不足");
+                return false;
+            }
+
+            return true;
         }
         catch (Exception ex)
         {
@@ -184,16 +207,36 @@ public class PortBridgeService : IPortBridgeService
                 FileName = "netsh",
                 Arguments = args,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                RedirectStandardError = true
             });
 
-            process?.WaitForExit(5000);
-            var success = process?.ExitCode == 0;
+            if (process == null)
+            {
+                Log.Error("无法启动 netsh 进程添加防火墙规则");
+                return false;
+            }
 
-            if (success)
-                Log.Information("已添加防火墙规则允许端口 {Port}", listenPort);
+            var exited = process.WaitForExit(10000);
+            if (!exited)
+            {
+                Log.Error("防火墙规则添加超时");
+                process.Kill();
+                return false;
+            }
 
-            return success;
+            var exitCode = process.ExitCode;
+            var error = process.StandardError.ReadToEnd();
+
+            if (exitCode != 0)
+            {
+                Log.Error("防火墙规则添加失败 (ExitCode={ExitCode}): {Error}", exitCode, error);
+                return false;
+            }
+
+            Log.Information("已添加防火墙规则允许端口 {Port}", listenPort);
+
+            return true;
         }
         catch (Exception ex)
         {
