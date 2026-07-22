@@ -34,16 +34,6 @@
                     <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource AccentSubtleBorderBrush}" />
                 </Trigger>
-                <EventTrigger RoutedEvent="Loaded">
-                    <BeginStoryboard>
-                        <Storyboard>
-                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Opacity)"
-                                             From="0" To="1"
-                                             Duration="0:0:0.15"
-                                             EasingFunction="{StaticResource ConfigCardEase}" />
-                        </Storyboard>
-                    </BeginStoryboard>
-                </EventTrigger>
             </Style.Triggers>
         </Style>
 
@@ -532,7 +522,15 @@
 
                                 <!-- 📋 分类下的配置项列表 -->
                                 <ItemsControl ItemsSource="{Binding Items}"
-                                              Margin="4,8,4,8">
+                                              Margin="4,8,4,8"
+                                              VirtualizingStackPanel.IsVirtualizing="True"
+                                              VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                              ScrollViewer.CanContentScroll="True">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VirtualizingStackPanel IsVirtualizing="True" VirtualizationMode="Recycling" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <!-- 🎛️ 单个配置项卡片 -->
