@@ -37,13 +37,13 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
     public ObservableCollection<PortInfo> ListeningPorts { get; } = [];
     public ObservableCollection<PortBridgeRule> BridgeRules { get; } = [];
 
-    /// <summary>端口分布饼图系列（LiveCharts2 PieSeries）。每次端口刷新时整体重建。</summary>
-    private ISeries[] _portDistributionSeries = Array.Empty<ISeries>();
-    public ISeries[] PortDistributionSeries
-    {
-        get => _portDistributionSeries;
-        set => SetProperty(ref _portDistributionSeries, value);
-    }
+    /// <summary>端口分布饼图 3 个类别的值（单元素 ObservableCollection，值变化时 LiveCharts2 自动过渡动画）。</summary>
+    private readonly ObservableCollection<double> _systemPortValues = [0];
+    private readonly ObservableCollection<double> _registeredPortValues = [0];
+    private readonly ObservableCollection<double> _dynamicPortValues = [0];
+
+    /// <summary>端口分布饼图系列（LiveCharts2 PieSeries）。构造时一次性初始化，后续只改 Values 触发增量更新。</summary>
+    public ISeries[] PortDistributionSeries { get; }
 
     /// <summary>每日吞吐量柱状图系列（上传 + 下载双系列，绑定 24 小时 ObservableCollection）。</summary>
     public ISeries[] HourlyThroughputSeries { get; }
@@ -278,6 +278,30 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
             }
         };
 
+        // 初始化 LiveCharts2 饼图：3 个固定类别绑定单元素 ObservableCollection，
+        // 后续只改 Values[0] 触发增量过渡动画，不再整体重建系列。
+        PortDistributionSeries = new ISeries[]
+        {
+            new PieSeries<double>
+            {
+                Name = "系统",
+                Values = _systemPortValues,
+                Fill = new SolidColorPaint(new SKColor(0xFF, 0x55, 0x55))
+            },
+            new PieSeries<double>
+            {
+                Name = "注册",
+                Values = _registeredPortValues,
+                Fill = new SolidColorPaint(new SKColor(0x55, 0x88, 0xFF))
+            },
+            new PieSeries<double>
+            {
+                Name = "动态",
+                Values = _dynamicPortValues,
+                Fill = new SolidColorPaint(new SKColor(0x55, 0xDD, 0x88))
+            }
+        };
+
         // 深色主题共享色：文字 slate-200，分离线 10% 不透明白
         var axisTextPaint = new SolidColorPaint(new SKColor(0xE2, 0xE8, 0xF0));
         var axisSeparatorPaint = new SolidColorPaint(new SKColor(255, 255, 255, 26)) { StrokeThickness = 1 };
@@ -394,30 +418,11 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
     private void UpdatePortDistributionSeries()
     {
-        // 端口分布每次刷新整体重建 PieSeries 数组
-        var series = new List<ISeries>();
-        if (SystemPorts > 0)
-            series.Add(new PieSeries<double>
-            {
-                Name = "系统",
-                Values = new double[] { SystemPorts },
-                Fill = new SolidColorPaint(new SKColor(0xFF, 0x55, 0x55))
-            });
-        if (RegisteredPorts > 0)
-            series.Add(new PieSeries<double>
-            {
-                Name = "注册",
-                Values = new double[] { RegisteredPorts },
-                Fill = new SolidColorPaint(new SKColor(0x55, 0x88, 0xFF))
-            });
-        if (DynamicPorts > 0)
-            series.Add(new PieSeries<double>
-            {
-                Name = "动态",
-                Values = new double[] { DynamicPorts },
-                Fill = new SolidColorPaint(new SKColor(0x55, 0xDD, 0x88))
-            });
-        PortDistributionSeries = series.ToArray();
+        // 直接修改 ObservableCollection 的值，LiveCharts2 监听到集合变化后做增量过渡动画，
+        // 不再每次整体重建 PieSeries 数组。
+        _systemPortValues[0] = SystemPorts;
+        _registeredPortValues[0] = RegisteredPorts;
+        _dynamicPortValues[0] = DynamicPorts;
     }
 
     private async Task RefreshTraffic()
