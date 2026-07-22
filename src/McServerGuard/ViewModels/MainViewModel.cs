@@ -105,6 +105,14 @@ public partial class MainViewModel : ObservableObject
             }
         };
 
+        // 网络监控页的操作反馈（桥接/结束进程/刷新状态）转发到主状态栏，
+        // 否则 NetworkMonitorViewModel.StatusMessage 的更新用户看不到
+        NetworkPage.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(NetworkMonitorViewModel.StatusMessage))
+                StatusMessage = NetworkPage.StatusMessage;
+        };
+
         _toastService.Initialize();
 
         var clockTimer = new DispatcherTimer

@@ -281,7 +281,10 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
             UpdatePieSlices();
 
-            StatusMessage = $"已检测 {UsedPorts} 个占用端口";
+            // 注意：自动刷新每秒触发，不应覆盖用户操作反馈（如"桥接成功"）。
+            // 仅在首次刷新或检测到端口数变化时更新状态栏。
+            if (StatusMessage == "准备就绪" || StatusMessage.StartsWith("已检测"))
+                StatusMessage = $"已检测 {UsedPorts} 个占用端口";
         }
         catch (Exception ex)
         {
