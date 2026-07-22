@@ -104,6 +104,11 @@ public class PieChartControl : FrameworkElement
 
     public PieChartControl()
     {
+        Width = 200;
+        Height = 200;
+        MinWidth = 120;
+        MinHeight = 120;
+
         AddVisualChild(_visual);
         Loaded += (_, _) => InvalidateVisual();
     }

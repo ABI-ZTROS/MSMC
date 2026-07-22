@@ -122,6 +122,9 @@ public class BarChartControl : FrameworkElement
 
     public BarChartControl()
     {
+        MinHeight = 120;
+        MinWidth = 200;
+
         AddVisualChild(_visual);
         Loaded += (_, _) => InvalidateVisual();
     }

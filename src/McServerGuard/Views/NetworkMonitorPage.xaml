@@ -287,9 +287,7 @@
                                                   Slices="{Binding PortDistributionSlices}"
                                                   CenterText="{Binding UsedPorts}"
                                                   CenterSubText="占用端口"
-                                                  Margin="8"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center" />
+                                                  Margin="8" />
 
                         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="16" HorizontalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
