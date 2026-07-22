@@ -195,6 +195,11 @@ public class ThemeService : IThemeService
     private bool _enableAnimations = true;
 
     /// <summary>
+    /// 批量更新模式标记
+    /// </summary>
+    private bool _isBatchUpdating;
+
+    /// <summary>
     /// 主题配置文件路径
     /// </summary>
     private static string SettingsFilePath => Path.Combine(
@@ -209,7 +214,7 @@ public class ThemeService : IThemeService
         set
         {
             _primaryColor = value;
-            ApplyTheme();
+            if (!_isBatchUpdating) ApplyTheme();
         }
     }
 
@@ -220,7 +225,7 @@ public class ThemeService : IThemeService
         set
         {
             _accentColor = value;
-            ApplyTheme();
+            if (!_isBatchUpdating) ApplyTheme();
         }
     }
 
@@ -231,7 +236,7 @@ public class ThemeService : IThemeService
         set
         {
             _backgroundColor = value;
-            ApplyTheme();
+            if (!_isBatchUpdating) ApplyTheme();
         }
     }
 
@@ -242,7 +247,7 @@ public class ThemeService : IThemeService
         set
         {
             _cardColor = value;
-            ApplyTheme();
+            if (!_isBatchUpdating) ApplyTheme();
         }
     }
 
@@ -253,7 +258,7 @@ public class ThemeService : IThemeService
         set
         {
             _textColor = value;
-            ApplyTheme();
+            if (!_isBatchUpdating) ApplyTheme();
         }
     }
 
@@ -264,7 +269,7 @@ public class ThemeService : IThemeService
         set
         {
             _borderColor = value;
-            ApplyTheme();
+            if (!_isBatchUpdating) ApplyTheme();
         }
     }
 
@@ -275,7 +280,7 @@ public class ThemeService : IThemeService
         set
         {
             _cornerRadius = Math.Clamp(value, 0, 24);
-            ApplyTheme();
+            if (!_isBatchUpdating) ApplyTheme();
         }
     }
 
@@ -291,6 +296,22 @@ public class ThemeService : IThemeService
     {
         get => _enableAnimations;
         set => _enableAnimations = value;
+    }
+
+    /// <summary>
+    /// 开始批量更新模式
+    /// 在此模式下，属性变更不会立即触发主题应用
+    /// </summary>
+    public void BeginBatchUpdate() => _isBatchUpdating = true;
+
+    /// <summary>
+    /// 结束批量更新模式
+    /// 调用此方法时会立即应用一次主题
+    /// </summary>
+    public void EndBatchUpdate()
+    {
+        _isBatchUpdating = false;
+        ApplyTheme();
     }
 
     /// <summary>

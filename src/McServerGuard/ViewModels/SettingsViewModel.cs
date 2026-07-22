@@ -365,10 +365,12 @@ public partial class SettingsViewModel : ObservableObject
     /// <remarks>
     /// 触发条件：用户点击应用按钮。
     /// 副作用：将当前 ViewModel 属性同步到 <see cref="Services.IThemeService"/>，使主题实时生效。
+    /// 使用批量更新模式避免多次全量重绘。
     /// </remarks>
     [RelayCommand]
     private void ApplyTheme()
     {
+        _themeService.BeginBatchUpdate();
         try
         {
             _themeService.PrimaryColor = PrimaryColor;
@@ -388,6 +390,10 @@ public partial class SettingsViewModel : ObservableObject
         {
             StatusMessage = $"主题应用失败: {ex.Message}";
             Log.Error(ex, "❌ 主题应用失败");
+        }
+        finally
+        {
+            _themeService.EndBatchUpdate();
         }
     }
 
@@ -547,10 +553,9 @@ public partial class SettingsViewModel : ObservableObject
     /// PrimaryColor 变更回调 —— 由源生成器在属性变更时调用
     /// </summary>
     /// <param name="value">新的主色值</param>
-    /// <remarks>同步到主题服务，并触发派生属性 <see cref="PrimaryColorHex"/> 与 <see cref="PrimaryColorBrush"/> 的变更通知。</remarks>
+    /// <remarks>触发派生属性 <see cref="PrimaryColorHex"/> 与 <see cref="PrimaryColorBrush"/> 的变更通知，实现实时预览。</remarks>
     partial void OnPrimaryColorChanged(Color value)
     {
-        _themeService.PrimaryColor = value;
         OnPropertyChanged(nameof(PrimaryColorHex));
         OnPropertyChanged(nameof(PrimaryColorBrush));
     }
@@ -561,7 +566,6 @@ public partial class SettingsViewModel : ObservableObject
     /// <param name="value">新的强调色值</param>
     partial void OnAccentColorChanged(Color value)
     {
-        _themeService.AccentColor = value;
         OnPropertyChanged(nameof(AccentColorHex));
         OnPropertyChanged(nameof(AccentColorBrush));
     }
@@ -572,7 +576,6 @@ public partial class SettingsViewModel : ObservableObject
     /// <param name="value">新的背景色值</param>
     partial void OnBackgroundColorChanged(Color value)
     {
-        _themeService.BackgroundColor = value;
         OnPropertyChanged(nameof(BackgroundColorHex));
         OnPropertyChanged(nameof(BackgroundColorBrush));
     }
@@ -583,7 +586,6 @@ public partial class SettingsViewModel : ObservableObject
     /// <param name="value">新的卡片色值</param>
     partial void OnCardColorChanged(Color value)
     {
-        _themeService.CardColor = value;
         OnPropertyChanged(nameof(CardColorHex));
         OnPropertyChanged(nameof(CardColorBrush));
     }
@@ -594,7 +596,6 @@ public partial class SettingsViewModel : ObservableObject
     /// <param name="value">新的文字色值</param>
     partial void OnTextColorChanged(Color value)
     {
-        _themeService.TextColor = value;
         OnPropertyChanged(nameof(TextColorHex));
         OnPropertyChanged(nameof(TextColorBrush));
     }
@@ -605,7 +606,6 @@ public partial class SettingsViewModel : ObservableObject
     /// <param name="value">新的边框色值</param>
     partial void OnBorderColorChanged(Color value)
     {
-        _themeService.BorderColor = value;
         OnPropertyChanged(nameof(BorderColorHex));
         OnPropertyChanged(nameof(BorderColorBrush));
     }
@@ -616,6 +616,6 @@ public partial class SettingsViewModel : ObservableObject
     /// <param name="value">新的圆角半径值</param>
     partial void OnCornerRadiusChanged(int value)
     {
-        _themeService.CornerRadius = value;
+        // 实时预览由 ViewModel 自身属性支持，不立即写入 ThemeService
     }
 }
