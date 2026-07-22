@@ -1,0 +1,261 @@
+<Page x:Class="McServerGuard.Views.NetworkMonitorPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+      xmlns:vm="clr-namespace:McServerGuard.ViewModels"
+      xmlns:local="clr-namespace:McServerGuard"
+      mc:Ignorable="d"
+      d:DesignHeight="450" d:DesignWidth="800"
+      Title="网络监控">
+
+    <Page.DataContext>
+        <vm:NetworkMonitorViewModel />
+    </Page.DataContext>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="16" Spacing="12">
+            <materialDesign:Card Padding="16" Width="200">
+                <StackPanel>
+                    <TextBlock Text="总端口数" Style="{StaticResource MaterialDesignBody2TextBlock}" Opacity="0.6"/>
+                    <TextBlock Text="{Binding TotalPorts}" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="{StaticResource PrimaryHueLightBrush}"/>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <materialDesign:Card Padding="16" Width="200">
+                <StackPanel>
+                    <TextBlock Text="已占用" Style="{StaticResource MaterialDesignBody2TextBlock}" Opacity="0.6"/>
+                    <TextBlock Text="{Binding UsedPorts}" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="{StaticResource SecondaryHueLightBrush}"/>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <materialDesign:Card Padding="16" Width="200">
+                <StackPanel>
+                    <TextBlock Text="占用率" Style="{StaticResource MaterialDesignBody2TextBlock}" Opacity="0.6"/>
+                    <TextBlock Text="{Binding UsedPercentage, StringFormat={}{0}%}" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="{StaticResource PrimaryHueMidBrush}"/>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <Button Content="刷新" 
+                    Command="{Binding RefreshCommand}" 
+                    IsEnabled="{Binding IsRefreshing, Converter={StaticResource InverseBooleanConverter}}"
+                    Style="{StaticResource MaterialDesignRaisedButton}">
+                <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16"/>
+            </Button>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="400"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TabControl Grid.Column="0" Margin="0,0,16,0">
+                <TabItem Header="端口占用">
+                    <materialDesign:Card Padding="8">
+                        <DataGrid ItemsSource="{Binding ListeningPorts}"
+                                  SelectedItem="{Binding SelectedPort}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  CanUserSortColumns="True"
+                                  IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="端口" Binding="{Binding Port}" Width="80"/>
+                                <DataGridTextColumn Header="协议" Binding="{Binding Protocol}" Width="60"/>
+                                <DataGridTextColumn Header="进程名" Binding="{Binding ProcessName}" Width="*"/>
+                                <DataGridTextColumn Header="PID" Binding="{Binding ProcessId}" Width="80"/>
+                                <DataGridTemplateColumn Header="范围" Width="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <materialDesign:Chip Content="{Binding PortRange}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Button Command="{Binding KillProcessCommand}"
+                                IsEnabled="{Binding SelectedPort, Converter={StaticResource NullToBooleanConverter}}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                HorizontalAlignment="Right" Margin="8">
+                            <materialDesign:PackIcon Kind="Kill" Width="16" Height="16"/>
+                            <TextBlock Text="结束进程" Margin="4,0,0,0"/>
+                        </Button>
+                    </materialDesign:Card>
+                </TabItem>
+
+                <TabItem Header="常见端口">
+                    <materialDesign:Card Padding="8">
+                        <DataGrid ItemsSource="{x:Static local:Constants.CommonPorts.All}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="端口" Binding="{Binding Port}" Width="80"/>
+                                <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="100"/>
+                                <DataGridTextColumn Header="描述" Binding="{Binding Description}" Width="*"/>
+                                <DataGridTextColumn Header="类别" Binding="{Binding Category}" Width="100"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </materialDesign:Card>
+                </TabItem>
+
+                <TabItem Header="端口桥接">
+                    <materialDesign:Card Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="添加桥接规则" Style="{StaticResource MaterialDesignSubheadingTextBlock}" Margin="0,0,0,12"/>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="监听地址" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Row="0" Grid.Column="1" 
+                                          ItemsSource="{x:Static local:Constants.IpAddresses.All}"
+                                          SelectedItem="{Binding BridgeListenAddress}"
+                                          Margin="8,4,0,4"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="监听端口" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BridgeListenPort}" Margin="8,4,0,4"/>
+
+                                <materialDesign:PackIcon Grid.Row="2" Grid.Column="0" Kind="ArrowRight" Margin="32,4,0,4"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="→" HorizontalAlignment="Center" Margin="8,4,0,4"/>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="目标地址" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Row="3" Grid.Column="1" 
+                                          ItemsSource="{x:Static local:Constants.IpAddresses.All}"
+                                          SelectedItem="{Binding BridgeConnectAddress}"
+                                          Margin="8,4,0,4"/>
+
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="目标端口" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding BridgeConnectPort}" Margin="8,4,0,4"/>
+
+                                <CheckBox Grid.Row="5" Grid.Column="1" 
+                                          Content="同时添加防火墙规则" 
+                                          IsChecked="{Binding BridgeAddFirewall}"
+                                          Margin="8,4,0,4"/>
+
+                                <Button Grid.Row="6" Grid.Column="1" 
+                                        Command="{Binding AddBridgeCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        HorizontalAlignment="Right" Margin="8">
+                                    <materialDesign:PackIcon Kind="Plus" Width="16" Height="16"/>
+                                    <TextBlock Text="添加桥接" Margin="4,0,0,0"/>
+                                </Button>
+                            </Grid>
+
+                            <Separator Margin="0,16,0,16"/>
+
+                            <TextBlock Text="现有桥接规则" Style="{StaticResource MaterialDesignSubheadingTextBlock}" Margin="0,0,0,8"/>
+                            <DataGrid ItemsSource="{Binding BridgeRules}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="监听" Binding="{Binding ListenAddress}" Width="100"/>
+                                    <DataGridTextColumn Header="端口" Binding="{Binding ListenPort}" Width="80"/>
+                                    <DataGridTextColumn Header="目标" Binding="{Binding ConnectAddress}" Width="100"/>
+                                    <DataGridTextColumn Header="端口" Binding="{Binding ConnectPort}" Width="80"/>
+                                    <DataGridTemplateColumn Header="操作" Width="100">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Command="{Binding DataContext.RemoveBridgeCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                                        Foreground="{StaticResource MaterialDesignError}">
+                                                    <materialDesign:PackIcon Kind="Delete" Width="16" Height="16"/>
+                                                </Button>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </materialDesign:Card>
+                </TabItem>
+            </TabControl>
+
+            <materialDesign:Card Grid.Column="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="端口占用可视化" 
+                               Style="{StaticResource MaterialDesignSubheadingTextBlock}" 
+                               Margin="16,16,16,8"/>
+
+                    <Viewport3D Grid.Row="1" ClipToBounds="False" IsHitTestVisible="False">
+                        <Viewport3D.Camera>
+                            <PerspectiveCamera Position="0, 0, 5" LookDirection="0, 0, -1" FieldOfView="60"/>
+                        </Viewport3D.Camera>
+
+                        <Viewport3D.Children>
+                            <ModelVisual3D>
+                                <ModelVisual3D.Content>
+                                    <DirectionalLight Color="#FFFFFF" Direction="-0.612372,-0.5,-0.612372"/>
+                                </ModelVisual3D.Content>
+                            </ModelVisual3D>
+                            <ModelVisual3D>
+                                <ModelVisual3D.Content>
+                                    <DirectionalLight Color="#FFFFFF" Direction="0.612372,-0.5,-0.612372"/>
+                                </ModelVisual3D.Content>
+                            </ModelVisual3D>
+
+                            <ModelVisual3D>
+                                <ModelVisual3D.Content>
+                                    <GeometryModel3D x:Name="CylinderModel">
+                                        <GeometryModel3D.Geometry>
+                                            <MeshGeometry3D x:Name="CylinderMesh"/>
+                                        </GeometryModel3D.Geometry>
+                                        <GeometryModel3D.Material>
+                                            <DiffuseMaterial Brush="{StaticResource PrimaryHueMidBrush}"/>
+                                        </GeometryModel3D.Material>
+                                    </GeometryModel3D>
+                                </ModelVisual3D.Content>
+                            </ModelVisual3D>
+                        </Viewport3D.Children>
+                    </Viewport3D>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="16" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                            <Rectangle Width="16" Height="16" Fill="#FF3333" Margin="0,0,4,0"/>
+                            <TextBlock Text="系统端口 (0-1023)" FontSize="12"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                            <Rectangle Width="16" Height="16" Fill="#3366FF" Margin="0,0,4,0"/>
+                            <TextBlock Text="注册端口 (1024-49151)" FontSize="12"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Rectangle Width="16" Height="16" Fill="#33CC66" Margin="0,0,4,0"/>
+                            <TextBlock Text="动态端口 (49152-65535)" FontSize="12"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </materialDesign:Card>
+        </Grid>
+
+        <materialDesign:SnackbarMessageQueue.MessageQueue x:Key="SnackbarMessageQueue" />
+    </Grid>
+</Page>
