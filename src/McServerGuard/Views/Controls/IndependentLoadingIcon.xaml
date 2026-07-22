@@ -1,0 +1,16 @@
+<UserControl x:Class="McServerGuard.Views.Controls.IndependentLoadingIcon"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             x:Name="Root">
+    <materialDesign:PackIcon Kind="Loading"
+                             Width="{Binding ElementName=Root, Path=IconSize}"
+                             Height="{Binding ElementName=Root, Path=IconSize}"
+                             Foreground="{Binding ElementName=Root, Path=Foreground}"
+                             RenderTransformOrigin="0.5,0.5"
+                             RenderOptions.EdgeMode="Aliased">
+        <materialDesign:PackIcon.RenderTransform>
+            <RotateTransform x:Name="SpinnerRotate" Angle="0" />
+        </materialDesign:PackIcon.RenderTransform>
+    </materialDesign:PackIcon>
+</UserControl>
