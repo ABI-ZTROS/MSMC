@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using CommunityToolkit.Mvvm.Input;
 using McServerGuard.Constants;
 using McServerGuard.Models;
 using McServerGuard.Services.Network;
@@ -126,6 +127,16 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
     public ICommand AddBridgeCommand { get; }
     public ICommand RemoveBridgeCommand { get; }
     public ICommand LoadCommonPortsCommand { get; }
+
+    /// <summary>
+    /// 常见端口列表（供 XAML 绑定，避免 x:Static 泛型问题）
+    /// </summary>
+    public System.Collections.IList CommonPortsList => CommonPorts.All;
+
+    /// <summary>
+    /// 可用 IP 地址列表（供 XAML 绑定，避免 x:Static 泛型问题）
+    /// </summary>
+    public System.Collections.IList IpAddressesList => IpAddresses.All;
 
     public NetworkMonitorViewModel(NetworkService networkService, IPortBridgeService portBridgeService)
     {

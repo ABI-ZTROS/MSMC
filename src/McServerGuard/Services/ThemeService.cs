@@ -84,6 +84,18 @@ public interface IThemeService
     /// 重置为默认主题配置
     /// </summary>
     void ResetToDefault();
+
+    /// <summary>
+    /// 开始批量更新模式
+    /// 在此模式下，属性变更不会立即触发主题应用
+    /// </summary>
+    void BeginBatchUpdate();
+
+    /// <summary>
+    /// 结束批量更新模式
+    /// 调用此方法时会立即应用一次主题
+    /// </summary>
+    void EndBatchUpdate();
 }
 
 /// <summary>
@@ -298,16 +310,10 @@ public class ThemeService : IThemeService
         set => _enableAnimations = value;
     }
 
-    /// <summary>
-    /// 开始批量更新模式
-    /// 在此模式下，属性变更不会立即触发主题应用
-    /// </summary>
+    /// <inheritdoc />
     public void BeginBatchUpdate() => _isBatchUpdating = true;
 
-    /// <summary>
-    /// 结束批量更新模式
-    /// 调用此方法时会立即应用一次主题
-    /// </summary>
+    /// <inheritdoc />
     public void EndBatchUpdate()
     {
         _isBatchUpdating = false;

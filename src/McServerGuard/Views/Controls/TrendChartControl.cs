@@ -63,7 +63,6 @@ public class TrendChartControl : FrameworkElement
     private Size _cachedSize = Size.Empty;
     private StreamGeometry? _cachedGridGeom;
     private FormattedText[]? _cachedYLabels;
-    private double _cachedLineOpacity;
     private Brush? _cachedLineColor;
     private Brush? _cachedFillBrush;
     private Pen? _cachedLinePen;
