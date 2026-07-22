@@ -142,10 +142,8 @@
                 BorderThickness="0,0,1,0"
                 MouseEnter="NavSidebar_MouseEnter"
                 MouseLeave="NavSidebar_MouseLeave"
-                RenderTransformOrigin="0,0">
-            <Border.CacheMode>
-                <BitmapCache RenderAtScale="1.0" SnapsToDevicePixels="True" />
-            </Border.CacheMode>
+                RenderTransformOrigin="0,0"
+                Panel.ZIndex="10">
             <Border.RenderTransform>
                 <TranslateTransform X="-184" Y="0" />
             </Border.RenderTransform>
