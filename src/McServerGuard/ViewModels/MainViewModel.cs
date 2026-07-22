@@ -17,6 +17,7 @@ using McServerGuard.Services;
 using McServerGuard.Services.ConfigManagement;
 using McServerGuard.Services.ServerDetection;
 using McServerGuard.Services.SystemMonitoring;
+using McServerGuard.Services.Network;
 using Serilog;
 
 namespace McServerGuard.ViewModels;
@@ -41,6 +42,8 @@ public partial class MainViewModel : ObservableObject
     private readonly IToastNotificationService _toastService;
     private readonly IAppConfigService _appConfigService;
     private readonly IPrivilegeService _privilegeService;
+    private readonly NetworkService _networkService;
+    private readonly IPortBridgeService _portBridgeService;
 
     /// <summary>
     /// 初始化主窗口视图模型的新实例
@@ -67,9 +70,11 @@ public partial class MainViewModel : ObservableObject
         IThemeService themeService,
         IToastNotificationService toastService,
         IAppConfigService appConfigService,
-        IPrivilegeService privilegeService)
+        IPrivilegeService privilegeService,
+        NetworkService networkService,
+        IPortBridgeService portBridgeService)
     {
-        Log.Information("🧠 MainViewModel 初始化，注入 {ServiceCount} 个服务", 9);
+        Log.Information("🧠 MainViewModel 初始化，注入 {ServiceCount} 个服务", 11);
 
         _serverDetector = serverDetector;
         _configManager = configManager;
@@ -80,10 +85,13 @@ public partial class MainViewModel : ObservableObject
         _toastService = toastService;
         _appConfigService = appConfigService;
         _privilegeService = privilegeService;
+        _networkService = networkService;
+        _portBridgeService = portBridgeService;
 
         DetectionPage = new ServerDetectionViewModel(serverDetector, appConfigService, serverManager, serverImporter);
         ConfigPage = new ConfigEditorViewModel(configManager, serverDetector, appConfigService);
         MonitorPage = new SystemMonitorViewModel(systemMonitor);
+        NetworkPage = new NetworkMonitorViewModel(networkService, portBridgeService);
         SettingsPage = new SettingsViewModel(themeService, toastService);
 
         DetectionPage.PropertyChanged += (s, e) =>
@@ -149,12 +157,17 @@ public partial class MainViewModel : ObservableObject
     public SystemMonitorViewModel MonitorPage { get; }
 
     /// <summary>
+    /// 网络监控页视图模型
+    /// </summary>
+    public NetworkMonitorViewModel NetworkPage { get; }
+
+    /// <summary>
     /// 设置页视图模型
     /// </summary>
     public SettingsViewModel SettingsPage { get; }
 
     /// <summary>
-    /// 当前选中的 Tab 索引（0=检测, 1=配置, 2=监控, 3=设置）
+    /// 当前选中的 Tab 索引（0=检测, 1=配置, 2=系统监控, 3=网络监控, 4=设置）
     /// </summary>
     /// <remarks>
     /// 由源生成器生成 <c>SelectedTabIndex</c> 属性，变更时触发
@@ -175,7 +188,8 @@ public partial class MainViewModel : ObservableObject
         0 => DetectionPage,
         1 => ConfigPage,
         2 => MonitorPage,
-        3 => SettingsPage,
+        3 => NetworkPage,
+        4 => SettingsPage,
         _ => DetectionPage
     };
 
@@ -329,7 +343,8 @@ public partial class MainViewModel : ObservableObject
                 ? $"配置编辑 —— 正在编辑 {ConfigPage.Server.DisplayName} 的配置 ⚙️"
                 : "配置编辑 —— 选择左侧的配置文件即可开始编辑（无需服务器运行）📝",
             2 => "系统监控 —— 常驻采集 CPU / 内存 / 磁盘 / Java 进程指标 📊",
-            3 => "设置 —— 自定义外观、主题和行为 ⚙️",
+            3 => "网络监控 —— 实时监控端口占用、网络桥接和流量统计 🖧",
+            4 => "设置 —— 自定义外观、主题和行为 ⚙️",
             _ => StatusMessage
         };
     }
