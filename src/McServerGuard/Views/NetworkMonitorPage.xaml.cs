@@ -42,18 +42,13 @@ public partial class NetworkMonitorPage : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // IsRefreshing 由后台线程设置，Storyboard 必须在 UI 线程操作
+        // IsRefreshing 现在在 UI 线程（DispatcherTimer 回调）设置，可直接操作 Storyboard
         if (e.PropertyName == nameof(NetworkMonitorViewModel.IsRefreshing) && _viewModel != null)
         {
-            Dispatcher.BeginInvoke(() =>
-            {
-                if (_viewModel == null)
-                    return;
-                if (_viewModel.IsRefreshing)
-                    StartRefreshAnimation();
-                else
-                    StopRefreshAnimation();
-            });
+            if (_viewModel.IsRefreshing)
+                StartRefreshAnimation();
+            else
+                StopRefreshAnimation();
         }
     }
 

@@ -3,10 +3,10 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
 using McServerGuard.Constants;
 using McServerGuard.Models;
@@ -22,7 +22,8 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
     private readonly NetworkService _networkService;
     private readonly IPortBridgeService _portBridgeService;
     private readonly NetworkTrafficService _trafficService;
-    private CancellationTokenSource? _refreshCts;
+    private readonly DispatcherTimer _refreshTimer;
+    private int _portRefreshCounter;
     private double _peakSpeedBytesPerSec = 1048576.0;
 
     public ObservableCollection<PortInfo> ListeningPorts { get; } = [];
@@ -221,25 +222,25 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         StatusMessage = "准备就绪";
 
         LoadHourlyData();
-        Task.Run(StartAutoRefresh);
+
+        // 统一使用 UI 线程定时器广播刷新：每秒触发，回调在 UI 线程执行，
+        // 耗时操作（netsh/网卡采样）用 Task.Run 丢到后台，数据读完后回 UI 线程更新绑定属性。
+        // 这样所有 PropertyChanged/集合修改/Storyboard 操作都在 UI 线程，彻底消除跨线程问题。
+        _refreshTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        _refreshTimer.Tick += OnRefreshTick;
+        _refreshTimer.Start();
     }
 
-    private async void StartAutoRefresh()
+    private async void OnRefreshTick(object? sender, EventArgs e)
     {
-        _refreshCts = new CancellationTokenSource();
-        var token = _refreshCts.Token;
-
-        // 端口列表每 5 秒刷新一次（避免 DataGrid 频繁重建行容器触发模板密封崩溃），
-        // 流量采样每秒刷新一次（保证仪表盘实时性）
-        int portRefreshCounter = 0;
-        while (!token.IsCancellationRequested)
-        {
-            if (portRefreshCounter % 5 == 0)
-                await RefreshPorts();
-            RefreshTraffic();
-            portRefreshCounter++;
-            await Task.Delay(1000, token);
-        }
+        // 端口列表每 5 秒刷新一次（netsh 较慢且端口变化缓慢），流量每秒采样
+        if (_portRefreshCounter % 5 == 0)
+            await RefreshPorts();
+        await RefreshTraffic();
+        _portRefreshCounter++;
     }
 
     public async Task RefreshPorts()
@@ -253,30 +254,32 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
                 ? (selectedPort.Port, selectedPort.Protocol, selectedPort.ProcessId)
                 : ((int Port, string Protocol, int? ProcessId)?)null;
 
-            var (ports, rules) = await Task.Run(() =>
-                (_networkService.GetAllListeningPorts(), _portBridgeService.GetAllBridgeRules()));
-
-            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            // 所有系统调用在后台线程执行，读出全部所需数据
+            var (ports, rules, usedPct, dist) = await Task.Run(() =>
             {
-                // 智能更新：仅当集合内容真正变化时才 Clear+Add，
-                // 避免每秒全量重建导致 DataGrid 虚拟化容器频繁回收触发模板密封崩溃
-                UpdateCollection(ListeningPorts, ports);
-                UpdateCollection(BridgeRules, rules);
-
-                if (selectedKey.HasValue)
-                {
-                    var (p, proto, pid) = selectedKey.Value;
-                    var match = ListeningPorts.FirstOrDefault(x =>
-                        x.Port == p && x.Protocol == proto && x.ProcessId == pid);
-                    if (match != null)
-                        SelectedPort = match;
-                }
+                var p = _networkService.GetAllListeningPorts();
+                var r = _portBridgeService.GetAllBridgeRules();
+                var pct = _networkService.GetUsedPercentage();
+                var d = _networkService.GetPortDistribution();
+                return (p, r, pct, d);
             });
 
-            UsedPorts = ports.Count;
-            UsedPercentage = _networkService.GetUsedPercentage();
+            // 回到 UI 线程（DispatcherTimer 回调 + await continuation）更新绑定属性
+            UpdateCollection(ListeningPorts, ports);
+            UpdateCollection(BridgeRules, rules);
 
-            var dist = _networkService.GetPortDistribution();
+            if (selectedKey.HasValue)
+            {
+                var (p, proto, pid) = selectedKey.Value;
+                var match = ListeningPorts.FirstOrDefault(x =>
+                    x.Port == p && x.Protocol == proto && x.ProcessId == pid);
+                if (match != null)
+                    SelectedPort = match;
+            }
+
+            UsedPorts = ports.Count;
+            UsedPercentage = usedPct;
+
             SystemPorts = dist.System;
             RegisteredPorts = dist.Registered;
             DynamicPorts = dist.Dynamic;
@@ -301,26 +304,25 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
     private void UpdatePieSlices()
     {
-        // PortDistributionSlices 绑定到 PieChartControl，CollectionChanged 必须在 UI 线程触发
-        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-        {
-            PortDistributionSlices.Clear();
-            if (SystemPorts > 0)
-                PortDistributionSlices.Add(new PieSlice { Label = "系统端口", Value = SystemPorts, Color = Color.FromRgb(255, 85, 85) });
-            if (RegisteredPorts > 0)
-                PortDistributionSlices.Add(new PieSlice { Label = "注册端口", Value = RegisteredPorts, Color = Color.FromRgb(85, 136, 255) });
-            if (DynamicPorts > 0)
-                PortDistributionSlices.Add(new PieSlice { Label = "动态端口", Value = DynamicPorts, Color = Color.FromRgb(85, 221, 136) });
-        });
+        // 已在 UI 线程（DispatcherTimer 回调），直接更新集合
+        PortDistributionSlices.Clear();
+        if (SystemPorts > 0)
+            PortDistributionSlices.Add(new PieSlice { Label = "系统端口", Value = SystemPorts, Color = Color.FromRgb(255, 85, 85) });
+        if (RegisteredPorts > 0)
+            PortDistributionSlices.Add(new PieSlice { Label = "注册端口", Value = RegisteredPorts, Color = Color.FromRgb(85, 136, 255) });
+        if (DynamicPorts > 0)
+            PortDistributionSlices.Add(new PieSlice { Label = "动态端口", Value = DynamicPorts, Color = Color.FromRgb(85, 221, 136) });
     }
 
-    private void RefreshTraffic()
+    private async Task RefreshTraffic()
     {
-        _trafficService.Sample();
+        // 网卡采样在后台线程执行
+        await Task.Run(() => _trafficService.Sample());
 
         var uploadBps = _trafficService.CurrentUploadSpeed;
         var downloadBps = _trafficService.CurrentDownloadSpeed;
 
+        // 回到 UI 线程更新绑定属性
         UploadSpeedMB = uploadBps / 1048576.0;
         DownloadSpeedMB = downloadBps / 1048576.0;
 
@@ -352,15 +354,9 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
     {
         var today = _trafficService.GetTodayTraffic();
         var hour = DateTime.Now.Hour;
-        var upVal = today.HourlyUpload[hour];
-        var downVal = today.HourlyDownload[hour];
-
-        // HourlyUploadData/HourlyDownloadData 绑定到 BarChartControl，索引器触发的 CollectionChanged 必须在 UI 线程
-        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-        {
-            HourlyUploadData[hour] = upVal;
-            HourlyDownloadData[hour] = downVal;
-        });
+        // 已在 UI 线程（DispatcherTimer 回调），直接更新集合
+        HourlyUploadData[hour] = today.HourlyUpload[hour];
+        HourlyDownloadData[hour] = today.HourlyDownload[hour];
 
         TodayUploadText = FormatBytes(today.TotalUpload);
         TodayDownloadText = FormatBytes(today.TotalDownload);
@@ -498,8 +494,7 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
     public void Dispose()
     {
-        _refreshCts?.Cancel();
-        _refreshCts?.Dispose();
+        _refreshTimer.Stop();
         _trafficService.Save();
     }
 }
