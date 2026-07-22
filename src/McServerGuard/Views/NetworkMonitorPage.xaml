@@ -65,7 +65,10 @@
                                   CanUserAddRows="False"
                                   CanUserDeleteRows="False"
                                   CanUserSortColumns="True"
-                                  IsReadOnly="True">
+                                  IsReadOnly="True"
+                                  EnableRowVirtualization="True"
+                                  EnableColumnVirtualization="True"
+                                  VirtualizingStackPanel.VirtualizationMode="Recycling">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="端口" Binding="{Binding Port}" Width="80"/>
                                 <DataGridTextColumn Header="协议" Binding="{Binding Protocol}" Width="60"/>
@@ -97,7 +100,10 @@
                                   AutoGenerateColumns="False"
                                   CanUserAddRows="False"
                                   CanUserDeleteRows="False"
-                                  IsReadOnly="True">
+                                  IsReadOnly="True"
+                                  EnableRowVirtualization="True"
+                                  EnableColumnVirtualization="True"
+                                  VirtualizingStackPanel.VirtualizationMode="Recycling">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="端口" Binding="{Binding Port}" Width="80"/>
                                 <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="100"/>
@@ -169,7 +175,10 @@
                                       AutoGenerateColumns="False"
                                       CanUserAddRows="False"
                                       CanUserDeleteRows="False"
-                                      IsReadOnly="True">
+                                      IsReadOnly="True"
+                                      EnableRowVirtualization="True"
+                                      EnableColumnVirtualization="True"
+                                      VirtualizingStackPanel.VirtualizationMode="Recycling">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="监听" Binding="{Binding ListenAddress}" Width="100"/>
                                     <DataGridTextColumn Header="端口" Binding="{Binding ListenPort}" Width="80"/>
@@ -206,37 +215,7 @@
                                Style="{StaticResource MaterialDesignSubheadingTextBlock}" 
                                Margin="16,16,16,8"/>
 
-                    <Viewport3D Grid.Row="1" ClipToBounds="False" IsHitTestVisible="False">
-                        <Viewport3D.Camera>
-                            <PerspectiveCamera Position="0, 0, 5" LookDirection="0, 0, -1" FieldOfView="60"/>
-                        </Viewport3D.Camera>
 
-                        <Viewport3D.Children>
-                            <ModelVisual3D>
-                                <ModelVisual3D.Content>
-                                    <DirectionalLight Color="#FFFFFF" Direction="-0.612372,-0.5,-0.612372"/>
-                                </ModelVisual3D.Content>
-                            </ModelVisual3D>
-                            <ModelVisual3D>
-                                <ModelVisual3D.Content>
-                                    <DirectionalLight Color="#FFFFFF" Direction="0.612372,-0.5,-0.612372"/>
-                                </ModelVisual3D.Content>
-                            </ModelVisual3D>
-
-                            <ModelVisual3D>
-                                <ModelVisual3D.Content>
-                                    <GeometryModel3D x:Name="CylinderModel">
-                                        <GeometryModel3D.Geometry>
-                                            <MeshGeometry3D x:Name="CylinderMesh"/>
-                                        </GeometryModel3D.Geometry>
-                                        <GeometryModel3D.Material>
-                                            <DiffuseMaterial Brush="{StaticResource PrimaryHueMidBrush}"/>
-                                        </GeometryModel3D.Material>
-                                    </GeometryModel3D>
-                                </ModelVisual3D.Content>
-                            </ModelVisual3D>
-                        </Viewport3D.Children>
-                    </Viewport3D>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="16" HorizontalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
