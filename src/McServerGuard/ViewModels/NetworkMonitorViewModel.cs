@@ -465,7 +465,7 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
         StatusMessage = success
             ? $"桥接成功: {rule.ListenAddress}:{rule.ListenPort} -> {rule.ConnectAddress}:{rule.ConnectPort}"
-            : "桥接失败，请确保以管理员身份运行";
+            : $"桥接失败: {_portBridgeService.LastError}";
 
         await RefreshPorts();
     }

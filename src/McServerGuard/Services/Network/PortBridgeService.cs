@@ -8,10 +8,31 @@ namespace McServerGuard.Services.Network;
 
 public class PortBridgeService : IPortBridgeService
 {
+    /// <summary>
+    /// 最近一次操作的错误描述（供 UI 显示真实失败原因，而非硬编码提示）。
+    /// </summary>
+    public string LastError { get; private set; } = string.Empty;
+
     public bool AddBridgeRule(PortBridgeRule rule)
     {
+        LastError = string.Empty;
+
         try
         {
+            // netsh portproxy 完全依赖 IP Helper 服务（iphlpsvc），服务停止时 add 命令
+            // 会返回非零退出码——这正是"管理员身份运行仍桥接失败"的最常见原因。
+            if (!EnsureIpHelperServiceRunning())
+                return false;
+
+            // 幂等：规则已存在则直接成功，避免 netsh 报"对象已存在"。
+            // GetAllBridgeRules 解析失败时会返回空列表，此处安全放行到 netsh。
+            if (BridgeRuleExists(rule.ListenAddress, rule.ListenPort))
+            {
+                Log.Information("端口桥接规则已存在，跳过添加: {Listen}:{LPort}",
+                    rule.ListenAddress, rule.ListenPort);
+                return true;
+            }
+
             var protocol = string.IsNullOrEmpty(rule.Protocol) ? "v4tov4" : rule.Protocol;
             var args = $"interface portproxy add {protocol} " +
                        $"listenaddress={rule.ListenAddress} " +
@@ -33,43 +54,113 @@ public class PortBridgeService : IPortBridgeService
 
             if (process == null)
             {
-                Log.Error("无法启动 netsh 进程");
+                LastError = "无法启动 netsh 进程";
+                Log.Error("{Error}", LastError);
                 return false;
             }
 
             var exited = process.WaitForExit(10000);
             if (!exited)
             {
-                Log.Error("netsh 命令执行超时");
+                LastError = "netsh 命令执行超时";
+                Log.Error("{Error}", LastError);
                 process.Kill();
                 return false;
             }
 
             var exitCode = process.ExitCode;
+            var stdout = process.StandardOutput.ReadToEnd();
             var error = process.StandardError.ReadToEnd();
 
             if (exitCode != 0)
             {
-                Log.Error("端口桥接规则添加失败 (ExitCode={ExitCode}): {Error}", exitCode, error);
+                // 暴露 netsh 真实错误（如"请求的操作需要提升""对象已存在"等）给 UI
+                LastError = string.IsNullOrWhiteSpace(error)
+                    ? (string.IsNullOrWhiteSpace(stdout) ? $"netsh 退出码 {exitCode}" : stdout.Trim())
+                    : error.Trim();
+                Log.Error("端口桥接规则添加失败 (ExitCode={ExitCode}): {Error}", exitCode, LastError);
                 return false;
             }
 
             Log.Information("端口桥接规则添加成功: {Listen}:{LPort} -> {Connect}:{CPort}",
                 rule.ListenAddress, rule.ListenPort, rule.ConnectAddress, rule.ConnectPort);
 
-            System.Threading.Thread.Sleep(200);
-            if (!BridgeRuleExists(rule.ListenAddress, rule.ListenPort))
-            {
-                Log.Error("规则添加后验证失败，可能权限不足");
-                return false;
-            }
-
             return true;
         }
         catch (Exception ex)
         {
+            LastError = ex.Message;
             Log.Error(ex, "添加端口桥接规则异常");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 确保 IP Helper 服务（iphlpsvc）处于运行状态。netsh portproxy 依赖此服务，
+    /// 服务停止时 add/show 都会失败。未运行则尝试启动（需管理员权限）。
+    /// </summary>
+    private bool EnsureIpHelperServiceRunning()
+    {
+        try
+        {
+            const string serviceName = "iphlpsvc";
+            var state = QueryServiceState(serviceName);
+
+            if (state.Contains("RUNNING", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            Log.Warning("IP Helper 服务未运行 (状态: {State})，尝试启动", state.Trim());
+            LastError = "IP Helper 服务未运行，正在尝试启动…";
+
+            using var startProc = Process.Start(new ProcessStartInfo
+            {
+                FileName = "sc",
+                Arguments = $"start {serviceName}",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            });
+
+            startProc?.WaitForExit(5000);
+
+            var stateAfter = QueryServiceState(serviceName);
+            if (stateAfter.Contains("RUNNING", StringComparison.OrdinalIgnoreCase))
+            {
+                Log.Information("IP Helper 服务已启动");
+                return true;
+            }
+
+            LastError = "IP Helper 服务启动失败，端口桥接无法工作（请在 services.msc 手动启动该服务）";
+            Log.Error("{Error} (启动后状态: {State})", LastError, stateAfter.Trim());
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "检查/启动 IP Helper 服务异常，放行至 netsh 自行报错");
+            return true;
+        }
+    }
+
+    private static string QueryServiceState(string serviceName)
+    {
+        try
+        {
+            using var proc = Process.Start(new ProcessStartInfo
+            {
+                FileName = "sc",
+                Arguments = $"query {serviceName}",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                StandardOutputEncoding = System.Text.Encoding.UTF8
+            });
+            proc?.WaitForExit(3000);
+            return proc?.StandardOutput.ReadToEnd() ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
         }
     }
 
