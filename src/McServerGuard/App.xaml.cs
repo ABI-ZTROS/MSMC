@@ -54,9 +54,11 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         // 初始化日志系统
+        // 每次启动生成独立日志文件（含启动时间戳），避免单文件过大
+        var logFileName = $"logs/mcserverguard-{DateTime.Now:yyyyMMdd-HHmmss}.log";
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
-            .WriteTo.File("logs/mcserverguard-.log", rollingInterval: RollingInterval.Day)
+            .WriteTo.File(logFileName)
             .CreateLogger();
 
         // 挂载全局异常处理
