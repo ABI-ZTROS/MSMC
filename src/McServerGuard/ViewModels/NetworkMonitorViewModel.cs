@@ -229,10 +229,15 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         _refreshCts = new CancellationTokenSource();
         var token = _refreshCts.Token;
 
+        // 端口列表每 5 秒刷新一次（避免 DataGrid 频繁重建行容器触发模板密封崩溃），
+        // 流量采样每秒刷新一次（保证仪表盘实时性）
+        int portRefreshCounter = 0;
         while (!token.IsCancellationRequested)
         {
-            await RefreshPorts();
+            if (portRefreshCounter % 5 == 0)
+                await RefreshPorts();
             RefreshTraffic();
+            portRefreshCounter++;
             await Task.Delay(1000, token);
         }
     }
