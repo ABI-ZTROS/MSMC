@@ -9,6 +9,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace McServerGuard.Views.Controls;
 
@@ -42,6 +43,11 @@ public partial class ColorPickerControl : UserControl
 
     private bool _isUpdating;
 
+    // ─── 滑块节流字段 ───
+
+    private DispatcherTimer? _colorUpdateTimer;
+    private bool _pendingColorUpdate;
+
     public ColorPickerControl()
     {
         InitializeComponent();
@@ -51,6 +57,8 @@ public partial class ColorPickerControl : UserControl
         BSlider.ValueChanged += RGB_Slider_ValueChanged;
         HexTextBox.LostFocus += HexTextBox_LostFocus;
         HexTextBox.KeyDown += HexTextBox_KeyDown;
+
+        Unloaded += OnUnloaded;
 
         UpdateUI(SelectedColor);
     }
@@ -98,10 +106,43 @@ public partial class ColorPickerControl : UserControl
         }
     }
 
-    // RGB 滑块 ValueChanged 事件处理：根据滑块值计算颜色并同步至 SelectedColor
+    // RGB 滑块 ValueChanged 事件处理：使用节流机制延迟更新颜色
     private void RGB_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_isUpdating) return;
+
+        // 节流处理：避免滑块拖动时高频更新
+        _pendingColorUpdate = true;
+
+        // 确保计时器已创建
+        _colorUpdateTimer ??= new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(50)
+        };
+        _colorUpdateTimer.Tick -= ColorUpdateTimer_Tick; // 避免重复订阅
+        _colorUpdateTimer.Tick += ColorUpdateTimer_Tick;
+
+        _colorUpdateTimer.Stop();
+        _colorUpdateTimer.Start();
+    }
+
+    private void ColorUpdateTimer_Tick(object? sender, EventArgs e)
+    {
+        _colorUpdateTimer?.Stop();
+
+        if (_pendingColorUpdate)
+        {
+            _pendingColorUpdate = false;
+            ApplySliderColor();
+        }
+    }
+
+    /// <summary>
+    /// 应用滑块当前值到颜色属性。
+    /// 统一从滑块读取 RGB 值并同步至 SelectedColor 与 UI 元素。
+    /// </summary>
+    private void ApplySliderColor()
+    {
         _isUpdating = true;
 
         try
@@ -159,6 +200,17 @@ public partial class ColorPickerControl : UserControl
         catch
         {
             HexTextBox.Text = $"#{SelectedColor.A:X2}{SelectedColor.R:X2}{SelectedColor.G:X2}{SelectedColor.B:X2}";
+        }
+    }
+
+    private void OnUnloaded(object? sender, RoutedEventArgs e)
+    {
+        // 清理节流计时器
+        if (_colorUpdateTimer != null)
+        {
+            _colorUpdateTimer.Stop();
+            _colorUpdateTimer.Tick -= ColorUpdateTimer_Tick;
+            _colorUpdateTimer = null;
         }
     }
 }

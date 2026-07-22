@@ -14,6 +14,7 @@ using System.Collections.Specialized;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 /// <summary>
 /// 折线趋势图自定义控件。
@@ -29,6 +30,10 @@ public class TrendChartControl : FrameworkElement
     private IList? _dataPoints;
     private readonly List<double> _pointBuffer = [];
     private readonly List<Point> _coordBuffer = [];
+    
+    // 节流计时器：防止高频集合更新导致每帧重绘
+    private readonly DispatcherTimer _throttleTimer;
+    private bool _pendingRedraw;
 
     // ─── 静态缓存：Brush/Pen/Typeface 只创建一次并 Freeze ───
 
@@ -94,8 +99,16 @@ public class TrendChartControl : FrameworkElement
         Height = 160;
         MinHeight = 80;
 
+        // 初始化节流计时器（100ms 间隔）
+        _throttleTimer = new DispatcherTimer(DispatcherPriority.Render)
+        {
+            Interval = TimeSpan.FromMilliseconds(100)
+        };
+        _throttleTimer.Tick += ThrottleTimer_Tick;
+
         AddVisualChild(_visual);
         Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     protected override int VisualChildrenCount => 1;
@@ -118,7 +131,21 @@ public class TrendChartControl : FrameworkElement
 
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        InvalidateVisual();
+        // 使用节流计时器，避免高频集合更新导致每帧重绘
+        _pendingRedraw = true;
+        if (!_throttleTimer.IsEnabled)
+            _throttleTimer.Start();
+    }
+
+    private void ThrottleTimer_Tick(object? sender, EventArgs e)
+    {
+        _throttleTimer?.Stop();
+
+        if (_pendingRedraw)
+        {
+            _pendingRedraw = false;
+            InvalidateVisual();
+        }
     }
 
     private static void OnLineColorChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -143,6 +170,18 @@ public class TrendChartControl : FrameworkElement
                 SetValue(LineColorProperty, primaryBrush);
         }
         InvalidateVisual();
+    }
+
+    private void OnUnloaded(object? sender, RoutedEventArgs e)
+    {
+        // 停止节流计时器并取消订阅
+        _throttleTimer.Stop();
+        _throttleTimer.Tick -= ThrottleTimer_Tick;
+
+        // 取消订阅集合变更事件
+        if (_dataPoints is INotifyCollectionChanged ncc)
+            ncc.CollectionChanged -= OnCollectionChanged;
+        _dataPoints = null;
     }
 
     // ─── 绘制 ─────────────────────────────────────────────────────────
