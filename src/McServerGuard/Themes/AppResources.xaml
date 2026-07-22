@@ -90,7 +90,7 @@
         <Setter Property="Padding" Value="16,6" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="MinHeight" Value="32" />
-        <Setter Property="UniformCornerRadius" Value="{DynamicResource AppCornerRadius}" />
+        <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="{DynamicResource AppCornerRadius}" />
         <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
     </Style>
 
@@ -99,7 +99,7 @@
         <Setter Property="Padding" Value="16,6" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="MinHeight" Value="32" />
-        <Setter Property="UniformCornerRadius" Value="{DynamicResource AppCornerRadius}" />
+        <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="{DynamicResource AppCornerRadius}" />
         <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
     </Style>
 
@@ -108,7 +108,7 @@
         <Setter Property="Padding" Value="12,4" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="MinHeight" Value="28" />
-        <Setter Property="UniformCornerRadius" Value="{DynamicResource AppCornerRadius}" />
+        <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="{DynamicResource AppCornerRadius}" />
         <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
     </Style>
 
