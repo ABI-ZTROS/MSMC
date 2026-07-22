@@ -13,6 +13,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
+using LiveChartsCore.Kernel.Sketches;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using McServerGuard.Models;
@@ -86,6 +87,33 @@ public partial class SystemMonitorViewModel : ObservableObject
             }
         };
 
+        // 深色主题共享色：文字 slate-200，分离线 10% 不透明白
+        var axisTextPaint = new SolidColorPaint(new SKColor(0xE2, 0xE8, 0xF0));
+        var axisSeparatorPaint = new SolidColorPaint(new SKColor(255, 255, 255, 26)) { StrokeThickness = 1 };
+
+        TrendYAxis = new ICartesianAxis[]
+        {
+            new Axis
+            {
+                TextSize = 10,
+                LabelsPaint = axisTextPaint,
+                SeparatorsPaint = axisSeparatorPaint,
+                TicksPaint = axisSeparatorPaint,
+                MinLimit = 0,
+                MaxLimit = 100,
+                Labeler = value => $"{value:F0}%"
+            }
+        };
+
+        TrendXAxis = new ICartesianAxis[]
+        {
+            new Axis
+            {
+                IsVisible = false,
+                SeparatorsPaint = null
+            }
+        };
+
         _ = Task.Run(async () =>
         {
             await Task.Delay(500);
@@ -139,6 +167,12 @@ public partial class SystemMonitorViewModel : ObservableObject
 
     /// <summary>内存趋势图 LiveCharts2 系列（蓝色折线 + 半透明面积填充，绑定 _memoryValues FIFO 集合）。</summary>
     public ISeries[] MemorySeries { get; }
+
+    /// <summary>CPU/内存趋势图 Y 轴（百分比，浅色文字适配深色主题）。</summary>
+    public ICartesianAxis[] TrendYAxis { get; }
+
+    /// <summary>CPU/内存趋势图 X 轴（隐藏标签和分离线，仅作时间轴占位）。</summary>
+    public ICartesianAxis[] TrendXAxis { get; }
 
     /// <summary>内存信息摘要文本（已用 GB / 总 GB）</summary>
     public string MemoryInfoText => CurrentMetrics is not null

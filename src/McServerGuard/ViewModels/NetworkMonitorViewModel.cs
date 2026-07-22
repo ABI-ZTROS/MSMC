@@ -48,8 +48,17 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
     /// <summary>每日吞吐量柱状图系列（上传 + 下载双系列，绑定 24 小时 ObservableCollection）。</summary>
     public ISeries[] HourlyThroughputSeries { get; }
 
-    /// <summary>每日吞吐量柱状图 X 轴（0–23 时标签）。</summary>
+    /// <summary>每日吞吐量柱状图 X 轴（0–23 时标签，浅色文字适配深色主题）。</summary>
     public ICartesianAxis[] HourlyThroughputXAxis { get; }
+
+    /// <summary>每日吞吐量柱状图 Y 轴（浅色文字 + 半透明分离线，适配深色主题）。</summary>
+    public ICartesianAxis[] HourlyThroughputYAxis { get; }
+
+    /// <summary>饼图图例文字笔刷（浅色，适配深色主题）。</summary>
+    public SolidColorPaint PieLegendTextPaint { get; }
+
+    /// <summary>饼图图例背景笔刷（透明，让卡片背景透过来）。</summary>
+    public SolidColorPaint PieLegendBackgroundPaint { get; }
 
     private int _totalPorts;
     public int TotalPorts
@@ -269,13 +278,37 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
             }
         };
 
-        // X 轴：0–23 时标签
+        // 深色主题共享色：文字 slate-200，分离线 10% 不透明白
+        var axisTextPaint = new SolidColorPaint(new SKColor(0xE2, 0xE8, 0xF0));
+        var axisSeparatorPaint = new SolidColorPaint(new SKColor(255, 255, 255, 26)) { StrokeThickness = 1 };
+        var legendTextPaint = new SolidColorPaint(new SKColor(0xE2, 0xE8, 0xF0));
+        var legendBgPaint = new SolidColorPaint(SKColors.Transparent);
+
+        PieLegendTextPaint = legendTextPaint;
+        PieLegendBackgroundPaint = legendBgPaint;
+
+        // X 轴：0–23 时标签，浅色文字适配深色主题
         HourlyThroughputXAxis = new ICartesianAxis[]
         {
             new Axis
             {
                 Labels = Enumerable.Range(0, 24).Select(h => $"{h:00}").ToArray(),
-                TextSize = 10
+                TextSize = 10,
+                LabelsPaint = axisTextPaint,
+                SeparatorsPaint = axisSeparatorPaint,
+                TicksPaint = axisSeparatorPaint
+            }
+        };
+
+        // Y 轴：自动缩放，浅色文字适配深色主题
+        HourlyThroughputYAxis = new ICartesianAxis[]
+        {
+            new Axis
+            {
+                TextSize = 10,
+                LabelsPaint = axisTextPaint,
+                SeparatorsPaint = axisSeparatorPaint,
+                TicksPaint = axisSeparatorPaint
             }
         };
 

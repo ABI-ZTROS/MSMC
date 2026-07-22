@@ -271,7 +271,10 @@
                         <Grid Grid.Row="1" Margin="8">
                             <lcw:PieChart Series="{Binding PortDistributionSeries}"
                                           LegendPosition="Right"
-                                          TooltipPosition="Center" />
+                                          TooltipPosition="Center"
+                                          Background="Transparent"
+                                          LegendTextPaint="{Binding PieLegendTextPaint}"
+                                          LegendBackgroundPaint="{Binding PieLegendBackgroundPaint}" />
                             <!-- 中心叠加：占用端口总数 -->
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
                                 <TextBlock Text="{Binding UsedPorts}" FontSize="28" FontWeight="Bold"
@@ -316,7 +319,9 @@
                         <lcw:CartesianChart Grid.Row="1"
                                             Series="{Binding HourlyThroughputSeries}"
                                             XAxes="{Binding HourlyThroughputXAxis}"
+                                            YAxes="{Binding HourlyThroughputYAxis}"
                                             TooltipPosition="Top"
+                                            Background="Transparent"
                                             Margin="8" />
 
                         <TextBlock Grid.Row="2" Text="{Binding DailyAnalysisText}"
