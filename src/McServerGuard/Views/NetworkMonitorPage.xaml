@@ -68,27 +68,11 @@
             <!-- 自动刷新指示器 -->
             <materialDesign:Card Padding="12,8" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal">
-                    <iconPacks:PackIconFontAwesome6 Kind="ArrowsRotateSolid" Width="16" Height="16"
-                                                    Foreground="{DynamicResource NavItemSelectedBrush}">
-                        <iconPacks:PackIconFontAwesome6.Style>
-                            <Style TargetType="iconPacks:PackIconFontAwesome6">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
-                                        <DataTrigger.EnterActions>
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                     From="0" To="360" Duration="0:0:1"
-                                                                     RepeatBehavior="Forever" />
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </DataTrigger.EnterActions>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </iconPacks:PackIconFontAwesome6.Style>
+                    <iconPacks:PackIconFontAwesome6 x:Name="RefreshIcon" Kind="ArrowsRotateSolid" Width="16" Height="16"
+                                                    Foreground="{DynamicResource NavItemSelectedBrush}"
+                                                    RenderTransformOrigin="0.5,0.5">
                         <iconPacks:PackIconFontAwesome6.RenderTransform>
-                            <RotateTransform Angle="0" CenterX="8" CenterY="8" />
+                            <RotateTransform x:Name="RefreshRotateTransform" Angle="0" />
                         </iconPacks:PackIconFontAwesome6.RenderTransform>
                     </iconPacks:PackIconFontAwesome6>
                     <TextBlock Text="自动刷新中" Margin="8,0,0,0" FontSize="12" VerticalAlignment="Center" Opacity="0.7" />
