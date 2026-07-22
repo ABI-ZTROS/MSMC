@@ -8,11 +8,17 @@
 // 设计模式: MVVM 模式, 观察者模式 (指标推送回调), 生产者-消费者 (采样队列), 循环采样器
 // -----------------------------------------------------------------------------
 
+using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
 using McServerGuard.Models;
 using McServerGuard.Services.SystemMonitoring;
 using Serilog;
+using SkiaSharp;
 
 namespace McServerGuard.ViewModels;
 
@@ -38,6 +44,10 @@ public partial class SystemMonitorViewModel : ObservableObject
     /// <summary>监控取消令牌源</summary>
     private CancellationTokenSource? _monitoringCts;
 
+    // CPU/内存趋势图底层集合（被 LiveCharts2 LineSeries 直接绑定，FIFO 截断）
+    private readonly ObservableCollection<double> _cpuValues = [];
+    private readonly ObservableCollection<double> _memoryValues = [];
+
     /// <summary>
     /// 初始化系统监控视图模型的新实例
     /// </summary>
@@ -47,6 +57,34 @@ public partial class SystemMonitorViewModel : ObservableObject
     {
         Log.Information("📊 SystemMonitorViewModel 初始化");
         _systemMonitor = systemMonitor;
+
+        // 初始化 LiveCharts2 折线图：CPU 绿色、内存蓝色，均带半透明面积填充与最新点光晕
+        CpuSeries = new ISeries[]
+        {
+            new LineSeries<double>
+            {
+                Name = "CPU",
+                Values = _cpuValues,
+                Fill = new SolidColorPaint(new SKColor(0x4C, 0xAF, 0x50, 0x40)),
+                Stroke = new SolidColorPaint(new SKColor(0x4C, 0xAF, 0x50)) { StrokeThickness = 2 },
+                GeometrySize = 6,
+                GeometryFill = new SolidColorPaint(new SKColor(0x4C, 0xAF, 0x50)),
+                GeometryStroke = null
+            }
+        };
+        MemorySeries = new ISeries[]
+        {
+            new LineSeries<double>
+            {
+                Name = "内存",
+                Values = _memoryValues,
+                Fill = new SolidColorPaint(new SKColor(0x21, 0x96, 0xF3, 0x40)),
+                Stroke = new SolidColorPaint(new SKColor(0x21, 0x96, 0xF3)) { StrokeThickness = 2 },
+                GeometrySize = 6,
+                GeometryFill = new SolidColorPaint(new SKColor(0x21, 0x96, 0xF3)),
+                GeometryStroke = null
+            }
+        };
 
         _ = Task.Run(async () =>
         {
@@ -96,6 +134,12 @@ public partial class SystemMonitorViewModel : ObservableObject
     /// <summary>内存使用率数据点序列（供折线图控件绑定）</summary>
     public List<double> MemoryDataPoints => MetricsHistory.Select(m => m.MemoryUsagePercent).ToList();
 
+    /// <summary>CPU 趋势图 LiveCharts2 系列（绿色折线 + 半透明面积填充，绑定 _cpuValues FIFO 集合）。</summary>
+    public ISeries[] CpuSeries { get; }
+
+    /// <summary>内存趋势图 LiveCharts2 系列（蓝色折线 + 半透明面积填充，绑定 _memoryValues FIFO 集合）。</summary>
+    public ISeries[] MemorySeries { get; }
+
     /// <summary>内存信息摘要文本（已用 GB / 总 GB）</summary>
     public string MemoryInfoText => CurrentMetrics is not null
         ? $"{(CurrentMetrics.UsedMemoryBytes >> 30):F1} GB / {(CurrentMetrics.TotalMemoryBytes >> 30):F1} GB"
@@ -131,6 +175,8 @@ public partial class SystemMonitorViewModel : ObservableObject
 
         IsMonitoring = true;
         MetricsHistory = [];
+        _cpuValues.Clear();
+        _memoryValues.Clear();
     }
 
     /// <summary>
@@ -193,6 +239,14 @@ public partial class SystemMonitorViewModel : ObservableObject
         while (history.Count > MaxHistoryPoints)
             history.RemoveAt(0);
         MetricsHistory = history;
+
+        // 维护 LiveCharts2 ObservableCollection（FIFO，触发图表自动刷新）
+        _cpuValues.Add(metrics.CpuUsagePercent);
+        while (_cpuValues.Count > MaxHistoryPoints)
+            _cpuValues.RemoveAt(0);
+        _memoryValues.Add(metrics.MemoryUsagePercent);
+        while (_memoryValues.Count > MaxHistoryPoints)
+            _memoryValues.RemoveAt(0);
 
         OnPropertyChanged(nameof(CpuHistoryText));
         OnPropertyChanged(nameof(MemoryHistoryText));

@@ -4,7 +4,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
-             xmlns:controls="clr-namespace:McServerGuard.Views.Controls">
+             xmlns:controls="clr-namespace:McServerGuard.Views.Controls"
+             xmlns:lcw="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   Padding="8">
@@ -119,9 +120,9 @@
                                    FontSize="16" FontWeight="Bold"
                                    VerticalAlignment="Center" />
                     </StackPanel>
-                    <!-- 📈 折线图控件 —— 绿色曲线，丝滑如德芙 -->
-                    <controls:TrendChartControl DataPoints="{Binding CpuDataPoints}"
-                                                LineColor="{DynamicResource GaugeGreenBrush}" />
+                    <!-- 📈 LiveCharts2 折线图 —— 绿色曲线，丝滑如德芙 -->
+                    <lcw:CartesianChart Series="{Binding CpuSeries}"
+                                        Height="200" />
                 </StackPanel>
             </materialDesign:Card>
 
@@ -141,9 +142,9 @@
                                    FontSize="16" FontWeight="Bold"
                                    VerticalAlignment="Center" />
                     </StackPanel>
-                    <!-- 📈 折线图控件 —— 淡紫色曲线，优雅如夜空 -->
-                    <controls:TrendChartControl DataPoints="{Binding MemoryDataPoints}"
-                                                LineColor="{DynamicResource AccentTextBrush}" />
+                    <!-- 📈 LiveCharts2 折线图 —— 蓝色曲线，优雅如夜空 -->
+                    <lcw:CartesianChart Series="{Binding MemorySeries}"
+                                        Height="200" />
                 </StackPanel>
             </materialDesign:Card>
 

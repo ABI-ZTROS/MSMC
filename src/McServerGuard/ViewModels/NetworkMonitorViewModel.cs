@@ -1,19 +1,22 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
 using McServerGuard.Constants;
 using McServerGuard.Models;
 using McServerGuard.Services.Network;
-using McServerGuard.Views.Controls;
 using MaterialDesignThemes.Wpf;
 using Serilog;
+using SkiaSharp;
 
 namespace McServerGuard.ViewModels;
 
@@ -26,11 +29,26 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
     private int _portRefreshCounter;
     private double _peakSpeedBytesPerSec = 1048576.0;
 
+    // 24 小时上传/下载吞吐量底层集合（被 LiveCharts2 Series 直接绑定，索引赋值自动触发刷新）
+    private readonly ObservableCollection<double> _hourlyUploadValues = new(Enumerable.Repeat(0.0, 24));
+    private readonly ObservableCollection<double> _hourlyDownloadValues = new(Enumerable.Repeat(0.0, 24));
+
     public ObservableCollection<PortInfo> ListeningPorts { get; } = [];
     public ObservableCollection<PortBridgeRule> BridgeRules { get; } = [];
-    public ObservableCollection<PieSlice> PortDistributionSlices { get; } = [];
-    public ObservableCollection<double> HourlyUploadData { get; } = new(Enumerable.Repeat(0.0, 24));
-    public ObservableCollection<double> HourlyDownloadData { get; } = new(Enumerable.Repeat(0.0, 24));
+
+    /// <summary>端口分布饼图系列（LiveCharts2 PieSeries）。每次端口刷新时整体重建。</summary>
+    private ISeries[] _portDistributionSeries = Array.Empty<ISeries>();
+    public ISeries[] PortDistributionSeries
+    {
+        get => _portDistributionSeries;
+        set => SetProperty(ref _portDistributionSeries, value);
+    }
+
+    /// <summary>每日吞吐量柱状图系列（上传 + 下载双系列，绑定 24 小时 ObservableCollection）。</summary>
+    public ISeries[] HourlyThroughputSeries { get; }
+
+    /// <summary>每日吞吐量柱状图 X 轴（0–23 时标签）。</summary>
+    public ICartesianAxis[] HourlyThroughputXAxis { get; }
 
     private int _totalPorts;
     public int TotalPorts
@@ -233,6 +251,33 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         TotalPorts = _networkService.GetTotalPortCount();
         StatusMessage = "准备就绪";
 
+        // 初始化 LiveCharts2 柱状图：上传 + 下载双系列，分别绑定 24 小时 ObservableCollection
+        HourlyThroughputSeries = new ISeries[]
+        {
+            new ColumnSeries<double>
+            {
+                Name = "上传",
+                Values = _hourlyUploadValues,
+                Fill = new SolidColorPaint(new SKColor(0x55, 0x88, 0xFF))
+            },
+            new ColumnSeries<double>
+            {
+                Name = "下载",
+                Values = _hourlyDownloadValues,
+                Fill = new SolidColorPaint(new SKColor(0x55, 0xDD, 0x88))
+            }
+        };
+
+        // X 轴：0–23 时标签
+        HourlyThroughputXAxis = new ICartesianAxis[]
+        {
+            new Axis
+            {
+                Labels = Enumerable.Range(0, 24).Select(h => $"{h:00}").ToArray(),
+                TextSize = 10
+            }
+        };
+
         LoadHourlyData();
 
         // 统一使用 UI 线程定时器广播刷新：每秒触发，回调在 UI 线程执行，
@@ -296,7 +341,7 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
             RegisteredPorts = dist.Registered;
             DynamicPorts = dist.Dynamic;
 
-            UpdatePieSlices();
+            UpdatePortDistributionSeries();
 
             // 用户操作反馈 5 秒内不覆盖，之后恢复自动刷新消息
             if (ShouldAutoRefreshOverwrite())
@@ -313,16 +358,32 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         }
     }
 
-    private void UpdatePieSlices()
+    private void UpdatePortDistributionSeries()
     {
-        // 已在 UI 线程（DispatcherTimer 回调），直接更新集合
-        PortDistributionSlices.Clear();
+        // 端口分布每次刷新整体重建 PieSeries 数组
+        var series = new List<ISeries>();
         if (SystemPorts > 0)
-            PortDistributionSlices.Add(new PieSlice { Label = "系统端口", Value = SystemPorts, Color = Color.FromRgb(255, 85, 85) });
+            series.Add(new PieSeries<double>
+            {
+                Name = "系统",
+                Values = new double[] { SystemPorts },
+                Fill = new SolidColorPaint(new SKColor(0xFF, 0x55, 0x55))
+            });
         if (RegisteredPorts > 0)
-            PortDistributionSlices.Add(new PieSlice { Label = "注册端口", Value = RegisteredPorts, Color = Color.FromRgb(85, 136, 255) });
+            series.Add(new PieSeries<double>
+            {
+                Name = "注册",
+                Values = new double[] { RegisteredPorts },
+                Fill = new SolidColorPaint(new SKColor(0x55, 0x88, 0xFF))
+            });
         if (DynamicPorts > 0)
-            PortDistributionSlices.Add(new PieSlice { Label = "动态端口", Value = DynamicPorts, Color = Color.FromRgb(85, 221, 136) });
+            series.Add(new PieSeries<double>
+            {
+                Name = "动态",
+                Values = new double[] { DynamicPorts },
+                Fill = new SolidColorPaint(new SKColor(0x55, 0xDD, 0x88))
+            });
+        PortDistributionSeries = series.ToArray();
     }
 
     private async Task RefreshTraffic()
@@ -356,8 +417,8 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         var today = _trafficService.GetTodayTraffic();
         for (int i = 0; i < 24; i++)
         {
-            HourlyUploadData[i] = today.HourlyUpload[i];
-            HourlyDownloadData[i] = today.HourlyDownload[i];
+            _hourlyUploadValues[i] = today.HourlyUpload[i];
+            _hourlyDownloadValues[i] = today.HourlyDownload[i];
         }
     }
 
@@ -366,8 +427,8 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         var today = _trafficService.GetTodayTraffic();
         var hour = DateTime.Now.Hour;
         // 已在 UI 线程（DispatcherTimer 回调），直接更新集合
-        HourlyUploadData[hour] = today.HourlyUpload[hour];
-        HourlyDownloadData[hour] = today.HourlyDownload[hour];
+        _hourlyUploadValues[hour] = today.HourlyUpload[hour];
+        _hourlyDownloadValues[hour] = today.HourlyDownload[hour];
 
         TodayUploadText = FormatBytes(today.TotalUpload);
         TodayDownloadText = FormatBytes(today.TotalDownload);

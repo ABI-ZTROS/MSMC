@@ -4,7 +4,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
-             xmlns:controls="clr-namespace:McServerGuard.Views.Controls">
+             xmlns:controls="clr-namespace:McServerGuard.Views.Controls"
+             xmlns:lcw="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -267,11 +268,17 @@
                                    Style="{StaticResource MaterialDesignHeadline6TextBlock}"
                                    Margin="16,12,16,4" />
 
-                        <controls:PieChartControl Grid.Row="1"
-                                                  Slices="{Binding PortDistributionSlices}"
-                                                  CenterText="{Binding UsedPorts}"
-                                                  CenterSubText="占用端口"
-                                                  Margin="8" />
+                        <Grid Grid.Row="1" Margin="8">
+                            <lcw:PieChart Series="{Binding PortDistributionSeries}"
+                                          LegendPosition="Right"
+                                          TooltipPosition="Center" />
+                            <!-- 中心叠加：占用端口总数 -->
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
+                                <TextBlock Text="{Binding UsedPorts}" FontSize="28" FontWeight="Bold"
+                                           HorizontalAlignment="Center" Foreground="{DynamicResource NavItemSelectedBrush}" />
+                                <TextBlock Text="占用端口" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Grid>
 
                         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="16" HorizontalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
@@ -306,11 +313,11 @@
                                    Style="{StaticResource MaterialDesignHeadline6TextBlock}"
                                    Margin="16,12,16,4" />
 
-                        <controls:BarChartControl Grid.Row="1"
-                                                  UploadData="{Binding HourlyUploadData}"
-                                                  DownloadData="{Binding HourlyDownloadData}"
-                                                  HighlightIndex="{Binding CurrentHour}"
-                                                  Margin="8" />
+                        <lcw:CartesianChart Grid.Row="1"
+                                            Series="{Binding HourlyThroughputSeries}"
+                                            XAxes="{Binding HourlyThroughputXAxis}"
+                                            TooltipPosition="Top"
+                                            Margin="8" />
 
                         <TextBlock Grid.Row="2" Text="{Binding DailyAnalysisText}"
                                    FontSize="11" Opacity="0.7"

@@ -72,6 +72,7 @@
     <PackageReference Include="MaterialDesignThemes" Version="5.*" />
     <PackageReference Include="MahApps.Metro.IconPacks.FontAwesome6" Version="6.*" />
     <PackageReference Include="MahApps.Metro.IconPacks.Material" Version="6.*" />
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.*" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.*" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.*" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.*" />
