@@ -174,6 +174,9 @@ public partial class App : Application
         Log.Information("🎨 加载主题设置...");
         _serviceProvider.GetRequiredService<IThemeService>().LoadSettings();
 
+        // 注入主题服务到动画设置
+        AnimationSettings.ThemeService = Services.GetRequiredService<IThemeService>();
+
         // 加载用户协议状态
         Log.Information("📜 加载用户协议状态...");
         var userAgreementService = _serviceProvider.GetRequiredService<IUserAgreementService>();

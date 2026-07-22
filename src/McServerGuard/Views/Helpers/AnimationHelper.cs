@@ -12,6 +12,7 @@ namespace McServerGuard.Views.Helpers;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using McServerGuard.Services;
 
 /// <summary>
 /// 动画工具类。
@@ -32,7 +33,7 @@ public static class AnimationHelper
     /// <param name="slideDistance">滑动距离（像素），默认 20</param>
     public static void FadeAndSlideIn(UIElement element, int durationMs, double slideDistance = 20)
     {
-        if (durationMs <= 0)
+        if (!AnimationSettings.AnimationsEnabled || durationMs <= 0)
         {
             element.Opacity = 1;
             if (element.RenderTransform is TranslateTransform t) t.Y = 0;
@@ -44,17 +45,16 @@ public static class AnimationHelper
         element.RenderTransform = translate;
 
         var duration = TimeSpan.FromMilliseconds(durationMs);
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
         // 使用 HoldEnd（默认 FillBehavior）而非 Stop：动画结束后保持终值，
         // 即使 Completed 事件丢失，Opacity 仍为 1
         var opacityAnim = new DoubleAnimation(1, duration)
         {
-            EasingFunction = ease
+            EasingFunction = AnimationSettings.Standard
         };
         var yAnim = new DoubleAnimation(0, duration)
         {
-            EasingFunction = ease
+            EasingFunction = AnimationSettings.Standard
         };
         yAnim.Completed += (_, _) =>
         {
@@ -79,7 +79,7 @@ public static class AnimationHelper
     /// <param name="slideDistance">滑动距离（像素），默认 20</param>
     public static void FadeAndSlideInFromLeft(UIElement element, int durationMs, double slideDistance = 20)
     {
-        if (durationMs <= 0)
+        if (!AnimationSettings.AnimationsEnabled || durationMs <= 0)
         {
             element.Opacity = 1;
             if (element.RenderTransform is TranslateTransform t) t.X = 0;
@@ -91,15 +91,14 @@ public static class AnimationHelper
         element.RenderTransform = translate;
 
         var duration = TimeSpan.FromMilliseconds(durationMs);
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
         var opacityAnim = new DoubleAnimation(1, duration)
         {
-            EasingFunction = ease
+            EasingFunction = AnimationSettings.Standard
         };
         var xAnim = new DoubleAnimation(0, duration)
         {
-            EasingFunction = ease
+            EasingFunction = AnimationSettings.Standard
         };
         xAnim.Completed += (_, _) =>
         {
@@ -123,7 +122,7 @@ public static class AnimationHelper
     /// <param name="durationMs">动画时长（毫秒）</param>
     public static void FadeIn(UIElement element, int durationMs)
     {
-        if (durationMs <= 0)
+        if (!AnimationSettings.AnimationsEnabled || durationMs <= 0)
         {
             element.Opacity = 1;
             return;
@@ -132,7 +131,7 @@ public static class AnimationHelper
         element.Opacity = 0;
         var anim = new DoubleAnimation(1, TimeSpan.FromMilliseconds(durationMs))
         {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            EasingFunction = AnimationSettings.Standard
         };
         anim.Completed += (_, _) =>
         {
@@ -151,7 +150,7 @@ public static class AnimationHelper
     /// <param name="slideDistance">滑动距离（像素），默认 16</param>
     public static void FadeAndSlideInWithDelay(UIElement element, int durationMs, int delayMs, double slideDistance = 16)
     {
-        if (durationMs <= 0 && delayMs <= 0)
+        if (!AnimationSettings.AnimationsEnabled || (durationMs <= 0 && delayMs <= 0))
         {
             element.Opacity = 1;
             if (element.RenderTransform is TranslateTransform t) t.Y = 0;
@@ -164,17 +163,16 @@ public static class AnimationHelper
 
         var duration = TimeSpan.FromMilliseconds(durationMs);
         var beginTime = TimeSpan.FromMilliseconds(delayMs);
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
         var opacityAnim = new DoubleAnimation(1, duration)
         {
             BeginTime = beginTime,
-            EasingFunction = ease
+            EasingFunction = AnimationSettings.Standard
         };
         var yAnim = new DoubleAnimation(0, duration)
         {
             BeginTime = beginTime,
-            EasingFunction = ease
+            EasingFunction = AnimationSettings.Standard
         };
         yAnim.Completed += (_, _) =>
         {
@@ -200,7 +198,7 @@ public static class AnimationHelper
     /// <param name="durationMs">总时长（毫秒）</param>
     public static void CrossFade(UIElement? oldElement, UIElement? newElement, int durationMs)
     {
-        if (durationMs <= 0)
+        if (!AnimationSettings.AnimationsEnabled || durationMs <= 0)
         {
             if (oldElement != null) oldElement.Opacity = 0;
             if (newElement != null) newElement.Opacity = 1;
@@ -208,13 +206,12 @@ public static class AnimationHelper
         }
 
         var halfMs = durationMs / 2;
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
         if (oldElement != null)
         {
             var fadeOut = new DoubleAnimation(0, TimeSpan.FromMilliseconds(halfMs))
             {
-                EasingFunction = ease,
+                EasingFunction = AnimationSettings.Standard,
                 FillBehavior = FillBehavior.Stop
             };
             fadeOut.Completed += (_, _) => oldElement.Opacity = 0;
@@ -227,7 +224,7 @@ public static class AnimationHelper
             var fadeIn = new DoubleAnimation(1, TimeSpan.FromMilliseconds(halfMs))
             {
                 BeginTime = TimeSpan.FromMilliseconds(halfMs),
-                EasingFunction = ease,
+                EasingFunction = AnimationSettings.Standard,
                 FillBehavior = FillBehavior.Stop
             };
             fadeIn.Completed += (_, _) => newElement.Opacity = 1;
