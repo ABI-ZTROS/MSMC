@@ -268,21 +268,6 @@
                                 Background="{DynamicResource NavItemSelectedIndicatorBrush}"
                                 Opacity="0"
                                 VerticalAlignment="Stretch" />
-                        <Border x:Name="SelectionGlowOuter"
-                                HorizontalAlignment="Left"
-                                Width="10"
-                                CornerRadius="5"
-                                Margin="-5,0,0,0"
-                                Background="{DynamicResource NavItemSelectedIndicatorBrush}"
-                                Opacity="0"
-                                VerticalAlignment="Stretch">
-                            <Border.OpacityMask>
-                                <RadialGradientBrush Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
-                                    <GradientStop Color="#40000000" Offset="0" />
-                                    <GradientStop Color="#00000000" Offset="1" />
-                                </RadialGradientBrush>
-                            </Border.OpacityMask>
-                        </Border>
                         <Border Padding="{TemplateBinding Padding}"
                                 x:Name="ContentBorder"
                                 RenderTransformOrigin="0.5,0.5">
@@ -346,14 +331,6 @@
                                                 <CubicEase EasingMode="EaseOut" />
                                             </DoubleAnimation.EasingFunction>
                                         </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="SelectionGlowOuter"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         Duration="0:0:0.4"
-                                                         To="0.4">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
                                     </Storyboard>
                                 </VisualState>
                                 <VisualState x:Name="SelectedUnfocused">
@@ -370,14 +347,6 @@
                                                          Storyboard.TargetProperty="Opacity"
                                                          Duration="0:0:0.3"
                                                          To="1">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="SelectionGlowOuter"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         Duration="0:0:0.4"
-                                                         To="0.4">
                                             <DoubleAnimation.EasingFunction>
                                                 <CubicEase EasingMode="EaseOut" />
                                             </DoubleAnimation.EasingFunction>

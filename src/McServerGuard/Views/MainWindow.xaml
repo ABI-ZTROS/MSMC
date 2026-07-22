@@ -139,8 +139,10 @@
                 BorderThickness="0,0,1,0"
                 MouseEnter="NavSidebar_MouseEnter"
                 MouseLeave="NavSidebar_MouseLeave"
-                RenderTransformOrigin="0,0"
-                CacheMode="BitmapCache">
+                RenderTransformOrigin="0,0">
+            <Border.CacheMode>
+                <BitmapCache RenderAtScale="1.0" SnapsToDevicePixels="True" />
+            </Border.CacheMode>
             <Border.RenderTransform>
                 <TranslateTransform X="-184" Y="0" />
             </Border.RenderTransform>
@@ -267,8 +269,7 @@
                         HorizontalContentAlignment="Stretch"
                         VerticalContentAlignment="Stretch"
                         Opacity="1"
-                        x:Name="MainContent"
-                        CacheMode="BitmapCache">
+                        x:Name="MainContent">
             <ContentControl.Resources>
                 <DataTemplate DataType="{x:Type vm:ServerDetectionViewModel}">
                     <local:ServerDetectionPage />
