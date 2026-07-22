@@ -12,6 +12,11 @@ public class NetworkService
 {
     private readonly PortToProcessMapper _portMapper;
 
+    // P1-001: 缓存 PID→进程名映射，避免逐个调用 Process.GetProcessById
+    private Dictionary<int, string>? _pidNameCache;
+    private DateTime _pidNameCacheTime;
+    private readonly TimeSpan _pidNameCacheInterval = TimeSpan.FromSeconds(10);
+
     public NetworkService(PortToProcessMapper portMapper)
     {
         _portMapper = portMapper;
@@ -22,6 +27,7 @@ public class NetworkService
         try
         {
             var portToPid = _portMapper.GetListeningPortToPidMap();
+            var pidNames = GetPidNameMap();
             var ports = new List<PortInfo>(portToPid.Count);
 
             foreach (var (port, pid) in portToPid)
@@ -36,15 +42,9 @@ public class NetworkService
                     LastUpdated = DateTime.Now
                 };
 
-                try
-                {
-                    using var process = Process.GetProcessById(pid);
-                    portInfo.ProcessName = process.ProcessName;
-                }
-                catch
-                {
-                    portInfo.ProcessName = null;
-                }
+                // 从缓存字典查进程名，O(1)
+                pidNames.TryGetValue(pid, out var name);
+                portInfo.ProcessName = name;
 
                 ports.Add(portInfo);
             }
@@ -57,6 +57,49 @@ public class NetworkService
             Log.Error(ex, "获取端口列表失败");
             return [];
         }
+    }
+
+    /// <summary>
+    /// 获取 PID→进程名映射（带缓存）。
+    /// 一次 Process.GetProcesses() 枚举全表构建字典，替代逐个 Process.GetProcessById。
+    /// 缓存 10 秒，降低进程表枚举频率。
+    /// </summary>
+    private Dictionary<int, string> GetPidNameMap()
+    {
+        if (_pidNameCache is not null
+            && DateTime.Now - _pidNameCacheTime < _pidNameCacheInterval)
+        {
+            return _pidNameCache;
+        }
+
+        var map = new Dictionary<int, string>();
+        try
+        {
+            var processes = Process.GetProcesses();
+            foreach (var p in processes)
+            {
+                try
+                {
+                    map[p.Id] = p.ProcessName;
+                }
+                catch
+                {
+                    // 进程可能已退出
+                }
+                finally
+                {
+                    p.Dispose();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "构建 PID→进程名映射失败");
+        }
+
+        _pidNameCache = map;
+        _pidNameCacheTime = DateTime.Now;
+        return map;
     }
 
     public PortInfo? GetPortInfo(int port)

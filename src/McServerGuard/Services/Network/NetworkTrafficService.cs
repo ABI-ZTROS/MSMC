@@ -32,6 +32,7 @@ public class NetworkTrafficService : IDisposable
 {
     private readonly string _dataFilePath;
     private readonly List<DailyTrafficRecord> _history = [];
+    private readonly object _lock = new();
 
     private long _lastBytesSent;
     private long _lastBytesReceived;
@@ -44,6 +45,11 @@ public class NetworkTrafficService : IDisposable
     private DateTime _lastSaveTime;
     private readonly TimeSpan _saveInterval = TimeSpan.FromSeconds(60);
 
+    // P1-002: 缓存活跃网卡列表，避免每秒全量枚举
+    private NetworkInterface[]? _cachedInterfaces;
+    private DateTime _interfaceCacheTime;
+    private readonly TimeSpan _interfaceCacheInterval = TimeSpan.FromSeconds(30);
+
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
@@ -52,9 +58,17 @@ public class NetworkTrafficService : IDisposable
     public double CurrentUploadSpeed => _currentUploadSpeed;
     public double CurrentDownloadSpeed => _currentDownloadSpeed;
 
-    public DailyTrafficRecord TodayTraffic =>
-        _history.FirstOrDefault(r => r.Date == DateTime.Today)
-        ?? new DailyTrafficRecord { Date = DateTime.Today };
+    public DailyTrafficRecord TodayTraffic
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _history.FirstOrDefault(r => r.Date == DateTime.Today)
+                    ?? new DailyTrafficRecord { Date = DateTime.Today };
+            }
+        }
+    }
 
     public NetworkTrafficService()
     {
@@ -78,7 +92,7 @@ public class NetworkTrafficService : IDisposable
 
     /// <summary>
     /// 采样一次：读取网卡字节 → 计算速度 → 累积到当前小时桶。
-    /// 应每秒调用一次。
+    /// 应每秒调用一次。线程安全（加锁保护 _history）。
     /// </summary>
     public void Sample()
     {
@@ -87,48 +101,51 @@ public class NetworkTrafficService : IDisposable
             var (bytesSent, bytesReceived) = GetTotalBytes();
             var now = DateTime.Now;
 
-            if (_firstSample)
+            lock (_lock)
             {
+                if (_firstSample)
+                {
+                    _lastBytesSent = bytesSent;
+                    _lastBytesReceived = bytesReceived;
+                    _lastSampleTime = now;
+                    _firstSample = false;
+                    return;
+                }
+
+                var elapsed = (now - _lastSampleTime).TotalSeconds;
+                if (elapsed < 0.1)
+                    return;
+
+                var sentDelta = bytesSent - _lastBytesSent;
+                var receivedDelta = bytesReceived - _lastBytesReceived;
+
+                // 网卡字节计数器可能溢出或重置，delta 为负时忽略
+                if (sentDelta < 0) sentDelta = 0;
+                if (receivedDelta < 0) receivedDelta = 0;
+
+                _currentUploadSpeed = sentDelta / elapsed;
+                _currentDownloadSpeed = receivedDelta / elapsed;
+
+                // 累积到当前小时桶
+                EnsureTodayRecord();
+                var today = _history.First(r => r.Date == DateTime.Today);
+                var hour = now.Hour;
+                if (hour is >= 0 and < 24)
+                {
+                    today.HourlyUpload[hour] += sentDelta;
+                    today.HourlyDownload[hour] += receivedDelta;
+                }
+
                 _lastBytesSent = bytesSent;
                 _lastBytesReceived = bytesReceived;
                 _lastSampleTime = now;
-                _firstSample = false;
-                return;
-            }
 
-            var elapsed = (now - _lastSampleTime).TotalSeconds;
-            if (elapsed < 0.1)
-                return;
-
-            var sentDelta = bytesSent - _lastBytesSent;
-            var receivedDelta = bytesReceived - _lastBytesReceived;
-
-            // 网卡字节计数器可能溢出或重置，delta 为负时忽略
-            if (sentDelta < 0) sentDelta = 0;
-            if (receivedDelta < 0) receivedDelta = 0;
-
-            _currentUploadSpeed = sentDelta / elapsed;
-            _currentDownloadSpeed = receivedDelta / elapsed;
-
-            // 累积到当前小时桶
-            EnsureTodayRecord();
-            var today = _history.First(r => r.Date == DateTime.Today);
-            var hour = now.Hour;
-            if (hour is >= 0 and < 24)
-            {
-                today.HourlyUpload[hour] += sentDelta;
-                today.HourlyDownload[hour] += receivedDelta;
-            }
-
-            _lastBytesSent = bytesSent;
-            _lastBytesReceived = bytesReceived;
-            _lastSampleTime = now;
-
-            // 定期保存
-            if (now - _lastSaveTime > _saveInterval)
-            {
-                Save();
-                _lastSaveTime = now;
+                // 定期保存
+                if (now - _lastSaveTime > _saveInterval)
+                {
+                    Save();
+                    _lastSaveTime = now;
+                }
             }
         }
         catch (Exception ex)
@@ -138,31 +155,39 @@ public class NetworkTrafficService : IDisposable
     }
 
     /// <summary>
-    /// 获取今日流量记录（含 24 小时数据）。
+    /// 获取今日流量记录（含 24 小时数据）。线程安全。
     /// </summary>
     public DailyTrafficRecord GetTodayTraffic()
     {
-        EnsureTodayRecord();
-        return _history.First(r => r.Date == DateTime.Today);
+        lock (_lock)
+        {
+            EnsureTodayRecord();
+            return _history.First(r => r.Date == DateTime.Today);
+        }
     }
 
     /// <summary>
-    /// 获取最近 N 天的流量记录。
+    /// 获取最近 N 天的流量记录。线程安全。
     /// </summary>
     public List<DailyTrafficRecord> GetRecentDays(int days)
     {
-        var cutoff = DateTime.Today.AddDays(-days + 1);
-        return _history.Where(r => r.Date >= cutoff).OrderBy(r => r.Date).ToList();
+        lock (_lock)
+        {
+            var cutoff = DateTime.Today.AddDays(-days + 1);
+            return _history.Where(r => r.Date >= cutoff).OrderBy(r => r.Date).ToList();
+        }
     }
 
-    private static (long sent, long received) GetTotalBytes()
+    /// <summary>
+    /// 获取活跃网卡的总收发字节数。
+    /// P1-002: 缓存网卡列表 30 秒，避免每秒全量枚举 GetAllNetworkInterfaces。
+    /// </summary>
+    private (long sent, long received) GetTotalBytes()
     {
         long totalSent = 0;
         long totalReceived = 0;
 
-        var interfaces = NetworkInterface.GetAllNetworkInterfaces()
-            .Where(ni => ni.OperationalStatus == OperationalStatus.Up
-                      && ni.NetworkInterfaceType != NetworkInterfaceType.Loopback);
+        var interfaces = GetActiveInterfaces();
 
         foreach (var ni in interfaces)
         {
@@ -179,6 +204,28 @@ public class NetworkTrafficService : IDisposable
         }
 
         return (totalSent, totalReceived);
+    }
+
+    /// <summary>
+    /// 获取活跃网卡列表（带缓存）。
+    /// </summary>
+    private NetworkInterface[] GetActiveInterfaces()
+    {
+        // 缓存有效则直接返回
+        if (_cachedInterfaces is not null
+            && DateTime.Now - _interfaceCacheTime < _interfaceCacheInterval)
+        {
+            return _cachedInterfaces;
+        }
+
+        // 重新枚举
+        _cachedInterfaces = NetworkInterface.GetAllNetworkInterfaces()
+            .Where(ni => ni.OperationalStatus == OperationalStatus.Up
+                      && ni.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            .ToArray();
+        _interfaceCacheTime = DateTime.Now;
+
+        return _cachedInterfaces;
     }
 
     private void Load()
@@ -207,7 +254,12 @@ public class NetworkTrafficService : IDisposable
     {
         try
         {
-            var json = JsonSerializer.Serialize(_history, JsonOpts);
+            List<DailyTrafficRecord> snapshot;
+            lock (_lock)
+            {
+                snapshot = _history.ToList();
+            }
+            var json = JsonSerializer.Serialize(snapshot, JsonOpts);
             File.WriteAllText(_dataFilePath, json);
         }
         catch (Exception ex)

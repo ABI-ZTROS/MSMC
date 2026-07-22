@@ -331,7 +331,7 @@ public class WorkingDirectoryResolver
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 fuck: 提取批处理脚本路径失败: {Message}", ex.Message);
+            Log.Error(ex, "提取批处理脚本路径失败: {Message}", ex.Message);
         }
 
         return null;

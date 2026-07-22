@@ -179,7 +179,7 @@ public class ServerDetector : IServerDetector
             catch (Exception ex)
             {
                 var errorMsg = $"检测进程 PID={processId} 时出错: {ex.Message}";
-                Log.Error(ex, "💥 fuck: 无法解析进程 PID={Pid}: {Message}", processId, ex.Message);
+                Log.Error(ex, "无法解析进程 PID={Pid}: {Message}", processId, ex.Message);
                 logMessages.Add(errorMsg);
             }
         }
@@ -195,7 +195,7 @@ public class ServerDetector : IServerDetector
         catch (Exception ex)
         {
             // 端口扫描失败不影响主流程已识别的服务器
-            Log.Error(ex, "💥 fuck: 端口扫描阶段失败: {Message}", ex.Message);
+            Log.Error(ex, "端口扫描阶段失败: {Message}", ex.Message);
         }
 
         stopwatch.Stop();

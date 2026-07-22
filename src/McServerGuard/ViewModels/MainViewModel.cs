@@ -135,7 +135,7 @@ public partial class MainViewModel : ObservableObject
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "💥 fuck: 自动检测失败: {Message}", ex.Message);
+                    Log.Error(ex, "自动检测失败: {Message}", ex.Message);
                 }
             });
         });
@@ -312,7 +312,7 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"❌ 检测过程出错：{ex.Message}";
-            Log.Error(ex, "💥 fuck: 服务器检测失败: {Message}", ex.Message);
+            Log.Error(ex, "服务器检测失败: {Message}", ex.Message);
         }
         finally
         {

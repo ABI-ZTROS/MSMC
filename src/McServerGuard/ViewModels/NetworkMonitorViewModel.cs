@@ -85,8 +85,20 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
     public string StatusMessage
     {
         get => _statusMessage;
-        set => SetProperty(ref _statusMessage, value);
+        set
+        {
+            SetProperty(ref _statusMessage, value);
+            // 用户操作设置的消息记录时间，5 秒内自动刷新不覆盖
+            if (!IsAutoRefreshMessage(value))
+                _lastUserActionTime = DateTime.Now;
+        }
     }
+
+    private DateTime _lastUserActionTime = DateTime.MinValue;
+    private static bool IsAutoRefreshMessage(string msg) =>
+        msg == "准备就绪" || msg.StartsWith("已检测") || msg == "刷新失败";
+    private bool ShouldAutoRefreshOverwrite() =>
+        DateTime.Now - _lastUserActionTime > TimeSpan.FromSeconds(5);
 
     // ── 网速仪表盘属性（MB/s，供 GaugeRingControl 绑定）──
 
@@ -286,9 +298,8 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
             UpdatePieSlices();
 
-            // 注意：自动刷新每秒触发，不应覆盖用户操作反馈（如"桥接成功"）。
-            // 仅在首次刷新或检测到端口数变化时更新状态栏。
-            if (StatusMessage == "准备就绪" || StatusMessage.StartsWith("已检测"))
+            // 用户操作反馈 5 秒内不覆盖，之后恢复自动刷新消息
+            if (ShouldAutoRefreshOverwrite())
                 StatusMessage = $"已检测 {UsedPorts} 个占用端口";
         }
         catch (Exception ex)

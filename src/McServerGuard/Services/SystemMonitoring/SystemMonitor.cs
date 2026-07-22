@@ -212,7 +212,7 @@ public class SystemMonitor : ISystemMonitor
         catch (Exception ex)
         {
             // 首次采集失败
-            Log.Error(ex, "💥 fuck: 首次采集失败: {Message}", ex.Message);
+            Log.Error(ex, "首次采集失败: {Message}", ex.Message);
         }
 
         // 周期采集
@@ -244,14 +244,18 @@ public class SystemMonitor : ISystemMonitor
                     if (t.IsCompletedSuccessfully)
                     {
                         try { callback(t.Result); }
+                        catch (TaskCanceledException)
+                        {
+                            // Dispatcher 已关闭，静默忽略
+                        }
                         catch (Exception ex)
                         {
-                            Log.Error(ex, "💥 fuck: 回调执行失败: {Message}", ex.Message);
+                            Log.Error(ex, "回调执行失败: {Message}", ex.Message);
                         }
                     }
                     else if (t.IsFaulted)
                     {
-                        Log.Error(t.Exception, "💥 fuck: 定时采集失败: {Message}",
+                        Log.Error(t.Exception, "定时采集失败: {Message}",
                             t.Exception?.GetBaseException().Message);
                     }
                 }, TaskScheduler.Default);
@@ -259,7 +263,7 @@ public class SystemMonitor : ISystemMonitor
             catch (Exception ex)
             {
                 // 周期采集失败
-                Log.Error(ex, "💥 fuck: 定时采集失败: {Message}", ex.Message);
+                Log.Error(ex, "定时采集失败: {Message}", ex.Message);
             }
         }, null, TimeSpan.Zero, interval);
     }

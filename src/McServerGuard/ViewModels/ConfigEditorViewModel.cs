@@ -896,7 +896,7 @@ public partial class ConfigEditorViewModel : ObservableObject
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"加载配置文件失败 [{fullPath}]：{ex.Message}");
-            Log.Error(ex, "💥 fuck: 配置加载失败: {Message}", ex.Message);
+            Log.Error(ex, "配置加载失败: {Message}", ex.Message);
             ConfigEntries.Clear();
         }
         finally
