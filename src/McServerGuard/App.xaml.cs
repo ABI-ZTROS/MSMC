@@ -14,6 +14,7 @@ using McServerGuard.Services.ConfigManagement;
 using McServerGuard.Services.Privilege;
 using McServerGuard.Services.ServerDetection;
 using McServerGuard.Services.SystemMonitoring;
+using McServerGuard.Services.Network;
 using McServerGuard.ViewModels;
 using McServerGuard.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -86,6 +87,8 @@ public partial class App : Application
         services.AddSingleton<PortScanner>();
         services.AddSingleton<PortToProcessMapper>();
         services.AddSingleton<ServerPortResolver>();
+        services.AddSingleton<NetworkService>();
+        services.AddSingleton<IPortBridgeService, PortBridgeService>();
         // JAR Manifest 核心识别器 —— 第三级兜底（解包 JAR 读取 MANIFEST.MF）
         services.AddSingleton<JarCoreIdentifier>();
 
