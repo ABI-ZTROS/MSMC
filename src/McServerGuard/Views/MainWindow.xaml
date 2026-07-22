@@ -16,6 +16,7 @@
         WindowStyle="None"
         ResizeMode="CanResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        UseLayoutRounding="True"
         FontFamily="{DynamicResource AppFontFamily}">
 
     <WindowChrome.WindowChrome>

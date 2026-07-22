@@ -4,8 +4,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:converters="clr-namespace:McServerGuard.Converters"
              TextOptions.TextFormattingMode="Display"
-             TextOptions.TextRenderingMode="ClearType"
-             UseLayoutRounding="True">
+             TextOptions.TextRenderingMode="ClearType">
     <Application.Resources>
         <ResourceDictionary>
             <!-- 🎨 MaterialDesign 暗色主题 —— 苍穹蓝 + 暖珊瑚，清新科技感 -->

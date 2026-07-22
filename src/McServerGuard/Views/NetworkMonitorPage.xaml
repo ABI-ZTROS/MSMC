@@ -20,22 +20,22 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="16" Spacing="12">
-            <materialDesign:Card Padding="16" Width="200">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="16">
+            <materialDesign:Card Padding="16" Width="200" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="总端口数" Style="{StaticResource MaterialDesignBody2TextBlock}" Opacity="0.6"/>
                     <TextBlock Text="{Binding TotalPorts}" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="{StaticResource PrimaryHueLightBrush}"/>
                 </StackPanel>
             </materialDesign:Card>
 
-            <materialDesign:Card Padding="16" Width="200">
+            <materialDesign:Card Padding="16" Width="200" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="已占用" Style="{StaticResource MaterialDesignBody2TextBlock}" Opacity="0.6"/>
                     <TextBlock Text="{Binding UsedPorts}" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="{StaticResource SecondaryHueLightBrush}"/>
                 </StackPanel>
             </materialDesign:Card>
 
-            <materialDesign:Card Padding="16" Width="200">
+            <materialDesign:Card Padding="16" Width="200" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="占用率" Style="{StaticResource MaterialDesignBody2TextBlock}" Opacity="0.6"/>
                     <TextBlock Text="{Binding UsedPercentage, StringFormat={}{0}%}" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="{StaticResource PrimaryHueMidBrush}"/>
