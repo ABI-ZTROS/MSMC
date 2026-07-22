@@ -61,6 +61,11 @@ public partial class MainWindow : Window
     // 窗口 Loaded 事件处理：初始化侧边栏折叠状态与文本透明度，播放入场动画
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        // 全局动画帧率控制：禁用动画时设为 1fps，视觉上等同于关闭
+        Timeline.DesiredFrameRateProperty.OverrideMetadata(
+            typeof(Timeline),
+            new FrameworkPropertyMetadata { DefaultValue = AnimationSettings.AnimationsEnabled ? 60 : 1 });
+
         _isSidebarExpanded = false;
         SetTextElementsOpacity(0);
         if (NavSidebar.RenderTransform is TranslateTransform tt)
