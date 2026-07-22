@@ -57,6 +57,12 @@ public sealed class PortScanner
 
             if (completed == timeoutTask)
             {
+                // 超时后 connectTask 仍在飞行中，方法末尾 using 会 Dispose client，
+                // 这会中止挂起的连接并让 connectTask 故障为 SocketException 995。
+                // 必须主动观察该异常，否则成为未观察异常被 finalizer 线程重抛。
+                _ = connectTask.ContinueWith(
+                    t => { var _ = t.Exception; },
+                    TaskContinuationOptions.OnlyOnFaulted);
                 Log.Debug("⏱️ 端口 {Port} 探测超时", port);
                 return false;
             }
