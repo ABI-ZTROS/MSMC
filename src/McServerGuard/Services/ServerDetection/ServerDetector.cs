@@ -362,7 +362,7 @@ public class ServerDetector : IServerDetector
     /// <returns>通过端口扫描新发现的实例列表</returns>
     /// <remarks>
     /// 典型场景：BungeeCord/Velocity 代理、非 Java 启动器启动的服务器、
-    /// 以及命令行无法被 WMI 捕获的实例。扫描 25565-25575 端口范围，
+    /// 以及命令行无法被 WMI 捕获的实例。扫描主区间(25565-25590) + AdditionalScanPorts 补充端口，
     /// 跳过已被现有服务器占用的端口与 PID。
     /// </remarks>
     private async Task<List<ServerInstance>> DiscoverByPortScanAsync(
@@ -372,8 +372,14 @@ public class ServerDetector : IServerDetector
         var discovered = new List<ServerInstance>();
         var existingPorts = existingServers.Select(s => s.ServerPort).ToHashSet();
 
-        var openPorts = await _portScanner.ScanRangeAsync(
-            ServerConstants.PortScanStart, ServerConstants.PortScanEnd);
+        // 合并主区间 + AdditionalScanPorts 补充端口，去重后统一扫描
+        var portsToScan = new HashSet<int>();
+        for (var p = ServerConstants.PortScanStart; p <= ServerConstants.PortScanEnd; p++)
+            portsToScan.Add(p);
+        foreach (var p in ServerConstants.AdditionalScanPorts)
+            portsToScan.Add(p);
+
+        var openPorts = await _portScanner.ScanPortsAsync(portsToScan);
 
         foreach (var port in openPorts)
         {

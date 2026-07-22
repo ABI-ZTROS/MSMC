@@ -90,7 +90,10 @@ public partial class App : Application
         services.AddSingleton<PortToProcessMapper>();
         services.AddSingleton<ServerPortResolver>();
         services.AddSingleton<NetworkService>();
-        services.AddSingleton<IPortBridgeService, PortBridgeService>();
+        // 桥接系统：默认 TcpForwarder 用户态转发 + netsh 兜底，由 CompositePortBridgeService 外观统一调度
+        services.AddSingleton<ITcpForwarder, TcpForwarderService>();
+        services.AddSingleton<NetshPortBridgeService>();
+        services.AddSingleton<IPortBridgeService, CompositePortBridgeService>();
         services.AddSingleton<NetworkTrafficService>();
         // JAR Manifest 核心识别器 —— 第三级兜底（解包 JAR 读取 MANIFEST.MF）
         services.AddSingleton<JarCoreIdentifier>();

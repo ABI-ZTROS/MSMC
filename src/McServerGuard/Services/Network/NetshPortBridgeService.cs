@@ -1,31 +1,50 @@
+// -----------------------------------------------------------------------------
+// 文件名: NetshPortBridgeService.cs
+// 命名空间: McServerGuard.Services.Network
+// 功能描述: netsh portproxy 内核态桥接实现 —— 桥接系统兜底引擎
+//           通过 Process.Start 调用 netsh interface portproxy / advfirewall
+// 依赖组件: Serilog, System.ServiceProcess.ServiceController, McServerGuard.Models
+// 设计模式: 适配器模式（封装 netsh 命令行为 IPortBridgeService）
+// -----------------------------------------------------------------------------
+namespace McServerGuard.Services.Network;
+
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.ServiceProcess;
 using McServerGuard.Models;
 using Serilog;
 
-namespace McServerGuard.Services.Network;
-
-public class PortBridgeService : IPortBridgeService
+/// <summary>
+/// netsh portproxy 内核态桥接实现。作为 <see cref="CompositePortBridgeService"/> 的兜底引擎。
+/// </summary>
+/// <remarks>
+/// <para>netsh portproxy 完全依赖 IP Helper 服务（iphlpsvc），服务停止时 add/show 都会失败。</para>
+/// <para>规则列表通过解析 netsh 文本输出获取，格式为分列输出（非 地址:端口 合列）。</para>
+/// <para>仅在 TcpForwarder 失败时降级使用此实现；用户态转发不可用时仍可走内核态。</para>
+/// </remarks>
+public sealed class NetshPortBridgeService : IPortBridgeService
 {
-    /// <summary>
-    /// 最近一次操作的错误描述（供 UI 显示真实失败原因，而非硬编码提示）。
-    /// </summary>
-    public string LastError { get; private set; } = string.Empty;
+    private readonly object _errorLock = new();
+    private string _lastError = string.Empty;
+
+    public string LastError
+    {
+        get { lock (_errorLock) return _lastError; }
+        private set { lock (_errorLock) _lastError = value; }
+    }
 
     public bool AddBridgeRule(PortBridgeRule rule)
     {
-        LastError = string.Empty;
+        lock (_errorLock) _lastError = string.Empty;
 
         try
         {
-            // netsh portproxy 完全依赖 IP Helper 服务（iphlpsvc），服务停止时 add 命令
-            // 会返回非零退出码——这正是"管理员身份运行仍桥接失败"的最常见原因。
+            // netsh portproxy 完全依赖 IP Helper 服务（iphlpsvc），服务停止时 add 命令会返回非零退出码。
             if (!EnsureIpHelperServiceRunning())
                 return false;
 
             // 幂等：规则已存在则直接成功，避免 netsh 报"对象已存在"。
-            // GetAllBridgeRules 解析失败时会返回空列表，此处安全放行到 netsh。
             if (BridgeRuleExists(rule.ListenAddress, rule.ListenPort))
             {
                 Log.Information("端口桥接规则已存在，跳过添加: {Listen}:{LPort}",
@@ -96,79 +115,51 @@ public class PortBridgeService : IPortBridgeService
     }
 
     /// <summary>
-    /// 确保 IP Helper 服务（iphlpsvc）处于运行状态。netsh portproxy 依赖此服务，
-    /// 服务停止时 add/show 都会失败。未运行则尝试启动（需管理员权限）。
+    /// 确保 IP Helper 服务（iphlpsvc）处于运行状态。netsh portproxy 依赖此服务。
+    /// 用 ServiceController 替代 sc.exe，避开 locale 与 START_PENDING 竞态。
     /// </summary>
     private bool EnsureIpHelperServiceRunning()
     {
         try
         {
-            const string serviceName = "iphlpsvc";
-            var state = QueryServiceState(serviceName);
+            using var sc = new ServiceController("iphlpsvc");
 
-            if (state.Contains("RUNNING", StringComparison.OrdinalIgnoreCase))
+            if (sc.Status == ServiceControllerStatus.Running)
                 return true;
 
-            Log.Warning("IP Helper 服务未运行 (状态: {State})，尝试启动", state.Trim());
+            Log.Warning("IP Helper 服务未运行 (状态: {Status})，尝试启动", sc.Status);
             LastError = "IP Helper 服务未运行，正在尝试启动…";
 
-            using var startProc = Process.Start(new ProcessStartInfo
-            {
-                FileName = "sc",
-                Arguments = $"start {serviceName}",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            });
+            sc.Start();
+            // 正确等待状态迁移：START_PENDING → RUNNING，避免立即查询的竞态
+            sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(10));
 
-            startProc?.WaitForExit(5000);
-
-            var stateAfter = QueryServiceState(serviceName);
-            if (stateAfter.Contains("RUNNING", StringComparison.OrdinalIgnoreCase))
+            sc.Refresh();
+            if (sc.Status == ServiceControllerStatus.Running)
             {
                 Log.Information("IP Helper 服务已启动");
                 return true;
             }
 
             LastError = "IP Helper 服务启动失败，端口桥接无法工作（请在 services.msc 手动启动该服务）";
-            Log.Error("{Error} (启动后状态: {State})", LastError, stateAfter.Trim());
+            Log.Error("{Error} (启动后状态: {Status})", LastError, sc.Status);
             return false;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "检查/启动 IP Helper 服务异常，放行至 netsh 自行报错");
+            // ServiceController 不可用时（如精简 Server Core），放行至 netsh 自行报错并暴露真实错误
+            LastError = $"检查 IP Helper 服务异常: {ex.Message}";
+            Log.Error(ex, "EnsureIpHelperServiceRunning 异常，放行至 netsh");
             return true;
         }
     }
 
-    private static string QueryServiceState(string serviceName)
+    public bool RemoveBridgeRule(string listenAddress, int listenPort, string protocol = "v4tov4")
     {
         try
         {
-            using var proc = Process.Start(new ProcessStartInfo
-            {
-                FileName = "sc",
-                Arguments = $"query {serviceName}",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                StandardOutputEncoding = System.Text.Encoding.UTF8
-            });
-            proc?.WaitForExit(3000);
-            return proc?.StandardOutput.ReadToEnd() ?? string.Empty;
-        }
-        catch
-        {
-            return string.Empty;
-        }
-    }
-
-    public bool RemoveBridgeRule(string listenAddress, int listenPort)
-    {
-        try
-        {
-            var args = $"interface portproxy delete v4tov4 " +
+            var proto = string.IsNullOrEmpty(protocol) ? "v4tov4" : protocol;
+            var args = $"interface portproxy delete {proto} " +
                        $"listenaddress={listenAddress} " +
                        $"listenport={listenPort}";
 
@@ -177,21 +168,43 @@ public class PortBridgeService : IPortBridgeService
                 FileName = "netsh",
                 Arguments = args,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                RedirectStandardError = true
             });
 
-            process?.WaitForExit(5000);
-            var success = process?.ExitCode == 0;
+            if (process == null)
+            {
+                LastError = "无法启动 netsh 进程";
+                return false;
+            }
 
-            if (success)
-                Log.Information("已删除端口桥接规则: {Address}:{Port}", listenAddress, listenPort);
-            else
-                Log.Warning("删除端口桥接规则失败: {Address}:{Port}", listenAddress, listenPort);
+            var exited = process.WaitForExit(5000);
+            if (!exited)
+            {
+                LastError = "netsh 删除命令超时";
+                process.Kill();
+                return false;
+            }
 
-            return success;
+            var exitCode = process.ExitCode;
+            var error = process.StandardError.ReadToEnd();
+
+            if (exitCode != 0)
+            {
+                LastError = string.IsNullOrWhiteSpace(error)
+                    ? $"netsh 删除退出码 {exitCode}"
+                    : error.Trim();
+                Log.Warning("删除端口桥接规则失败 ({Addr}:{Port} {Proto}): {Error}",
+                    listenAddress, listenPort, proto, LastError);
+                return false;
+            }
+
+            Log.Information("已删除端口桥接规则: {Address}:{Port} ({Proto})", listenAddress, listenPort, proto);
+            return true;
         }
         catch (Exception ex)
         {
+            LastError = ex.Message;
             Log.Error(ex, "删除端口桥接规则异常");
             return false;
         }
@@ -203,7 +216,6 @@ public class PortBridgeService : IPortBridgeService
 
         try
         {
-            // 强制 netsh 使用英文输出，避免中文 locale 下表头为"协议/侦听地址"导致解析失败
             using var process = Process.Start(new ProcessStartInfo
             {
                 FileName = "netsh",
@@ -235,40 +247,27 @@ public class PortBridgeService : IPortBridgeService
                 }
 
                 // 跳过分隔线（全是 - 或 = 的行）
-                if (line.Trim().All(c => c == '-' || c == '='))
+                var trimmedLine = line.Trim();
+                if (trimmedLine.All(c => c == '-' || c == '=' || char.IsWhiteSpace(c)))
                     continue;
 
-                var parts = line.Split(new[] { ' ', '\t' }, System.StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length >= 5)
+                // netsh portproxy show all 实际输出格式（分列，非 地址:端口 合列）：
+                //   Protocol  Address         Port    Address         Port
+                //   v4tov4    127.0.0.1       25565   127.0.0.1       25566
+                //   v6tov6    ::1             25565   ::1             25566
+                var parts = trimmedLine.Split(new[] { ' ', '\t' }, System.StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 5
+                    && int.TryParse(parts[2], out var listenPort)
+                    && int.TryParse(parts[4], out var connectPort))
                 {
-                    // 格式：v4tov4  127.0.0.1:25565  127.0.0.1:25566
-                    // parts[0]=协议, parts[1]=侦听地址:端口, parts[2]可能是"->"或"--", parts[3]/parts[4]=连接地址:端口
-                    // 兼容不同 netsh 版本的列布局
-                    var listenAddrPort = parts[1].Split(':');
-                    string? connectAddrPortStr = null;
-
-                    // 尝试从 parts[3] 或 parts[4] 找连接地址（跳过可能的 "->" 或 "--" 列）
-                    for (int i = 2; i < parts.Length && connectAddrPortStr == null; i++)
+                    rules.Add(new PortBridgeRule
                     {
-                        if (parts[i].Contains(':') && parts[i] != parts[1])
-                            connectAddrPortStr = parts[i];
-                    }
-
-                    if (listenAddrPort.Length == 2
-                        && connectAddrPortStr != null
-                        && int.TryParse(listenAddrPort[1], out var listenPort)
-                        && connectAddrPortStr.Split(':') is { Length: 2 } connectAddrPort
-                        && int.TryParse(connectAddrPort[1], out var connectPort))
-                    {
-                        rules.Add(new PortBridgeRule
-                        {
-                            Protocol = parts[0],
-                            ListenAddress = listenAddrPort[0],
-                            ListenPort = listenPort,
-                            ConnectAddress = connectAddrPort[0],
-                            ConnectPort = connectPort
-                        });
-                    }
+                        Protocol = parts[0],          // v4tov4 / v6tov6 / v4tov6 / v6tov4
+                        ListenAddress = parts[1],     // 127.0.0.1 或 ::1（IPv6 单列无冒号分割问题）
+                        ListenPort = listenPort,
+                        ConnectAddress = parts[3],
+                        ConnectPort = connectPort
+                    });
                 }
             }
         }
@@ -286,12 +285,13 @@ public class PortBridgeService : IPortBridgeService
         return rules.Any(r => r.ListenAddress == listenAddress && r.ListenPort == listenPort);
     }
 
-    public bool EnableFirewallRule(int listenPort)
+    public bool EnableFirewallRule(int listenPort, string protocol = "TCP")
     {
         try
         {
+            var proto = string.IsNullOrEmpty(protocol) ? "TCP" : protocol;
             var args = $"advfirewall firewall add rule name=\"MSMC Port Bridge {listenPort}\"" +
-                       $" dir=in action=allow protocol=TCP localport={listenPort}";
+                       $" dir=in action=allow protocol={proto} localport={listenPort}";
 
             using var process = Process.Start(new ProcessStartInfo
             {
@@ -304,14 +304,16 @@ public class PortBridgeService : IPortBridgeService
 
             if (process == null)
             {
-                Log.Error("无法启动 netsh 进程添加防火墙规则");
+                LastError = "无法启动 netsh 进程添加防火墙规则";
+                Log.Error("{Error}", LastError);
                 return false;
             }
 
             var exited = process.WaitForExit(10000);
             if (!exited)
             {
-                Log.Error("防火墙规则添加超时");
+                LastError = "防火墙规则添加超时";
+                Log.Error("{Error}", LastError);
                 process.Kill();
                 return false;
             }
@@ -321,16 +323,19 @@ public class PortBridgeService : IPortBridgeService
 
             if (exitCode != 0)
             {
-                Log.Error("防火墙规则添加失败 (ExitCode={ExitCode}): {Error}", exitCode, error);
+                LastError = string.IsNullOrWhiteSpace(error)
+                    ? $"防火墙规则添加退出码 {exitCode}"
+                    : error.Trim();
+                Log.Error("防火墙规则添加失败 (ExitCode={ExitCode}): {Error}", exitCode, LastError);
                 return false;
             }
 
-            Log.Information("已添加防火墙规则允许端口 {Port}", listenPort);
-
+            Log.Information("已添加防火墙规则允许端口 {Port} ({Proto})", listenPort, proto);
             return true;
         }
         catch (Exception ex)
         {
+            LastError = ex.Message;
             Log.Error(ex, "添加防火墙规则失败");
             return false;
         }
@@ -347,14 +352,30 @@ public class PortBridgeService : IPortBridgeService
                 FileName = "netsh",
                 Arguments = args,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                RedirectStandardError = true
             });
 
-            process?.WaitForExit(5000);
-            return process?.ExitCode == 0;
+            if (process == null)
+            {
+                LastError = "无法启动 netsh 进程删除防火墙规则";
+                return false;
+            }
+
+            process.WaitForExit(5000);
+            var success = process.ExitCode == 0;
+
+            if (!success)
+            {
+                LastError = $"防火墙规则删除退出码 {process.ExitCode}";
+                Log.Warning("删除防火墙规则失败: {Port}", listenPort);
+            }
+
+            return success;
         }
         catch (Exception ex)
         {
+            LastError = ex.Message;
             Log.Error(ex, "删除防火墙规则失败");
             return false;
         }

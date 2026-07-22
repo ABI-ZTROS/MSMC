@@ -334,9 +334,16 @@ public static class ServerConstants
     public const int PortScanStart = 25565;
 
     /// <summary>
-    /// 端口扫描结束端口（含）。扫描 25565-25575 共 11 个端口。
+    /// 端口扫描结束端口（含）。主区间扫描 25565-25590 共 26 个端口，
+    /// 覆盖原版/Spigot/Paper 默认端口及 BungeeCord/Velocity 代理原生端口段。
     /// </summary>
-    public const int PortScanEnd = 25575;
+    public const int PortScanEnd = 25590;
+
+    /// <summary>
+    /// 主区间外的补充扫描端口（Geyser/Bedrock TCP 桥接、自定义高位常用端口）。
+    /// 由 ServerDetector 合并到主区间后统一扫描，避免改 PortScanner.ScanRangeAsync 签名。
+    /// </summary>
+    public static readonly int[] AdditionalScanPorts = { 19132, 26000, 30000, 40000 };
 
     /// <summary>
     /// 单端口 TCP connect 超时（毫秒）。必须远小于 3 秒轮询周期。

@@ -3,12 +3,14 @@
 // 命名空间: McServerGuard.Services.ServerDetection
 // 功能描述: TCP 端口连通性探测器 —— 网络套件核心组件
 //           通过 TcpClient + Task.WhenAny 实现带超时的本地端口探测，
-//           支持 SemaphoreSlim 控制的并发范围扫描
+//           支持 SemaphoreSlim 控制的并发范围/集合扫描
 // 依赖组件: System.Net.Sockets, Serilog, ServerConstants
 // 设计模式: 工具类模式, 异步并发模式
 // -----------------------------------------------------------------------------
 namespace McServerGuard.Services.ServerDetection;
 
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using McServerGuard.Constants;
@@ -38,6 +40,7 @@ public sealed class PortScanner
     /// <remarks>
     /// 采用 <c>TcpClient.ConnectAsync</c> + <c>Task.WhenAny(connectTask, Task.Delay(timeout))</c>
     /// 实现非阻塞超时控制。超时或连接拒绝都不抛异常，仅返回 <c>false</c>。
+    /// 超时分支会先检查 <see cref="Task.IsCompletedSuccessfully"/>，避免 connectTask 与超时任务同时完成时漏报开放端口。
     /// </remarks>
     public async Task<bool> ProbePortAsync(int port, int timeoutMs = ServerConstants.PortScanTimeoutMs)
     {
@@ -57,6 +60,12 @@ public sealed class PortScanner
 
             if (completed == timeoutTask)
             {
+                // race 修复：timeoutTask 先到，但 connectTask 可能也刚好完成（并发竞态），先检查避免漏报开放端口
+                if (connectTask.IsCompletedSuccessfully)
+                {
+                    Log.Debug("✅ 端口 {Port} 开放（与超时同时完成）", port);
+                    return true;
+                }
                 // 超时后 connectTask 仍在飞行中，方法末尾 using 会 Dispose client，
                 // 这会中止挂起的连接并让 connectTask 故障为 SocketException 995。
                 // 必须主动观察该异常，否则成为未观察异常被 finalizer 线程重抛。
@@ -92,20 +101,43 @@ public sealed class PortScanner
     /// <param name="endPort">结束端口（含）</param>
     /// <returns>开放的端口列表（升序）</returns>
     /// <remarks>
-    /// 采用 <see cref="SemaphoreSlim"/> 控制最大并发数（<see cref="ServerConstants.PortScanMaxConcurrency"/>），
-    /// <see cref="Task.WhenAll"/> 等待全部探测任务完成后聚合结果。
+    /// 内部生成区间端口列表后委托给 <see cref="ScanPortsAsync"/>，单一并发扫描数据路径。
     /// </remarks>
     public async Task<List<int>> ScanRangeAsync(int startPort, int endPort)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(startPort, endPort);
 
-        Log.Information("📡 PortScanner: 扫描端口范围 {Start}-{End}", startPort, endPort);
+        var ports = new List<int>(endPort - startPort + 1);
+        for (var port = startPort; port <= endPort; port++)
+            ports.Add(port);
+
+        return await ScanPortsAsync(ports);
+    }
+
+    /// <summary>
+    /// 并发扫描任意端口集合，返回所有开放端口（升序）。
+    /// </summary>
+    /// <param name="ports">待扫描的端口集合（允许任意顺序、含重复，内部去重）</param>
+    /// <returns>开放的端口列表（升序）</returns>
+    /// <remarks>
+    /// 采用 <see cref="SemaphoreSlim"/> 控制最大并发数（<see cref="ServerConstants.PortScanMaxConcurrency"/>），
+    /// <see cref="Task.WhenAll"/> 等待全部探测任务完成后聚合结果。
+    /// SemaphoreSlim 用 <c>using</c> 确保所有任务完成后释放资源。
+    /// </remarks>
+    public async Task<List<int>> ScanPortsAsync(IReadOnlyCollection<int> ports)
+    {
+        // 去重，避免重复探测同一端口
+        var uniquePorts = ports.Distinct().ToList();
+        if (uniquePorts.Count == 0)
+            return [];
+
+        Log.Information("📡 PortScanner: 扫描 {Count} 个端口", uniquePorts.Count);
 
         var openPorts = new List<int>();
-        var semaphore = new SemaphoreSlim(ServerConstants.PortScanMaxConcurrency);
-        var tasks = new List<Task>();
+        using var semaphore = new SemaphoreSlim(ServerConstants.PortScanMaxConcurrency);
+        var tasks = new List<Task>(uniquePorts.Count);
 
-        for (var port = startPort; port <= endPort; port++)
+        foreach (var port in uniquePorts)
         {
             await semaphore.WaitAsync();
             var currentPort = port;

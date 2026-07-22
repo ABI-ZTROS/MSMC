@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using McServerGuard.Models;
 using McServerGuard.Services.ServerDetection;
 using Serilog;
@@ -16,6 +17,10 @@ public class NetworkService
     private Dictionary<int, string>? _pidNameCache;
     private DateTime _pidNameCacheTime;
     private readonly TimeSpan _pidNameCacheInterval = TimeSpan.FromSeconds(10);
+    private readonly object _pidCacheLock = new();
+
+    /// <summary>系统+注册端口段上限（0-49151），动态端口段不计入"可占用"分母。</summary>
+    private const int RegisteredPortRangeMax = 49151;
 
     public NetworkService(PortToProcessMapper portMapper)
     {
@@ -26,16 +31,21 @@ public class NetworkService
     {
         try
         {
-            var portToPid = _portMapper.GetListeningPortToPidMap();
+            // 同时查询 TCP（IPv4+IPv6）与 UDP（IPv4+IPv6），覆盖 Bedrock(UDP 19132) 等场景
+            var portPidMap = _portMapper.GetAllListeningPortToPidMap();
             var pidNames = GetPidNameMap();
-            var ports = new List<PortInfo>(portToPid.Count);
+            var ports = new List<PortInfo>(portPidMap.Count);
 
-            foreach (var (port, pid) in portToPid)
+            foreach (var ((port, protocol), pids) in portPidMap)
             {
+                // 同端口多 PID 场景（SO_REUSEPORT），取第一个非空 PID 显示
+                var pid = pids.FirstOrDefault(p => p > 0);
+                if (pid == 0) continue;
+
                 var portInfo = new PortInfo
                 {
                     Port = port,
-                    Protocol = "TCP",
+                    Protocol = protocol,
                     ProcessId = pid,
                     IsOpen = true,
                     PortRange = GetPortRange(port),
@@ -49,7 +59,11 @@ public class NetworkService
                 ports.Add(portInfo);
             }
 
-            ports.Sort((a, b) => a.Port.CompareTo(b.Port));
+            ports.Sort((a, b) =>
+            {
+                var cmp = a.Port.CompareTo(b.Port);
+                return cmp != 0 ? cmp : string.Compare(a.Protocol, b.Protocol, StringComparison.Ordinal);
+            });
             return ports;
         }
         catch (Exception ex)
@@ -60,16 +74,19 @@ public class NetworkService
     }
 
     /// <summary>
-    /// 获取 PID→进程名映射（带缓存）。
+    /// 获取 PID→进程名映射（带缓存，线程安全）。
     /// 一次 Process.GetProcesses() 枚举全表构建字典，替代逐个 Process.GetProcessById。
     /// 缓存 10 秒，降低进程表枚举频率。
     /// </summary>
     private Dictionary<int, string> GetPidNameMap()
     {
-        if (_pidNameCache is not null
-            && DateTime.Now - _pidNameCacheTime < _pidNameCacheInterval)
+        lock (_pidCacheLock)
         {
-            return _pidNameCache;
+            if (_pidNameCache is not null
+                && DateTime.Now - _pidNameCacheTime < _pidNameCacheInterval)
+            {
+                return _pidNameCache;
+            }
         }
 
         var map = new Dictionary<int, string>();
@@ -97,8 +114,11 @@ public class NetworkService
             Log.Warning(ex, "构建 PID→进程名映射失败");
         }
 
-        _pidNameCache = map;
-        _pidNameCacheTime = DateTime.Now;
+        lock (_pidCacheLock)
+        {
+            _pidNameCache = map;
+            _pidNameCacheTime = DateTime.Now;
+        }
         return map;
     }
 
@@ -108,6 +128,10 @@ public class NetworkService
         return ports.FirstOrDefault(p => p.Port == port);
     }
 
+    /// <summary>
+    /// 结束占用指定端口的进程。先尝试 CloseMainWindow（优雅停止，触发 Java shutdown hook），
+    /// 3 秒未退出则强杀。
+    /// </summary>
     public bool KillProcessByPort(int port)
     {
         try
@@ -117,8 +141,33 @@ public class NetworkService
                 return false;
 
             using var process = Process.GetProcessById(portInfo.ProcessId.Value);
+
+            // 先优雅停止：CloseMainWindow 在 Windows 下相当于发送 WM_CLOSE，
+            // Java 服务器收到后能触发 shutdown hook 完成 save-all
+            try
+            {
+                if (process.CloseMainWindow())
+                {
+                    Log.Information("已请求优雅停止端口 {Port} 的进程 {Name} (PID={Pid})，等待 3 秒",
+                        port, portInfo.ProcessName, portInfo.ProcessId);
+                    if (process.WaitForExit(3000))
+                    {
+                        Log.Information("进程已优雅退出: {Name} (PID={Pid})",
+                            portInfo.ProcessName, portInfo.ProcessId);
+                        return true;
+                    }
+                    Log.Warning("优雅停止超时，强杀进程: {Name} (PID={Pid})",
+                        portInfo.ProcessName, portInfo.ProcessId);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "CloseMainWindow 失败，降级到强杀");
+            }
+
+            // 优雅停止失败或不可用，强杀兜底
             process.Kill();
-            Log.Information("已结束占用端口 {Port} 的进程 {Name} (PID={Pid})",
+            Log.Information("已强杀占用端口 {Port} 的进程 {Name} (PID={Pid})",
                 port, portInfo.ProcessName, portInfo.ProcessId);
             return true;
         }
@@ -136,7 +185,8 @@ public class NetworkService
         return PortRangeType.Dynamic;
     }
 
-    public int GetTotalPortCount() => 65535;
+    /// <summary>系统+注册端口段上限（动态端口段不计入"可占用"分母）。</summary>
+    public int GetTotalPortCount() => RegisteredPortRangeMax;
 
     public int GetUsedPortCount() => GetAllListeningPorts().Count;
 

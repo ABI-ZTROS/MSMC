@@ -1,5 +1,7 @@
 namespace McServerGuard.Services.Network;
 
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
@@ -25,9 +27,15 @@ public class DailyTrafficRecord
 
 /// <summary>
 /// 网络流量监控服务。
-/// 通过 System.Net.NetworkInformation 采样网卡收发字节数，
+/// 通过 System.Net.NetworkInformation 采样物理网卡收发字节数，
 /// 计算实时上传/下载速度，按小时累积每日流量，持久化到 JSON 文件。
 /// </summary>
+/// <remarks>
+/// <para>网卡过滤采用 NetworkInterfaceType 白名单 + 名称黑名单双重策略，
+/// 排除 Hyper-V/WSL/Docker/VMware 等虚拟网卡，避免流量虚高。</para>
+/// <para>用 Stopwatch 测量采样间隔，规避系统时钟回拨/夏令时跳变导致的负 delta 或假峰值。</para>
+/// <para>持久化采用 临时文件 + File.Replace 原子写，避免写入中崩溃损坏 30 天历史。</para>
+/// </remarks>
 public class NetworkTrafficService : IDisposable
 {
     private readonly string _dataFilePath;
@@ -36,8 +44,11 @@ public class NetworkTrafficService : IDisposable
 
     private long _lastBytesSent;
     private long _lastBytesReceived;
-    private DateTime _lastSampleTime;
+    private string _lastSignature = string.Empty;
     private bool _firstSample = true;
+
+    // Stopwatch 测量采样间隔，规避系统时钟回拨；readonly 不影响调用 Restart()
+    private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
 
     private double _currentUploadSpeed;
     private double _currentDownloadSpeed;
@@ -49,6 +60,21 @@ public class NetworkTrafficService : IDisposable
     private NetworkInterface[]? _cachedInterfaces;
     private DateTime _interfaceCacheTime;
     private readonly TimeSpan _interfaceCacheInterval = TimeSpan.FromSeconds(30);
+    private readonly object _interfaceCacheLock = new();
+
+    /// <summary>物理网卡类型白名单。仅这些类型的网卡计入流量统计。</summary>
+    private static readonly HashSet<NetworkInterfaceType> PhysicalInterfaceTypes = new()
+    {
+        NetworkInterfaceType.Ethernet,
+        NetworkInterfaceType.Wireless80211,
+        NetworkInterfaceType.GigabitEthernet,
+        NetworkInterfaceType.FastEthernetFx,
+        NetworkInterfaceType.FastEthernetT
+    };
+
+    /// <summary>虚拟网卡名称关键词黑名单。即便类型在白名单内（如 Hyper-V vEthernet 类型为 Ethernet），按名称二次排除。</summary>
+    private static readonly string[] VirtualInterfaceNameMarkers =
+        { "Hyper-V", "WSL", "Docker", "VMware", "VirtualBox", "vEthernet", "TAP", "Loopback Pseudo-Interface" };
 
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -91,28 +117,35 @@ public class NetworkTrafficService : IDisposable
     }
 
     /// <summary>
-    /// 采样一次：读取网卡字节 → 计算速度 → 累积到当前小时桶。
+    /// 采样一次：读取物理网卡字节 → 计算速度 → 累积到当前小时桶。
     /// 应每秒调用一次。线程安全（加锁保护 _history）。
     /// </summary>
+    /// <remarks>
+    /// 用 Stopwatch 测量两次采样的真实间隔，避免 DateTime.Now 受系统时钟回拨影响。
+    /// 网卡集合变化（切 Wi-Fi/插拔网卡）时重置基线并跳过本次 delta，避免基线不可比导致的假峰值或负 delta。
+    /// </remarks>
     public void Sample()
     {
         try
         {
-            var (bytesSent, bytesReceived) = GetTotalBytes();
+            var (bytesSent, bytesReceived, signature) = GetTotalBytes();
             var now = DateTime.Now;
 
             lock (_lock)
             {
-                if (_firstSample)
+                // 首次采样或网卡集合变化：重置基线，跳过本次 delta 计算
+                if (_firstSample || signature != _lastSignature)
                 {
                     _lastBytesSent = bytesSent;
                     _lastBytesReceived = bytesReceived;
-                    _lastSampleTime = now;
+                    _lastSignature = signature;
                     _firstSample = false;
+                    _stopwatch.Restart();
                     return;
                 }
 
-                var elapsed = (now - _lastSampleTime).TotalSeconds;
+                var elapsed = _stopwatch.Elapsed.TotalSeconds;
+                _stopwatch.Restart();
                 if (elapsed < 0.1)
                     return;
 
@@ -138,7 +171,6 @@ public class NetworkTrafficService : IDisposable
 
                 _lastBytesSent = bytesSent;
                 _lastBytesReceived = bytesReceived;
-                _lastSampleTime = now;
 
                 // 定期保存
                 if (now - _lastSaveTime > _saveInterval)
@@ -179,13 +211,15 @@ public class NetworkTrafficService : IDisposable
     }
 
     /// <summary>
-    /// 获取活跃网卡的总收发字节数。
+    /// 获取活跃物理网卡的总收发字节数及参与统计的网卡签名。
     /// P1-002: 缓存网卡列表 30 秒，避免每秒全量枚举 GetAllNetworkInterfaces。
     /// </summary>
-    private (long sent, long received) GetTotalBytes()
+    /// <returns>(发送字节, 接收字节, 网卡 Id 集合签名)。签名用于检测网卡集合变化触发基线重置。</returns>
+    private (long sent, long received, string signature) GetTotalBytes()
     {
         long totalSent = 0;
         long totalReceived = 0;
+        var ids = new List<string>();
 
         var interfaces = GetActiveInterfaces();
 
@@ -196,6 +230,7 @@ public class NetworkTrafficService : IDisposable
                 var stats = ni.GetIPv4Statistics();
                 totalSent += stats.BytesSent;
                 totalReceived += stats.BytesReceived;
+                ids.Add(ni.Id);
             }
             catch
             {
@@ -203,29 +238,57 @@ public class NetworkTrafficService : IDisposable
             }
         }
 
-        return (totalSent, totalReceived);
+        // 网卡 Id 排序后 Join 为签名，集合变化（增删网卡）时签名不同
+        ids.Sort(StringComparer.Ordinal);
+        var signature = string.Join("|", ids);
+
+        return (totalSent, totalReceived, signature);
     }
 
     /// <summary>
-    /// 获取活跃网卡列表（带缓存）。
+    /// 获取活跃物理网卡列表（带缓存，线程安全）。
     /// </summary>
+    /// <remarks>
+    /// 过滤策略：NetworkInterfaceType 白名单 + 名称关键词黑名单双重过滤，
+    /// 排除 Hyper-V/WSL/Docker/VMware 等虚拟网卡，避免流量虚高 5-10 倍。
+    /// </remarks>
     private NetworkInterface[] GetActiveInterfaces()
     {
-        // 缓存有效则直接返回
-        if (_cachedInterfaces is not null
-            && DateTime.Now - _interfaceCacheTime < _interfaceCacheInterval)
+        lock (_interfaceCacheLock)
         {
+            // 缓存有效则直接返回
+            if (_cachedInterfaces is not null
+                && DateTime.Now - _interfaceCacheTime < _interfaceCacheInterval)
+            {
+                return _cachedInterfaces;
+            }
+
+            // 重新枚举：仅保留 Up 状态的物理网卡
+            _cachedInterfaces = NetworkInterface.GetAllNetworkInterfaces()
+                .Where(ni => ni.OperationalStatus == OperationalStatus.Up
+                          && IsPhysicalInterface(ni))
+                .ToArray();
+            _interfaceCacheTime = DateTime.Now;
+
             return _cachedInterfaces;
         }
+    }
 
-        // 重新枚举
-        _cachedInterfaces = NetworkInterface.GetAllNetworkInterfaces()
-            .Where(ni => ni.OperationalStatus == OperationalStatus.Up
-                      && ni.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-            .ToArray();
-        _interfaceCacheTime = DateTime.Now;
+    /// <summary>
+    /// 判断网卡是否为物理网卡：类型在白名单内且名称不含虚拟网卡关键词。
+    /// </summary>
+    private static bool IsPhysicalInterface(NetworkInterface ni)
+    {
+        if (!PhysicalInterfaceTypes.Contains(ni.NetworkInterfaceType))
+            return false;
 
-        return _cachedInterfaces;
+        var name = ni.Name;
+        foreach (var marker in VirtualInterfaceNameMarkers)
+        {
+            if (name.Contains(marker, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+        return true;
     }
 
     private void Load()
@@ -250,6 +313,10 @@ public class NetworkTrafficService : IDisposable
         }
     }
 
+    /// <summary>
+    /// 原子写持久化：先写临时文件 traffic.json.tmp，再 File.Replace/File.Move 原子替换目标文件。
+    /// 避免写入中崩溃导致 30 天历史损坏。
+    /// </summary>
     public void Save()
     {
         try
@@ -260,7 +327,16 @@ public class NetworkTrafficService : IDisposable
                 snapshot = _history.ToList();
             }
             var json = JsonSerializer.Serialize(snapshot, JsonOpts);
-            File.WriteAllText(_dataFilePath, json);
+            var tmpPath = _dataFilePath + ".tmp";
+
+            // 先写临时文件
+            File.WriteAllText(tmpPath, json);
+
+            // 原子替换：目标存在用 File.Replace，不存在（首次写入）用 File.Move
+            if (File.Exists(_dataFilePath))
+                File.Replace(tmpPath, _dataFilePath, destinationBackupFileName: null);
+            else
+                File.Move(tmpPath, _dataFilePath);
         }
         catch (Exception ex)
         {

@@ -536,7 +536,7 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         if (rule == null)
             return;
 
-        var success = await Task.Run(() => _portBridgeService.RemoveBridgeRule(rule.ListenAddress, rule.ListenPort));
+        var success = await Task.Run(() => _portBridgeService.RemoveBridgeRule(rule.ListenAddress, rule.ListenPort, rule.Protocol));
 
         if (success)
             _portBridgeService.DisableFirewallRule(rule.ListenPort);
