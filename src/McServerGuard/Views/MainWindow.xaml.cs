@@ -370,6 +370,15 @@ public partial class MainWindow : Window
         if (_isClosing)
             return;
 
+        // 清理事件订阅和计时器，防止内存泄漏
+        if (_vm is not null)
+        {
+            _vm.PropertyChanged -= Vm_PropertyChanged;
+            _vm = null;
+        }
+        _collapseTimer.Stop();
+        _collapseTimer.Tick -= CollapseTimer_Tick;
+
         if (_serverManager.AnyServerRunning())
         {
             var result = MessageBox.Show(
