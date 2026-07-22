@@ -152,7 +152,7 @@
         <materialDesign:Card Grid.Column="0"
                              Margin="0,0,12,0"
                              Padding="0"
-                             UniformCornerRadius="{DynamicResource AppCornerRadius}">
+                             UniformCornerRadius="{DynamicResource AppCornerRadiusValue}">
             <DockPanel>
                 <!-- 🔝 标题栏 -->
                 <Border DockPanel.Dock="Top"

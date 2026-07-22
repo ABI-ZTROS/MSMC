@@ -513,11 +513,15 @@ public class ThemeService : IThemeService
         resources["AppCornerRadius"] = defaultRadius;
         resources["AppCornerRadiusSmall"] = smallRadius;
         resources["AppCornerRadiusLarge"] = largeRadius;
+        // double 版本，给 Card.UniformCornerRadius 等只接受单一数值的属性用
+        resources["AppCornerRadiusValue"] = (double)_cornerRadius;
+        resources["AppCornerRadiusSmallValue"] = (double)Math.Max(0, _cornerRadius - 4);
+        resources["AppCornerRadiusLargeValue"] = (double)(_cornerRadius + 4);
 
         // MaterialDesign 控件圆角统一
         resources["MaterialDesignButtonCornerRadius"] = defaultRadius;
         resources["MaterialDesignTextBoxCornerRadius"] = smallRadius;
-        resources["MaterialDesignCardCornerRadius"] = defaultRadius;
+        resources["MaterialDesignCardCornerRadius"] = (double)_cornerRadius;
     }
 
     /// <summary>
