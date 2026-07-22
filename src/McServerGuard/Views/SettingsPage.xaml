@@ -622,8 +622,7 @@
                                             Background="{DynamicResource CardBackgroundBrush}">
                                         <Image Source="pack://application:,,,/Resources/Images/avatars/ABI-ZTROS.png"
                                                Stretch="UniformToFill"
-                                               RenderOptions.BitmapScalingMode="HighQuality"
-                                               DecodePixelWidth="96" />
+                                               RenderOptions.BitmapScalingMode="HighQuality" />
                                     </Border>
                                     <StackPanel Margin="12,0,0,0"
                                                 VerticalAlignment="Center">
@@ -726,8 +725,7 @@
                                     <Image Source="pack://application:,,,/Resources/Images/avatars/Gglaoguan.png"
                                            Stretch="UniformToFill"
                                            Opacity="0.85"
-                                           RenderOptions.BitmapScalingMode="HighQuality"
-                                           DecodePixelWidth="96" />
+                                           RenderOptions.BitmapScalingMode="HighQuality" />
                                 </Border>
                                 <StackPanel Margin="12,0,0,0"
                                             VerticalAlignment="Center">
@@ -786,8 +784,7 @@
                                             HorizontalAlignment="Center">
                                         <Image Source="pack://application:,,,/Resources/Images/avatars/MochaCello92377.png"
                                                Stretch="UniformToFill"
-                                               RenderOptions.BitmapScalingMode="HighQuality"
-                                               DecodePixelWidth="80" />
+                                               RenderOptions.BitmapScalingMode="HighQuality" />
                                     </Border>
                                     <TextBlock Text="MochaCello92377"
                                                FontSize="12"
@@ -830,8 +827,7 @@
                                             HorizontalAlignment="Center">
                                         <Image Source="pack://application:,,,/Resources/Images/avatars/CatStack-pixe.png"
                                                Stretch="UniformToFill"
-                                               RenderOptions.BitmapScalingMode="HighQuality"
-                                               DecodePixelWidth="80" />
+                                               RenderOptions.BitmapScalingMode="HighQuality" />
                                     </Border>
                                     <TextBlock Text="CatStack-pixe"
                                                FontSize="12"
