@@ -296,13 +296,17 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
     private void UpdatePieSlices()
     {
-        PortDistributionSlices.Clear();
-        if (SystemPorts > 0)
-            PortDistributionSlices.Add(new PieSlice { Label = "系统端口", Value = SystemPorts, Color = Color.FromRgb(255, 85, 85) });
-        if (RegisteredPorts > 0)
-            PortDistributionSlices.Add(new PieSlice { Label = "注册端口", Value = RegisteredPorts, Color = Color.FromRgb(85, 136, 255) });
-        if (DynamicPorts > 0)
-            PortDistributionSlices.Add(new PieSlice { Label = "动态端口", Value = DynamicPorts, Color = Color.FromRgb(85, 221, 136) });
+        // PortDistributionSlices 绑定到 PieChartControl，CollectionChanged 必须在 UI 线程触发
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            PortDistributionSlices.Clear();
+            if (SystemPorts > 0)
+                PortDistributionSlices.Add(new PieSlice { Label = "系统端口", Value = SystemPorts, Color = Color.FromRgb(255, 85, 85) });
+            if (RegisteredPorts > 0)
+                PortDistributionSlices.Add(new PieSlice { Label = "注册端口", Value = RegisteredPorts, Color = Color.FromRgb(85, 136, 255) });
+            if (DynamicPorts > 0)
+                PortDistributionSlices.Add(new PieSlice { Label = "动态端口", Value = DynamicPorts, Color = Color.FromRgb(85, 221, 136) });
+        });
     }
 
     private void RefreshTraffic()
@@ -343,8 +347,15 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
     {
         var today = _trafficService.GetTodayTraffic();
         var hour = DateTime.Now.Hour;
-        HourlyUploadData[hour] = today.HourlyUpload[hour];
-        HourlyDownloadData[hour] = today.HourlyDownload[hour];
+        var upVal = today.HourlyUpload[hour];
+        var downVal = today.HourlyDownload[hour];
+
+        // HourlyUploadData/HourlyDownloadData 绑定到 BarChartControl，索引器触发的 CollectionChanged 必须在 UI 线程
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            HourlyUploadData[hour] = upVal;
+            HourlyDownloadData[hour] = downVal;
+        });
 
         TodayUploadText = FormatBytes(today.TotalUpload);
         TodayDownloadText = FormatBytes(today.TotalDownload);
