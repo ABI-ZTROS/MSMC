@@ -740,12 +740,15 @@
                                                                  Foreground="#8B7355"
                                                                  VerticalAlignment="Center"
                                                                  Margin="6,2,0,0"
-                                                                 ToolTip="已退役" />
+                                                                 ToolTip="永远缅怀" />
                                     </StackPanel>
-                                    <TextBlock Text="已退役 · 铭记贡献"
+                                    <TextBlock Text="人生自古谁无死？不幸的，此开发者由于不可控因素已经永远离开了我们。因此无法继续投入到开发工作当中。让我们永远缅怀他。"
                                                FontSize="11"
                                                Foreground="#8B7355"
-                                               FontStyle="Italic" />
+                                               FontStyle="Italic"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="280"
+                                               Margin="0,2,0,0" />
                                     <StackPanel Orientation="Horizontal"
                                                 Margin="0,4,0,0">
                                         <iconPacks:PackIconFontAwesome6 Kind="GithubBrands"
