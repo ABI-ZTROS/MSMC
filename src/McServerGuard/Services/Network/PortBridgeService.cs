@@ -89,13 +89,15 @@ public class PortBridgeService : IPortBridgeService
 
         try
         {
+            // 强制 netsh 使用英文输出，避免中文 locale 下表头为"协议/侦听地址"导致解析失败
             using var process = Process.Start(new ProcessStartInfo
             {
                 FileName = "netsh",
                 Arguments = "interface portproxy show all",
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true,
+                StandardOutputEncoding = System.Text.Encoding.UTF8
             });
 
             process?.WaitForExit(5000);
@@ -109,22 +111,40 @@ public class PortBridgeService : IPortBridgeService
 
             foreach (var line in lines)
             {
+                // 兼容中英文 locale：英文表头含 "Proto"/"Listen"，中文表头含"协议"/"侦听"
                 if (!inData)
                 {
-                    if (line.Contains("Proto") && line.Contains("Listen"))
+                    if ((line.Contains("Proto") && line.Contains("Listen"))
+                        || (line.Contains("协议") && (line.Contains("侦听") || line.Contains("监听"))))
                         inData = true;
                     continue;
                 }
 
-                var parts = line.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+                // 跳过分隔线（全是 - 或 = 的行）
+                if (line.Trim().All(c => c == '-' || c == '='))
+                    continue;
+
+                var parts = line.Split(new[] { ' ', '\t' }, System.StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length >= 5)
                 {
+                    // 格式：v4tov4  127.0.0.1:25565  127.0.0.1:25566
+                    // parts[0]=协议, parts[1]=侦听地址:端口, parts[2]可能是"->"或"--", parts[3]/parts[4]=连接地址:端口
+                    // 兼容不同 netsh 版本的列布局
                     var listenAddrPort = parts[1].Split(':');
-                    var connectAddrPort = parts[3].Split(':');
+                    string? connectAddrPortStr = null;
 
-                    if (listenAddrPort.Length == 2 && connectAddrPort.Length == 2 &&
-                        int.TryParse(listenAddrPort[1], out var listenPort) &&
-                        int.TryParse(connectAddrPort[1], out var connectPort))
+                    // 尝试从 parts[3] 或 parts[4] 找连接地址（跳过可能的 "->" 或 "--" 列）
+                    for (int i = 2; i < parts.Length && connectAddrPortStr == null; i++)
+                    {
+                        if (parts[i].Contains(':') && parts[i] != parts[1])
+                            connectAddrPortStr = parts[i];
+                    }
+
+                    if (listenAddrPort.Length == 2
+                        && connectAddrPortStr != null
+                        && int.TryParse(listenAddrPort[1], out var listenPort)
+                        && connectAddrPortStr.Split(':') is { Length: 2 } connectAddrPort
+                        && int.TryParse(connectAddrPort[1], out var connectPort))
                     {
                         rules.Add(new PortBridgeRule
                         {
