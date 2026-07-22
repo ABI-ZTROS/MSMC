@@ -39,16 +39,34 @@
                 </StackPanel>
             </materialDesign:Card>
 
-            <Button Command="{Binding RefreshCommand}"
-                    IsEnabled="{Binding IsRefreshing, Converter={StaticResource InvertBoolConverter}}"
-                    Style="{StaticResource MaterialDesignRaisedButton}"
-                    Margin="0,0,0,0"
-                    VerticalAlignment="Center">
+            <materialDesign:Card Padding="12,8" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal">
-                    <iconPacks:PackIconFontAwesome6 Kind="ArrowsRotateSolid" Width="16" Height="16" />
-                    <TextBlock Text="刷新" Margin="6,0,0,0" FontSize="12" />
+                    <iconPacks:PackIconFontAwesome6 Kind="ArrowsRotateSolid" Width="16" Height="16"
+                                                    Foreground="{DynamicResource NavItemSelectedBrush}">
+                        <iconPacks:PackIconFontAwesome6.Style>
+                            <Style TargetType="iconPacks:PackIconFontAwesome6">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                     From="0" To="360" Duration="0:0:1"
+                                                                     RepeatBehavior="Forever" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </iconPacks:PackIconFontAwesome6.Style>
+                        <iconPacks:PackIconFontAwesome6.RenderTransform>
+                            <RotateTransform Angle="0" CenterX="8" CenterY="8" />
+                        </iconPacks:PackIconFontAwesome6.RenderTransform>
+                    </iconPacks:PackIconFontAwesome6>
+                    <TextBlock Text="自动刷新中" Margin="8,0,0,0" FontSize="12" VerticalAlignment="Center" Opacity="0.7" />
                 </StackPanel>
-            </Button>
+            </materialDesign:Card>
         </StackPanel>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -217,7 +235,7 @@
             </TabControl>
 
             <!-- ═══════════════════════════════════════════════════════ -->
-            <!-- 📊 右侧：端口范围图例（已移除 Viewport3D）              -->
+            <!-- 📊 右侧：端口占用分布 3D 圆柱可视化                     -->
             <!-- ═══════════════════════════════════════════════════════ -->
             <materialDesign:Card Grid.Column="1">
                 <Grid>
@@ -231,28 +249,79 @@
                                Style="{StaticResource MaterialDesignHeadline6TextBlock}"
                                Margin="16,16,16,8" />
 
-                    <!-- 端口范围统计 -->
-                    <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="16">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                            <Rectangle Width="16" Height="16" Fill="#FF3333" Margin="0,0,8,0" />
-                            <TextBlock Text="系统端口 (0-1023)" FontSize="12" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding SystemPorts, StringFormat='  {0}'}" FontSize="12" VerticalAlignment="Center" Opacity="0.6" />
+                    <Viewport3D Grid.Row="1" x:Name="PortViewport" ClipToBounds="False" IsHitTestVisible="False">
+                        <Viewport3D.Camera>
+                            <PerspectiveCamera Position="0, 0, 6" LookDirection="0, 0, -1" FieldOfView="50" />
+                        </Viewport3D.Camera>
+
+                        <ModelVisual3D>
+                            <ModelVisual3D.Content>
+                                <DirectionalLight Color="#FFFFFF" Direction="-0.612372, -0.5, -0.612372" />
+                            </ModelVisual3D.Content>
+                        </ModelVisual3D>
+                        <ModelVisual3D>
+                            <ModelVisual3D.Content>
+                                <DirectionalLight Color="#888888" Direction="0.612372, -0.5, -0.612372" />
+                            </ModelVisual3D.Content>
+                        </ModelVisual3D>
+
+                        <ModelVisual3D>
+                            <ModelVisual3D.Content>
+                                <GeometryModel3D x:Name="SystemCylinderModel">
+                                    <GeometryModel3D.Geometry>
+                                        <MeshGeometry3D x:Name="SystemCylinderMesh" />
+                                    </GeometryModel3D.Geometry>
+                                    <GeometryModel3D.Material>
+                                        <DiffuseMaterial Brush="#FF5555" />
+                                    </GeometryModel3D.Material>
+                                </GeometryModel3D>
+                            </ModelVisual3D.Content>
+                        </ModelVisual3D>
+
+                        <ModelVisual3D>
+                            <ModelVisual3D.Content>
+                                <GeometryModel3D x:Name="RegisteredCylinderModel">
+                                    <GeometryModel3D.Geometry>
+                                        <MeshGeometry3D x:Name="RegisteredCylinderMesh" />
+                                    </GeometryModel3D.Geometry>
+                                    <GeometryModel3D.Material>
+                                        <DiffuseMaterial Brush="#5588FF" />
+                                    </GeometryModel3D.Material>
+                                </GeometryModel3D>
+                            </ModelVisual3D.Content>
+                        </ModelVisual3D>
+
+                        <ModelVisual3D>
+                            <ModelVisual3D.Content>
+                                <GeometryModel3D x:Name="DynamicCylinderModel">
+                                    <GeometryModel3D.Geometry>
+                                        <MeshGeometry3D x:Name="DynamicCylinderMesh" />
+                                    </GeometryModel3D.Geometry>
+                                    <GeometryModel3D.Material>
+                                        <DiffuseMaterial Brush="#55DD88" />
+                                    </GeometryModel3D.Material>
+                                </GeometryModel3D>
+                            </ModelVisual3D.Content>
+                        </ModelVisual3D>
+                    </Viewport3D>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="16" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                            <Rectangle Width="16" Height="16" Fill="#FF5555" Margin="0,0,6,0" />
+                            <TextBlock Text="系统" FontSize="11" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding SystemPorts, StringFormat='  {0}'}" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                            <Rectangle Width="16" Height="16" Fill="#3366FF" Margin="0,0,8,0" />
-                            <TextBlock Text="注册端口 (1024-49151)" FontSize="12" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding RegisteredPorts, StringFormat='  {0}'}" FontSize="12" VerticalAlignment="Center" Opacity="0.6" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                            <Rectangle Width="16" Height="16" Fill="#5588FF" Margin="0,0,6,0" />
+                            <TextBlock Text="注册" FontSize="11" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding RegisteredPorts, StringFormat='  {0}'}" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
-                            <Rectangle Width="16" Height="16" Fill="#33CC66" Margin="0,0,8,0" />
-                            <TextBlock Text="动态端口 (49152-65535)" FontSize="12" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding DynamicPorts, StringFormat='  {0}'}" FontSize="12" VerticalAlignment="Center" Opacity="0.6" />
+                            <Rectangle Width="16" Height="16" Fill="#55DD88" Margin="0,0,6,0" />
+                            <TextBlock Text="动态" FontSize="11" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding DynamicPorts, StringFormat='  {0}'}" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
                         </StackPanel>
                     </StackPanel>
-
-                    <TextBlock Grid.Row="2" Text="{Binding StatusMessage}"
-                               FontSize="11" Opacity="0.6"
-                               Margin="16,0,16,12" TextTrimming="CharacterEllipsis" />
                 </Grid>
             </materialDesign:Card>
         </Grid>
