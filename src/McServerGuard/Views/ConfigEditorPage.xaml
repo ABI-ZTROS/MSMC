@@ -19,7 +19,7 @@
         <!-- 🎨 配置项卡片样式 -->
         <Style x:Key="ConfigItemCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AppCornerRadiusSmall}" />
             <Setter Property="Padding" Value="12" />
             <Setter Property="Margin" Value="0,0,0,6" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -146,7 +146,7 @@
         <materialDesign:Card Grid.Column="0"
                              Margin="0,0,12,0"
                              Padding="0"
-                             UniformCornerRadius="12">
+                             UniformCornerRadius="{DynamicResource AppCornerRadius}">
             <DockPanel>
                 <!-- 🔝 标题栏 -->
                 <Border DockPanel.Dock="Top"
@@ -249,7 +249,7 @@
                                     <ControlTemplate TargetType="ListBoxItem">
                                         <Border x:Name="Bd"
                                                 Background="{TemplateBinding Background}"
-                                                CornerRadius="8"
+                                                CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                                 Padding="{TemplateBinding Padding}"
                                                 SnapsToDevicePixels="True">
                                             <Grid>
@@ -317,7 +317,7 @@
             <!-- ═══ 🔘 顶部操作按钮栏 ═══ -->
             <Border Grid.Row="0"
                     Background="{DynamicResource CardBackgroundBrush}"
-                    CornerRadius="12"
+                    CornerRadius="{DynamicResource AppCornerRadius}"
                     Padding="16,12"
                     Margin="0,0,0,12">
                 <Grid>
@@ -359,10 +359,10 @@
                                 Margin="0,0,12,0"
                                 Padding="16,10"
                                 FontSize="13"
-                                materialDesign:ButtonAssist.CornerRadius="8"
+
                                 ToolTip="撤销最近一次编辑">
                             <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                <Style TargetType="Button" BasedOn="{StaticResource OptimizedOutlinedButton}">
                                     <Style.Triggers>
                                         <Trigger Property="IsEnabled" Value="False">
                                             <Setter Property="Opacity" Value="0.4" />
@@ -386,9 +386,9 @@
                                 Margin="0,0,12,0"
                                 Padding="16,10"
                                 FontSize="13"
-                                materialDesign:ButtonAssist.CornerRadius="8">
+>
                             <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                <Style TargetType="Button" BasedOn="{StaticResource OptimizedOutlinedButton}">
                                     <Style.Triggers>
                                         <Trigger Property="IsEnabled" Value="False">
                                             <Setter Property="Opacity" Value="0.4" />
@@ -411,10 +411,10 @@
                         <Button Command="{Binding SaveConfigCommand}"
                                 Padding="20,10"
                                 FontSize="13"
-                                materialDesign:ButtonAssist.CornerRadius="8"
+
                                 ToolTip="Ctrl+S 也可以保存哦">
                             <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                                <Style TargetType="Button" BasedOn="{StaticResource OptimizedButtonBase}">
                                     <Style.Triggers>
                                         <Trigger Property="IsEnabled" Value="False">
                                             <Setter Property="Opacity" Value="0.4" />
@@ -506,7 +506,7 @@
                                             <TextBlock Text="{Binding Key}"
                                                        Style="{StaticResource CategoryTitleStyle}" />
                                             <Border Background="{DynamicResource PrimaryHueMidBrush}"
-                                                    CornerRadius="10"
+                                                    CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                                     Padding="6,2"
                                                     Margin="10,0,0,0"
                                                     VerticalAlignment="Center">
@@ -624,7 +624,7 @@
             <!-- ⏳ 加载中指示器 -->
             <Border Grid.Row="1"
                     Background="{DynamicResource LoadingOverlayBrush}"
-                    CornerRadius="12"
+                    CornerRadius="{DynamicResource AppCornerRadius}"
                     Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
                 <StackPanel HorizontalAlignment="Center"
                             VerticalAlignment="Center">
@@ -667,7 +667,7 @@
                 </StackPanel.Style>
 
                 <Border Background="{DynamicResource CardBackgroundBrush}"
-                        CornerRadius="16"
+                        CornerRadius="{DynamicResource AppCornerRadiusLarge}"
                         Padding="48,40">
                     <StackPanel>
                         <iconPacks:PackIconFontAwesome6 Kind="FileLinesSolid"
@@ -685,7 +685,7 @@
                                    Opacity="0.5"
                                    HorizontalAlignment="Center" />
                         <Border Background="{DynamicResource AccentSubtleBorderBrush}"
-                                CornerRadius="8"
+                                CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                 Padding="12,8"
                                 Margin="0,20,0,0"
                                 HorizontalAlignment="Center">

@@ -17,13 +17,13 @@
             <StackPanel x:Name="ControlButtonsPanel" Orientation="Horizontal"
                         Margin="0,0,0,12">
                 <Button Content="开始监控"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Style="{StaticResource OptimizedButtonBase}"
                         Command="{Binding StartMonitoringCommand}"
                         Padding="16,10"
                         FontSize="13"
                         Margin="0,0,8,0" />
                 <Button Content="停止监控"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Style="{StaticResource OptimizedOutlinedButton}"
                         Command="{Binding StopMonitoringCommand}"
                         Padding="16,10"
                         FontSize="13"

@@ -39,7 +39,7 @@
     <Style x:Key="AnimatedCardStyle" TargetType="materialDesign:Card">
         <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
         <Setter Property="Margin" Value="4" />
-        <Setter Property="UniformCornerRadius" Value="12" />
+        <Setter Property="UniformCornerRadius" Value="{DynamicResource AppCornerRadius}" />
         <Setter Property="BorderBrush" Value="{DynamicResource CardSubtleBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="RenderTransform">
@@ -74,9 +74,37 @@
         </Style.Triggers>
     </Style>
 
+    <!-- 🔘 优化按钮基样式：紧凑 Padding + 主题圆角 + 合适字号，解决文字显示不全 -->
+    <Style x:Key="OptimizedButtonBase" TargetType="Button"
+           BasedOn="{StaticResource MaterialDesignRaisedButton}">
+        <Setter Property="Padding" Value="16,6" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="UniformCornerRadius" Value="{DynamicResource AppCornerRadius}" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+    </Style>
+
+    <Style x:Key="OptimizedOutlinedButton" TargetType="Button"
+           BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+        <Setter Property="Padding" Value="16,6" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="UniformCornerRadius" Value="{DynamicResource AppCornerRadius}" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+    </Style>
+
+    <Style x:Key="OptimizedFlatButton" TargetType="Button"
+           BasedOn="{StaticResource MaterialDesignFlatButton}">
+        <Setter Property="Padding" Value="12,4" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="UniformCornerRadius" Value="{DynamicResource AppCornerRadius}" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+    </Style>
+
     <!-- 🔘 动画按钮样式：点击缩放反馈 -->
     <Style x:Key="AnimatedButtonStyle" TargetType="Button"
-           BasedOn="{StaticResource MaterialDesignRaisedButton}">
+           BasedOn="{StaticResource OptimizedButtonBase}">
         <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
         <Setter Property="RenderTransform">
             <Setter.Value>
@@ -120,6 +148,11 @@
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- 🌈 自定义笔刷 —— 苍穹蓝 + 水蓝色，清新科技感 -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- 📐 AppCornerRadius: 三级圆角体系（ThemeService 运行时覆盖，这里是默认值） -->
+    <CornerRadius x:Key="AppCornerRadius">12</CornerRadius>
+    <CornerRadius x:Key="AppCornerRadiusSmall">8</CornerRadius>
+    <CornerRadius x:Key="AppCornerRadiusLarge">16</CornerRadius>
 
     <!-- ✏️ AppFontFamily: 全局字体族（嵌入 Space Grotesk + 简体中文回退） -->
     <!-- 使用 baseUri,familyNames 字符串语法，等价于 new FontFamily(BaseUri, FamilyNames)。
@@ -249,22 +282,22 @@
                     <Grid>
                         <Border x:Name="Bd"
                                 Background="{TemplateBinding Background}"
-                                CornerRadius="10"
+                                CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                 SnapsToDevicePixels="True" />
                         <Border x:Name="HoverBg"
                                 Background="{DynamicResource NavItemHoverBrush}"
-                                CornerRadius="10"
+                                CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                 Opacity="0"
                                 SnapsToDevicePixels="True" />
                         <Border x:Name="SelectedBg"
-                                CornerRadius="10"
+                                CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                 Opacity="0"
                                 SnapsToDevicePixels="True"
-                                Background="#1F3B82F6" />
+                                Background="{DynamicResource PrimarySubtleBackgroundBrush}" />
                         <Border x:Name="SelectionIndicator"
                                 HorizontalAlignment="Left"
                                 Width="4"
-                                CornerRadius="2"
+                                CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                 Margin="-2,0,0,0"
                                 Background="{DynamicResource NavItemSelectedIndicatorBrush}"
                                 Opacity="0"
@@ -389,8 +422,8 @@
     <Style x:Key="EnhancedCardStyle" TargetType="materialDesign:Card">
         <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
         <Setter Property="Margin" Value="4" />
-        <!-- 📐 圆角 12px，比默认的更圆润 -->
-        <Setter Property="UniformCornerRadius" Value="12" />
+        <!-- 📐 圆角由主题系统统一控制 -->
+        <Setter Property="UniformCornerRadius" Value="{DynamicResource AppCornerRadius}" />
         <Setter Property="RenderTransform">
             <Setter.Value>
                 <TranslateTransform Y="0" />
@@ -437,7 +470,7 @@
     <!-- 🎯 CardBorderStyle: 设置卡片边框样式 -->
     <Style x:Key="CardBorderStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AppCornerRadius}" />
         <Setter Property="Padding" Value="16" />
         <Setter Property="Margin" Value="0,0,0,16" />
         <Setter Property="BorderBrush" Value="{DynamicResource CardSubtleBorderBrush}" />
@@ -469,8 +502,8 @@
 
     <!-- 🎯 ColorSwatchStyle: 颜色预设按钮样式 -->
     <Style x:Key="ColorSwatchStyle" TargetType="Button">
-        <Setter Property="Width" Value="28" />
-        <Setter Property="Height" Value="28" />
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
         <Setter Property="BorderThickness" Value="2" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Margin" Value="0,0,8,8" />
@@ -482,9 +515,9 @@
                     <Grid>
                         <Border x:Name="ShadowRingOuter"
                                 Background="Black"
-                                CornerRadius="15"
-                                Width="30"
-                                Height="30"
+                                CornerRadius="{DynamicResource AppCornerRadius}"
+                                Width="34"
+                                Height="34"
                                 Opacity="0"
                                 IsHitTestVisible="False">
                             <Border.OpacityMask>
@@ -498,7 +531,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="14"
+                                CornerRadius="{DynamicResource AppCornerRadius}"
                                 Width="{TemplateBinding Width}"
                                 Height="{TemplateBinding Height}"
                                 RenderTransformOrigin="0.5,0.5">
@@ -511,7 +544,7 @@
                                 Background="Transparent"
                                 BorderBrush="{DynamicResource SwatchHoverBorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="14"
+                                CornerRadius="{DynamicResource AppCornerRadius}"
                                 Width="{TemplateBinding Width}"
                                 Height="{TemplateBinding Height}"
                                 Opacity="0"
@@ -637,4 +670,5 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+
 </ResourceDictionary>

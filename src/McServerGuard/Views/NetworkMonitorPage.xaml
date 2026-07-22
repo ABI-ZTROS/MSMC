@@ -102,7 +102,7 @@
                             <Button DockPanel.Dock="Bottom"
                                     Command="{Binding KillProcessCommand}"
                                     IsEnabled="{Binding SelectedPort, Converter={StaticResource NullToBoolConverter}}"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Style="{StaticResource OptimizedButtonBase}"
                                     HorizontalAlignment="Right"
                                     Margin="8">
                                 <StackPanel Orientation="Horizontal">
@@ -202,7 +202,7 @@
                             </Grid>
 
                             <Button Command="{Binding AddBridgeCommand}"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Style="{StaticResource OptimizedButtonBase}"
                                     HorizontalAlignment="Right"
                                     Margin="0,0,0,16">
                                 <StackPanel Orientation="Horizontal">
@@ -232,7 +232,7 @@
                                             <DataTemplate>
                                                 <Button Command="{Binding DataContext.RemoveBridgeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}"
-                                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                                        Style="{StaticResource OptimizedFlatButton}"
                                                         Foreground="{DynamicResource DangerBrush}">
                                                     <iconPacks:PackIconFontAwesome6 Kind="TrashSolid" Width="16" Height="16" />
                                                 </Button>

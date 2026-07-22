@@ -33,7 +33,7 @@
             <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource SubtleBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AppCornerRadius}" />
             <Setter Property="Padding" Value="20" />
             <Setter Property="Margin" Value="0,0,0,16" />
         </Style>
@@ -52,7 +52,7 @@
                         <Grid>
                             <Border x:Name="shadowBorder"
                                     Background="Black"
-                                    CornerRadius="9"
+                                    CornerRadius="{DynamicResource AppCornerRadius}"
                                     Width="50"
                                     Height="50"
                                     Opacity="0"
@@ -68,7 +68,7 @@
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="8"
+                                    CornerRadius="{DynamicResource AppCornerRadius}"
                                     RenderTransformOrigin="0.5,0.5">
                                 <Border.CacheMode>
                                     <BitmapCache />
@@ -272,7 +272,7 @@
                             <TextBlock Text="快速方案" Style="{StaticResource SettingLabelStyle}" />
                             <WrapPanel Orientation="Horizontal">
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="SkyBlue"
-                                        Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
+                                        Style="{StaticResource OptimizedOutlinedButton}" Margin="0,0,8,8"
                                         Padding="20,12" MinHeight="44">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#3B82F6" Width="20" Height="20" CornerRadius="4" />
@@ -281,7 +281,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="BlueOrange"
-                                        Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
+                                        Style="{StaticResource OptimizedOutlinedButton}" Margin="0,0,8,8"
                                         Padding="20,12" MinHeight="44">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#1565C0" Width="20" Height="20" CornerRadius="4" />
@@ -290,7 +290,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="TealPink"
-                                        Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
+                                        Style="{StaticResource OptimizedOutlinedButton}" Margin="0,0,8,8"
                                         Padding="20,12" MinHeight="44">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#00897B" Width="20" Height="20" CornerRadius="4" />
@@ -299,7 +299,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="RedYellow"
-                                        Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
+                                        Style="{StaticResource OptimizedOutlinedButton}" Margin="0,0,8,8"
                                         Padding="20,12" MinHeight="44">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#C62828" Width="20" Height="20" CornerRadius="4" />
@@ -308,7 +308,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Command="{Binding SetPresetCommand}" CommandParameter="OceanBlue"
-                                        Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,8"
+                                        Style="{StaticResource OptimizedOutlinedButton}" Margin="0,0,8,8"
                                         Padding="20,12" MinHeight="44">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Background="#0097A7" Width="20" Height="20" CornerRadius="4" />
@@ -543,7 +543,7 @@
                         </StackPanel>
 
                         <Button Command="{Binding TestNotificationCommand}"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Style="{StaticResource OptimizedOutlinedButton}"
                                 Margin="0,12,0,0"
                                 Padding="20,12" MinHeight="44"
                                 HorizontalAlignment="Left">
@@ -566,7 +566,7 @@
                         <StackPanel Margin="0,4,0,16"
                                     HorizontalAlignment="Center">
                             <Border Width="64" Height="64"
-                                    CornerRadius="16"
+                                    CornerRadius="{DynamicResource AppCornerRadiusLarge}"
                                     Background="{DynamicResource PrimarySubtleBorderBrush}"
                                     HorizontalAlignment="Center">
                                 <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
@@ -612,13 +612,13 @@
                             <Border x:Name="AuthorCard_ABI_ZTROS"
                                     Grid.Column="0"
                                     Background="{DynamicResource SubtleBorderBrush}"
-                                    CornerRadius="10"
+                                    CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                     Padding="12"
                                     Cursor="Hand"
                                     MouseLeftButtonDown="AuthorCard_ABI_ZTROS_MouseLeftButtonDown">
                                 <StackPanel Orientation="Horizontal">
                                     <Border Width="48" Height="48"
-                                            CornerRadius="12"
+                                            CornerRadius="{DynamicResource AppCornerRadius}"
                                             Background="{DynamicResource CardBackgroundBrush}">
                                         <Image Source="pack://application:,,,/Resources/Images/avatars/ABI-ZTROS.png"
                                                Stretch="UniformToFill"
@@ -669,7 +669,7 @@
                             <!-- 烟蓝湘 - 情绪支持 -->
                             <Border Grid.Column="2"
                                     Background="{DynamicResource SubtleBorderBrush}"
-                                    CornerRadius="10"
+                                    CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                     Padding="12">
                                 <StackPanel Orientation="Horizontal">
                                     <Border Width="48" Height="48"
@@ -711,14 +711,14 @@
                                 Background="#1A1A1A"
                                 BorderBrush="#8B7355"
                                 BorderThickness="1"
-                                CornerRadius="10"
+                                CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                 Padding="12"
                                 Margin="0,0,0,8"
                                 Cursor="Hand"
                                 MouseLeftButtonDown="AuthorCard_Gglaoguan_MouseLeftButtonDown">
                             <StackPanel Orientation="Horizontal">
                                 <Border Width="48" Height="48"
-                                        CornerRadius="12"
+                                        CornerRadius="{DynamicResource AppCornerRadius}"
                                         Background="#0A0A0A"
                                         BorderBrush="#8B7355"
                                         BorderThickness="1">
@@ -777,13 +777,13 @@
                             <Border x:Name="AuthorCard_MochaCello92377"
                                     Grid.Column="0"
                                     Background="{DynamicResource SubtleBorderBrush}"
-                                    CornerRadius="10"
+                                    CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                     Padding="10"
                                     Cursor="Hand"
                                     MouseLeftButtonDown="AuthorCard_MochaCello92377_MouseLeftButtonDown">
                                 <StackPanel>
                                     <Border Width="40" Height="40"
-                                            CornerRadius="10"
+                                            CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                             Background="{DynamicResource CardBackgroundBrush}"
                                             HorizontalAlignment="Center">
                                         <Image Source="pack://application:,,,/Resources/Images/avatars/MochaCello92377.png"
@@ -820,13 +820,13 @@
                             <Border x:Name="AuthorCard_CatStack_pixe"
                                     Grid.Column="2"
                                     Background="{DynamicResource SubtleBorderBrush}"
-                                    CornerRadius="10"
+                                    CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                     Padding="10"
                                     Cursor="Hand"
                                     MouseLeftButtonDown="AuthorCard_CatStack_pixe_MouseLeftButtonDown">
                                 <StackPanel>
                                     <Border Width="40" Height="40"
-                                            CornerRadius="10"
+                                            CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                             Background="{DynamicResource CardBackgroundBrush}"
                                             HorizontalAlignment="Center">
                                         <Image Source="pack://application:,,,/Resources/Images/avatars/CatStack-pixe.png"
@@ -865,7 +865,7 @@
                 <!-- 📋 操作按钮 -->
                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                     <Button Command="{Binding ResetToDefaultCommand}"
-                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Style="{StaticResource OptimizedOutlinedButton}"
                             Padding="20,12" MinHeight="44" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
                             <iconPacks:PackIconFontAwesome6 Kind="RotateSolid" Width="16" Height="16" />
@@ -873,7 +873,7 @@
                         </StackPanel>
                     </Button>
                     <Button Command="{Binding ApplyAndSaveCommand}"
-                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Style="{StaticResource OptimizedButtonBase}"
                             Background="{DynamicResource AccentGradientBrush}"
                             Foreground="White"
                             Padding="20,12" MinHeight="44">

@@ -383,15 +383,12 @@ public class ThemeService : IThemeService
         var deepBgBrush = new SolidColorBrush(DarkenColor(_backgroundColor, 0.3));
         deepBgBrush.Freeze();
         resources["MaterialDesignPaper"] = bgBrush;
+        resources["MaterialDesignCardBackground"] = cardBgBrush;
+        resources["MaterialDesignCardBackgroundBrush"] = cardBgBrush;
+        resources["MaterialDesignToolBarBackground"] = cardBgBrush;
+        resources["MaterialDesignToolBarBackgroundBrush"] = cardBgBrush;
+        resources["MaterialDesignPaperBrush"] = bgBrush;
         resources["DeepBackgroundBrush"] = deepBgBrush;
-
-        // 文字色 —— 覆盖 MaterialDesign 正文 + 次要文字（alpha 180 派生）
-        var textBrush = new SolidColorBrush(_textColor);
-        textBrush.Freeze();
-        var textLightBrush = new SolidColorBrush(Color.FromArgb(180, _textColor.R, _textColor.G, _textColor.B));
-        textLightBrush.Freeze();
-        resources["MaterialDesignBody"] = textBrush;
-        resources["MaterialDesignBodyLight"] = textLightBrush;
 
         // 边框色 —— 柔和边框 + 卡片半透明边框
         var borderBrush = new SolidColorBrush(_borderColor);
@@ -414,6 +411,30 @@ public class ThemeService : IThemeService
         resources["PrimarySubtleBorderBrush"] = primarySubtleBrush;
         resources["NavItemSelectedIndicatorBrush"] = primaryIndicatorBrush;
         resources["NavItemSelectedHoverBrush"] = primaryHoverBrush;
+
+        // 文字色 —— 覆盖 MaterialDesign 全套文字色（正文/次要/三级/标题/副标题/说明）
+        var textBrush = new SolidColorBrush(_textColor);
+        textBrush.Freeze();
+        var textLightBrush = new SolidColorBrush(Color.FromArgb(180, _textColor.R, _textColor.G, _textColor.B));
+        textLightBrush.Freeze();
+        var textMediumBrush = new SolidColorBrush(Color.FromArgb(220, _textColor.R, _textColor.G, _textColor.B));
+        textMediumBrush.Freeze();
+        var textDimBrush = new SolidColorBrush(Color.FromArgb(120, _textColor.R, _textColor.G, _textColor.B));
+        textDimBrush.Freeze();
+        resources["MaterialDesignBody"] = textBrush;
+        resources["MaterialDesignBodyLight"] = textLightBrush;
+        resources["MaterialDesignColumnHeader"] = textMediumBrush;
+        resources["MaterialDesignSubtitleTextBlock"] = textBrush;
+        resources["MaterialDesignCaptionTextBlock"] = textLightBrush;
+        resources["MaterialDesignTextFieldBoxBackground"] = cardBgBrush;
+        resources["MaterialDesignTextBoxBorder"] = cardBorderBrush;
+        resources["MaterialDesignComboBoxItemHoverBackground"] = cardHoverBrush;
+        resources["MaterialDesignComboBoxItemSelectedBackground"] = navHoverBrush;
+        resources["MaterialDesignComboBoxItemSelectedHoverBackground"] = primaryHoverBrush;
+        resources["MaterialDesignComboBoxItemSelectedText"] = textBrush;
+        resources["MaterialDesignComboBoxItemText"] = textBrush;
+        resources["MaterialDesignFlatButtonClick"] = cardHoverBrush;
+        resources["MaterialDesignFlatButtonHover"] = cardHoverBrush;
 
         // 强调色族 —— 保持从 AccentColor 派生
         var accentBrush = new SolidColorBrush(_accentColor);
@@ -484,6 +505,19 @@ public class ThemeService : IThemeService
             var defaultFont = new FontFamily("Microsoft YaHei UI, Segoe UI");
             resources["AppFontFamily"] = defaultFont;
         }
+
+        // 圆角 —— 三级体系：Small / Default / Large，所有控件统一通过 DynamicResource 引用
+        var defaultRadius = new System.Windows.CornerRadius(_cornerRadius);
+        var smallRadius = new System.Windows.CornerRadius(Math.Max(0, _cornerRadius - 4));
+        var largeRadius = new System.Windows.CornerRadius(_cornerRadius + 4);
+        resources["AppCornerRadius"] = defaultRadius;
+        resources["AppCornerRadiusSmall"] = smallRadius;
+        resources["AppCornerRadiusLarge"] = largeRadius;
+
+        // MaterialDesign 控件圆角统一
+        resources["MaterialDesignButtonCornerRadius"] = defaultRadius;
+        resources["MaterialDesignTextBoxCornerRadius"] = smallRadius;
+        resources["MaterialDesignCardCornerRadius"] = defaultRadius;
     }
 
     /// <summary>

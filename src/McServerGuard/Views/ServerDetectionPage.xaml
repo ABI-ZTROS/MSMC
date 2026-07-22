@@ -20,7 +20,7 @@
             <!-- 🎯 紧凑型服务器列表项模板：图标 + 状态点 + 名称 + 操作按钮 -->
             <Style x:Key="CompactServerItemBorderStyle" TargetType="Border">
                 <Setter Property="Background" Value="Transparent" />
-                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="CornerRadius" Value="{DynamicResource AppCornerRadiusSmall}" />
                 <Setter Property="Padding" Value="8,6" />
                 <Setter Property="Margin" Value="0,0,0,2" />
                 <Setter Property="Cursor" Value="Hand" />
@@ -40,7 +40,7 @@
                 <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
             </Style>
 
-            <Style x:Key="PresetButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+            <Style x:Key="PresetButtonStyle" TargetType="Button" BasedOn="{StaticResource OptimizedButtonBase}">
                 <Setter Property="Margin" Value="0,0,8,0" />
                 <Setter Property="Padding" Value="12,6" />
                 <Setter Property="FontWeight" Value="Medium" />
@@ -82,7 +82,7 @@
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <Button Command="{Binding DetectCommand}"
                                 IsEnabled="{Binding IsIdle}"
-                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Style="{StaticResource OptimizedButtonBase}"
                                 Background="{DynamicResource PrimaryHueMidBrush}"
                                 Foreground="White"
                                 Padding="14,8"
@@ -95,7 +95,7 @@
                         </Button>
 
                         <Button Command="{Binding ToggleAutoDetectCommand}"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Style="{StaticResource OptimizedOutlinedButton}"
                                 Padding="10,8"
                                 Margin="0,0,8,0"
                                 ToolTip="{Binding AutoDetectStatusText}">
@@ -107,7 +107,7 @@
 
                         <Button Command="{Binding BrowseAndImportServerCommand}"
                                 IsEnabled="{Binding IsIdle}"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Style="{StaticResource OptimizedOutlinedButton}"
                                 Padding="14,8"
                                 ToolTip="选择 JAR 文件导入到已知服务器列表">
                             <StackPanel Orientation="Horizontal">
@@ -145,7 +145,7 @@
                     <!-- 🔒 忙碌提示 -->
                     <Border Grid.Column="2"
                             Background="{DynamicResource MaterialDesignCardBackgroundBrush}"
-                            CornerRadius="6"
+                            CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                             Padding="10,6"
                             VerticalAlignment="Center"
                             Visibility="{Binding CanShowOperation, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -285,7 +285,7 @@
                                                                         Margin="0,0,6,0" />
                                                 <TextBlock Text="运行中" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
                                             </StackPanel>
-                                            <Border Grid.Column="1" Background="{DynamicResource AccentGradientBrush}" CornerRadius="8" Padding="6,1">
+                                            <Border Grid.Column="1" Background="{DynamicResource AccentGradientBrush}" CornerRadius="{DynamicResource AppCornerRadiusSmall}" Padding="6,1">
                                                 <TextBlock Text="{Binding DetectionResult.Servers.Count, FallbackValue=0}"
                                                            FontSize="10" FontWeight="Bold" Foreground="White" />
                                             </Border>
@@ -384,7 +384,7 @@
                                                                         Foreground="{DynamicResource AccentTextBrush}" />
                                                 <TextBlock Text="已知服务器" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
                                             </StackPanel>
-                                            <Border Grid.Column="1" Background="{DynamicResource AccentGradientBrush}" CornerRadius="8" Padding="6,1">
+                                            <Border Grid.Column="1" Background="{DynamicResource AccentGradientBrush}" CornerRadius="{DynamicResource AppCornerRadiusSmall}" Padding="6,1">
                                                 <TextBlock Text="{Binding KnownServers.Count, FallbackValue=0}"
                                                            FontSize="10" FontWeight="Bold" Foreground="White" />
                                             </Border>
@@ -504,7 +504,7 @@
                                             <TextBlock Text="🚀 服务器控制" FontSize="15" FontWeight="Bold" Margin="0,0,0,12" />
                                             <StackPanel Orientation="Horizontal">
                                                 <Button Command="{Binding StartCurrentServerCommand}"
-                                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                                        Style="{StaticResource OptimizedButtonBase}"
                                                         Background="{DynamicResource PrimaryHueMidBrush}"
                                                         Foreground="White"
                                                         Padding="18,10"
@@ -516,7 +516,7 @@
                                                 </Button>
 
                                                 <Button Command="{Binding StopCurrentServerCommand}"
-                                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                                        Style="{StaticResource OptimizedButtonBase}"
                                                         Background="{DynamicResource DangerBrush}"
                                                         Foreground="White"
                                                         Padding="18,10"
@@ -528,7 +528,7 @@
                                                 </Button>
 
                                                 <Button Command="{Binding SaveAsKnownServerCommand}"
-                                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                        Style="{StaticResource OptimizedOutlinedButton}"
                                                         Padding="18,10">
                                                     <StackPanel Orientation="Horizontal">
                                                         <iconPacks:PackIconFontAwesome6 Kind="FloppyDiskSolid" Width="14" Height="14" />
@@ -581,7 +581,7 @@
                                     <materialDesign:Card Padding="16">
                                         <StackPanel>
                                             <TextBlock Text="📝 检测日志" FontSize="15" FontWeight="Bold" Margin="0,0,0,12" />
-                                            <Border Background="{DynamicResource TerminalBackgroundBrush}" CornerRadius="6" Padding="8">
+                                            <Border Background="{DynamicResource TerminalBackgroundBrush}" CornerRadius="{DynamicResource AppCornerRadiusSmall}" Padding="8">
                                                 <TextBox Text="{Binding DetectionLog, Mode=OneWay}"
                                                          IsReadOnly="True"
                                                          AcceptsReturn="True"
@@ -672,7 +672,7 @@
                                                     <DataTemplate>
                                                         <Button Command="{Binding DataContext.SelectCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                 CommandParameter="{Binding}"
-                                                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                                Style="{StaticResource OptimizedOutlinedButton}"
                                                                 Padding="12,6" Margin="0,0,6,6" FontSize="11">
                                                             <TextBlock Text="{Binding}" />
                                                         </Button>
@@ -692,7 +692,7 @@
                                                     <DataTemplate>
                                                         <Button Command="{Binding DataContext.AddArgumentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                 CommandParameter="{Binding Flag}"
-                                                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                                Style="{StaticResource OptimizedOutlinedButton}"
                                                                 Padding="12,6" Margin="0,0,6,6" FontSize="11"
                                                                 ToolTip="{Binding Description}">
                                                             <TextBlock Text="{Binding Flag}" />
@@ -706,7 +706,7 @@
                                             <DockPanel Margin="0,0,0,12">
                                                 <Button DockPanel.Dock="Right"
                                                         Command="{Binding AddCustomArgumentCommand}"
-                                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                                        Style="{StaticResource OptimizedButtonBase}"
                                                         Padding="12,6" Margin="8,0,0,0">
                                                     <TextBlock Text="添加" FontSize="11" />
                                                 </Button>
@@ -721,7 +721,7 @@
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
                                                         <Border Background="{DynamicResource MaterialDesignCardBackgroundBrush}"
-                                                                CornerRadius="6" Padding="8,6" Margin="0,0,0,4">
+                                                                CornerRadius="{DynamicResource AppCornerRadiusSmall}" Padding="8,6" Margin="0,0,0,4">
                                                             <Grid>
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="*" />
@@ -771,7 +771,7 @@
                                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
                                     <TextBlock Text="完整启动命令" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
                                     <Button Command="{Binding CopyStartupCommandCommand}"
-                                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                                            Style="{StaticResource OptimizedOutlinedButton}"
                                             Padding="12,6" Margin="12,0,0,0">
                                         <StackPanel Orientation="Horizontal">
                                             <iconPacks:PackIconFontAwesome6 Kind="CopySolid" Width="12" Height="12" />
@@ -782,7 +782,7 @@
 
                                 <Border Grid.Row="1"
                                         Background="{DynamicResource TerminalBackgroundBrush}"
-                                        CornerRadius="8" Padding="16">
+                                        CornerRadius="{DynamicResource AppCornerRadius}" Padding="16">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                                         <TextBlock Text="{Binding StartupCommandPreview}"
                                                    FontFamily="{DynamicResource AppMonospaceFontFamily}"
@@ -801,7 +801,7 @@
 
         <!-- 🔄 检测中遮罩 -->
         <Border Background="{DynamicResource LoadingOverlayBrush}"
-                CornerRadius="12"
+                CornerRadius="{DynamicResource AppCornerRadius}"
                 Visibility="{Binding CanShowOperation, Converter={StaticResource BoolToVisibilityConverter}}">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <controls:IndependentLoadingIcon IconSize="48"

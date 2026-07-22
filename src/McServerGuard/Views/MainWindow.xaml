@@ -186,7 +186,7 @@
                         Background="{DynamicResource PrimarySubtleBorderBrush}">
                     <StackPanel Orientation="Horizontal">
                         <Border Width="32" Height="32"
-                                CornerRadius="8"
+                                CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                 Background="{DynamicResource PrimarySubtleBorderBrush}">
                             <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
                                                     Width="20" Height="20"
@@ -262,7 +262,7 @@
                         x:Name="NavFooter"
                         Opacity="1">
                     <Border Background="{DynamicResource PrimarySubtleBorderBrush}"
-                            CornerRadius="6"
+                            CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                             Padding="8,6">
                         <StackPanel Orientation="Horizontal">
                             <iconPacks:PackIconFontAwesome6 Kind="CircleInfoSolid"
