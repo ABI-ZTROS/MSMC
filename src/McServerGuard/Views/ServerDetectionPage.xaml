@@ -355,32 +355,12 @@
 
                                                     <!-- 端口关闭 → 红色 -->
                                                     <DataTrigger Binding="{Binding IsPortOpen}" Value="False">
-                                                        <DataTrigger.EnterActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard Duration="0:0:0.3">
-                                                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="StatusDot"
-                                                                                                   Storyboard.TargetProperty="Fill">
-                                                                        <DiscreteObjectKeyFrame KeyTime="0:0:0"
-                                                                                                Value="{DynamicResource GaugeRedBrush}" />
-                                                                    </ObjectAnimationUsingKeyFrames>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </DataTrigger.EnterActions>
+                                                        <Setter TargetName="StatusDot" Property="Fill" Value="{DynamicResource GaugeRedBrush}" />
                                                     </DataTrigger>
 
                                                     <!-- 端口冲突 → 黄色 -->
                                                     <DataTrigger Binding="{Binding PortConflict}" Value="True">
-                                                        <DataTrigger.EnterActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard Duration="0:0:0.3">
-                                                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="StatusDot"
-                                                                                                   Storyboard.TargetProperty="Fill">
-                                                                        <DiscreteObjectKeyFrame KeyTime="0:0:0"
-                                                                                                Value="{DynamicResource GaugeYellowBrush}" />
-                                                                    </ObjectAnimationUsingKeyFrames>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </DataTrigger.EnterActions>
+                                                        <Setter TargetName="StatusDot" Property="Fill" Value="{DynamicResource GaugeYellowBrush}" />
                                                     </DataTrigger>
                                                 </DataTemplate.Triggers>
                                             </DataTemplate>
