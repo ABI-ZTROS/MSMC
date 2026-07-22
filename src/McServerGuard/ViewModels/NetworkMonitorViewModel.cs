@@ -6,10 +6,12 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.Input;
 using McServerGuard.Constants;
 using McServerGuard.Models;
 using McServerGuard.Services.Network;
+using McServerGuard.Views.Controls;
 using MaterialDesignThemes.Wpf;
 using Serilog;
 
@@ -19,10 +21,15 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 {
     private readonly NetworkService _networkService;
     private readonly IPortBridgeService _portBridgeService;
+    private readonly NetworkTrafficService _trafficService;
     private CancellationTokenSource? _refreshCts;
+    private double _peakSpeedBytesPerSec = 1048576.0;
 
     public ObservableCollection<PortInfo> ListeningPorts { get; } = [];
     public ObservableCollection<PortBridgeRule> BridgeRules { get; } = [];
+    public ObservableCollection<PieSlice> PortDistributionSlices { get; } = [];
+    public ObservableCollection<double> HourlyUploadData { get; } = new(Enumerable.Repeat(0.0, 24));
+    public ObservableCollection<double> HourlyDownloadData { get; } = new(Enumerable.Repeat(0.0, 24));
 
     private int _totalPorts;
     public int TotalPorts
@@ -80,6 +87,70 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         set => SetProperty(ref _statusMessage, value);
     }
 
+    // ── 网速仪表盘属性（MB/s，供 GaugeRingControl 绑定）──
+
+    private double _uploadSpeedMB;
+    public double UploadSpeedMB
+    {
+        get => _uploadSpeedMB;
+        set => SetProperty(ref _uploadSpeedMB, value);
+    }
+
+    private double _downloadSpeedMB;
+    public double DownloadSpeedMB
+    {
+        get => _downloadSpeedMB;
+        set => SetProperty(ref _downloadSpeedMB, value);
+    }
+
+    private double _speedMaximumMB = 1.5;
+    public double SpeedMaximumMB
+    {
+        get => _speedMaximumMB;
+        set => SetProperty(ref _speedMaximumMB, value);
+    }
+
+    // ── 格式化文本 ──
+
+    private string _uploadSpeedText = "0 B/s";
+    public string UploadSpeedText
+    {
+        get => _uploadSpeedText;
+        set => SetProperty(ref _uploadSpeedText, value);
+    }
+
+    private string _downloadSpeedText = "0 B/s";
+    public string DownloadSpeedText
+    {
+        get => _downloadSpeedText;
+        set => SetProperty(ref _downloadSpeedText, value);
+    }
+
+    private string _todayUploadText = "0 B";
+    public string TodayUploadText
+    {
+        get => _todayUploadText;
+        set => SetProperty(ref _todayUploadText, value);
+    }
+
+    private string _todayDownloadText = "0 B";
+    public string TodayDownloadText
+    {
+        get => _todayDownloadText;
+        set => SetProperty(ref _todayDownloadText, value);
+    }
+
+    private string _dailyAnalysisText = "";
+    public string DailyAnalysisText
+    {
+        get => _dailyAnalysisText;
+        set => SetProperty(ref _dailyAnalysisText, value);
+    }
+
+    public int CurrentHour => DateTime.Now.Hour;
+
+    // ── 桥接属性 ──
+
     private string _bridgeListenAddress = "127.0.0.1";
     public string BridgeListenAddress
     {
@@ -128,20 +199,17 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
     public ICommand RemoveBridgeCommand { get; }
     public ICommand LoadCommonPortsCommand { get; }
 
-    /// <summary>
-    /// 常见端口列表（供 XAML 绑定，避免 x:Static 泛型问题）
-    /// </summary>
     public System.Collections.IList CommonPortsList => CommonPorts.All;
-
-    /// <summary>
-    /// 可用 IP 地址列表（供 XAML 绑定，避免 x:Static 泛型问题）
-    /// </summary>
     public System.Collections.IList IpAddressesList => IpAddresses.All;
 
-    public NetworkMonitorViewModel(NetworkService networkService, IPortBridgeService portBridgeService)
+    public NetworkMonitorViewModel(
+        NetworkService networkService,
+        IPortBridgeService portBridgeService,
+        NetworkTrafficService trafficService)
     {
         _networkService = networkService;
         _portBridgeService = portBridgeService;
+        _trafficService = trafficService;
 
         RefreshCommand = new RelayCommand(async () => await RefreshPorts());
         KillProcessCommand = new RelayCommand(async () => await KillSelectedProcess());
@@ -152,6 +220,7 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         TotalPorts = _networkService.GetTotalPortCount();
         StatusMessage = "准备就绪";
 
+        LoadHourlyData();
         Task.Run(StartAutoRefresh);
     }
 
@@ -163,6 +232,7 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         while (!token.IsCancellationRequested)
         {
             await RefreshPorts();
+            RefreshTraffic();
             await Task.Delay(1000, token);
         }
     }
@@ -209,6 +279,8 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
             RegisteredPorts = dist.Registered;
             DynamicPorts = dist.Dynamic;
 
+            UpdatePieSlices();
+
             StatusMessage = $"已检测 {UsedPorts} 个占用端口";
         }
         catch (Exception ex)
@@ -221,6 +293,98 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
             IsRefreshing = false;
         }
     }
+
+    private void UpdatePieSlices()
+    {
+        PortDistributionSlices.Clear();
+        if (SystemPorts > 0)
+            PortDistributionSlices.Add(new PieSlice { Label = "系统端口", Value = SystemPorts, Color = Color.FromRgb(255, 85, 85) });
+        if (RegisteredPorts > 0)
+            PortDistributionSlices.Add(new PieSlice { Label = "注册端口", Value = RegisteredPorts, Color = Color.FromRgb(85, 136, 255) });
+        if (DynamicPorts > 0)
+            PortDistributionSlices.Add(new PieSlice { Label = "动态端口", Value = DynamicPorts, Color = Color.FromRgb(85, 221, 136) });
+    }
+
+    private void RefreshTraffic()
+    {
+        _trafficService.Sample();
+
+        var uploadBps = _trafficService.CurrentUploadSpeed;
+        var downloadBps = _trafficService.CurrentDownloadSpeed;
+
+        UploadSpeedMB = uploadBps / 1048576.0;
+        DownloadSpeedMB = downloadBps / 1048576.0;
+
+        UploadSpeedText = FormatSpeed(uploadBps);
+        DownloadSpeedText = FormatSpeed(downloadBps);
+
+        var peak = Math.Max(uploadBps, downloadBps);
+        if (peak > _peakSpeedBytesPerSec)
+        {
+            _peakSpeedBytesPerSec = peak;
+            SpeedMaximumMB = Math.Max(1.0, peak * 1.5 / 1048576.0);
+        }
+
+        UpdateHourlyData();
+        UpdateAnalysis();
+    }
+
+    private void LoadHourlyData()
+    {
+        var today = _trafficService.GetTodayTraffic();
+        for (int i = 0; i < 24; i++)
+        {
+            HourlyUploadData[i] = today.HourlyUpload[i];
+            HourlyDownloadData[i] = today.HourlyDownload[i];
+        }
+    }
+
+    private void UpdateHourlyData()
+    {
+        var today = _trafficService.GetTodayTraffic();
+        var hour = DateTime.Now.Hour;
+        HourlyUploadData[hour] = today.HourlyUpload[hour];
+        HourlyDownloadData[hour] = today.HourlyDownload[hour];
+
+        TodayUploadText = FormatBytes(today.TotalUpload);
+        TodayDownloadText = FormatBytes(today.TotalDownload);
+    }
+
+    private void UpdateAnalysis()
+    {
+        var today = _trafficService.GetTodayTraffic();
+
+        int peakHour = 0;
+        long peakValue = 0;
+        long totalAll = 0;
+        for (int i = 0; i < 24; i++)
+        {
+            var combined = today.HourlyUpload[i] + today.HourlyDownload[i];
+            totalAll += combined;
+            if (combined > peakValue)
+            {
+                peakValue = combined;
+                peakHour = i;
+            }
+        }
+
+        var totalFormatted = FormatBytes(today.TotalUpload + today.TotalDownload);
+        var upFormatted = FormatBytes(today.TotalUpload);
+        var downFormatted = FormatBytes(today.TotalDownload);
+
+        DailyAnalysisText = $"总计 {totalFormatted} | 上传 {upFormatted} | 下载 {downFormatted} | 峰值时段 {peakHour:00}:00";
+    }
+
+    private static string FormatSpeed(double bytesPerSec) =>
+        bytesPerSec >= 1_048_576 ? $"{bytesPerSec / 1_048_576:F1} MB/s"
+        : bytesPerSec >= 1024 ? $"{bytesPerSec / 1024:F1} KB/s"
+        : $"{bytesPerSec:F0} B/s";
+
+    private static string FormatBytes(long bytes) =>
+        bytes >= 1_073_741_824 ? $"{bytes / 1_073_741_824:F2} GB"
+        : bytes >= 1_048_576 ? $"{bytes / 1_048_576:F1} MB"
+        : bytes >= 1024 ? $"{bytes / 1024:F1} KB"
+        : $"{bytes} B";
 
     private async Task KillSelectedProcess()
     {
@@ -294,5 +458,6 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
     {
         _refreshCts?.Cancel();
         _refreshCts?.Dispose();
+        _trafficService.Save();
     }
 }

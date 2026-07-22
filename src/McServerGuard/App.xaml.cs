@@ -89,6 +89,7 @@ public partial class App : Application
         services.AddSingleton<ServerPortResolver>();
         services.AddSingleton<NetworkService>();
         services.AddSingleton<IPortBridgeService, PortBridgeService>();
+        services.AddSingleton<NetworkTrafficService>();
         // JAR Manifest 核心识别器 —— 第三级兜底（解包 JAR 读取 MANIFEST.MF）
         services.AddSingleton<JarCoreIdentifier>();
 

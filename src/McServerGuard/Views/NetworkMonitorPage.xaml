@@ -1,13 +1,11 @@
-<!-- 🌐 网络监控页面 —— 端口占用 / 常见端口 / 端口桥接 -->
+<!-- 🌐 网络监控页面 —— 端口占用 / 流量统计 / 网速仪表盘 / 每日吞吐量 -->
 <UserControl x:Class="McServerGuard.Views.NetworkMonitorPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-             xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks">
+             xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+             xmlns:controls="clr-namespace:McServerGuard.Views.Controls">
 
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 📐 整体布局：顶部统计卡片条 + 下方左 Tab + 右图例               -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -15,30 +13,59 @@
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 📊 顶部统计卡片条                                              -->
+        <!-- 📊 顶部仪表盘行：统计卡片 + 网速仪表盘 + 刷新指示器              -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="16">
-            <materialDesign:Card Padding="16" Width="200" Margin="0,0,12,0">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="16" VerticalAlignment="Center">
+            <materialDesign:Card Padding="16" Width="160" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="总端口数" Style="{StaticResource MaterialDesignBody2TextBlock}" Opacity="0.6" />
                     <TextBlock Text="{Binding TotalPorts}" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="{DynamicResource NavItemSelectedBrush}" />
                 </StackPanel>
             </materialDesign:Card>
 
-            <materialDesign:Card Padding="16" Width="200" Margin="0,0,12,0">
+            <materialDesign:Card Padding="16" Width="160" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="已占用" Style="{StaticResource MaterialDesignBody2TextBlock}" Opacity="0.6" />
                     <TextBlock Text="{Binding UsedPorts}" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="{DynamicResource AccentTextBrush}" />
                 </StackPanel>
             </materialDesign:Card>
 
-            <materialDesign:Card Padding="16" Width="200" Margin="0,0,12,0">
+            <materialDesign:Card Padding="16" Width="160" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="占用率" Style="{StaticResource MaterialDesignBody2TextBlock}" Opacity="0.6" />
                     <TextBlock Text="{Binding UsedPercentage, StringFormat={}{0}%}" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="{DynamicResource NavItemSelectedBrush}" />
                 </StackPanel>
             </materialDesign:Card>
 
+            <!-- ↑ 上传速度仪表盘 -->
+            <materialDesign:Card Padding="8" Margin="0,0,12,0" VerticalAlignment="Center">
+                <StackPanel HorizontalAlignment="Center">
+                    <controls:GaugeRingControl Width="120" Height="120"
+                                               Value="{Binding UploadSpeedMB}"
+                                               Maximum="{Binding SpeedMaximumMB}"
+                                               Label="上传"
+                                               Unit="MB/s"
+                                               ArcThickness="10" />
+                    <TextBlock Text="{Binding UploadSpeedText}" FontSize="11" Opacity="0.7"
+                               HorizontalAlignment="Center" Margin="0,4,0,0" />
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- ↓ 下载速度仪表盘 -->
+            <materialDesign:Card Padding="8" Margin="0,0,12,0" VerticalAlignment="Center">
+                <StackPanel HorizontalAlignment="Center">
+                    <controls:GaugeRingControl Width="120" Height="120"
+                                               Value="{Binding DownloadSpeedMB}"
+                                               Maximum="{Binding SpeedMaximumMB}"
+                                               Label="下载"
+                                               Unit="MB/s"
+                                               ArcThickness="10" />
+                    <TextBlock Text="{Binding DownloadSpeedText}" FontSize="11" Opacity="0.7"
+                               HorizontalAlignment="Center" Margin="0,4,0,0" />
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- 自动刷新指示器 -->
             <materialDesign:Card Padding="12,8" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal">
                     <iconPacks:PackIconFontAwesome6 Kind="ArrowsRotateSolid" Width="16" Height="16"
@@ -70,7 +97,7 @@
         </StackPanel>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 📑 中间：左 TabControl + 右端口图例                            -->
+        <!-- 📑 中间：左 TabControl + 右可视化面板                            -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <Grid Grid.Row="1" Margin="16">
             <Grid.ColumnDefinitions>
@@ -235,95 +262,80 @@
             </TabControl>
 
             <!-- ═══════════════════════════════════════════════════════ -->
-            <!-- 📊 右侧：端口占用分布 3D 圆柱可视化                     -->
+            <!-- 📊 右侧：端口分布饼图 + 每日吞吐量柱状图                  -->
             <!-- ═══════════════════════════════════════════════════════ -->
-            <materialDesign:Card Grid.Column="1">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Text="端口占用分布"
-                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                               Margin="16,16,16,8" />
+                <!-- 上半：端口分布饼图 -->
+                <materialDesign:Card Grid.Row="0" Margin="0,0,0,8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                    <Viewport3D Grid.Row="1" x:Name="PortViewport" ClipToBounds="False" IsHitTestVisible="False">
-                        <Viewport3D.Camera>
-                            <PerspectiveCamera Position="0, 0, 6" LookDirection="0, 0, -1" FieldOfView="50" />
-                        </Viewport3D.Camera>
+                        <TextBlock Grid.Row="0" Text="端口占用分布"
+                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                   Margin="16,12,16,4" />
 
-                        <ModelVisual3D>
-                            <ModelVisual3D.Content>
-                                <DirectionalLight Color="#FFFFFF" Direction="-0.612372, -0.5, -0.612372" />
-                            </ModelVisual3D.Content>
-                        </ModelVisual3D>
-                        <ModelVisual3D>
-                            <ModelVisual3D.Content>
-                                <DirectionalLight Color="#888888" Direction="0.612372, -0.5, -0.612372" />
-                            </ModelVisual3D.Content>
-                        </ModelVisual3D>
+                        <controls:PieChartControl Grid.Row="1"
+                                                  Slices="{Binding PortDistributionSlices}"
+                                                  CenterText="{Binding UsedPorts}"
+                                                  CenterSubText="占用端口"
+                                                  Margin="8"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
 
-                        <ModelVisual3D>
-                            <ModelVisual3D.Content>
-                                <GeometryModel3D x:Name="SystemCylinderModel">
-                                    <GeometryModel3D.Geometry>
-                                        <MeshGeometry3D x:Name="SystemCylinderMesh" />
-                                    </GeometryModel3D.Geometry>
-                                    <GeometryModel3D.Material>
-                                        <DiffuseMaterial Brush="#FF5555" />
-                                    </GeometryModel3D.Material>
-                                </GeometryModel3D>
-                            </ModelVisual3D.Content>
-                        </ModelVisual3D>
-
-                        <ModelVisual3D>
-                            <ModelVisual3D.Content>
-                                <GeometryModel3D x:Name="RegisteredCylinderModel">
-                                    <GeometryModel3D.Geometry>
-                                        <MeshGeometry3D x:Name="RegisteredCylinderMesh" />
-                                    </GeometryModel3D.Geometry>
-                                    <GeometryModel3D.Material>
-                                        <DiffuseMaterial Brush="#5588FF" />
-                                    </GeometryModel3D.Material>
-                                </GeometryModel3D>
-                            </ModelVisual3D.Content>
-                        </ModelVisual3D>
-
-                        <ModelVisual3D>
-                            <ModelVisual3D.Content>
-                                <GeometryModel3D x:Name="DynamicCylinderModel">
-                                    <GeometryModel3D.Geometry>
-                                        <MeshGeometry3D x:Name="DynamicCylinderMesh" />
-                                    </GeometryModel3D.Geometry>
-                                    <GeometryModel3D.Material>
-                                        <DiffuseMaterial Brush="#55DD88" />
-                                    </GeometryModel3D.Material>
-                                </GeometryModel3D>
-                            </ModelVisual3D.Content>
-                        </ModelVisual3D>
-                    </Viewport3D>
-
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="16" HorizontalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
-                            <Rectangle Width="16" Height="16" Fill="#FF5555" Margin="0,0,6,0" />
-                            <TextBlock Text="系统" FontSize="11" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding SystemPorts, StringFormat='  {0}'}" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="16" HorizontalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                                <Rectangle Width="12" Height="12" Fill="#FF5555" Margin="0,0,6,0" />
+                                <TextBlock Text="系统" FontSize="11" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding SystemPorts, StringFormat='  {0}'}" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                                <Rectangle Width="12" Height="12" Fill="#5588FF" Margin="0,0,6,0" />
+                                <TextBlock Text="注册" FontSize="11" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding RegisteredPorts, StringFormat='  {0}'}" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Rectangle Width="12" Height="12" Fill="#55DD88" Margin="0,0,6,0" />
+                                <TextBlock Text="动态" FontSize="11" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding DynamicPorts, StringFormat='  {0}'}" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                            </StackPanel>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
-                            <Rectangle Width="16" Height="16" Fill="#5588FF" Margin="0,0,6,0" />
-                            <TextBlock Text="注册" FontSize="11" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding RegisteredPorts, StringFormat='  {0}'}" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <Rectangle Width="16" Height="16" Fill="#55DD88" Margin="0,0,6,0" />
-                            <TextBlock Text="动态" FontSize="11" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding DynamicPorts, StringFormat='  {0}'}" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                        </StackPanel>
-                    </StackPanel>
-                </Grid>
-            </materialDesign:Card>
+                    </Grid>
+                </materialDesign:Card>
+
+                <!-- 下半：每日网络吞吐量柱状图 -->
+                <materialDesign:Card Grid.Row="1" Margin="0,4,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="每日网络吞吐量"
+                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                   Margin="16,12,16,4" />
+
+                        <controls:BarChartControl Grid.Row="1"
+                                                  UploadData="{Binding HourlyUploadData}"
+                                                  DownloadData="{Binding HourlyDownloadData}"
+                                                  HighlightIndex="{Binding CurrentHour}"
+                                                  Margin="8" />
+
+                        <TextBlock Grid.Row="2" Text="{Binding DailyAnalysisText}"
+                                   FontSize="11" Opacity="0.7"
+                                   Margin="16,4,16,12" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                </materialDesign:Card>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>

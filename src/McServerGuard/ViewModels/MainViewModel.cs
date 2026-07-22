@@ -72,9 +72,10 @@ public partial class MainViewModel : ObservableObject
         IAppConfigService appConfigService,
         IPrivilegeService privilegeService,
         NetworkService networkService,
-        IPortBridgeService portBridgeService)
+        IPortBridgeService portBridgeService,
+        NetworkTrafficService trafficService)
     {
-        Log.Information("🧠 MainViewModel 初始化，注入 {ServiceCount} 个服务", 11);
+        Log.Information("🧠 MainViewModel 初始化，注入 {ServiceCount} 个服务", 12);
 
         _serverDetector = serverDetector;
         _configManager = configManager;
@@ -91,7 +92,7 @@ public partial class MainViewModel : ObservableObject
         DetectionPage = new ServerDetectionViewModel(serverDetector, appConfigService, serverManager, serverImporter);
         ConfigPage = new ConfigEditorViewModel(configManager, serverDetector, appConfigService);
         MonitorPage = new SystemMonitorViewModel(systemMonitor);
-        NetworkPage = new NetworkMonitorViewModel(networkService, portBridgeService);
+        NetworkPage = new NetworkMonitorViewModel(networkService, portBridgeService, trafficService);
         SettingsPage = new SettingsViewModel(themeService, toastService);
 
         DetectionPage.PropertyChanged += (s, e) =>

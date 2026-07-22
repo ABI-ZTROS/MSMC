@@ -124,6 +124,14 @@ public class GaugeRingControl : FrameworkElement
         DependencyProperty.Register(nameof(EnableAnimation), typeof(bool), typeof(GaugeRingControl),
             new FrameworkPropertyMetadata(true, OnEnableAnimationChanged));
 
+    /// <summary>
+    /// 最大值依赖属性。默认 100（百分比模式），网速等场景可设为实际最大值。
+    /// 弧度按 Value/Maximum 比例绘制，颜色档位按百分比判断。
+    /// </summary>
+    public static readonly DependencyProperty MaximumProperty =
+        DependencyProperty.Register(nameof(Maximum), typeof(double), typeof(GaugeRingControl),
+            new FrameworkPropertyMetadata(100d, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public double Value
     {
         get => (double)GetValue(ValueProperty);
@@ -164,6 +172,12 @@ public class GaugeRingControl : FrameworkElement
     {
         get => (bool)GetValue(EnableAnimationProperty);
         set => SetValue(EnableAnimationProperty, value);
+    }
+
+    public double Maximum
+    {
+        get => (double)GetValue(MaximumProperty);
+        set => SetValue(MaximumProperty, value);
     }
 
     // ─── 依赖属性变更回调 ──────────────────────────────────────────────
@@ -311,15 +325,16 @@ public class GaugeRingControl : FrameworkElement
         drawing.DrawGeometry(null, _cachedTrackPen, _cachedTrackGeom);
 
         // 第二步：绘制彩色进度弧（使用 DisplayValue 作为动画驱动值）
-        var displayValue = Math.Clamp(DisplayValue, 0, 100);
+        var max = Maximum <= 0 ? 100 : Maximum;
+        var displayValue = Math.Clamp(DisplayValue, 0, max);
         if (displayValue > 0.1)
         {
-            var sweepAngle = (displayValue / 100) * 270;
+            var sweepAngle = (displayValue / max) * 270;
             var valueRad = sweepAngle * Math.PI / 180;
             var startRad2 = -135 * Math.PI / 180;
             var endRad2 = startRad2 + valueRad;
 
-            var fgPen = GetPenForValue(displayValue);
+            var fgPen = GetPenForValue(displayValue / max * 100);
 
             var fgGeom = new StreamGeometry();
             using (var ctx = fgGeom.Open())
