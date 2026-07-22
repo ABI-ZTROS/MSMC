@@ -620,7 +620,7 @@
                                     <Border Width="48" Height="48"
                                             CornerRadius="12"
                                             Background="{DynamicResource CardBackgroundBrush}">
-                                        <Image Source="https://github.com/ABI-ZTROS.png"
+                                        <Image Source="pack://application:,,,/Resources/Images/avatars/ABI-ZTROS.png"
                                                Stretch="UniformToFill" />
                                     </Border>
                                     <StackPanel Margin="12,0,0,0"
@@ -705,9 +705,11 @@
                             </Border>
                         </Grid>
 
-                        <!-- 次级开发者 - Gglaoguan -->
+                        <!-- 次级开发者 - Gglaoguan（已退役 · 铭记贡献） -->
                         <Border x:Name="AuthorCard_Gglaoguan"
-                                Background="{DynamicResource SubtleBorderBrush}"
+                                Background="#1A1A1A"
+                                BorderBrush="#8B7355"
+                                BorderThickness="1"
                                 CornerRadius="10"
                                 Padding="12"
                                 Margin="0,0,0,8"
@@ -716,28 +718,40 @@
                             <StackPanel Orientation="Horizontal">
                                 <Border Width="48" Height="48"
                                         CornerRadius="12"
-                                        Background="{DynamicResource CardBackgroundBrush}">
-                                    <Image Source="https://github.com/Gglaoguan.png"
-                                           Stretch="UniformToFill" />
+                                        Background="#0A0A0A"
+                                        BorderBrush="#8B7355"
+                                        BorderThickness="1">
+                                    <Image Source="pack://application:,,,/Resources/Images/avatars/Gglaoguan.png"
+                                           Stretch="UniformToFill"
+                                           Opacity="0.85" />
                                 </Border>
                                 <StackPanel Margin="12,0,0,0"
                                             VerticalAlignment="Center">
-                                    <TextBlock Text="Gglaoguan"
-                                               FontSize="14"
-                                               FontWeight="SemiBold"
-                                               Foreground="{DynamicResource MaterialDesignBody}" />
-                                    <TextBlock Text="次级开发"
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Gglaoguan"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#D4C5A9" />
+                                        <iconPacks:PackIconFontAwesome6 Kind="CrossSolid"
+                                                                 Width="10" Height="10"
+                                                                 Foreground="#8B7355"
+                                                                 VerticalAlignment="Center"
+                                                                 Margin="6,2,0,0"
+                                                                 ToolTip="已退役" />
+                                    </StackPanel>
+                                    <TextBlock Text="已退役 · 铭记贡献"
                                                FontSize="11"
-                                               Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                                               Foreground="#8B7355"
+                                               FontStyle="Italic" />
                                     <StackPanel Orientation="Horizontal"
                                                 Margin="0,4,0,0">
                                         <iconPacks:PackIconFontAwesome6 Kind="GithubBrands"
                                                                  Width="12" Height="12"
-                                                                 Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                                 Foreground="#5A5A5A"
                                                                  VerticalAlignment="Center" />
                                         <TextBlock Text="github.com/Gglaoguan"
                                                    FontSize="11"
-                                                   Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                   Foreground="#5A5A5A"
                                                    Margin="4,0,0,0"
                                                    VerticalAlignment="Center" />
                                     </StackPanel>
@@ -766,7 +780,7 @@
                                             CornerRadius="10"
                                             Background="{DynamicResource CardBackgroundBrush}"
                                             HorizontalAlignment="Center">
-                                        <Image Source="https://github.com/MochaCello92377.png"
+                                        <Image Source="pack://application:,,,/Resources/Images/avatars/MochaCello92377.png"
                                                Stretch="UniformToFill" />
                                     </Border>
                                     <TextBlock Text="MochaCello92377"
@@ -808,7 +822,7 @@
                                             CornerRadius="10"
                                             Background="{DynamicResource CardBackgroundBrush}"
                                             HorizontalAlignment="Center">
-                                        <Image Source="https://github.com/CatStack-pixe.png"
+                                        <Image Source="pack://application:,,,/Resources/Images/avatars/CatStack-pixe.png"
                                                Stretch="UniformToFill" />
                                     </Border>
                                     <TextBlock Text="CatStack-pixe"

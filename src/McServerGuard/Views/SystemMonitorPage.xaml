@@ -147,6 +147,9 @@
                     </StackPanel>
                     <!-- 📈 LiveCharts2 折线图 —— 蓝色曲线，优雅如夜空 -->
                     <lcw:CartesianChart Series="{Binding MemorySeries}"
+                                        XAxes="{Binding TrendXAxis}"
+                                        YAxes="{Binding TrendYAxis}"
+                                        Background="Transparent"
                                         Height="200" />
                 </StackPanel>
             </materialDesign:Card>
