@@ -58,9 +58,13 @@
             <RowDefinition Height="*" />     <!-- 📑 中间内容区 -->
             <RowDefinition Height="Auto" />  <!-- 📊 底部状态栏 -->
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="56" /> <!-- 🧭 导航面板图标列（固定宽度，避免布局重排） -->
+            <ColumnDefinition Width="*" />    <!-- 📄 主内容区 -->
+        </Grid.ColumnDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 🎨 自定义标题栏 —— 可拖动，覆盖全宽                          -->
+        <!-- 🎨 自定义标题栏 —— 可拖动，覆盖两列                          -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="0" Grid.ColumnSpan="2"
                 x:Name="TitleBar"
@@ -68,8 +72,7 @@
                 BorderBrush="{DynamicResource CardSubtleBorderBrush}"
                 BorderThickness="0,0,0,1"
                 Height="40"
-                MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
-                Panel.ZIndex="20">
+                MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />   <!-- 图标+标题 -->
@@ -127,9 +130,10 @@
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 📄 主内容区 —— 占满 Row 1 全宽，导航栏浮于其上             -->
+        <!-- 📑 中间 ContentControl —— 六大页面切换（带动画）              -->
+        <!-- 初始 Opacity=1：入场动画由子页面的 Loaded 事件接管，避免开场空白 -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <ContentControl Grid.Row="1" Grid.ColumnSpan="2" Margin="56,8,8,8"
+        <ContentControl Grid.Row="1" Grid.Column="1" Margin="8"
                         Content="{Binding CurrentPage}"
                         HorizontalContentAlignment="Stretch"
                         VerticalContentAlignment="Stretch"
@@ -158,22 +162,22 @@
         </ContentControl>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 🧭 左侧导航面板 —— 鼠标悬停自动展开/折叠                     -->
-        <!-- 浮动布局：不参与 Grid 列分配，通过 TranslateTransform 驱动   -->
-        <!-- 折叠时 X=-184，露出 56px 图标列；展开时 X=0，完整 240px    -->
+        <!-- 🧭 左侧导航面板 —— 鼠标悬停自动展开/折叠                       -->
+        <!-- 使用 TranslateTransform 驱动，零布局重排，极致性能 -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="1" Grid.ColumnSpan="2"
+        <Border Grid.Row="1" Grid.Column="0"
                 x:Name="NavSidebar"
                 Width="240"
-                HorizontalAlignment="Left"
                 SnapsToDevicePixels="True"
                 Background="{DynamicResource CardBackgroundBrush}"
                 BorderBrush="{DynamicResource CardSubtleBorderBrush}"
                 BorderThickness="0,0,1,0"
                 MouseEnter="NavSidebar_MouseEnter"
                 MouseLeave="NavSidebar_MouseLeave"
-                RenderTransformOrigin="0,0"
-                Panel.ZIndex="15">
+                RenderTransformOrigin="0,0">
+            <Border.CacheMode>
+                <BitmapCache RenderAtScale="1.0" SnapsToDevicePixels="True" />
+            </Border.CacheMode>
             <Border.RenderTransform>
                 <TranslateTransform X="-184" Y="0" />
             </Border.RenderTransform>

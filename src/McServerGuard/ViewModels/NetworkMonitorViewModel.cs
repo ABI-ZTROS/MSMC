@@ -173,24 +173,20 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
         try
         {
-            var ports = _networkService.GetAllListeningPorts();
-            var rules = _portBridgeService.GetAllBridgeRules();
+            // 数据获取在后台线程执行，避免阻塞 UI
+            var (ports, rules) = await Task.Run(() =>
+                (_networkService.GetAllListeningPorts(), _portBridgeService.GetAllBridgeRules()));
 
-            await Task.Run(() =>
+            // ObservableCollection 必须在 UI 线程上修改
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
             {
-                lock (ListeningPorts)
-                {
-                    ListeningPorts.Clear();
-                    foreach (var port in ports)
-                        ListeningPorts.Add(port);
-                }
+                ListeningPorts.Clear();
+                foreach (var port in ports)
+                    ListeningPorts.Add(port);
 
-                lock (BridgeRules)
-                {
-                    BridgeRules.Clear();
-                    foreach (var rule in rules)
-                        BridgeRules.Add(rule);
-                }
+                BridgeRules.Clear();
+                foreach (var rule in rules)
+                    BridgeRules.Add(rule);
             });
 
             UsedPorts = ports.Count;
