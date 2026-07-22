@@ -291,7 +291,17 @@
                                             </Border>
                                         </Grid>
                                     </Expander.Header>
-                                    <ItemsControl x:Name="RunningServersList" ItemsSource="{Binding FilteredRunningServers}" Margin="0,4,0,0">
+                                    <ItemsControl x:Name="RunningServersList"
+                                                  ItemsSource="{Binding FilteredRunningServers}"
+                                                  Margin="0,4,0,0"
+                                                  VirtualizingStackPanel.IsVirtualizing="True"
+                                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                                  ScrollViewer.CanContentScroll="True">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel IsVirtualizing="True" VirtualizationMode="Recycling" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Border x:Name="RunningItemBorder"
@@ -305,12 +315,14 @@
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
 
-                                                        <!-- 状态点（根据端口状态变色，三层叠加 + Opacity 动画实现平滑过渡） -->
-                                                        <Grid Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,6,0">
-                                                            <Ellipse x:Name="GreenDot" Fill="{DynamicResource GaugeGreenBrush}" Opacity="1" />
-                                                            <Ellipse x:Name="YellowDot" Fill="{DynamicResource GaugeYellowBrush}" Opacity="0" />
-                                                            <Ellipse x:Name="RedDot" Fill="{DynamicResource GaugeRedBrush}" Opacity="0" />
-                                                        </Grid>
+                                                        <!-- 状态点（单 Ellipse + Brush 动画切换） -->
+                                                        <Ellipse x:Name="StatusDot"
+                                                                 Grid.Column="0"
+                                                                 Width="8" Height="8"
+                                                                 VerticalAlignment="Center"
+                                                                 Margin="0,0,6,0"
+                                                                 Fill="{DynamicResource GaugeGreenBrush}"
+                                                                 RenderOptions.EdgeMode="Aliased" />
 
                                                         <!-- 名称 -->
                                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -346,21 +358,11 @@
                                                         <DataTrigger.EnterActions>
                                                             <BeginStoryboard>
                                                                 <Storyboard Duration="0:0:0.3">
-                                                                    <DoubleAnimation Storyboard.TargetName="GreenDot" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <CubicEase EasingMode="EaseOut" />
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                    <DoubleAnimation Storyboard.TargetName="RedDot" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.3">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <CubicEase EasingMode="EaseOut" />
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                    <DoubleAnimation Storyboard.TargetName="YellowDot" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <CubicEase EasingMode="EaseOut" />
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
+                                                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="StatusDot"
+                                                                                                   Storyboard.TargetProperty="Fill">
+                                                                        <DiscreteObjectKeyFrame KeyTime="0:0:0"
+                                                                                                Value="{DynamicResource GaugeRedBrush}" />
+                                                                    </ObjectAnimationUsingKeyFrames>
                                                                 </Storyboard>
                                                             </BeginStoryboard>
                                                         </DataTrigger.EnterActions>
@@ -371,21 +373,11 @@
                                                         <DataTrigger.EnterActions>
                                                             <BeginStoryboard>
                                                                 <Storyboard Duration="0:0:0.3">
-                                                                    <DoubleAnimation Storyboard.TargetName="GreenDot" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <CubicEase EasingMode="EaseOut" />
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                    <DoubleAnimation Storyboard.TargetName="YellowDot" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.3">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <CubicEase EasingMode="EaseOut" />
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                    <DoubleAnimation Storyboard.TargetName="RedDot" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <CubicEase EasingMode="EaseOut" />
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
+                                                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="StatusDot"
+                                                                                                   Storyboard.TargetProperty="Fill">
+                                                                        <DiscreteObjectKeyFrame KeyTime="0:0:0"
+                                                                                                Value="{DynamicResource GaugeYellowBrush}" />
+                                                                    </ObjectAnimationUsingKeyFrames>
                                                                 </Storyboard>
                                                             </BeginStoryboard>
                                                         </DataTrigger.EnterActions>
@@ -418,7 +410,17 @@
                                             </Border>
                                         </Grid>
                                     </Expander.Header>
-                                    <ItemsControl x:Name="KnownServersList" ItemsSource="{Binding FilteredKnownServers}" Margin="0,4,0,0">
+                                    <ItemsControl x:Name="KnownServersList"
+                                                  ItemsSource="{Binding FilteredKnownServers}"
+                                                  Margin="0,4,0,0"
+                                                  VirtualizingStackPanel.IsVirtualizing="True"
+                                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                                  ScrollViewer.CanContentScroll="True">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel IsVirtualizing="True" VirtualizationMode="Recycling" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Border x:Name="KnownItemBorder"
