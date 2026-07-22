@@ -45,7 +45,6 @@ public partial class MainWindow : Window
         _serverManager = App.Services.GetRequiredService<IServerManagerService>();
 
         MainContent.RenderTransform = new TranslateTransform();
-        Opacity = 0;
 
         _collapseTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
         _collapseTimer.Tick += CollapseTimer_Tick;
@@ -61,39 +60,10 @@ public partial class MainWindow : Window
     // 窗口 Loaded 事件处理：初始化侧边栏折叠状态与文本透明度，播放入场动画
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        // 全局动画帧率控制：禁用动画时设为 1fps，视觉上等同于关闭
-        Timeline.DesiredFrameRateProperty.OverrideMetadata(
-            typeof(Timeline),
-            new FrameworkPropertyMetadata { DefaultValue = AnimationSettings.AnimationsEnabled ? 60 : 1 });
-
         _isSidebarExpanded = false;
         SetTextElementsOpacity(0);
-        if (NavSidebar.RenderTransform is TranslateTransform tt)
-            tt.X = -184;
 
         MainContent.Opacity = 1;
-
-        if (_themeService.EnableAnimations)
-        {
-            var duration = TimeSpan.FromMilliseconds(300);
-            var ease = new QuarticEase { EasingMode = EasingMode.EaseOut };
-
-            var fadeIn = new DoubleAnimation(1, duration)
-            {
-                EasingFunction = ease,
-                FillBehavior = FillBehavior.Stop
-            };
-            fadeIn.Completed += (_, _) =>
-            {
-                Opacity = 1;
-                BeginAnimation(OpacityProperty, null);
-            };
-            BeginAnimation(OpacityProperty, fadeIn, HandoffBehavior.SnapshotAndReplace);
-        }
-        else
-        {
-            Opacity = 1;
-        }
     }
 
     // DataContext 变更事件处理：订阅/取消订阅 ViewModel 的 PropertyChanged 事件
@@ -237,7 +207,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 展开侧边栏动画。使用 TranslateTransform 驱动，零布局重排，
+    /// 展开侧边栏动画。通过 Width 属性动画驱动（56→240），
     /// 同时配合文本透明度渐变实现平滑过渡效果。
     /// </summary>
     private void ExpandSidebar()
@@ -248,39 +218,31 @@ public partial class MainWindow : Window
         var durationMs = _themeService.EnableAnimations ? 200 : 0;
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
+            NavSidebar.UpdateLayout();
             if (durationMs > 0)
             {
-                var duration = TimeSpan.FromMilliseconds(durationMs);
-                var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-
-                if (NavSidebar.RenderTransform is TranslateTransform tt)
+                var widthAnim = new DoubleAnimation(240, TimeSpan.FromMilliseconds(durationMs))
                 {
-                    var translateAnim = new DoubleAnimation(0, duration)
-                    {
-                        EasingFunction = ease,
-                        FillBehavior = FillBehavior.Stop
-                    };
-                    translateAnim.Completed += (_, _) =>
-                    {
-                        tt.X = 0;
-                        tt.BeginAnimation(TranslateTransform.XProperty, null);
-                    };
-                    tt.BeginAnimation(TranslateTransform.XProperty, translateAnim, HandoffBehavior.SnapshotAndReplace);
-                }
-
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                    FillBehavior = FillBehavior.Stop
+                };
+                widthAnim.Completed += (_, _) =>
+                {
+                    NavSidebar.Width = 240;
+                };
+                NavSidebar.BeginAnimation(WidthProperty, widthAnim, HandoffBehavior.SnapshotAndReplace);
                 AnimateTextOpacity(1, durationMs);
             }
             else
             {
-                if (NavSidebar.RenderTransform is TranslateTransform tt)
-                    tt.X = 0;
+                NavSidebar.Width = 240;
                 SetTextElementsOpacity(1);
             }
         });
     }
 
     /// <summary>
-    /// 折叠侧边栏动画。与展开动画对称，TranslateX 位移回折叠位置。
+    /// 折叠侧边栏动画。与展开动画对称，Width 从 240 收回 56。
     /// </summary>
     private void CollapseSidebar()
     {
@@ -290,32 +252,24 @@ public partial class MainWindow : Window
         var durationMs = _themeService.EnableAnimations ? 200 : 0;
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
+            NavSidebar.UpdateLayout();
             if (durationMs > 0)
             {
-                var duration = TimeSpan.FromMilliseconds(durationMs);
-                var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-
-                if (NavSidebar.RenderTransform is TranslateTransform tt)
+                var widthAnim = new DoubleAnimation(56, TimeSpan.FromMilliseconds(durationMs))
                 {
-                    var translateAnim = new DoubleAnimation(-184, duration)
-                    {
-                        EasingFunction = ease,
-                        FillBehavior = FillBehavior.Stop
-                    };
-                    translateAnim.Completed += (_, _) =>
-                    {
-                        tt.X = -184;
-                        tt.BeginAnimation(TranslateTransform.XProperty, null);
-                    };
-                    tt.BeginAnimation(TranslateTransform.XProperty, translateAnim, HandoffBehavior.SnapshotAndReplace);
-                }
-
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                    FillBehavior = FillBehavior.Stop
+                };
+                widthAnim.Completed += (_, _) =>
+                {
+                    NavSidebar.Width = 56;
+                };
+                NavSidebar.BeginAnimation(WidthProperty, widthAnim, HandoffBehavior.SnapshotAndReplace);
                 AnimateTextOpacity(0, durationMs);
             }
             else
             {
-                if (NavSidebar.RenderTransform is TranslateTransform tt)
-                    tt.X = -184;
+                NavSidebar.Width = 56;
                 SetTextElementsOpacity(0);
             }
         });
