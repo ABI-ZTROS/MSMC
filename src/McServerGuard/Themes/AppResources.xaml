@@ -19,11 +19,11 @@
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
     <!-- 🎢 标准缓动函数 -->
-    <CubicEase x:Key="StandardEase" EasingMode="EaseOut" />
-    <QuarticEase x:Key="EmphasizedEase" EasingMode="EaseOut" />
+    <CubicEase x:Key="StandardEase" EasingMode="EaseOut" Freeze="True" />
+    <QuarticEase x:Key="EmphasizedEase" EasingMode="EaseOut" Freeze="True" />
 
     <!-- 📄 页面入场故事板：淡入 + 从右滑入 -->
-    <Storyboard x:Key="PageEnterStoryboard">
+    <Storyboard x:Key="PageEnterStoryboard" Freeze="True">
         <DoubleAnimation Storyboard.TargetProperty="Opacity"
                          From="0" To="1"
                          Duration="0:0:0.3"
@@ -130,104 +130,104 @@
     <FontFamily x:Key="AppMonospaceFontFamily">Consolas, Courier New</FontFamily>
 
     <!-- 🟦 AccentGradientBrush: 苍穹蓝 → 水蓝 渐变，用于标题栏、按钮等高亮区域 -->
-    <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,0">
+    <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,0" Freeze="True">
         <GradientStop Color="#60A5FA" Offset="0" />
         <GradientStop Color="#3B82F6" Offset="1" />
     </LinearGradientBrush>
 
     <!-- 🃏 CardBackgroundBrush: 深邃蓝卡片背景 -->
-    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#0F172A" />
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#0F172A" Freeze="True" />
 
     <!-- 🃏 CardHoverBrush: 卡片悬停色，比背景亮一丢丢 -->
-    <SolidColorBrush x:Key="CardHoverBrush" Color="#1E293B" />
+    <SolidColorBrush x:Key="CardHoverBrush" Color="#1E293B" Freeze="True" />
 
     <!-- 🧭 NavItemSelectedBrush: 导航项选中背景，苍穹蓝 -->
-    <SolidColorBrush x:Key="NavItemSelectedBrush" Color="#3B82F6" />
+    <SolidColorBrush x:Key="NavItemSelectedBrush" Color="#3B82F6" Freeze="True" />
 
     <!-- 🧭 NavItemHoverBrush: 导航项悬停背景，深蓝灰 -->
-    <SolidColorBrush x:Key="NavItemHoverBrush" Color="#1E3A5F" />
+    <SolidColorBrush x:Key="NavItemHoverBrush" Color="#1E3A5F" Freeze="True" />
 
     <!-- 🟢 GaugeGreenBrush: 仪表盘绿色 —— 一切正常 🟢 -->
-    <SolidColorBrush x:Key="GaugeGreenBrush" Color="#4CAF50" />
+    <SolidColorBrush x:Key="GaugeGreenBrush" Color="#4CAF50" Freeze="True" />
 
     <!-- 🟡 GaugeYellowBrush: 仪表盘黄色 —— 要注意了 🟡 -->
-    <SolidColorBrush x:Key="GaugeYellowBrush" Color="#FFC107" />
+    <SolidColorBrush x:Key="GaugeYellowBrush" Color="#FFC107" Freeze="True" />
 
     <!-- 🔴 GaugeRedBrush: 仪表盘红色 —— 危险危险！🔴 -->
-    <SolidColorBrush x:Key="GaugeRedBrush" Color="#F4364C" />
+    <SolidColorBrush x:Key="GaugeRedBrush" Color="#F4364C" Freeze="True" />
 
     <!-- 🧡 AccentTextBrush: 强调文字色，暖珊瑚 -->
-    <SolidColorBrush x:Key="AccentTextBrush" Color="#FB7185" />
+    <SolidColorBrush x:Key="AccentTextBrush" Color="#FB7185" Freeze="True" />
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- 🆕 补齐语义颜色资源键 —— 让主题色覆盖到全项目 -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
     <!-- 🎯 SubtleBorderBrush: 柔和边框色（ThemeService 运行时覆盖） -->
-    <SolidColorBrush x:Key="SubtleBorderBrush" Color="#334155" />
+    <SolidColorBrush x:Key="SubtleBorderBrush" Color="#334155" Freeze="True" />
 
     <!-- 🎯 DeepBackgroundBrush: 更深的背景色（ThemeService 运行时覆盖） -->
-    <SolidColorBrush x:Key="DeepBackgroundBrush" Color="#020617" />
+    <SolidColorBrush x:Key="DeepBackgroundBrush" Color="#020617" Freeze="True" />
 
     <!-- 🎯 CardSubtleBorderBrush: 卡片半透明边框（ThemeService 运行时覆盖） -->
-    <SolidColorBrush x:Key="CardSubtleBorderBrush" Color="#331E293B" />
+    <SolidColorBrush x:Key="CardSubtleBorderBrush" Color="#331E293B" Freeze="True" />
 
     <!-- 🎯 PrimarySubtleBorderBrush: 主色半透明边框（ThemeService 运行时覆盖） -->
-    <SolidColorBrush x:Key="PrimarySubtleBorderBrush" Color="#333B82F6" />
+    <SolidColorBrush x:Key="PrimarySubtleBorderBrush" Color="#333B82F6" Freeze="True" />
 
     <!-- 🎯 AccentSubtleBorderBrush: 强调色半透明边框（ThemeService 运行时覆盖） -->
-    <SolidColorBrush x:Key="AccentSubtleBorderBrush" Color="#33FB7185" />
+    <SolidColorBrush x:Key="AccentSubtleBorderBrush" Color="#33FB7185" Freeze="True" />
 
     <!-- 🎯 LoadingOverlayBrush: 加载遮罩半透明背景（ThemeService 运行时覆盖） -->
-    <SolidColorBrush x:Key="LoadingOverlayBrush" Color="#CC0F172A" />
+    <SolidColorBrush x:Key="LoadingOverlayBrush" Color="#CC0F172A" Freeze="True" />
 
     <!-- 🎯 TerminalBackgroundBrush: 终端深色背景（ThemeService 运行时覆盖） -->
-    <SolidColorBrush x:Key="TerminalBackgroundBrush" Color="#0C1222" />
+    <SolidColorBrush x:Key="TerminalBackgroundBrush" Color="#0C1222" Freeze="True" />
 
     <!-- 🎯 SuccessInputForegroundBrush: 成功/终端水蓝前景 -->
-    <SolidColorBrush x:Key="SuccessInputForegroundBrush" Color="#7DD3FC" />
+    <SolidColorBrush x:Key="SuccessInputForegroundBrush" Color="#7DD3FC" Freeze="True" />
 
     <!-- 🎯 InfoInputForegroundBrush: 信息/输入淡蓝前景 -->
-    <SolidColorBrush x:Key="InfoInputForegroundBrush" Color="#94A3B8" />
+    <SolidColorBrush x:Key="InfoInputForegroundBrush" Color="#94A3B8" Freeze="True" />
 
     <!-- 🎯 ErrorTextBrush: 错误文字珊瑚红 -->
-    <SolidColorBrush x:Key="ErrorTextBrush" Color="#FB7185" />
+    <SolidColorBrush x:Key="ErrorTextBrush" Color="#FB7185" Freeze="True" />
 
     <!-- 🎯 DangerBrush: 危险/删除按钮红色（ThemeService 运行时覆盖） -->
-    <SolidColorBrush x:Key="DangerBrush" Color="#E53935" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#E53935" Freeze="True" />
 
     <!-- 🎯 PrimarySubtleBackgroundBrush: 主色半透明背景（ThemeService 运行时覆盖） -->
-    <SolidColorBrush x:Key="PrimarySubtleBackgroundBrush" Color="#1A3B82F6" />
+    <SolidColorBrush x:Key="PrimarySubtleBackgroundBrush" Color="#1A3B82F6" Freeze="True" />
 
     <!-- 🎯 NavItemSelectedIndicatorBrush: 导航选中竖线指示器（ThemeService 运行时覆盖） -->
-    <SolidColorBrush x:Key="NavItemSelectedIndicatorBrush" Color="#3B82F6" />
+    <SolidColorBrush x:Key="NavItemSelectedIndicatorBrush" Color="#3B82F6" Freeze="True" />
 
     <!-- 🎯 NavItemSelectedHoverBrush: 导航选中+悬停叠加（ThemeService 运行时覆盖） -->
-    <SolidColorBrush x:Key="NavItemSelectedHoverBrush" Color="#2563EB" />
+    <SolidColorBrush x:Key="NavItemSelectedHoverBrush" Color="#2563EB" Freeze="True" />
 
     <!-- 🆔 SwatchHoverBorderBrush: 色板悬停白边框（原硬编码 #FFFFFF） -->
-    <SolidColorBrush x:Key="SwatchHoverBorderBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="SwatchHoverBorderBrush" Color="#FFFFFF" Freeze="True" />
 
     <!-- ⚠️ 警告红色族 —— 用户协议等法律警示页面专用 -->
-    <SolidColorBrush x:Key="WarningRedBrush" Color="#8B0000" />
-    <SolidColorBrush x:Key="WarningRedDarkBrush" Color="#5c0000" />
-    <SolidColorBrush x:Key="WarningRedLightBrush" Color="#b22222" />
-    <SolidColorBrush x:Key="WarningRedBrightBrush" Color="#dc143c" />
-    <SolidColorBrush x:Key="WarningRedHighlightBrush" Color="#ff3333" />
-    <SolidColorBrush x:Key="WarningRedAccentBrush" Color="#ff4444" />
-    <SolidColorBrush x:Key="WarningRedMildBrush" Color="#ff6666" />
-    <SolidColorBrush x:Key="WarningRedSoftBrush" Color="#ff8888" />
-    <SolidColorBrush x:Key="WarningRedBackgroundBrush" Color="#1a0000" />
-    <SolidColorBrush x:Key="WarningRedPanelBrush" Color="#2d0a0a" />
-    <SolidColorBrush x:Key="WarningRedBorderBrush" Color="#660000" />
-    <SolidColorBrush x:Key="WarningRedTextBrush" Color="#ffcccc" />
-    <SolidColorBrush x:Key="WarningRedTextMildBrush" Color="#ffaaaa" />
-    <SolidColorBrush x:Key="WarningRedTextDimBrush" Color="#cc9999" />
-    <SolidColorBrush x:Key="WarningRedTextFaintBrush" Color="#996666" />
-    <SolidColorBrush x:Key="WarningRedTextBrightBrush" Color="#ffffff" />
-    <SolidColorBrush x:Key="WarningRedBoxBrush" Color="#3d0a0a" />
-    <SolidColorBrush x:Key="WarningRedButtonBgBrush" Color="#3d1a1a" />
-    <SolidColorBrush x:Key="WarningRedHoverBrush" Color="#a52a2a" />
+    <SolidColorBrush x:Key="WarningRedBrush" Color="#8B0000" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedDarkBrush" Color="#5c0000" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedLightBrush" Color="#b22222" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedBrightBrush" Color="#dc143c" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedHighlightBrush" Color="#ff3333" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedAccentBrush" Color="#ff4444" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedMildBrush" Color="#ff6666" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedSoftBrush" Color="#ff8888" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedBackgroundBrush" Color="#1a0000" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedPanelBrush" Color="#2d0a0a" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedBorderBrush" Color="#660000" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedTextBrush" Color="#ffcccc" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedTextMildBrush" Color="#ffaaaa" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedTextDimBrush" Color="#cc9999" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedTextFaintBrush" Color="#996666" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedTextBrightBrush" Color="#ffffff" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedBoxBrush" Color="#3d0a0a" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedButtonBgBrush" Color="#3d1a1a" Freeze="True" />
+    <SolidColorBrush x:Key="WarningRedHoverBrush" Color="#a52a2a" Freeze="True" />
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- 🧭 ModernNavListBoxStyle: 现代化侧边导航样式 -->

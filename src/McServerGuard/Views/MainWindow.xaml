@@ -16,8 +16,6 @@
         WindowStyle="None"
         ResizeMode="CanResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-        TextOptions.TextFormattingMode="Ideal"
-        TextOptions.TextRenderingMode="Auto"
         FontFamily="{DynamicResource AppFontFamily}">
 
     <WindowChrome.WindowChrome>
@@ -28,10 +26,6 @@
                       ResizeBorderThickness="5"
                       UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
-
-    <Window.RenderTransform>
-        <ScaleTransform ScaleX="1" ScaleY="1" CenterX="0.5" CenterY="0.5" />
-    </Window.RenderTransform>
 
     <Window.Resources>
         <ResourceDictionary>
