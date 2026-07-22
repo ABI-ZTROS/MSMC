@@ -24,11 +24,11 @@ using static Vanara.PInvoke.IpHlpApi;
 /// </remarks>
 public sealed class PortToProcessMapper
 {
-    /// <summary>IPv4 地址族常量（Windows AF_INET）</summary>
-    private const int AfInet = 2;
+    /// <summary>IPv4 地址族常量（Windows AF_INET）。Vanara GetExtendedTcpTable/UdpTable 的 ulAf 参数为 uint。</summary>
+    private const uint AfInet = 2;
 
-    /// <summary>IPv6 地址族常量（Windows AF_INET6）</summary>
-    private const int AfInet6 = 23;
+    /// <summary>IPv6 地址族常量（Windows AF_INET6）。Vanara GetExtendedTcpTable/UdpTable 的 ulAf 参数为 uint。</summary>
+    private const uint AfInet6 = 23;
 
     /// <summary>
     /// 获取所有 TCP 监听端口（IPv4 + IPv6）的 PID 映射。
@@ -102,7 +102,7 @@ public sealed class PortToProcessMapper
         return map.TryGetValue(port, out var pid) ? pid : null;
     }
 
-    private static void FillTcpMap(Dictionary<int, List<int>> map, int af)
+    private static void FillTcpMap(Dictionary<int, List<int>> map, uint af)
     {
         try
         {
@@ -171,7 +171,7 @@ public sealed class PortToProcessMapper
         }
     }
 
-    private static void FillUdpMap(Dictionary<int, List<int>> map, int af)
+    private static void FillUdpMap(Dictionary<int, List<int>> map, uint af)
     {
         try
         {

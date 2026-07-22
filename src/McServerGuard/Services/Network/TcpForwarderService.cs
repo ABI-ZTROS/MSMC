@@ -188,8 +188,8 @@ public sealed class TcpForwarderService : ITcpForwarder
                 break;
             }
 
-            // 每个连接独立处理，不阻塞 Accept 循环
-            _ = Task.Run(() => RelayConnectionAsync(session, client, connectAddr, connectPort, ct));
+            // 每个连接独立处理，不阻塞 Accept 循环；转发 ct 以便取消时中断所有派生任务
+            _ = Task.Run(() => RelayConnectionAsync(session, client, connectAddr, connectPort, ct), ct);
         }
     }
 
