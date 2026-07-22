@@ -253,13 +253,10 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
             System.Windows.Application.Current?.Dispatcher.Invoke(() =>
             {
-                ListeningPorts.Clear();
-                foreach (var port in ports)
-                    ListeningPorts.Add(port);
-
-                BridgeRules.Clear();
-                foreach (var rule in rules)
-                    BridgeRules.Add(rule);
+                // 智能更新：仅当集合内容真正变化时才 Clear+Add，
+                // 避免每秒全量重建导致 DataGrid 虚拟化容器频繁回收触发模板密封崩溃
+                UpdateCollection(ListeningPorts, ports);
+                UpdateCollection(BridgeRules, rules);
 
                 if (selectedKey.HasValue)
                 {
@@ -399,6 +396,32 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         : bytes >= 1_048_576 ? $"{bytes / 1_048_576:F1} MB"
         : bytes >= 1024 ? $"{bytes / 1024:F1} KB"
         : $"{bytes} B";
+
+    /// <summary>
+    /// 智能更新集合：仅当内容（数量或元素）真正变化时才 Clear+Add，
+    /// 避免 DataGrid 虚拟化容器频繁回收触发模板密封崩溃。
+    /// </summary>
+    private static void UpdateCollection<T>(ObservableCollection<T> target, IReadOnlyList<T> source)
+    {
+        if (target.Count == source.Count)
+        {
+            bool same = true;
+            for (int i = 0; i < source.Count; i++)
+            {
+                if (!EqualityComparer<T>.Default.Equals(target[i], source[i]))
+                {
+                    same = false;
+                    break;
+                }
+            }
+            if (same)
+                return; // 内容完全一致，跳过更新
+        }
+
+        target.Clear();
+        foreach (var item in source)
+            target.Add(item);
+    }
 
     private async Task KillSelectedProcess()
     {
