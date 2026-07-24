@@ -68,8 +68,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     /// <param name="webView">要绑定的 WebView2 控件</param>
     public async Task InitializeAsync(WpfWebView2 webView)
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(WebView2BridgeService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         if (IsInitialized)
         {
