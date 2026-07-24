@@ -36,17 +36,21 @@ namespace McServerGuard.ViewModels;
 /// </remarks>
 public partial class MainViewModel : ObservableObject, IDisposable
 {
+    /// <summary>
+    /// 服务器检测编排器 —— 直接用于 <see cref="ScanSkipWarning"/> 跳过计数显示，
+    /// 其余职责已下沉至 <see cref="DetectionPage"/>。
+    /// </summary>
     private readonly IServerDetector _serverDetector;
-    private readonly IConfigManager _configManager;
-    private readonly ISystemMonitor _systemMonitor;
-    private readonly IServerImporterService _serverImporter;
-    private readonly IServerManagerService _serverManager;
-    private readonly IThemeService _themeService;
-    private readonly IToastNotificationService _toastService;
-    private readonly IAppConfigService _appConfigService;
+
+    /// <summary>
+    /// 权限服务 —— 直接用于 <see cref="PrivilegeStatusText"/> / <see cref="IsAdminMode"/> 状态显示。
+    /// </summary>
     private readonly IPrivilegeService _privilegeService;
-    private readonly NetworkService _networkService;
-    private readonly IPortBridgeService _portBridgeService;
+
+    /// <summary>
+    /// Toast 通知服务 —— 构造时调用 Initialize 注册 Snackbar 宿主。
+    /// </summary>
+    private readonly IToastNotificationService _toastService;
 
     /// <summary>状态栏实时时钟计时器 —— Dispose 时停止，避免跨页面事件泄漏</summary>
     private readonly DispatcherTimer _clockTimer;
@@ -57,43 +61,40 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// <summary>
     /// 初始化主窗口视图模型的新实例
     /// </summary>
+    /// <param name="detectionPage">服务器检测页 ViewModel（DI 注入）</param>
+    /// <param name="configPage">配置编辑页 ViewModel（DI 注入）</param>
+    /// <param name="monitorPage">系统监控页 ViewModel（DI 注入）</param>
+    /// <param name="networkPage">网络监控页 ViewModel（DI 注入）</param>
+    /// <param name="settingsPage">设置页 ViewModel（DI 注入）</param>
+    /// <param name="serverDetector">服务器检测编排器（用于状态栏跳过计数显示）</param>
+    /// <param name="privilegeService">权限服务（用于权限模式状态显示）</param>
+    /// <param name="toastService">Toast 通知服务（用于初始化 Snackbar 宿主）</param>
     /// <remarks>
-    /// 通过构造函数依赖注入获取所有外部依赖项，完成子页面 ViewModel 的实例化、
-    /// 跨页面属性变更订阅、通知服务初始化以及状态栏时钟启动。
+    /// 采用 DI 容器注入子页面 ViewModel，避免手动 new 导致的 God Object。
+    /// 子 VM 各自的依赖（IConfigManager/ISystemMonitor 等）由 DI 容器自动解析，
+    /// MainViewModel 仅保留直接使用的 3 个服务引用。
     /// </remarks>
     public MainViewModel(
+        ServerDetectionViewModel detectionPage,
+        ConfigEditorViewModel configPage,
+        SystemMonitorViewModel monitorPage,
+        NetworkMonitorViewModel networkPage,
+        SettingsViewModel settingsPage,
         IServerDetector serverDetector,
-        IConfigManager configManager,
-        ISystemMonitor systemMonitor,
-        IServerImporterService serverImporter,
-        IServerManagerService serverManager,
-        IThemeService themeService,
-        IToastNotificationService toastService,
-        IAppConfigService appConfigService,
         IPrivilegeService privilegeService,
-        NetworkService networkService,
-        IPortBridgeService portBridgeService,
-        NetworkTrafficService trafficService)
+        IToastNotificationService toastService)
     {
-        Log.Information("🧠 MainViewModel 初始化，注入 {ServiceCount} 个服务", 12);
+        Log.Information("🧠 MainViewModel 初始化，DI 注入 5 个子 VM + 3 个直接服务");
+
+        DetectionPage = detectionPage;
+        ConfigPage = configPage;
+        MonitorPage = monitorPage;
+        NetworkPage = networkPage;
+        SettingsPage = settingsPage;
 
         _serverDetector = serverDetector;
-        _configManager = configManager;
-        _systemMonitor = systemMonitor;
-        _serverImporter = serverImporter;
-        _serverManager = serverManager;
-        _themeService = themeService;
-        _toastService = toastService;
-        _appConfigService = appConfigService;
         _privilegeService = privilegeService;
-        _networkService = networkService;
-        _portBridgeService = portBridgeService;
-
-        DetectionPage = new ServerDetectionViewModel(serverDetector, appConfigService, serverManager, serverImporter);
-        ConfigPage = new ConfigEditorViewModel(configManager, serverDetector, appConfigService);
-        MonitorPage = new SystemMonitorViewModel(systemMonitor);
-        NetworkPage = new NetworkMonitorViewModel(networkService, portBridgeService, trafficService);
-        SettingsPage = new SettingsViewModel(themeService, toastService, appConfigService);
+        _toastService = toastService;
 
         // 命名方法订阅 —— Dispose 时可精确取消，避免 Lambda 闭包导致的隐式引用泄漏
         DetectionPage.PropertyChanged += OnDetectionPagePropertyChanged;
@@ -215,6 +216,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public string ScanSkipWarning => _serverDetector.LastSkippedProcessCount > 0
         ? $"⚠️ 已跳过 {_serverDetector.LastSkippedProcessCount} 个无法访问的进程（{_serverDetector.LastSkipReason ?? "未知原因"}）"
         : string.Empty;
+
+    /// <summary>
+    /// 检查是否存在任何正在运行的服务器实例 —— 供 MainWindow 关闭确认透传使用
+    /// </summary>
+    /// <returns>若有服务器正在运行返回 true</returns>
+    /// <remarks>
+    /// 透传至 <see cref="DetectionPage"/> 持有的 <see cref="IServerManagerService"/>，
+    /// 避免 MainWindow 直接通过服务定位器获取 IServerManagerService。
+    /// </remarks>
+    public bool AnyServerRunning => DetectionPage.AnyServerRunning();
 
     /// <summary>
     /// 请求管理员权限提升命令

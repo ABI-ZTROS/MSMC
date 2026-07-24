@@ -928,6 +928,12 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// 检查是否存在任何正在运行的服务器实例 —— 供 MainWindow 关闭确认透传使用
+    /// </summary>
+    /// <returns>若有服务器正在运行返回 true</returns>
+    public bool AnyServerRunning() => _serverManager.AnyServerRunning();
+
+    /// <summary>
     /// 获取当前活动的服务器实例
     /// </summary>
     /// <returns>运行中服务器或已知服务器转换后的实例；无选中则返回 <c>null</c></returns>

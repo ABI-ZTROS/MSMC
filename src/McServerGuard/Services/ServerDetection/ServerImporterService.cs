@@ -88,6 +88,20 @@ public interface IServerImporterService
 public class ServerImporterService : IServerImporterService
 {
     /// <summary>
+    /// 配置文件扫描器 —— DI 注入，避免手动 new 导致的耦合与生命周期失控
+    /// </summary>
+    private readonly ConfigFileScanner _configScanner;
+
+    /// <summary>
+    /// 初始化服务器导入服务
+    /// </summary>
+    /// <param name="configScanner">配置文件扫描器（DI 注入）</param>
+    public ServerImporterService(ConfigFileScanner configScanner)
+    {
+        _configScanner = configScanner;
+    }
+
+    /// <summary>
     /// 从 JAR 文件导入服务器实例（使用默认 JVM 参数）
     /// </summary>
     /// <param name="jarFilePath">服务器 JAR 文件路径</param>
@@ -128,57 +142,13 @@ public class ServerImporterService : IServerImporterService
         Log.Information("服务器信息: 类型={Type}, 运行中={IsRunning}, 工作目录={Dir}",
             serverType, isRunning, workingDir);
 
-        int processId = 0;
-        string javaPath = string.Empty;
-        string fullCommandLine = string.Empty;
-        long initialHeapBytes = 0;
-        long maxHeapBytes = 0;
-        string gcType = string.Empty;
-        bool usesAikarFlags = false;
-        var configFiles = new List<string>();
+        // 根据运行状态分流提取 JVM 运行时参数
+        var (processId, javaPath, fullCommandLine, jvmInfo) = isRunning
+            ? ExtractRunningProcessInfo(jarFilePath)
+            : (0, string.Empty, string.Empty, ParseJvmArgumentsFromCustom(customJvmArguments));
 
-        if (isRunning)
-        {
-            // FindRunningJavaProcess 返回的 Process 对象需在使用后释放，避免句柄泄漏
-            var processInfo = FindRunningJavaProcess(jarFilePath);
-            if (processInfo != null)
-            {
-                try
-                {
-                    processId = processInfo.Id;
-                    try { javaPath = processInfo.MainModule?.FileName ?? string.Empty; }
-                    catch (Exception ex) { Log.Debug(ex, "读取 MainModule 失败 PID={Pid}", processId); }
-                    fullCommandLine = GetProcessCommandLine(processInfo.Id);
-
-                    var parsed = CommandLineParser.Parse(fullCommandLine);
-                    initialHeapBytes = parsed.InitialHeapMemoryBytes;
-                    maxHeapBytes = parsed.MaxHeapMemoryBytes;
-                    gcType = parsed.GcType;
-                    usesAikarFlags = parsed.UsesAikarFlags;
-                }
-                finally
-                {
-                    processInfo.Dispose();
-                }
-            }
-        }
-        else
-        {
-            initialHeapBytes = ParseMemorySize(customJvmArguments.FirstOrDefault(a => a.StartsWith("-Xms"))?.Replace("-Xms", "") ?? "2G");
-            maxHeapBytes = ParseMemorySize(customJvmArguments.FirstOrDefault(a => a.StartsWith("-Xmx"))?.Replace("-Xmx", "") ?? "4G");
-
-            if (customJvmArguments.Any(a => a.Contains("UseG1GC")))
-                gcType = "G1GC";
-            else if (customJvmArguments.Any(a => a.Contains("UseZGC")))
-                gcType = "ZGC";
-            else
-                gcType = "G1GC";
-
-            usesAikarFlags = customJvmArguments.Any(a => a.Contains("aikars"));
-        }
-
-        var scanner = new ConfigFileScanner();
-        configFiles = scanner.ScanAll(workingDir);
+        // 扫描配置文件（使用 DI 注入的扫描器）
+        var configFiles = _configScanner.ScanAll(workingDir);
 
         var server = new ServerInstance
         {
@@ -190,16 +160,81 @@ public class ServerImporterService : IServerImporterService
             ServerJarName = jarFile.Name,
             FullCommandLine = fullCommandLine,
             JvmArguments = customJvmArguments,
-            InitialHeapMemoryBytes = initialHeapBytes,
-            MaxHeapMemoryBytes = maxHeapBytes,
+            InitialHeapMemoryBytes = jvmInfo.InitialHeapBytes,
+            MaxHeapMemoryBytes = jvmInfo.MaxHeapBytes,
             ConfigFiles = configFiles,
-            UsesAikarFlags = usesAikarFlags,
-            GcType = gcType,
+            UsesAikarFlags = jvmInfo.UsesAikarFlags,
+            GcType = jvmInfo.GcType,
             ServerPort = ServerConstants.DefaultServerPort
         };
 
         Log.Information("服务器导入成功: {DisplayName}", server.DisplayName);
         return server;
+    }
+
+    /// <summary>
+    /// 从运行中进程提取 JVM 运行时参数 —— 拆分自 ImportServer 减少方法复杂度
+    /// </summary>
+    /// <param name="jarFilePath">JAR 文件路径（用于查找运行中进程）</param>
+    /// <returns>（进程ID, Java路径, 完整命令行, JVM参数信息）元组</returns>
+    private (int ProcessId, string JavaPath, string CommandLine, JvmRuntimeInfo JvmInfo) ExtractRunningProcessInfo(string jarFilePath)
+    {
+        var processInfo = FindRunningJavaProcess(jarFilePath);
+        if (processInfo == null)
+            return (0, string.Empty, string.Empty, default);
+
+        try
+        {
+            int pid = processInfo.Id;
+            string javaPath = string.Empty;
+            try { javaPath = processInfo.MainModule?.FileName ?? string.Empty; }
+            catch (Exception ex) { Log.Debug(ex, "读取 MainModule 失败 PID={Pid}", pid); }
+
+            var fullCommandLine = GetProcessCommandLine(pid);
+            var parsed = CommandLineParser.Parse(fullCommandLine);
+
+            return (pid, javaPath, fullCommandLine, new JvmRuntimeInfo(
+                parsed.InitialHeapMemoryBytes,
+                parsed.MaxHeapMemoryBytes,
+                parsed.GcType,
+                parsed.UsesAikarFlags));
+        }
+        finally
+        {
+            processInfo.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// 从自定义 JVM 参数列表解析运行时信息 —— 拆分自 ImportServer 减少方法复杂度
+    /// </summary>
+    /// <param name="customJvmArguments">自定义 JVM 参数列表</param>
+    /// <returns>JVM 运行时信息结构</returns>
+    private JvmRuntimeInfo ParseJvmArgumentsFromCustom(List<string> customJvmArguments)
+    {
+        var initialHeap = ParseMemorySize(
+            customJvmArguments.FirstOrDefault(a => a.StartsWith("-Xms"))?.Replace("-Xms", "") ?? "2G");
+        var maxHeap = ParseMemorySize(
+            customJvmArguments.FirstOrDefault(a => a.StartsWith("-Xmx"))?.Replace("-Xmx", "") ?? "4G");
+
+        var gcType = customJvmArguments.Any(a => a.Contains("UseG1GC")) ? "G1GC"
+            : customJvmArguments.Any(a => a.Contains("UseZGC")) ? "ZGC"
+            : "G1GC";
+
+        var usesAikarFlags = customJvmArguments.Any(a => a.Contains("aikars"));
+
+        return new JvmRuntimeInfo(initialHeap, maxHeap, gcType, usesAikarFlags);
+    }
+
+    /// <summary>
+    /// JVM 运行时参数信息 —— 用于 ImportServer 内部分流提取结果的传递
+    /// </summary>
+    private readonly struct JvmRuntimeInfo(long initialHeap, long maxHeap, string gcType, bool usesAikarFlags)
+    {
+        public long InitialHeapBytes { get; } = initialHeap;
+        public long MaxHeapBytes { get; } = maxHeap;
+        public string GcType { get; } = gcType;
+        public bool UsesAikarFlags { get; } = usesAikarFlags;
     }
 
     /// <summary>

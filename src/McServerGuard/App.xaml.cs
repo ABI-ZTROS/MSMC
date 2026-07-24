@@ -141,6 +141,14 @@ public partial class App : Application
         Log.Information("🧹 注册内存优化服务...");
         services.AddSingleton<MemoryOptimizerService>();
 
+        // 子页面 ViewModel —— 走 DI 注入，避免 MainViewModel 手动 new 导致的 God Object
+        Log.Information("🧩 注册子页面 ViewModel...");
+        services.AddSingleton<ViewModels.ServerDetectionViewModel>();
+        services.AddSingleton<ViewModels.ConfigEditorViewModel>();
+        services.AddSingleton<ViewModels.SystemMonitorViewModel>();
+        services.AddSingleton<ViewModels.NetworkMonitorViewModel>();
+        services.AddSingleton<ViewModels.SettingsViewModel>();
+
         // MainViewModel
         // 之前曾遗忘注册，导致将 DI 容器本身作为 DataContext，绑定全部失效
         Log.Information("🧠 注册 MainViewModel...");

@@ -33,7 +33,6 @@ namespace McServerGuard.Views;
 public partial class MainWindow : Window
 {
     private readonly IThemeService _themeService;
-    private readonly IServerManagerService _serverManager;
     private MainViewModel? _vm;
     private readonly DispatcherTimer _collapseTimer;
     private bool _isSidebarExpanded;
@@ -43,8 +42,8 @@ public partial class MainWindow : Window
     {
         Log.Information("🏗️ MainWindow 正在初始化...");
         InitializeComponent();
+        // IThemeService 暂保留服务定位器（A6 提取 AnimationHelper 后统一处理）
         _themeService = App.Services.GetRequiredService<IThemeService>();
-        _serverManager = App.Services.GetRequiredService<IServerManagerService>();
 
         MainContent.RenderTransform = new TranslateTransform();
 
@@ -347,7 +346,8 @@ public partial class MainWindow : Window
         _collapseTimer.Stop();
         _collapseTimer.Tick -= CollapseTimer_Tick;
 
-        if (_serverManager.AnyServerRunning())
+        // 通过 ViewModel 链透传检查服务器运行状态，避免直接持有 IServerManagerService
+        if (_vm?.AnyServerRunning == true)
         {
             var result = MessageBox.Show(
                 "⚠️ 警告：关闭 MSMC 将导致正在运行的 Minecraft 服务器失去管理，可能直接崩溃或导致数据丢失、存档损坏。确定要关闭吗？",
