@@ -1,207 +1,324 @@
-import { useEffect, useState } from 'react'
-import { GaugeRing, ChartPlaceholder } from '@/components/ui'
+import { useEffect, useState, useRef } from 'react'
+import { GaugeRing } from '@/components/ui'
+import { bridge } from '@/utils/bridge'
 
 interface SystemMetrics {
-  cpu: number
-  memory: number
-  disk: number
-  gpu: number
-  cpuTemp: number
-  gpuTemp: number
-  networkIn: number
-  networkOut: number
-  totalMemory: number
-  usedMemory: number
-  totalDisk: number
-  usedDisk: number
+  cpuUsagePercent: number
+  memoryUsagePercent: number
+  diskUsagePercent: number
+  totalMemoryBytes: number
+  usedMemoryBytes: number
+  diskTotalBytes: number
+  diskUsedBytes: number
+  diskName: string
+  totalThreadCount: number
+  javaCpuUsagePercent: number
+  javaWorkingSetBytes: number
+  javaThreadCount: number
+  isMonitoring: boolean
+  memoryInfoText: string
+  diskInfoText: string
 }
 
-function getRandomVariation(base: number, range: number): number {
-  return Math.max(0, Math.min(100, base + (Math.random() - 0.5) * range))
+interface HistoryPoint {
+  timestamp: string
+  cpuUsagePercent: number
+  memoryUsagePercent: number
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1 << 30) return `${(bytes / (1 << 30)).toFixed(1)} GB`
+  if (bytes >= 1 << 20) return `${(bytes / (1 << 20)).toFixed(1)} MB`
+  if (bytes >= 1 << 10) return `${(bytes / (1 << 10)).toFixed(1)} KB`
+  return `${bytes} B`
+}
+
+function getColor(value: number): 'success' | 'warning' | 'danger' | 'primary' {
+  if (value >= 90) return 'danger'
+  if (value >= 70) return 'warning'
+  if (value >= 30) return 'primary'
+  return 'success'
+}
+
+// 简单的折线图组件（用 SVG 手绘，避免引入大依赖）
+function SimpleLineChart({
+  data,
+  color,
+  height = 160,
+  label,
+}: {
+  data: number[]
+  color: string
+  height?: number
+  label: string
+}): JSX.Element {
+  const width = 600
+  const padding = { top: 10, right: 10, bottom: 20, left: 40 }
+  const chartWidth = width - padding.left - padding.right
+  const chartHeight = height - padding.top - padding.bottom
+
+  const maxVal = 100
+  const minVal = 0
+
+  const points = data.map((val, i) => {
+    const x = padding.left + (i / Math.max(data.length - 1, 1)) * chartWidth
+    const y = padding.top + (1 - (val - minVal) / (maxVal - minVal)) * chartHeight
+    return { x, y }
+  })
+
+  const pathD = points.length > 0
+    ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+    : ''
+
+  const areaD = points.length > 0
+    ? `${pathD} L ${points[points.length - 1].x.toFixed(1)} ${padding.top + chartHeight} L ${padding.left} ${padding.top + chartHeight} Z`
+    : ''
+
+  const yLabels = [0, 25, 50, 75, 100]
+
+  return (
+    <div className="w-full">
+      <div className="text-sm font-medium text-slate-300 mb-2 px-2">{label}</div>
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+        {/* Y 轴网格线和标签 */}
+        {yLabels.map((val) => {
+          const y = padding.top + (1 - val / 100) * chartHeight
+          return (
+            <g key={val}>
+              <line
+                x1={padding.left}
+                y1={y}
+                x2={width - padding.right}
+                y2={y}
+                stroke="#334155"
+                strokeWidth="1"
+                strokeDasharray="3,3"
+                opacity="0.5"
+              />
+              <text
+                x={padding.left - 8}
+                y={y + 4}
+                fill="#64748b"
+                fontSize="10"
+                textAnchor="end"
+              >
+                {val}%
+              </text>
+            </g>
+          )
+        })}
+
+        {/* 面积填充 */}
+        {areaD && (
+          <path
+            d={areaD}
+            fill={color}
+            opacity="0.15"
+          />
+        )}
+
+        {/* 折线 */}
+        {pathD && (
+          <path
+            d={pathD}
+            fill="none"
+            stroke={color}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+      </svg>
+    </div>
+  )
 }
 
 export function SystemMonitorPage(): JSX.Element {
-  const [metrics, setMetrics] = useState<SystemMetrics>({
-    cpu: 32,
-    memory: 58,
-    disk: 45,
-    gpu: 28,
-    cpuTemp: 52,
-    gpuTemp: 48,
-    networkIn: 1.2,
-    networkOut: 0.8,
-    totalMemory: 32,
-    usedMemory: 18.6,
-    totalDisk: 1024,
-    usedDisk: 460.8,
-  })
+  const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
+  const [cpuHistory, setCpuHistory] = useState<number[]>([])
+  const [memHistory, setMemHistory] = useState<number[]>([])
+  const intervalRef = useRef<number | null>(null)
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMetrics((prev) => ({
-        ...prev,
-        cpu: getRandomVariation(prev.cpu, 8),
-        memory: getRandomVariation(prev.memory, 3),
-        gpu: getRandomVariation(prev.gpu, 10),
-        cpuTemp: getRandomVariation(prev.cpuTemp, 4),
-        gpuTemp: getRandomVariation(prev.gpuTemp, 3),
-        networkIn: Math.max(0, prev.networkIn + (Math.random() - 0.5) * 0.5),
-        networkOut: Math.max(0, prev.networkOut + (Math.random() - 0.5) * 0.3),
-      }))
-    }, 1500)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  const getColor = (value: number): 'success' | 'warning' | 'danger' | 'primary' => {
-    if (value >= 90) return 'danger'
-    if (value >= 70) return 'warning'
-    if (value >= 30) return 'primary'
-    return 'success'
+  // 拉取数据
+  const fetchMetrics = async () => {
+    try {
+      const data = await bridge.invoke<SystemMetrics>('systemMonitor:getMetrics')
+      setMetrics(data)
+    } catch (e) {
+      console.error('获取系统指标失败:', e)
+    }
   }
 
+  const fetchHistory = async () => {
+    try {
+      const data = await bridge.invoke<HistoryPoint[]>('systemMonitor:getHistory')
+      setCpuHistory(data.map(d => d.cpuUsagePercent))
+      setMemHistory(data.map(d => d.memoryUsagePercent))
+    } catch (e) {
+      console.error('获取历史数据失败:', e)
+    }
+  }
+
+  const handleStart = async () => {
+    try {
+      await bridge.invoke('systemMonitor:start')
+    } catch (e) {
+      console.error('启动监控失败:', e)
+    }
+  }
+
+  const handleStop = async () => {
+    try {
+      await bridge.invoke('systemMonitor:stop')
+    } catch (e) {
+      console.error('停止监控失败:', e)
+    }
+  }
+
+  useEffect(() => {
+    // 初始拉取
+    fetchMetrics()
+    fetchHistory()
+
+    // 定时刷新（2 秒一次，和 WPF 版一致）
+    intervalRef.current = window.setInterval(() => {
+      fetchMetrics()
+      fetchHistory()
+    }, 2000)
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
+  }, [])
+
+  const cpu = metrics?.cpuUsagePercent ?? 0
+  const mem = metrics?.memoryUsagePercent ?? 0
+  const disk = metrics?.diskUsagePercent ?? 0
+  const threads = metrics?.totalThreadCount ?? 0
+
   return (
-    <div className="p-6 pb-8">
-      {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            系统监控
-          </h1>
-          <span className="badge badge-success flex items-center gap-1">
-            <span className="status-dot status-dot-success" />
-            实时
+    <div className="p-3 h-full flex flex-col">
+      {/* 顶部控制按钮 */}
+      <div className="flex items-center gap-2 mb-3">
+        <button
+          onClick={handleStart}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-md transition-colors"
+        >
+          开始监控
+        </button>
+        <button
+          onClick={handleStop}
+          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-md border border-slate-600 transition-colors"
+        >
+          停止监控
+        </button>
+        {metrics?.isMonitoring && (
+          <span className="flex items-center gap-1.5 text-emerald-400 text-sm ml-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            监控中
           </span>
-        </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          实时监控系统资源使用情况
-        </p>
+        )}
       </div>
 
-      {/* Gauge Rings Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="card p-6 flex flex-col items-center">
-          <GaugeRing
-            value={metrics.cpu}
-            label="CPU"
-            sublabel={`${metrics.cpuTemp.toFixed(0)}°C`}
-            color={getColor(metrics.cpu)}
-            size={140}
-            strokeWidth={9}
-          />
-        </div>
-        <div className="card p-6 flex flex-col items-center">
-          <GaugeRing
-            value={metrics.memory}
-            label="内存"
-            sublabel={`${metrics.usedMemory.toFixed(1)}/${metrics.totalMemory} GB`}
-            color={getColor(metrics.memory)}
-            size={140}
-            strokeWidth={9}
-          />
-        </div>
-        <div className="card p-6 flex flex-col items-center">
-          <GaugeRing
-            value={metrics.gpu}
-            label="GPU"
-            sublabel={`${metrics.gpuTemp.toFixed(0)}°C`}
-            color={getColor(metrics.gpu)}
-            size={140}
-            strokeWidth={9}
-          />
-        </div>
-        <div className="card p-6 flex flex-col items-center">
-          <GaugeRing
-            value={metrics.disk}
-            label="磁盘"
-            sublabel={`${metrics.usedDisk.toFixed(0)}/${metrics.totalDisk} GB`}
-            color={getColor(metrics.disk)}
-            size={140}
-            strokeWidth={9}
-          />
-        </div>
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-        <ChartPlaceholder title="CPU 使用率 (24h)" height={200} type="area" />
-        <ChartPlaceholder title="内存使用率 (24h)" height={200} type="area" />
-      </div>
-
-      {/* Network Stats + Details */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Network Card */}
-        <div className="card p-5">
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">
-            网络速度
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-success-50 dark:bg-success-500/10 flex items-center justify-center text-lg">
-                  ↓
-                </div>
-                <div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">下载</div>
-                  <div className="text-lg font-bold text-success-600 dark:text-success-400 number-animate">
-                    {metrics.networkIn.toFixed(1)}
-                    <span className="text-xs font-medium ml-0.5">MB/s</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-500/10 flex items-center justify-center text-lg">
-                  ↑
-                </div>
-                <div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">上传</div>
-                  <div className="text-lg font-bold text-primary-600 dark:text-primary-400 number-animate">
-                    {metrics.networkOut.toFixed(1)}
-                    <span className="text-xs font-medium ml-0.5">MB/s</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+      {/* 圆环仪表盘行 —— 4 列，和 WPF 版一致 */}
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        {/* CPU */}
+        <div className="bg-slate-900 rounded-md border border-slate-700/50 p-3">
+          <div className="flex items-center justify-center">
+            <GaugeRing
+              value={cpu}
+              label="CPU"
+              color={getColor(cpu)}
+              size={120}
+              strokeWidth={8}
+            />
           </div>
         </div>
 
-        {/* Process List */}
-        <div className="card p-5 lg:col-span-2">
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">
-            进程资源占用 Top 5
-          </h3>
-          <div className="space-y-3">
-            {[
-              { name: 'java.exe (Minecraft Server)', cpu: 28.5, mem: 12.4, color: 'primary' },
-              { name: 'chrome.exe', cpu: 5.2, mem: 3.1, color: 'success' },
-              { name: 'Code.exe', cpu: 3.8, mem: 2.8, color: 'success' },
-              { name: 'System', cpu: 1.5, mem: 0.9, color: 'muted' },
-              { name: 'explorer.exe', cpu: 0.8, mem: 0.6, color: 'muted' },
-            ].map((process, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="w-5 text-xs font-medium text-slate-400 dark:text-slate-500 text-right">
-                  {i + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
-                      {process.name}
-                    </span>
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex-shrink-0 ml-2">
-                      {process.cpu.toFixed(1)}% CPU · {process.mem.toFixed(1)}% MEM
-                    </span>
-                  </div>
-                  <div className="progress-bar h-1">
-                    <div
-                      className={`progress-fill progress-${process.color}`}
-                      style={{ width: `${Math.min(process.cpu, 100)}%` }}
-                    />
-                  </div>
-                </div>
+        {/* 内存 */}
+        <div className="bg-slate-900 rounded-md border border-slate-700/50 p-3">
+          <div className="flex items-center justify-center">
+            <GaugeRing
+              value={mem}
+              label="内存"
+              sublabel={metrics?.memoryInfoText || ''}
+              color={getColor(mem)}
+              size={120}
+              strokeWidth={8}
+            />
+          </div>
+        </div>
+
+        {/* 磁盘 */}
+        <div className="bg-slate-900 rounded-md border border-slate-700/50 p-3">
+          <div className="flex items-center justify-center">
+            <GaugeRing
+              value={disk}
+              label="磁盘"
+              sublabel={metrics?.diskInfoText || ''}
+              color={getColor(disk)}
+              size={120}
+              strokeWidth={8}
+            />
+          </div>
+        </div>
+
+        {/* 线程数（用大号数字展示，和 WPF 版一致） */}
+        <div className="bg-slate-900 rounded-md border border-slate-700/50 p-3">
+          <div className="flex flex-col items-center justify-center h-full py-4">
+            <div className="text-4xl font-bold text-slate-100 number-animate">
+              {threads}
+            </div>
+            <div className="text-sm text-slate-400 mt-2">系统线程数</div>
+            {metrics?.javaThreadCount ? (
+              <div className="text-xs text-slate-500 mt-1">
+                Java: {metrics.javaThreadCount}
               </div>
-            ))}
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* 折线图表区 */}
+      <div className="flex-1 min-h-0 grid grid-cols-2 gap-3">
+        <div className="bg-slate-900 rounded-md border border-slate-700/50 p-3 overflow-hidden">
+          <SimpleLineChart
+            data={cpuHistory}
+            color="#22c55e"
+            height={180}
+            label="CPU 使用率趋势"
+          />
+        </div>
+        <div className="bg-slate-900 rounded-md border border-slate-700/50 p-3 overflow-hidden">
+          <SimpleLineChart
+            data={memHistory}
+            color="#3b82f6"
+            height={180}
+            label="内存使用率趋势"
+          />
+        </div>
+      </div>
+
+      {/* 详细数据区 */}
+      <div className="mt-3 grid grid-cols-3 gap-3">
+        <div className="bg-slate-900 rounded-md border border-slate-700/50 p-3">
+          <div className="text-xs text-slate-500 mb-1">Java CPU 使用率</div>
+          <div className="text-xl font-bold text-slate-200">
+            {metrics?.javaCpuUsagePercent?.toFixed(1) || '0.0'}%
+          </div>
+        </div>
+        <div className="bg-slate-900 rounded-md border border-slate-700/50 p-3">
+          <div className="text-xs text-slate-500 mb-1">Java 内存占用</div>
+          <div className="text-xl font-bold text-slate-200">
+            {formatBytes(metrics?.javaWorkingSetBytes || 0)}
+          </div>
+        </div>
+        <div className="bg-slate-900 rounded-md border border-slate-700/50 p-3">
+          <div className="text-xs text-slate-500 mb-1">磁盘名称</div>
+          <div className="text-xl font-bold text-slate-200">
+            {metrics?.diskName || '-'}
           </div>
         </div>
       </div>

@@ -438,6 +438,82 @@ public partial class MainWindow : Window
             });
         });
 
+        // === 系统监控相关 API ===
+
+        // 获取当前系统指标快照
+        _bridgeService.RegisterRequestHandler("systemMonitor:getMetrics", _ =>
+        {
+            var metrics = _vm?.MonitorPage?.CurrentMetrics;
+            if (metrics == null)
+            {
+                return Task.FromResult<object?>(new
+                {
+                    cpuUsagePercent = 0.0,
+                    memoryUsagePercent = 0.0,
+                    diskUsagePercent = 0.0,
+                    totalMemoryBytes = 0L,
+                    usedMemoryBytes = 0L,
+                    diskTotalBytes = 0L,
+                    diskUsedBytes = 0L,
+                    diskName = string.Empty,
+                    totalThreadCount = 0,
+                    javaCpuUsagePercent = 0.0,
+                    javaWorkingSetBytes = 0L,
+                    javaThreadCount = 0,
+                    isMonitoring = _vm?.MonitorPage?.IsMonitoring ?? false,
+                    memoryInfoText = "等待数据...",
+                    diskInfoText = "等待数据...",
+                });
+            }
+
+            return Task.FromResult<object?>(new
+            {
+                cpuUsagePercent = metrics.CpuUsagePercent,
+                memoryUsagePercent = metrics.MemoryUsagePercent,
+                diskUsagePercent = metrics.DiskUsagePercent,
+                totalMemoryBytes = metrics.TotalMemoryBytes,
+                usedMemoryBytes = metrics.UsedMemoryBytes,
+                diskTotalBytes = metrics.DiskTotalBytes,
+                diskUsedBytes = metrics.DiskUsedBytes,
+                diskName = metrics.DiskName,
+                totalThreadCount = metrics.TotalThreadCount,
+                javaCpuUsagePercent = metrics.JavaCpuUsagePercent,
+                javaWorkingSetBytes = metrics.JavaWorkingSetBytes,
+                javaThreadCount = metrics.JavaThreadCount,
+                isMonitoring = _vm?.MonitorPage?.IsMonitoring ?? false,
+                memoryInfoText = _vm?.MonitorPage?.MemoryInfoText ?? string.Empty,
+                diskInfoText = _vm?.MonitorPage?.DiskInfoText ?? string.Empty,
+            });
+        });
+
+        // 获取历史数据（用于图表）
+        _bridgeService.RegisterRequestHandler("systemMonitor:getHistory", _ =>
+        {
+            var history = _vm?.MonitorPage?.MetricsHistory ?? [];
+            var result = history.Select(m => new
+            {
+                timestamp = m.Timestamp,
+                cpuUsagePercent = m.CpuUsagePercent,
+                memoryUsagePercent = m.MemoryUsagePercent,
+            }).ToList();
+
+            return Task.FromResult<object?>(result);
+        });
+
+        // 启动监控
+        _bridgeService.RegisterRequestHandler("systemMonitor:start", _ =>
+        {
+            _vm?.MonitorPage?.StartMonitoringCommand.Execute(null);
+            return Task.FromResult<object?>(new { success = true });
+        });
+
+        // 停止监控
+        _bridgeService.RegisterRequestHandler("systemMonitor:stop", _ =>
+        {
+            _vm?.MonitorPage?.StopMonitoringCommand.Execute(null);
+            return Task.FromResult<object?>(new { success = true });
+        });
+
         // 订阅来自 JS 的事件（调试用）
         _bridgeService.SubscribeToEvents((action, payload) =>
         {

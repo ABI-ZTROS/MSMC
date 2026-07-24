@@ -37,13 +37,12 @@
     </Window.Resources>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 📐 整体布局：自定义标题栏 + WebView2 + 底部状态栏            -->
+    <!-- 📐 整体布局：自定义标题栏 + WebView2（占满，状态栏改到网页里） -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />  <!-- 🎨 自定义标题栏 -->
-            <RowDefinition Height="*" />     <!-- 🌐 WebView2 内容区 -->
-            <RowDefinition Height="Auto" />  <!-- 📊 底部状态栏 -->
+            <RowDefinition Height="*" />     <!-- 🌐 WebView2 内容区（占满） -->
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -117,57 +116,6 @@
                       x:Name="MainWebView"
                       HorizontalAlignment="Stretch"
                       VerticalAlignment="Stretch" />
-
-        <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 📊 底部状态栏                                               -->
-        <!-- ═══════════════════════════════════════════════════════════════ -->
-        <materialDesign:ColorZone Grid.Row="2"
-                                  Mode="PrimaryDark"
-                                  Padding="16,6">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <iconPacks:PackIconFontAwesome6 Kind="CircleInfoSolid"
-                                            Width="16" Height="16"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,6,0" />
-                    <TextBlock Text="{Binding StatusMessage}"
-                               FontSize="12"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource MaterialDesignBody}" />
-                </StackPanel>
-
-                <StackPanel Grid.Column="3"
-                            Orientation="Horizontal">
-                    <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
-                                            Width="12" Height="12"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,4,0"
-                                            Foreground="{DynamicResource GaugeGreenBrush}" />
-                    <TextBlock Text="Web UI Mode"
-                               FontSize="11"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource GaugeGreenBrush}"
-                               Opacity="0.9" />
-                </StackPanel>
-
-                <TextBlock Grid.Column="4"
-                           Text="{Binding CurrentTime}"
-                           FontSize="12"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Right"
-                           Foreground="{DynamicResource MaterialDesignBody}"
-                           Opacity="0.7"
-                           Margin="12,0,0,0" />
-            </Grid>
-        </materialDesign:ColorZone>
     </Grid>
 
 </Window>
