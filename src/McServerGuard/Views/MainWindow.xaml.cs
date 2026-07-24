@@ -297,8 +297,8 @@ public partial class MainWindow : Window
             const time = new Date().toLocaleTimeString();
             const entry = document.createElement('div');
             entry.className = 'log-entry';
-            entry.innerHTML = '<span class=\"time\">[' + time + ']</span>' +
-                              '<span class=\"' + type + '\">' + message + '</span>';
+            entry.innerHTML = '<span class=""time"">[' + time + ']</span>' +
+                              '<span class=""' + type + '"">' + message + '</span>';
             logArea.appendChild(entry);
             logArea.scrollTop = logArea.scrollHeight;
         }
