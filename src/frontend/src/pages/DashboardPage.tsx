@@ -22,11 +22,16 @@ interface RunningServer {
 interface KnownServer {
   id: string
   name: string
-  serverType: string
   workingDirectory: string
   serverJarPath: string
   javaPath: string
-  lastSeen: string
+  port: number
+  initialHeapMemoryBytes: number
+  maxHeapMemoryBytes: number
+  group: string
+  isFavorite: boolean
+  addedAt: string
+  lastSeenAt: string
   status: string
 }
 
