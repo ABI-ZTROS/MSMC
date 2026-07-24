@@ -56,6 +56,20 @@ src/McServerGuard/
 └── Selectors/              # 模板选择器
 ```
 
+## 鸣谢
+
+感谢每一位为 MSMC 付出过心血的人：
+
+| 成员 | 角色 | GitHub |
+|------|------|--------|
+| **ABI-ZTROS** | 主要开发 · 项目发起者 | [@ABI-ZTROS](https://github.com/ABI-ZTROS) |
+| **Gglaoguan** | 次级开发（已故 · 永远缅怀） | [@Gglaoguan](https://github.com/Gglaoguan) |
+| **烟蓝湘** | 情绪支持 · Special Thanks 💖 | — |
+| **MochaCello92377** | Debug · 功能建议 | [@MochaCello92377](https://github.com/MochaCello92377) |
+| **CatStack-pixe** | 测试环境 | [@CatStack-pixe](https://github.com/CatStack-pixe) |
+
+> 人生自古谁无死？不幸的，Gglaoguan 由于不可控因素已经永远离开了我们。让我们永远缅怀他。
+
 ## 许可声明
 
 本软件**不是开源软件**，不遵循任何开源协议（包括但不限于 MIT、GPL、Apache、BSD 等）。
