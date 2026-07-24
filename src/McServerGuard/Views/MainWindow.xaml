@@ -116,8 +116,7 @@
         <wv2:WebView2 Grid.Row="1"
                       x:Name="MainWebView"
                       HorizontalAlignment="Stretch"
-                      VerticalAlignment="Stretch"
-                      Background="Transparent" />
+                      VerticalAlignment="Stretch" />
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <!-- 📊 底部状态栏                                               -->
