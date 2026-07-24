@@ -598,15 +598,17 @@
                         </Grid>
 
                         <!-- Java 列表 -->
-                        <ListBox x:Name="JavaListBox"
-                                 ItemsSource="{Binding JavaInstallations}"
-                                 SelectedItem="{Binding SelectedJava}"
-                                 Background="{DynamicResource SubtleBorderBrush}"
-                                 BorderThickness="0"
-                                 CornerRadius="{DynamicResource AppCornerRadius}"
-                                 Padding="8"
-                                 MaxHeight="280"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <Border Background="{DynamicResource SubtleBorderBrush}"
+                                CornerRadius="{DynamicResource AppCornerRadius}"
+                                Padding="0"
+                                MaxHeight="300">
+                            <ListBox x:Name="JavaListBox"
+                                     ItemsSource="{Binding JavaInstallations}"
+                                     SelectedItem="{Binding SelectedJava}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="8"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
                                     <Setter Property="Padding" Value="0" />
@@ -716,6 +718,7 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
+                    </Border>
 
                         <!-- 添加自定义路径 -->
                         <Grid Margin="0,12,0,0">
