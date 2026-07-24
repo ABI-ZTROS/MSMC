@@ -514,6 +514,92 @@ public partial class MainWindow : Window
             return Task.FromResult<object?>(new { success = true });
         });
 
+        // === 服务器管理相关 API ===
+
+        // 获取服务器列表（运行中 + 已知）
+        _bridgeService.RegisterRequestHandler("server:list", _ =>
+        {
+            var running = _vm?.DetectionPage?.DetectionResult?.Servers ?? [];
+            var known = _vm?.DetectionPage?.KnownServers ?? [];
+
+            return Task.FromResult<object?>(new
+            {
+                running = running.Select(s => new
+                {
+                    processId = s.ProcessId,
+                    serverType = s.ServerType.ToString(),
+                    workingDirectory = s.WorkingDirectory,
+                    serverJarName = s.ServerJarName,
+                    serverPort = s.ServerPort,
+                    isPortOpen = s.IsPortOpen,
+                    portConflict = s.PortConflict,
+                    displayName = s.DisplayName,
+                    status = "Running",
+                    maxHeapMemoryBytes = s.MaxHeapMemoryBytes,
+                    initialHeapMemoryBytes = s.InitialHeapMemoryBytes,
+                    usesAikarFlags = s.UsesAikarFlags,
+                    gcType = s.GcType,
+                    configFiles = s.ConfigFiles,
+                }).ToList(),
+                known = known.Select(k => new
+                {
+                    id = k.Id,
+                    name = k.Name,
+                    serverType = k.ServerType.ToString(),
+                    workingDirectory = k.WorkingDirectory,
+                    serverJarPath = k.ServerJarPath,
+                    javaPath = k.JavaPath,
+                    lastSeen = k.LastSeen,
+                    status = "Stopped",
+                }).ToList(),
+                isBusy = _vm?.DetectionPage?.IsBusy ?? false,
+                isAutoDetectEnabled = _vm?.DetectionPage?.IsAutoDetectEnabled ?? false,
+            });
+        });
+
+        // 刷新服务器列表
+        _bridgeService.RegisterRequestHandler("server:refresh", async _ =>
+        {
+            if (_vm?.DetectionPage != null)
+            {
+                await _vm.DetectionPage.DetectCommand.ExecuteAsync(null);
+            }
+            return Task.FromResult<object?>(new { success = true });
+        });
+
+        // 获取选中的服务器详情
+        _bridgeService.RegisterRequestHandler("server:getSelected", _ =>
+        {
+            var s = _vm?.DetectionPage?.SelectedServer;
+            if (s == null)
+            {
+                return Task.FromResult<object?>(null);
+            }
+
+            return Task.FromResult<object?>(new
+            {
+                processId = s.ProcessId,
+                serverType = s.ServerType.ToString(),
+                workingDirectory = s.WorkingDirectory,
+                serverJarPath = s.ServerJarPath,
+                serverJarName = s.ServerJarName,
+                javaPath = s.JavaPath,
+                fullCommandLine = s.FullCommandLine,
+                serverPort = s.ServerPort,
+                isPortOpen = s.IsPortOpen,
+                portConflict = s.PortConflict,
+                displayName = s.DisplayName,
+                status = "Running",
+                maxHeapMemoryBytes = s.MaxHeapMemoryBytes,
+                initialHeapMemoryBytes = s.InitialHeapMemoryBytes,
+                usesAikarFlags = s.UsesAikarFlags,
+                gcType = s.GcType,
+                configFiles = s.ConfigFiles,
+                networkStatusText = s.NetworkStatusText,
+                formattedMaxMemory = s.FormattedMaxMemory,
+            });
+        });
+
         // 订阅来自 JS 的事件（调试用）
         _bridgeService.SubscribeToEvents((action, payload) =>
         {
