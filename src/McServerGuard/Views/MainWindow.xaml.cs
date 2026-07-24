@@ -62,22 +62,12 @@ public partial class MainWindow : Window
             // 注册基础 API 处理程序
             RegisterBridgeApis();
 
-            // 使用工厂获取前端资源提供器，按优先级自动选择最佳加载方式
+            // 按优先级尝试加载前端：B模式(嵌入zip拦截) -> C模式(zip解压虚拟主机) -> 测试页面
             const string virtualHost = "msmc.local";
-            var provider = FrontendResourceProviderFactory.Create();
-
-            if (provider.IsAvailable)
+            var loaded = await TryLoadFrontendWithFallbackAsync(virtualHost);
+            if (!loaded)
             {
-                var loaded = await _bridgeService.LoadFrontendAsync(provider, virtualHost);
-                if (!loaded)
-                {
-                    Log.Warning("⚠️ 前端资源加载失败，回退到测试页面");
-                    LoadTestPage();
-                }
-            }
-            else
-            {
-                Log.Warning("⚠️ 没有可用的前端资源提供器，加载内置测试页面");
+                Log.Warning("⚠️ 所有前端加载方式都失败，加载内置测试页面");
                 LoadTestPage();
             }
 
@@ -100,6 +90,51 @@ public partial class MainWindow : Window
             Log.Error(ex, "❌ WebView2 初始化失败");
             MessageBox.Show($"WebView2 初始化失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    /// <summary>
+    /// 按优先级尝试加载前端：B模式 -> C模式
+    /// </summary>
+    private async Task<bool> TryLoadFrontendWithFallbackAsync(string virtualHost)
+    {
+        // 1. 先尝试用工厂选择最优模式（B模式优先）
+        var provider = FrontendResourceProviderFactory.Create();
+        if (provider.IsAvailable)
+        {
+            var loaded = await _bridgeService.LoadFrontendAsync(provider, virtualHost);
+            if (loaded)
+            {
+                Log.Information("✅ 前端加载成功 (模式: {Mode})", provider.ModeName);
+                return true;
+            }
+            Log.Warning("⚠️ 模式 {Mode} 加载失败，尝试降级...", provider.ModeName);
+        }
+
+        // 2. 如果 B 模式失败，显式尝试 C 模式（Zip 解压）
+        if (provider.ModeName != "ZipExtract")
+        {
+            try
+            {
+                var zipProvider = new ZipExtractResourceProvider();
+                if (zipProvider.IsAvailable)
+                {
+                    Log.Information("🔄 降级到 C 模式 (Zip 解压兜底)...");
+                    var loaded = await _bridgeService.LoadFrontendAsync(zipProvider, virtualHost);
+                    if (loaded)
+                    {
+                        Log.Information("✅ 前端加载成功 (模式: {Mode})", zipProvider.ModeName);
+                        return true;
+                    }
+                    Log.Warning("⚠️ C 模式也加载失败");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "C 模式加载异常");
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

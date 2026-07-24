@@ -147,10 +147,49 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
             // 导航到主页
             var appUrl = $"https://{hostName}/index.html";
-            _webView.Source = new Uri(appUrl);
+            var tcs = new TaskCompletionSource<bool>();
 
+            // 注册一次性导航完成事件
+            void OnNav(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+            {
+                if (e.WebErrorStatus == CoreWebView2WebErrorStatus.UnknownUriScheme ||
+                    e.WebErrorStatus == CoreWebView2WebErrorStatus.ConnectionFailure ||
+                    e.WebErrorStatus == CoreWebView2WebErrorStatus.NameNotResolved ||
+                    !e.IsSuccess)
+                {
+                    tcs.TrySetResult(false);
+                }
+                else
+                {
+                    tcs.TrySetResult(true);
+                }
+                _webView!.CoreWebView2.NavigationCompleted -= OnNav;
+            }
+
+            _webView.CoreWebView2.NavigationCompleted += OnNav;
+
+            // 开始导航
+            _webView.Source = new Uri(appUrl);
             Log.Information("✅ 前端页面加载中: {Url}", appUrl);
-            return true;
+
+            // 等待加载完成（超时 10 秒）
+            var timeout = Task.Delay(10000);
+            var completed = await Task.WhenAny(tcs.Task, timeout);
+
+            if (completed == timeout)
+            {
+                Log.Warning("⏰ 前端页面加载超时 (10s)，模式: {Mode}", provider.ModeName);
+                _webView.CoreWebView2.NavigationCompleted -= OnNav;
+                return false;
+            }
+
+            var success = tcs.Task.Result;
+            if (!success)
+            {
+                Log.Warning("⚠️ 前端页面加载失败，模式: {Mode}", provider.ModeName);
+            }
+
+            return success;
         }
         catch (Exception ex)
         {
@@ -166,9 +205,20 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     {
         if (_webView?.CoreWebView2 == null) return;
 
-        // 只拦截 GET 请求
+        // 注册多个过滤器，确保所有路径都能被拦截
+        // 1. 带通配符的（匹配所有子路径）
         _webView.CoreWebView2.AddWebResourceRequestedFilter(
             $"https://{hostName}/*",
+            CoreWebView2WebResourceContext.All);
+
+        // 2. 根路径（确保 index.html 也能被匹配）
+        _webView.CoreWebView2.AddWebResourceRequestedFilter(
+            $"https://{hostName}/",
+            CoreWebView2WebResourceContext.All);
+
+        // 3. 直接的 index.html
+        _webView.CoreWebView2.AddWebResourceRequestedFilter(
+            $"https://{hostName}/index.html",
             CoreWebView2WebResourceContext.All);
 
         _webView.CoreWebView2.WebResourceRequested += (sender, args) =>
@@ -213,27 +263,46 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         if (string.IsNullOrEmpty(relativePath) || relativePath == "/")
             relativePath = "/index.html";
 
-        // 获取资源流
-        var resourceStream = provider.GetResourceAsync(relativePath).GetAwaiter().GetResult();
-        if (resourceStream == null)
+        Log.Debug("📥 WebResource 请求: {Path}", relativePath);
+
+        try
         {
-            // 404 Not Found
+            // 获取资源流
+            using var resourceStream = provider.GetResourceAsync(relativePath).GetAwaiter().GetResult();
+            if (resourceStream == null)
+            {
+                Log.Warning("❌ 资源未找到: {Path}", relativePath);
+                args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
+                    null, 404, "Not Found", "Content-Type: text/plain");
+                return;
+            }
+
+            // 将流读到内存中，避免 ZipArchive 流的生命周期问题
+            var memoryStream = new MemoryStream();
+            resourceStream.CopyTo(memoryStream);
+            memoryStream.Position = 0;
+
+            // 获取 MIME 类型
+            var mimeType = provider.GetMimeType(relativePath);
+
+            // 构造响应头
+            var headers = $"Content-Type: {mimeType}\r\nContent-Length: {memoryStream.Length}\r\nCache-Control: public, max-age=3600";
+
+            // 构造响应
             args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
-                null, 404, "Not Found", "Content-Type: text/plain");
-            return;
+                memoryStream,
+                200,
+                "OK",
+                headers);
+
+            Log.Debug("✅ 嵌入资源响应: {Path} ({MimeType}, {Size} bytes)", relativePath, mimeType, memoryStream.Length);
         }
-
-        // 获取 MIME 类型
-        var mimeType = provider.GetMimeType(relativePath);
-
-        // 构造响应
-        args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
-            resourceStream,
-            200,
-            "OK",
-            $"Content-Type: {mimeType}\r\nCache-Control: public, max-age=3600");
-
-        Log.Debug("📦 嵌入资源响应: {Path} ({MimeType})", relativePath, mimeType);
+        catch (Exception ex)
+        {
+            Log.Error(ex, "❌ 处理资源请求失败: {Path}", relativePath);
+            args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
+                null, 500, "Internal Server Error", "Content-Type: text/plain");
+        }
     }
 
     /// <summary>
