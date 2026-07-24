@@ -101,6 +101,20 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         }
     }
 
+    /// <inheritdoc />
+    public void SetVirtualHostMapping(string hostName, string folderPath)
+    {
+        if (_webView?.CoreWebView2 == null)
+            throw new InvalidOperationException("桥接未初始化");
+
+        _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            hostName,
+            folderPath,
+            Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
+
+        Log.Information("🌐 虚拟主机映射已设置: {HostName} -> {FolderPath}", hostName, folderPath);
+    }
+
     /// <summary>
     /// 页面导航完成时触发，注入桥接初始化脚本
     /// </summary>

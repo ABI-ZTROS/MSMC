@@ -61,13 +61,15 @@ public partial class MainWindow : Window
             // 注册基础 API 处理程序
             RegisterBridgeApis();
 
-            // 构建前端页面路径
-            var frontendPath = GetFrontendIndexPath();
-            Log.Information("📄 加载前端页面: {Path}", frontendPath);
-
-            if (File.Exists(frontendPath))
+            // 设置虚拟主机映射（用 HTTP 协议访问本地资源，避免 file:// 的 CORS 限制）
+            var frontendFolder = GetFrontendFolderPath();
+            const string virtualHost = "msmc.local";
+            if (Directory.Exists(frontendFolder))
             {
-                MainWebView.Source = new Uri(frontendPath);
+                _bridgeService.SetVirtualHostMapping(virtualHost, frontendFolder);
+                var appUrl = $"https://{virtualHost}/index.html";
+                Log.Information("📄 加载前端页面: {Url} (文件夹: {Folder})", appUrl, frontendFolder);
+                MainWebView.Source = new Uri(appUrl);
             }
             else
             {
@@ -83,7 +85,7 @@ public partial class MainWindow : Window
                 theme = new
                 {
                     mode = _themeService.IsDarkMode ? "dark" : "light",
-                    primaryColor = _themeService.PrimaryColor,
+                    primaryColor = _themeService.PrimaryColor.ToString(),
                 }
             });
 
@@ -97,29 +99,27 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 获取前端 index.html 路径
-    /// 优先查找构建产物，不存在则返回测试页面路径
+    /// 获取前端资源文件夹路径
     /// </summary>
-    private static string GetFrontendIndexPath()
+    private static string GetFrontendFolderPath()
     {
         // 1. 优先查找发布时的嵌入式资源目录
         var baseDir = AppContext.BaseDirectory;
-        var frontendDir = Path.Combine(baseDir, "wwwroot");
-        var indexPath = Path.Combine(frontendDir, "index.html");
+        var wwwrootDir = Path.Combine(baseDir, "wwwroot");
 
-        if (File.Exists(indexPath))
-            return indexPath;
+        if (Directory.Exists(wwwrootDir) && File.Exists(Path.Combine(wwwrootDir, "index.html")))
+            return wwwrootDir;
 
         // 2. 开发环境：查找 src/frontend/dist
         var solutionDir = FindSolutionDirectory();
         if (solutionDir != null)
         {
-            var devPath = Path.Combine(solutionDir, "src", "frontend", "dist", "index.html");
-            if (File.Exists(devPath))
-                return devPath;
+            var devDir = Path.Combine(solutionDir, "src", "frontend", "dist");
+            if (Directory.Exists(devDir) && File.Exists(Path.Combine(devDir, "index.html")))
+                return devDir;
         }
 
-        return indexPath;
+        return wwwrootDir;
     }
 
     /// <summary>

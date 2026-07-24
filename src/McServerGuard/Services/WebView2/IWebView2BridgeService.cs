@@ -41,6 +41,14 @@ public interface IWebView2BridgeService
     Task InitializeAsync(WpfWebView2 webView);
 
     /// <summary>
+    /// 设置虚拟主机名到本地文件夹的映射
+    /// 用于通过 HTTP 协议访问本地前端资源，避免 file:// 协议的 CORS 限制
+    /// </summary>
+    /// <param name="hostName">虚拟主机名（如 app.local）</param>
+    /// <param name="folderPath">本地文件夹路径</param>
+    void SetVirtualHostMapping(string hostName, string folderPath);
+
+    /// <summary>
     /// 注册请求处理程序（JS 调用 C# 方法）
     /// </summary>
     /// <param name="action">动作名称</param>
