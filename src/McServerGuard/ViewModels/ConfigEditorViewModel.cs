@@ -1005,7 +1005,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                         _configManager.ValidateValue(entry.Key, entry.SourceFile, entry.Value);
 
         HasUnsavedChanges = _modifiedCount > 0;
-        SaveCommand.NotifyCanExecuteChanged();
+        SaveConfigCommand.NotifyCanExecuteChanged();
         ResetChangesCommand.NotifyCanExecuteChanged();
         UndoCommand.NotifyCanExecuteChanged();
     }
