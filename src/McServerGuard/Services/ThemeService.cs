@@ -66,6 +66,11 @@ public interface IThemeService
     bool EnableAnimations { get; set; }
 
     /// <summary>
+    /// 是否为深色模式
+    /// </summary>
+    bool IsDarkMode { get; }
+
+    /// <summary>
     /// 应用当前主题配置到界面
     /// </summary>
     void ApplyTheme();
@@ -284,6 +289,19 @@ public class ThemeService : IThemeService
     {
         get => _enableAnimations;
         set => _enableAnimations = value;
+    }
+
+    /// <inheritdoc />
+    public bool IsDarkMode
+    {
+        get
+        {
+            // 通过背景色亮度判断：亮度 < 0.5 为深色模式
+            var brightness = (_backgroundColor.R * 0.299 +
+                            _backgroundColor.G * 0.587 +
+                            _backgroundColor.B * 0.114) / 255.0;
+            return brightness < 0.5;
+        }
     }
 
     /// <inheritdoc />
