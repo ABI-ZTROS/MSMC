@@ -11,6 +11,7 @@ namespace McServerGuard.Services.Network;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.Principal;
 using System.ServiceProcess;
 using System.Text;
 using McServerGuard.Models;
@@ -67,7 +68,14 @@ public sealed class NetshPortBridgeService : IPortBridgeService
 
             if (!success)
             {
-                LastError = error;
+                if (IsPermissionDenied(error, exitCode))
+                {
+                    LastError = $"权限不足：{error}\n\n请以管理员身份重新运行程序，或使用 TcpForwarder 用户态转发模式。";
+                }
+                else
+                {
+                    LastError = error;
+                }
                 Log.Error("端口桥接规则添加失败 (ExitCode={ExitCode}): {Error}", exitCode, LastError);
                 return false;
             }
@@ -98,11 +106,16 @@ public sealed class NetshPortBridgeService : IPortBridgeService
             if (sc.Status == ServiceControllerStatus.Running)
                 return true;
 
+            if (!IsRunningAsAdministrator())
+            {
+                LastError = "需要管理员权限才能启动 IP Helper 服务";
+                return false;
+            }
+
             Log.Warning("IP Helper 服务未运行 (状态: {Status})，尝试启动", sc.Status);
             LastError = "IP Helper 服务未运行，正在尝试启动…";
 
             sc.Start();
-            // 正确等待状态迁移：START_PENDING → RUNNING，避免立即查询的竞态
             sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(10));
 
             sc.Refresh();
@@ -118,11 +131,43 @@ public sealed class NetshPortBridgeService : IPortBridgeService
         }
         catch (Exception ex)
         {
-            // ServiceController 不可用时（如精简 Server Core），放行至 netsh 自行报错并暴露真实错误
             LastError = $"检查 IP Helper 服务异常: {ex.Message}";
             Log.Error(ex, "EnsureIpHelperServiceRunning 异常，放行至 netsh");
             return true;
         }
+    }
+
+    /// <summary>
+    /// 检测当前进程是否以管理员权限运行
+    /// </summary>
+    private static bool IsRunningAsAdministrator()
+    {
+        try
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            var principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 检测错误消息是否为权限不足导致
+    /// </summary>
+    private static bool IsPermissionDenied(string error, int exitCode)
+    {
+        if (string.IsNullOrWhiteSpace(error))
+            return false;
+
+        var lower = error.ToLowerInvariant();
+        return lower.Contains("拒绝访问")
+            || lower.Contains("access denied")
+            || lower.Contains("administrator")
+            || lower.Contains("权限")
+            || exitCode == 5; // ERROR_ACCESS_DENIED
     }
 
     public bool RemoveBridgeRule(string listenAddress, int listenPort, string protocol = "v4tov4")
@@ -226,7 +271,20 @@ public sealed class NetshPortBridgeService : IPortBridgeService
         try
         {
             var proto = string.IsNullOrEmpty(protocol) ? "TCP" : protocol;
-            var args = $"advfirewall firewall add rule name=\"MSMC Port Bridge {listenPort}\"" +
+            var ruleName = $"MSMC Port Bridge {listenPort}";
+
+            // 先检查规则是否已存在（幂等）
+            var checkArgs = $"advfirewall firewall show rule name=\"{ruleName}\"";
+            var (exists, _, _, _) = RunNetsh(checkArgs, timeoutMs: 5000,
+                redirectOutput: false, redirectError: false);
+
+            if (exists)
+            {
+                Log.Information("防火墙规则已存在，跳过添加: {Name}", ruleName);
+                return true;
+            }
+
+            var args = $"advfirewall firewall add rule name=\"{ruleName}\"" +
                        $" dir=in action=allow protocol={proto} localport={listenPort}";
 
             var (success, _, error, exitCode) = RunNetsh(args, timeoutMs: 10000,
@@ -234,7 +292,14 @@ public sealed class NetshPortBridgeService : IPortBridgeService
 
             if (!success)
             {
-                LastError = error;
+                if (IsPermissionDenied(error, exitCode))
+                {
+                    LastError = $"权限不足：{error}\n\n请以管理员身份重新运行程序。";
+                }
+                else
+                {
+                    LastError = error;
+                }
                 Log.Error("防火墙规则添加失败 (ExitCode={ExitCode}): {Error}", exitCode, LastError);
                 return false;
             }

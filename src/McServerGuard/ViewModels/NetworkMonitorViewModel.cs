@@ -192,7 +192,7 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
     // ── 桥接属性 ──
 
-    private string _bridgeListenAddress = "127.0.0.1";
+    private string _bridgeListenAddress = "0.0.0.0";
     public string BridgeListenAddress
     {
         get => _bridgeListenAddress;

@@ -1,10 +1,10 @@
 // -----------------------------------------------------------------------------
 // 文件名: CompositePortBridgeService.cs
 // 命名空间: McServerGuard.Services.Network
-// 功能描述: 桥接系统外观 —— 默认 TcpForwarder 用户态转发 + netsh 内核态兜底
-//           两者并存策略：AddBridge 先 TcpForwarder，失败降级 netsh
+// 功能描述: 桥接系统外观 —— netsh 内核态转发优先 + TcpForwarder 用户态降级
+//           两者并存策略：AddBridge 先 netsh，失败降级 TcpForwarder
 // 依赖组件: Serilog, McServerGuard.Models
-// 设计模式: 外观模式 + 策略链（先用户态转发，失败降级内核态）
+// 设计模式: 外观模式 + 策略链（先内核态转发，失败降级用户态）
 // -----------------------------------------------------------------------------
 namespace McServerGuard.Services.Network;
 
@@ -14,12 +14,12 @@ using McServerGuard.Models;
 using Serilog;
 
 /// <summary>
-/// 桥接系统外观。默认走 <see cref="ITcpForwarder"/> 用户态转发（无 locale/iphlpsvc 依赖），
-/// TcpForwarder 失败时降级到 <see cref="NetshPortBridgeService"/> 内核态兜底。
+/// 桥接系统外观。默认走 <see cref="NetshPortBridgeService"/> 内核态转发（高性能、持久化），
+/// netsh 失败时降级到 <see cref="ITcpForwarder"/> 用户态转发兜底。
 /// </summary>
 /// <remarks>
 /// <para><see cref="GetAllBridgeRules"/> 合并两个引擎的规则列表，UI 看到完整规则集。</para>
-/// <para>防火墙规则仅在用户勾选时由 netsh 引擎添加（用户态转发不需要防火墙规则）。</para>
+/// <para>防火墙规则随 netsh 引擎自动管理（用户勾选时添加）。</para>
 /// </remarks>
 public sealed class CompositePortBridgeService : IPortBridgeService
 {
@@ -44,27 +44,29 @@ public sealed class CompositePortBridgeService : IPortBridgeService
     {
         lock (_errorLock) _lastError = string.Empty;
 
-        // 策略 1：优先用户态 TcpForwarder
-        if (_tcpForwarder.AddForward(rule))
-        {
-            Log.Information("✅ 桥接规则通过 TcpForwarder 启动: {Listen}:{LPort} -> {Connect}:{CPort}",
-                rule.ListenAddress, rule.ListenPort, rule.ConnectAddress, rule.ConnectPort);
-            return true;
-        }
-
-        var forwarderError = _tcpForwarder.LastError;
-        Log.Warning("⚠️ TcpForwarder 失败，降级到 netsh 兜底: {Error}", forwarderError);
-
-        // 策略 2：降级到内核态 netsh portproxy
+        // 策略 1：优先内核态 netsh portproxy（高性能、持久化、系统级）
         if (_netsh.AddBridgeRule(rule))
         {
-            Log.Information("✅ 桥接规则通过 netsh 兜底启动: {Listen}:{LPort} -> {Connect}:{CPort}",
+            rule.Engine = "netsh";
+            Log.Information("✅ 桥接规则通过 netsh 内核态启动: {Listen}:{LPort} -> {Connect}:{CPort}",
                 rule.ListenAddress, rule.ListenPort, rule.ConnectAddress, rule.ConnectPort);
             return true;
         }
 
         var netshError = _netsh.LastError;
-        LastError = $"TcpForwarder: {forwarderError} | netsh: {netshError}";
+        Log.Warning("⚠️ netsh 失败，降级到 TcpForwarder 用户态转发: {Error}", netshError);
+
+        // 策略 2：降级到用户态 TcpForwarder
+        if (_tcpForwarder.AddForward(rule))
+        {
+            rule.Engine = "TcpForwarder";
+            Log.Information("✅ 桥接规则通过 TcpForwarder 用户态启动: {Listen}:{LPort} -> {Connect}:{CPort}",
+                rule.ListenAddress, rule.ListenPort, rule.ConnectAddress, rule.ConnectPort);
+            return true;
+        }
+
+        var forwarderError = _tcpForwarder.LastError;
+        LastError = $"netsh: {netshError} | TcpForwarder: {forwarderError}";
         Log.Error("❌ 两个引擎均失败: {Error}", LastError);
         return false;
     }
@@ -74,17 +76,17 @@ public sealed class CompositePortBridgeService : IPortBridgeService
         lock (_errorLock) _lastError = string.Empty;
 
         // 两者都尝试删除，幂等：一个成功即整体成功
-        var forwardOk = _tcpForwarder.RemoveForward(listenAddress, listenPort, protocol);
         var netshOk = _netsh.RemoveBridgeRule(listenAddress, listenPort, protocol);
+        var forwardOk = _tcpForwarder.RemoveForward(listenAddress, listenPort, protocol);
 
-        if (forwardOk || netshOk)
+        if (netshOk || forwardOk)
         {
-            Log.Information("桥接规则已删除 (TcpForwarder={Fwd}, netsh={Netsh}): {Addr}:{Port}",
-                forwardOk, netshOk, listenAddress, listenPort);
+            Log.Information("桥接规则已删除 (netsh={Netsh}, TcpForwarder={Fwd}): {Addr}:{Port}",
+                netshOk, forwardOk, listenAddress, listenPort);
             return true;
         }
 
-        LastError = $"TcpForwarder: {_tcpForwarder.LastError} | netsh: {_netsh.LastError}";
+        LastError = $"netsh: {_netsh.LastError} | TcpForwarder: {_tcpForwarder.LastError}";
         Log.Warning("两个引擎均无对应规则可删: {Error}", LastError);
         return false;
     }
@@ -92,16 +94,21 @@ public sealed class CompositePortBridgeService : IPortBridgeService
     public List<PortBridgeRule> GetAllBridgeRules()
     {
         // 合并两个引擎的规则列表，按 (ListenAddress, ListenPort, Protocol) 去重
-        var forwarderRules = _tcpForwarder.GetActiveForwards();
         var netshRules = _netsh.GetAllBridgeRules();
-
-        var merged = new List<PortBridgeRule>(forwarderRules.Count + netshRules.Count);
-        merged.AddRange(forwarderRules);
-
-        var seen = new HashSet<(string, int, string)>(
-            forwarderRules.Select(r => (r.ListenAddress, r.ListenPort, r.Protocol)));
+        var forwarderRules = _tcpForwarder.GetActiveForwards();
 
         foreach (var rule in netshRules)
+            rule.Engine = "netsh";
+        foreach (var rule in forwarderRules)
+            rule.Engine = "TcpForwarder";
+
+        var merged = new List<PortBridgeRule>(netshRules.Count + forwarderRules.Count);
+        merged.AddRange(netshRules);
+
+        var seen = new HashSet<(string, int, string)>(
+            netshRules.Select(r => (r.ListenAddress, r.ListenPort, r.Protocol)));
+
+        foreach (var rule in forwarderRules)
         {
             var key = (rule.ListenAddress, rule.ListenPort, rule.Protocol);
             if (seen.Add(key))
@@ -114,16 +121,15 @@ public sealed class CompositePortBridgeService : IPortBridgeService
     public bool BridgeRuleExists(string listenAddress, int listenPort)
     {
         // 任一引擎存在即认为存在
-        if (_tcpForwarder.GetActiveForwards().Any(r =>
-                r.ListenAddress == listenAddress && r.ListenPort == listenPort))
+        if (_netsh.BridgeRuleExists(listenAddress, listenPort))
             return true;
 
-        return _netsh.BridgeRuleExists(listenAddress, listenPort);
+        return _tcpForwarder.GetActiveForwards().Any(r =>
+            r.ListenAddress == listenAddress && r.ListenPort == listenPort);
     }
 
     public bool EnableFirewallRule(int listenPort, string protocol = "TCP")
     {
-        // 仅 netsh 引擎实现防火墙（用户态转发不需要防火墙，但用户勾选时仍可添加）
         var ok = _netsh.EnableFirewallRule(listenPort, protocol);
         if (!ok)
         {

@@ -82,6 +82,17 @@ public class GaugeRingControl : FrameworkElement
     private double _cachedLabelFontSize;
     private Brush? _cachedLabelBrush;
 
+    // 进度弧几何缓存：避免每帧重新创建 StreamGeometry
+    private StreamGeometry? _cachedProgressGeom;
+    private double _cachedProgressSweep = -1;
+    private double _cachedProgressRadius = -1;
+    private double _cachedProgressCx = -1;
+    private double _cachedProgressCy = -1;
+
+    // 渲染节流：限制最大帧率，避免过高刷新率导致 CPU/GPU 浪费
+    private DateTime _lastRenderTime = DateTime.MinValue;
+    private const double MinRenderIntervalMs = 16.0; // ~60fps
+
     // ─── 依赖属性 ──────────────────────────────────────────────────────
 
     /// <summary>
@@ -330,21 +341,39 @@ public class GaugeRingControl : FrameworkElement
         if (displayValue > 0.1)
         {
             var sweepAngle = (displayValue / max) * 270;
-            var valueRad = sweepAngle * Math.PI / 180;
-            var startRad2 = -135 * Math.PI / 180;
-            var endRad2 = startRad2 + valueRad;
 
             var fgPen = GetPenForValue(displayValue / max * 100);
 
-            var fgGeom = new StreamGeometry();
-            using (var ctx = fgGeom.Open())
+            // 进度弧几何缓存：只有 sweep/radius/center 变化时才重建
+            if (_cachedProgressGeom is null
+                || Math.Abs(_cachedProgressSweep - sweepAngle) > 0.01
+                || Math.Abs(_cachedProgressRadius - radius) > 0.01
+                || Math.Abs(_cachedProgressCx - cx) > 0.01
+                || Math.Abs(_cachedProgressCy - cy) > 0.01)
             {
-                ctx.BeginFigure(new Point(cx + radius * Math.Cos(startRad2), cy + radius * Math.Sin(startRad2)), false, false);
-                ctx.ArcTo(new Point(cx + radius * Math.Cos(endRad2), cy + radius * Math.Sin(endRad2)),
-                    new Size(radius, radius), 0, sweepAngle > 180, SweepDirection.Clockwise, true, false);
+                var fgGeom = new StreamGeometry();
+                var startRad2 = -135 * Math.PI / 180;
+                var endRad2 = startRad2 + sweepAngle * Math.PI / 180;
+
+                using (var ctx = fgGeom.Open())
+                {
+                    ctx.BeginFigure(
+                        new Point(cx + radius * Math.Cos(startRad2), cy + radius * Math.Sin(startRad2)),
+                        false, false);
+                    ctx.ArcTo(
+                        new Point(cx + radius * Math.Cos(endRad2), cy + radius * Math.Sin(endRad2)),
+                        new Size(radius, radius), 0,
+                        sweepAngle > 180, SweepDirection.Clockwise, true, false);
+                }
+                fgGeom.Freeze();
+                _cachedProgressGeom = fgGeom;
+                _cachedProgressSweep = sweepAngle;
+                _cachedProgressRadius = radius;
+                _cachedProgressCx = cx;
+                _cachedProgressCy = cy;
             }
-            fgGeom.Freeze();
-            drawing.DrawGeometry(null, fgPen, fgGeom);
+
+            drawing.DrawGeometry(null, fgPen, _cachedProgressGeom);
         }
 
         // 第三步：绘制中心数字（缓存 FormattedText）

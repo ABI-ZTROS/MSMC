@@ -413,26 +413,45 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
         Log.Information("💾 开始保存配置到 {Path}", _currentFilePath);
 
-        // 保存前检查文件是否被占用
+        // 保存前检查文件是否被独占锁定
         try
         {
-            using var fs = new FileStream(
-                _currentFilePath,
-                FileMode.Open,
-                FileAccess.ReadWrite,
-                FileShare.Read);
+            if (File.Exists(_currentFilePath))
+            {
+                using var fs = new FileStream(
+                    _currentFilePath,
+                    FileMode.Open,
+                    FileAccess.Write,
+                    FileShare.None);
+            }
         }
-        catch (IOException ioEx)
+        catch (IOException ioEx) when (IsFileLocked(ioEx))
         {
+            var errorMsg = $"文件被占用，保存失败：\n\n{ioEx.Message}\n\n请关闭正在使用该文件的程序（如服务器进程或文本编辑器）后重试。";
             IsSaveError = true;
-            SaveStatusMessage = $"文件被占用，保存失败：{ioEx.Message}（请关闭正在使用该文件的程序，如服务器进程或文本编辑器）";
+            SaveStatusMessage = "文件被占用，保存失败（请关闭正在使用该文件的程序）";
+
+            System.Windows.MessageBox.Show(
+                errorMsg,
+                "保存失败 - 文件被占用",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+
             Log.Warning(ioEx, "⚠️ 配置文件被占用: {Path}", _currentFilePath);
             return;
         }
         catch (UnauthorizedAccessException authEx)
         {
+            var errorMsg = $"权限不足，保存失败：\n\n{authEx.Message}";
             IsSaveError = true;
             SaveStatusMessage = $"权限不足，保存失败：{authEx.Message}";
+
+            System.Windows.MessageBox.Show(
+                errorMsg,
+                "保存失败 - 权限不足",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Error);
+
             Log.Warning(authEx, "⚠️ 配置文件无写入权限: {Path}", _currentFilePath);
             return;
         }
@@ -460,16 +479,48 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         }
         catch (IOException ex)
         {
+            var errorMsg = $"保存失败：\n\n{ex.Message}\n\n文件可能被其他程序占用，请关闭后重试。";
             IsSaveError = true;
             SaveStatusMessage = $"保存失败：{ex.Message}（文件可能被其他程序占用）";
+
+            System.Windows.MessageBox.Show(
+                errorMsg,
+                "保存失败",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Error);
+
             Log.Error(ex, "💥 配置保存失败（IO异常）: {Message}", ex.Message);
         }
         catch (Exception ex)
         {
+            var errorMsg = $"保存失败：\n\n{ex.Message}";
             IsSaveError = true;
             SaveStatusMessage = $"保存失败：{ex.Message}";
+
+            System.Windows.MessageBox.Show(
+                errorMsg,
+                "保存失败",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Error);
+
             Log.Error(ex, "💥 配置保存失败: {Message}", ex.Message);
         }
+    }
+
+    /// <summary>
+    /// 判断 IOException 是否为文件锁定/占用导致
+    /// </summary>
+    /// <param name="ex">IO异常对象</param>
+    /// <returns>true 表示文件被其他进程锁定</returns>
+    /// <remarks>
+    /// 通过 HResult 低 16 位（Win32 错误码）判断：
+    /// - 0x20 (32) = ERROR_SHARING_VIOLATION（共享冲突/被占用）
+    /// - 0x21 (33) = ERROR_LOCK_VIOLATION（锁定冲突）
+    /// </remarks>
+    private static bool IsFileLocked(IOException ex)
+    {
+        int errorCode = ex.HResult & 0xFFFF;
+        return errorCode is 32 or 33; // ERROR_SHARING_VIOLATION or ERROR_LOCK_VIOLATION
     }
 
     /// <summary>
@@ -954,6 +1005,8 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                         _configManager.ValidateValue(entry.Key, entry.SourceFile, entry.Value);
 
         HasUnsavedChanges = _modifiedCount > 0;
+        SaveCommand.NotifyCanExecuteChanged();
+        ResetChangesCommand.NotifyCanExecuteChanged();
         UndoCommand.NotifyCanExecuteChanged();
     }
 

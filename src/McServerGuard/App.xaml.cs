@@ -357,7 +357,7 @@ public partial class App : Application
         {
             Log.Information("🎨 配置 WPF 渲染管线优化...");
 
-            // 启用硬件加速渲染
+            // 启用硬件加速渲染（默认值，显式声明确保没有被降级）
             System.Windows.Media.RenderOptions.ProcessRenderMode =
                 System.Windows.Interop.RenderMode.Default;
 
@@ -371,11 +371,8 @@ public partial class App : Application
                 Log.Warning("⚠️ 显卡渲染等级较低，部分效果可能降级");
             }
 
-            // 启用位图缓存（减少重复渲染）
-            // 注意：BitmapCache 不应全局设置，应在具体控件上按需使用
-
-            // 设置 UI 线程优先级优化
-            // 确保动画和渲染优先于后台操作
+            // 位图缓存策略：不在全局设置，在各页面静态元素上按需使用 BitmapCache
+            // 原因：全局缓存可能导致内存占用过高，且动态内容缓存会适得其反
 
             Log.Information("✅ WPF 渲染管线优化配置完成");
         }

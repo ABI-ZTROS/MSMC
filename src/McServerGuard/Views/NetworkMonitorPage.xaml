@@ -224,10 +224,11 @@
                                       VirtualizingStackPanel.VirtualizationMode="Recycling">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="监听" Binding="{Binding ListenAddress}" Width="100" />
-                                    <DataGridTextColumn Header="端口" Binding="{Binding ListenPort}" Width="80" />
+                                    <DataGridTextColumn Header="端口" Binding="{Binding ListenPort}" Width="60" />
                                     <DataGridTextColumn Header="目标" Binding="{Binding ConnectAddress}" Width="100" />
-                                    <DataGridTextColumn Header="端口" Binding="{Binding ConnectPort}" Width="80" />
-                                    <DataGridTemplateColumn Header="操作" Width="100">
+                                    <DataGridTextColumn Header="端口" Binding="{Binding ConnectPort}" Width="60" />
+                                    <DataGridTextColumn Header="引擎" Binding="{Binding Engine}" Width="80" />
+                                    <DataGridTemplateColumn Header="操作" Width="80">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <Button Command="{Binding DataContext.RemoveBridgeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
