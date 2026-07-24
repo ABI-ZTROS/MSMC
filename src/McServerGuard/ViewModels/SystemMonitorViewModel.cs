@@ -9,7 +9,6 @@
 // -----------------------------------------------------------------------------
 
 using System.Collections.ObjectModel;
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
@@ -51,6 +50,22 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
     // CPU/内存趋势图底层集合（被 LiveCharts2 LineSeries 直接绑定，FIFO 截断）
     private readonly ObservableCollection<double> _cpuValues = [];
     private readonly ObservableCollection<double> _memoryValues = [];
+
+    /// <summary>
+    /// 历史指标环形缓冲区 —— 固定容量数组 + head/tail 指针，替代原 List 的 O(n) 复制
+    /// </summary>
+    /// <remarks>
+    /// 原 OnMetricsUpdate 每次采样都 new List(MetricsHistory) { metrics } + RemoveAt(0)，
+    /// 120 点时每帧复制 120 个 SystemMetrics 引用 + 移动数组，O(n) 开销。
+    /// 环形缓冲追加为 O(1)（写入槽位后移动 tail 指针），仅在 UI 读取时按需快照。
+    /// </remarks>
+    private readonly SystemMetrics[] _ringBuffer = new SystemMetrics[MaxHistoryPoints];
+
+    /// <summary>环形缓冲区当前元素数（未满时 &lt; <see cref="MaxHistoryPoints"/>）</summary>
+    private int _ringCount;
+
+    /// <summary>环形缓冲区下一个写入位置（tail 指针）</summary>
+    private int _ringTail;
 
     /// <summary>
     /// 初始化系统监控视图模型的新实例
@@ -148,22 +163,14 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
     private bool _isMonitoring;
 
     /// <summary>
-    /// 历史指标数据集合（环形缓冲区，上限由 <see cref="MaxHistoryPoints"/> 定义）
+    /// 历史指标数据集合（环形缓冲区的快照视图，上限由 <see cref="MaxHistoryPoints"/> 定义）
     /// </summary>
+    /// <remarks>
+    /// 每次采样后从环形缓冲区按 FIFO 顺序生成新 List 触发变更通知。
+    /// 内部存储使用固定容量数组 + head/tail 指针，追加为 O(1)。
+    /// </remarks>
     [ObservableProperty]
     private List<SystemMetrics> _metricsHistory = [];
-
-    /// <summary>CPU 使用率历史序列的格式化字符串（逗号分隔，用于简易文本图表绑定）</summary>
-    public string CpuHistoryText => string.Join(", ", MetricsHistory.Select(m => $"{m.CpuUsagePercent:F1}"));
-
-    /// <summary>内存使用率历史序列的格式化字符串（逗号分隔，用于简易文本图表绑定）</summary>
-    public string MemoryHistoryText => string.Join(", ", MetricsHistory.Select(m => $"{m.MemoryUsagePercent:F1}"));
-
-    /// <summary>CPU 使用率数据点序列（供折线图控件绑定）</summary>
-    public List<double> CpuDataPoints => MetricsHistory.Select(m => m.CpuUsagePercent).ToList();
-
-    /// <summary>内存使用率数据点序列（供折线图控件绑定）</summary>
-    public List<double> MemoryDataPoints => MetricsHistory.Select(m => m.MemoryUsagePercent).ToList();
 
     /// <summary>CPU 趋势图 LiveCharts2 系列（绿色折线 + 半透明面积填充，绑定 _cpuValues FIFO 集合）。</summary>
     public ISeries[] CpuSeries { get; }
@@ -201,6 +208,10 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
         Log.Information("▶️ 开始系统监控，间隔 {Interval} 秒", MonitorInterval.TotalSeconds);
         StopMonitoringInternal();
         _monitoringCts = new CancellationTokenSource();
+
+        // 重置环形缓冲区指针（数组槽位中的旧引用由 GC 回收，无需显式清零）
+        _ringCount = 0;
+        _ringTail = 0;
 
         _systemMonitor.StartMonitoring(MonitorInterval, metrics =>
         {
@@ -263,19 +274,22 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
     /// </summary>
     /// <param name="metrics">新采集的系统指标快照</param>
     /// <remarks>
-    /// 在 UI 线程上执行。更新当前快照，将新数据点追加到历史缓冲区，
-    /// 超出 <see cref="MaxHistoryPoints"/> 时移除最早数据（FIFO 策略），
-    /// 并触发所有派生属性的变更通知。
+    /// 在 UI 线程上执行。更新当前快照，将新数据点写入环形缓冲区槽位（O(1)），
+    /// 随后从环形缓冲区按 FIFO 顺序生成快照 List 触发 MetricsHistory 变更通知，
+    /// 同步维护 LiveCharts2 ObservableCollection 的 FIFO 截断。
     /// </remarks>
     private void OnMetricsUpdate(SystemMetrics metrics)
     {
         Log.Debug("📈 采集到系统指标: CPU={Cpu}% 内存={Mem}%", metrics.CpuUsagePercent, metrics.MemoryUsagePercent);
         CurrentMetrics = metrics;
 
-        var history = new List<SystemMetrics>(MetricsHistory) { metrics };
-        while (history.Count > MaxHistoryPoints)
-            history.RemoveAt(0);
-        MetricsHistory = history;
+        // 写入环形缓冲区槽位并推进 tail 指针（O(1)，无数组复制）
+        _ringBuffer[_ringTail] = metrics;
+        _ringTail = (_ringTail + 1) % MaxHistoryPoints;
+        if (_ringCount < MaxHistoryPoints) _ringCount++;
+
+        // 从环形缓冲区按 FIFO 顺序生成快照 List（仅在 UI 读取时按需复制一次）
+        MetricsHistory = SnapshotRingBuffer();
 
         // 维护 LiveCharts2 ObservableCollection（FIFO，触发图表自动刷新）
         _cpuValues.Add(metrics.CpuUsagePercent);
@@ -285,12 +299,29 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
         while (_memoryValues.Count > MaxHistoryPoints)
             _memoryValues.RemoveAt(0);
 
-        OnPropertyChanged(nameof(CpuHistoryText));
-        OnPropertyChanged(nameof(MemoryHistoryText));
-        OnPropertyChanged(nameof(CpuDataPoints));
-        OnPropertyChanged(nameof(MemoryDataPoints));
         OnPropertyChanged(nameof(MemoryInfoText));
         OnPropertyChanged(nameof(DiskInfoText));
+    }
+
+    /// <summary>
+    /// 从环形缓冲区按 FIFO 顺序生成快照列表
+    /// </summary>
+    /// <returns>包含当前所有有效数据点的列表（按时间升序）</returns>
+    /// <remarks>
+    /// 环形缓冲区满后，head 指针 = tail（最旧元素位置）；未满时 head = 0。
+    /// 仅在 OnMetricsUpdate 触发 UI 刷新时调用一次，避免原实现每次刷新都全量复制。
+    /// </remarks>
+    private List<SystemMetrics> SnapshotRingBuffer()
+    {
+        if (_ringCount == 0) return [];
+
+        var snapshot = new List<SystemMetrics>(_ringCount);
+        int head = _ringCount < MaxHistoryPoints ? 0 : _ringTail;
+        for (int i = 0; i < _ringCount; i++)
+        {
+            snapshot.Add(_ringBuffer[(head + i) % MaxHistoryPoints]);
+        }
+        return snapshot;
     }
 
     /// <summary>

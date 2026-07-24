@@ -20,6 +20,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          # Nerdbank.GitVersioning 需要完整 Git 历史计算版本高度，浅克隆会导致 build 失败
+          fetch-depth: 0
 
       - name: Setup .NET 9.0
         uses: actions/setup-dotnet@v5
@@ -124,6 +127,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          # Nerdbank.GitVersioning 需要完整 Git 历史计算版本高度
+          fetch-depth: 0
 
       - name: Setup .NET 9.0
         uses: actions/setup-dotnet@v5

@@ -378,12 +378,11 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
                 : ((int Port, string Protocol, int? ProcessId)?)null;
 
             // 所有系统调用在后台线程执行，读出全部所需数据
+            // 复用 GetPortSnapshot 单次端口枚举结果（原 3 次枚举降为 1 次）
             var (ports, rules, usedPct, dist) = await Task.Run(() =>
             {
-                var p = _networkService.GetAllListeningPorts();
+                var (p, pct, d) = _networkService.GetPortSnapshot();
                 var r = _portBridgeService.GetAllBridgeRules();
-                var pct = _networkService.GetUsedPercentage();
-                var d = _networkService.GetPortDistribution();
                 return (p, r, pct, d);
             });
 

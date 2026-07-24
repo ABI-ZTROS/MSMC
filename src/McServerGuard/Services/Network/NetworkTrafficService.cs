@@ -123,6 +123,7 @@ public class NetworkTrafficService : IDisposable
     /// <remarks>
     /// 用 Stopwatch 测量两次采样的真实间隔，避免 DateTime.Now 受系统时钟回拨影响。
     /// 网卡集合变化（切 Wi-Fi/插拔网卡）时重置基线并跳过本次 delta，避免基线不可比导致的假峰值或负 delta。
+    /// 定期保存采用锁内取快照、锁外异步写盘的策略，避免持锁期间同步 I/O 阻塞其他采样线程。
     /// </remarks>
     public void Sample()
     {
@@ -131,6 +132,8 @@ public class NetworkTrafficService : IDisposable
             var (bytesSent, bytesReceived, signature) = GetTotalBytes();
             var now = DateTime.Now;
 
+            // 锁内仅更新内存状态；若到保存时间则拷贝快照出锁外异步写盘
+            List<DailyTrafficRecord>? snapshotToSave = null;
             lock (_lock)
             {
                 // 首次采样或网卡集合变化：重置基线，跳过本次 delta 计算
@@ -172,17 +175,49 @@ public class NetworkTrafficService : IDisposable
                 _lastBytesSent = bytesSent;
                 _lastBytesReceived = bytesReceived;
 
-                // 定期保存
+                // 定期保存：锁内仅拷贝快照，实际 I/O 推迟到锁外异步执行
                 if (now - _lastSaveTime > _saveInterval)
                 {
-                    Save();
+                    snapshotToSave = _history.ToList();
                     _lastSaveTime = now;
                 }
+            }
+
+            // 锁外异步写盘 —— 不阻塞后续 Sample 调用，避免持锁期间同步 I/O
+            if (snapshotToSave is not null)
+            {
+                _ = Task.Run(() => SaveSnapshot(snapshotToSave));
             }
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "网络流量采样失败");
+        }
+    }
+
+    /// <summary>
+    /// 将快照写入磁盘（原子写）—— 在锁外执行，不持有 <see cref="_lock"/>。
+    /// </summary>
+    /// <param name="snapshot">已拷贝的历史快照，调用方负责在锁内生成</param>
+    private void SaveSnapshot(List<DailyTrafficRecord> snapshot)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(snapshot, JsonOpts);
+            var tmpPath = _dataFilePath + ".tmp";
+
+            // 先写临时文件
+            File.WriteAllText(tmpPath, json);
+
+            // 原子替换：目标存在用 File.Replace，不存在（首次写入）用 File.Move
+            if (File.Exists(_dataFilePath))
+                File.Replace(tmpPath, _dataFilePath, destinationBackupFileName: null);
+            else
+                File.Move(tmpPath, _dataFilePath);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "保存流量数据失败");
         }
     }
 
@@ -314,34 +349,20 @@ public class NetworkTrafficService : IDisposable
     }
 
     /// <summary>
-    /// 原子写持久化：先写临时文件 traffic.json.tmp，再 File.Replace/File.Move 原子替换目标文件。
+    /// 原子写持久化：锁内拷贝快照，锁外执行原子写。
     /// 避免写入中崩溃导致 30 天历史损坏。
     /// </summary>
+    /// <remarks>
+    /// 公共入口供 Dispose/外部主动保存调用；周期性保存由 <see cref="Sample"/> 锁外异步触发。
+    /// </remarks>
     public void Save()
     {
-        try
+        List<DailyTrafficRecord> snapshot;
+        lock (_lock)
         {
-            List<DailyTrafficRecord> snapshot;
-            lock (_lock)
-            {
-                snapshot = _history.ToList();
-            }
-            var json = JsonSerializer.Serialize(snapshot, JsonOpts);
-            var tmpPath = _dataFilePath + ".tmp";
-
-            // 先写临时文件
-            File.WriteAllText(tmpPath, json);
-
-            // 原子替换：目标存在用 File.Replace，不存在（首次写入）用 File.Move
-            if (File.Exists(_dataFilePath))
-                File.Replace(tmpPath, _dataFilePath, destinationBackupFileName: null);
-            else
-                File.Move(tmpPath, _dataFilePath);
+            snapshot = _history.ToList();
         }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "保存流量数据失败");
-        }
+        SaveSnapshot(snapshot);
     }
 
     public void Dispose()

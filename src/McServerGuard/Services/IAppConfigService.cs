@@ -53,9 +53,20 @@ public interface IAppConfigService
     void Load();
 
     /// <summary>
+    /// 异步从持久化存储加载应用配置 —— 将文件 I/O 放到线程池执行，避免阻塞 UI 线程。
+    /// 加载完成后 Config 属性可用。
+    /// </summary>
+    Task LoadAsync();
+
+    /// <summary>
     /// 将当前配置保存至持久化存储。
     /// </summary>
     void Save();
+
+    /// <summary>
+    /// 异步将当前配置保存至持久化存储 —— 将文件 I/O 放到线程池执行，避免阻塞 UI 线程。
+    /// </summary>
+    Task SaveAsync();
 
     /// <summary>
     /// 向已知服务器列表中添加一条新记录。

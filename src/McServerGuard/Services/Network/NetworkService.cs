@@ -205,4 +205,29 @@ public class NetworkService
             ports.Count(p => p.PortRange == PortRangeType.Dynamic)
         );
     }
+
+    /// <summary>
+    /// 一次性获取端口使用情况快照 —— 复用单次端口枚举结果，避免重复枚举
+    /// </summary>
+    /// <returns>包含端口列表、使用百分比、端口分布的元组</returns>
+    /// <remarks>
+    /// 原刷新流程分别调用 GetAllListeningPorts / GetUsedPercentage / GetPortDistribution，
+    /// 三者各自独立枚举端口表（GetUsedPercentage 内部再调一次 GetAllListeningPorts），
+    /// 单次刷新枚举 3 次端口表，5 秒周期下显著增加 CPU 开销。
+    /// 本方法仅枚举一次，基于结果计算使用率与分布，将枚举次数从 3 降为 1。
+    /// </remarks>
+    public (List<PortInfo> Ports, int UsedPercentage, (int System, int Registered, int Dynamic) Distribution)
+        GetPortSnapshot()
+    {
+        var ports = GetAllListeningPorts();
+        var used = ports.Count;
+        var total = RegisteredPortRangeMax;
+        var usedPct = (int)((double)used / total * 100);
+        var distribution = (
+            ports.Count(p => p.PortRange == PortRangeType.System),
+            ports.Count(p => p.PortRange == PortRangeType.Registered),
+            ports.Count(p => p.PortRange == PortRangeType.Dynamic)
+        );
+        return (ports, usedPct, distribution);
+    }
 }

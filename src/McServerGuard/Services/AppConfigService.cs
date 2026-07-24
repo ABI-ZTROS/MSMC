@@ -112,6 +112,18 @@ public class AppConfigService : IAppConfigService
     }
 
     /// <summary>
+    /// 异步加载全局配置 —— 将文件 I/O 放到线程池执行，避免阻塞 UI 线程
+    /// </summary>
+    /// <remarks>
+    /// 内部通过 Task.Run 将同步的 File.ReadAllText/反序列化封送到线程池。
+    /// 加载逻辑与 <see cref="Load"/> 一致，仅执行线程不同。
+    /// </remarks>
+    public async Task LoadAsync()
+    {
+        await Task.Run(() => Load()).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// 保存全局配置到磁盘
     /// </summary>
     public void Save()
@@ -141,6 +153,18 @@ public class AppConfigService : IAppConfigService
         {
             Log.Error(ex, "❌ 保存全局配置失败");
         }
+    }
+
+    /// <summary>
+    /// 异步保存全局配置到磁盘 —— 将文件 I/O 放到线程池执行，避免阻塞 UI 线程
+    /// </summary>
+    /// <remarks>
+    /// 内部通过 Task.Run 将序列化与磁盘写入封送到线程池。
+    /// 写入逻辑与 <see cref="Save"/> 一致（含原子写），仅执行线程不同。
+    /// </remarks>
+    public async Task SaveAsync()
+    {
+        await Task.Run(() => Save()).ConfigureAwait(false);
     }
 
     /// <summary>
