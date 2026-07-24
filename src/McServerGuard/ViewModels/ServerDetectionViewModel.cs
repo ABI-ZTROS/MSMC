@@ -9,6 +9,7 @@
 // -----------------------------------------------------------------------------
 
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -34,26 +35,21 @@ namespace McServerGuard.ViewModels;
 /// 双列表维护、JVM 参数编辑器（含预设管理）、服务器启停命令路由以及操作状态机管理。
 /// 通过 <see cref="IServerDetector.DetectionCompleted"/> 事件订阅实现自动检测数据推送。
 /// </remarks>
-public partial class ServerDetectionViewModel : ObservableObject
+public partial class ServerDetectionViewModel : ObservableObject, IDisposable
 {
-    /// <summary>服务器检测服务</summary>
     private readonly IServerDetector _serverDetector;
-    /// <summary>应用配置服务</summary>
     private readonly IAppConfigService _appConfigService;
-    /// <summary>服务器管理服务</summary>
     private readonly IServerManagerService _serverManager;
-    /// <summary>服务器导入服务</summary>
     private readonly IServerImporterService _serverImporter;
     /// <summary>运行中服务器内部集合（作为 CollectionView 的 Source）</summary>
     private readonly ObservableCollection<ServerInstance> _runningServersInternal;
 
+    /// <summary>指示当前实例是否已释放，防止重复 Dispose 导致资源二次释放</summary>
+    private bool _disposed;
+
     /// <summary>
     /// 初始化服务器检测视图模型的新实例
     /// </summary>
-    /// <param name="serverDetector">服务器检测服务</param>
-    /// <param name="appConfigService">应用配置服务</param>
-    /// <param name="serverManager">服务器管理服务</param>
-    /// <param name="serverImporter">服务器导入服务</param>
     /// <remarks>
     /// 完成 JVM 参数初始化、服务器列表 CollectionView 构建、已知服务器加载、
     /// 自动检测事件订阅以及自动检测循环启动。
@@ -73,11 +69,8 @@ public partial class ServerDetectionViewModel : ObservableObject
         SelectedArguments = new ObservableCollection<string>();
         AllArgumentCategories = new ObservableCollection<ArgumentCategory>(Enum.GetValues<ArgumentCategory>());
 
-        SelectedArguments.CollectionChanged += (s, e) =>
-        {
-            OnPropertyChanged(nameof(FilteredArguments));
-            OnPropertyChanged(nameof(StartupCommandPreview));
-        };
+        // 命名方法订阅 —— Dispose 时可精确取消，避免 Lambda 闭包隐式持有 this
+        SelectedArguments.CollectionChanged += OnSelectedArgumentsChanged;
 
         foreach (var arg in JvmArgumentConstants.GetRecommendedArguments())
         {
@@ -774,8 +767,6 @@ public partial class ServerDetectionViewModel : ObservableObject
     /// <summary>
     /// 应用 JVM 参数预设
     /// </summary>
-    /// <param name="flags">参数列表</param>
-    /// <param name="name">预设名称</param>
     private void ApplyPreset(List<string> flags, string name)
     {
         SelectedArguments.Clear();
@@ -1551,8 +1542,6 @@ public partial class ServerDetectionViewModel : ObservableObject
     /// <summary>
     /// 根据基名和值构建完整的 JVM 参数
     /// </summary>
-    /// <param name="baseName">参数基名</param>
-    /// <param name="value">参数值</param>
     /// <returns>完整参数字符串</returns>
     private static string BuildArgumentFromValue(string baseName, string value)
     {
@@ -1628,5 +1617,39 @@ public partial class ServerDetectionViewModel : ObservableObject
         if (bytes >= 1L << 20) return $"{bytes >> 20}M";
         if (bytes >= 1L << 10) return $"{bytes >> 10}K";
         return $"{bytes}";
+    }
+
+    /// <summary>
+    /// 已选 JVM 参数集合变更回调 —— 通知过滤列表与启动命令预览刷新
+    /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="e">集合变更事件参数</param>
+    /// <remarks>命名方法订阅，Dispose 时可精确取消。</remarks>
+    private void OnSelectedArgumentsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(FilteredArguments));
+        OnPropertyChanged(nameof(StartupCommandPreview));
+    }
+
+    /// <summary>
+    /// 释放服务器检测视图模型占用的所有资源
+    /// </summary>
+    /// <remarks>
+    /// 取消自动检测事件订阅、停止后台检测循环、解除集合变更订阅。
+    /// 幂等设计：重复调用安全。
+    /// </remarks>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        Log.Information("🧹 ServerDetectionViewModel 释放资源中...");
+
+        _serverDetector.DetectionCompleted -= OnAutoDetectCompleted;
+        StopAutoDetect();
+        SelectedArguments.CollectionChanged -= OnSelectedArgumentsChanged;
+
+        GC.SuppressFinalize(this);
+        Log.Information("✅ ServerDetectionViewModel 资源释放完成");
     }
 }

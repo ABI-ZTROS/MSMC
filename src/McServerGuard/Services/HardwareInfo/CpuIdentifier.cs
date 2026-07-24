@@ -81,31 +81,34 @@ public class CpuIdentifier
             using var collection = searcher.Get();
             foreach (var obj in collection)
             {
-                var modelName = obj["Name"]?.ToString()?.Trim() ?? "未知 CPU";
-                var manufacturer = obj["Manufacturer"]?.ToString()?.Trim() ?? "未知厂商";
-                var physicalCores = (uint)(obj["NumberOfCores"] ?? 0);
-                var logicalCores = (uint)(obj["NumberOfLogicalProcessors"] ?? 0);
-                var maxClockSpeed = (uint)(obj["MaxClockSpeed"] ?? 0);
-                var currentClockSpeed = (uint)(obj["CurrentClockSpeed"] ?? 0);
-
-                var normalizedName = NormalizeCpuName(modelName);
-                var (arch, generation, tier) = ParseCpuModel(normalizedName, manufacturer);
-                var perfScore = CalculatePerformanceScore((int)physicalCores, (int)logicalCores, maxClockSpeed, tier);
-
-                return new CpuInfo
+                using (obj)
                 {
-                    ModelName = normalizedName,
-                    Manufacturer = manufacturer,
-                    Architecture = arch,
-                    Generation = generation,
-                    PhysicalCores = (int)physicalCores,
-                    LogicalCores = (int)logicalCores,
-                    BaseClockGHz = Math.Round(maxClockSpeed / 1000.0, 2),
-                    BoostClockGHz = Math.Round(currentClockSpeed / 1000.0, 2),
-                    Tier = tier,
-                    PerformanceScore = perfScore,
-                    IsRecognized = arch != "未知架构"
-                };
+                    var modelName = obj["Name"]?.ToString()?.Trim() ?? "未知 CPU";
+                    var manufacturer = obj["Manufacturer"]?.ToString()?.Trim() ?? "未知厂商";
+                    var physicalCores = (uint)(obj["NumberOfCores"] ?? 0);
+                    var logicalCores = (uint)(obj["NumberOfLogicalProcessors"] ?? 0);
+                    var maxClockSpeed = (uint)(obj["MaxClockSpeed"] ?? 0);
+                    var currentClockSpeed = (uint)(obj["CurrentClockSpeed"] ?? 0);
+
+                    var normalizedName = NormalizeCpuName(modelName);
+                    var (arch, generation, tier) = ParseCpuModel(normalizedName, manufacturer);
+                    var perfScore = CalculatePerformanceScore((int)physicalCores, (int)logicalCores, maxClockSpeed, tier);
+
+                    return new CpuInfo
+                    {
+                        ModelName = normalizedName,
+                        Manufacturer = manufacturer,
+                        Architecture = arch,
+                        Generation = generation,
+                        PhysicalCores = (int)physicalCores,
+                        LogicalCores = (int)logicalCores,
+                        BaseClockGHz = Math.Round(maxClockSpeed / 1000.0, 2),
+                        BoostClockGHz = Math.Round(currentClockSpeed / 1000.0, 2),
+                        Tier = tier,
+                        PerformanceScore = perfScore,
+                        IsRecognized = arch != "未知架构"
+                    };
+                }
             }
         }
         catch (Exception ex)

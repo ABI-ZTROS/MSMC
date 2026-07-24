@@ -51,7 +51,7 @@
             <Setter Property="Background" Value="{DynamicResource WarningRedBoxBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource WarningRedBrush}" />
             <Setter Property="BorderThickness" Value="2" />
-            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="CornerRadius" Value="{DynamicResource AppCornerRadius}" />
         </Style>
     </Window.Resources>
 
@@ -509,7 +509,7 @@
                                                 Background="{TemplateBinding Background}"
                                                 BorderBrush="{TemplateBinding BorderBrush}"
                                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                                CornerRadius="4">
+                                                CornerRadius="{DynamicResource AppCornerRadiusSmall}">
                                             <ContentPresenter HorizontalAlignment="Center"
                                                               VerticalAlignment="Center"
                                                               TextBlock.Foreground="{TemplateBinding Foreground}" />

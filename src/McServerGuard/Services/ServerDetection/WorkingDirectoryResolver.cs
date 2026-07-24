@@ -210,9 +210,12 @@ public class WorkingDirectoryResolver
             using var collection = searcher.Get();
             foreach (var obj in collection)
             {
-                var dir = obj["CurrentDirectory"]?.ToString();
-                if (!string.IsNullOrWhiteSpace(dir))
-                    return dir;
+                using (obj)
+                {
+                    var dir = obj["CurrentDirectory"]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(dir))
+                        return dir;
+                }
             }
         }
         catch (System.Runtime.InteropServices.COMException ex)
@@ -246,8 +249,11 @@ public class WorkingDirectoryResolver
             using var collection = searcher.Get();
             foreach (var obj in collection)
             {
-                if (obj["ParentProcessId"] is int parentId)
-                    return parentId;
+                using (obj)
+                {
+                    if (obj["ParentProcessId"] is int parentId)
+                        return parentId;
+                }
             }
         }
         catch (System.Runtime.InteropServices.COMException ex)
@@ -352,15 +358,18 @@ public class WorkingDirectoryResolver
             using var collection = searcher.Get();
             foreach (var obj in collection)
             {
-                var cmdLine = obj["CommandLine"]?.ToString();
-                if (!string.IsNullOrWhiteSpace(cmdLine))
+                using (obj)
                 {
-                    var escaped = cmdLine.Replace("\t", "\\t").Replace("\f", "\\f").Replace("\b", "\\b")
-                        .Replace("\r", "\\r").Replace("\n", "\\n").Replace("\0", "\\0");
-                    Log.Debug("🔧 WorkingDirectoryResolver 获取命令行: {Raw} | 转义后: {Escaped}", 
-                        cmdLine.Length > 100 ? cmdLine[..100] : cmdLine,
-                        escaped.Length > 100 ? escaped[..100] : escaped);
-                    return cmdLine;
+                    var cmdLine = obj["CommandLine"]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(cmdLine))
+                    {
+                        var escaped = cmdLine.Replace("\t", "\\t").Replace("\f", "\\f").Replace("\b", "\\b")
+                            .Replace("\r", "\\r").Replace("\n", "\\n").Replace("\0", "\\0");
+                        Log.Debug("🔧 WorkingDirectoryResolver 获取命令行: {Raw} | 转义后: {Escaped}",
+                            cmdLine.Length > 100 ? cmdLine[..100] : cmdLine,
+                            escaped.Length > 100 ? escaped[..100] : escaped);
+                        return cmdLine;
+                    }
                 }
             }
         }

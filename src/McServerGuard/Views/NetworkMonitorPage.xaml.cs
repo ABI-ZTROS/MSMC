@@ -36,7 +36,7 @@ public partial class NetworkMonitorPage : UserControl
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
 
         StopRefreshAnimation();
-        (_viewModel as IDisposable)?.Dispose();
+        // 不 Dispose 共享 ViewModel —— 其生命周期由 DI 容器/MainViewModel 管理
         _viewModel = null;
     }
 

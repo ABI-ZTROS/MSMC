@@ -83,7 +83,7 @@ public partial class ServerDetectionPage : UserControl
         {
             if (itemsControl.ItemContainerGenerator.ContainerFromIndex(i) is ContentPresenter presenter)
             {
-                var element = FindFirstVisualChild<UIElement>(presenter);
+                var element = AnimationHelper.FindVisualChild<UIElement>(presenter);
                 if (element != null)
                 {
                     AnimationHelper.FadeAndSlideInWithDelay(element, durationMs, delay);
@@ -91,23 +91,6 @@ public partial class ServerDetectionPage : UserControl
                 }
             }
         }
-    }
-
-    // 查找第一个可视化子元素
-    private static T? FindFirstVisualChild<T>(DependencyObject parent) where T : DependencyObject
-    {
-        if (parent == null) return null;
-        int count = VisualTreeHelper.GetChildrenCount(parent);
-        for (int i = 0; i < count; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is T typed)
-                return typed;
-            var result = FindFirstVisualChild<T>(child);
-            if (result != null)
-                return result;
-        }
-        return null;
     }
 
     /// <summary>

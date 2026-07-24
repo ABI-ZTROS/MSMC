@@ -532,7 +532,7 @@
                         <TextBlock Text="通知设置" Style="{StaticResource SectionTitleStyle}" />
                         
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                            <ToggleButton IsChecked="True"
+                            <ToggleButton IsChecked="{Binding EnableWindowsNotifications, Mode=TwoWay}"
                                           Style="{StaticResource MaterialDesignSwitchToggleButton}"
                                           VerticalAlignment="Center" />
                             <StackPanel Margin="12,0,0,0">

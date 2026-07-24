@@ -105,12 +105,15 @@ public class MemoryMonitor
             using var collection = searcher.Get();
             foreach (var obj in collection)
             {
-                if (long.TryParse(obj["TotalVisibleMemorySize"]?.ToString(), out var kb))
+                using (obj)
                 {
-                    var bytes = kb * 1024;
-                    Log.Information("通过 WMI 获取总内存成功: {Total} GB",
-                        (double)bytes / (1024 * 1024 * 1024));
-                    return bytes;
+                    if (long.TryParse(obj["TotalVisibleMemorySize"]?.ToString(), out var kb))
+                    {
+                        var bytes = kb * 1024;
+                        Log.Information("通过 WMI 获取总内存成功: {Total} GB",
+                            (double)bytes / (1024 * 1024 * 1024));
+                        return bytes;
+                    }
                 }
             }
         }
@@ -192,9 +195,12 @@ public class MemoryMonitor
             using var collection = searcher.Get();
             foreach (var obj in collection)
             {
-                if (long.TryParse(obj["FreePhysicalMemory"]?.ToString(), out var kb))
+                using (obj)
                 {
-                    return kb * 1024;
+                    if (long.TryParse(obj["FreePhysicalMemory"]?.ToString(), out var kb))
+                    {
+                        return kb * 1024;
+                    }
                 }
             }
         }
@@ -365,32 +371,35 @@ public class MemoryMonitor
             int slot = 0;
             foreach (var obj in collection)
             {
-                var capacity = (ulong)(obj["Capacity"] ?? 0UL);
-                var speed = (uint)(obj["Speed"] ?? 0U);
-                var memType = (ushort)(obj["MemoryType"] ?? 0);
-                var manufacturer = obj["Manufacturer"]?.ToString() ?? "未知";
-                var partNumber = obj["PartNumber"]?.ToString()?.Trim() ?? string.Empty;
-                var deviceLocator = obj["DeviceLocator"]?.ToString() ?? string.Empty;
-
-                var typeName = GetMemoryTypeName(memType);
-                if (typeName != "未知" && memoryType == "未知")
-                    memoryType = typeName;
-
-                if (speed > maxSpeed)
-                    maxSpeed = (int)speed;
-
-                totalCapacity += (long)capacity;
-                slot++;
-
-                modules.Add(new MemoryModuleInfo
+                using (obj)
                 {
-                    CapacityBytes = (long)capacity,
-                    SpeedMHz = (int)speed,
-                    MemoryType = typeName,
-                    Manufacturer = manufacturer,
-                    PartNumber = partNumber,
-                    SlotNumber = slot
-                });
+                    var capacity = (ulong)(obj["Capacity"] ?? 0UL);
+                    var speed = (uint)(obj["Speed"] ?? 0U);
+                    var memType = (ushort)(obj["MemoryType"] ?? 0);
+                    var manufacturer = obj["Manufacturer"]?.ToString() ?? "未知";
+                    var partNumber = obj["PartNumber"]?.ToString()?.Trim() ?? string.Empty;
+                    var deviceLocator = obj["DeviceLocator"]?.ToString() ?? string.Empty;
+
+                    var typeName = GetMemoryTypeName(memType);
+                    if (typeName != "未知" && memoryType == "未知")
+                        memoryType = typeName;
+
+                    if (speed > maxSpeed)
+                        maxSpeed = (int)speed;
+
+                    totalCapacity += (long)capacity;
+                    slot++;
+
+                    modules.Add(new MemoryModuleInfo
+                    {
+                        CapacityBytes = (long)capacity,
+                        SpeedMHz = (int)speed,
+                        MemoryType = typeName,
+                        Manufacturer = manufacturer,
+                        PartNumber = partNumber,
+                        SlotNumber = slot
+                    });
+                }
             }
 
             if (totalCapacity == 0)

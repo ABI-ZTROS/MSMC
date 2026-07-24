@@ -31,7 +31,7 @@ namespace McServerGuard.ViewModels;
 /// 维护环形历史缓冲区（FIFO，上限 120 点）、向 UI 层提供格式化文本与数据点序列以供图表控件绑定。
 /// 监控为常驻模式，与具体服务器实例解耦，应用启动后即自动开始采集。
 /// </remarks>
-public partial class SystemMonitorViewModel : ObservableObject
+public partial class SystemMonitorViewModel : ObservableObject, IDisposable
 {
     /// <summary>系统监控服务</summary>
     private readonly ISystemMonitor _systemMonitor;
@@ -44,6 +44,9 @@ public partial class SystemMonitorViewModel : ObservableObject
 
     /// <summary>监控取消令牌源</summary>
     private CancellationTokenSource? _monitoringCts;
+
+    /// <summary>指示当前实例是否已释放，防止重复 Dispose 导致资源二次释放</summary>
+    private bool _disposed;
 
     // CPU/内存趋势图底层集合（被 LiveCharts2 LineSeries 直接绑定，FIFO 截断）
     private readonly ObservableCollection<double> _cpuValues = [];
@@ -299,5 +302,23 @@ public partial class SystemMonitorViewModel : ObservableObject
         _monitoringCts?.Dispose();
         _monitoringCts = null;
         _systemMonitor.StopMonitoring();
+    }
+
+    /// <summary>
+    /// 释放系统监控视图模型占用的所有资源
+    /// </summary>
+    /// <remarks>
+    /// 停止常驻监控循环、释放取消令牌源、停止系统监控服务。
+    /// 幂等设计：重复调用安全。
+    /// </remarks>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        Log.Information("🧹 SystemMonitorViewModel 释放资源中...");
+        StopMonitoringInternal();
+        GC.SuppressFinalize(this);
+        Log.Information("✅ SystemMonitorViewModel 资源释放完成");
     }
 }

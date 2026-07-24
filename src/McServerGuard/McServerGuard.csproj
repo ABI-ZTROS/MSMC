@@ -11,7 +11,6 @@
     <AssemblyName>McServerGuard</AssemblyName>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RuntimeIdentifiers>win-x64;win-x86;win-arm64</RuntimeIdentifiers>
-    <Version>0.1.0</Version>
     <Authors>Wis'adel</Authors>
     <Product>MSMC - Minecraft Server Management Client</Product>
     <Description>一个不务正业的 Minecraft 服务器管理工具</Description>
@@ -91,6 +90,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.*" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

@@ -10,6 +10,7 @@
 // -----------------------------------------------------------------------------
 namespace McServerGuard.Services.ServerDetection;
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using McServerGuard.Constants;
@@ -93,6 +94,9 @@ public class ServerDetector : IServerDetector
         _portResolver = portResolver;
         _jarCoreIdentifier = jarCoreIdentifier;
         Log.Information("🕵️ ServerDetector 初始化完毕，准备出击（含网络套件 + JAR Manifest 兜底）");
+
+        // 启动缓存定期清理计时器 —— 每 30 秒扫描并移除过期条目，防止缓存无限增长
+        _cacheCleanupTimer = new Timer(CleanupExpiredCacheEntries, null, CacheCleanupInterval, CacheCleanupInterval);
     }
 
     /// <inheritdoc />
@@ -119,8 +123,8 @@ public class ServerDetector : IServerDetector
 
         Log.Information("🔍 DetectAllAsync: 开始扫描所有 Java 进程...");
 
-        // 阶段一：进程枚举阶段
-        var processResults = _processScanner.ScanServerProcesses();
+        // 阶段一：进程枚举阶段（异步执行 WMI 批量查询，避免阻塞线程池）
+        var processResults = await _processScanner.ScanServerProcessesAsync();
 
         if (processResults.Count == 0)
         {
@@ -160,7 +164,7 @@ public class ServerDetector : IServerDetector
                     catch (ArgumentException)
                     {
                         // 进程已退出，执行缓存失效操作
-                        _detectionCache.Remove(processId);
+                        _detectionCache.TryRemove(processId, out _);
                         Log.Debug("🗑️ 进程 PID={Pid} 已退出，从缓存中移除", processId);
                         continue;
                     }
@@ -532,8 +536,9 @@ public class ServerDetector : IServerDetector
 
     /// <summary>
     /// PID 生命周期缓存字典 —— Key 为进程 ID，Value 为（服务器实例, 缓存时间戳）元组
+    /// 使用 ConcurrentDictionary 支持后台自动检测与 UI 命令的并发访问
     /// </summary>
-    private readonly Dictionary<int, (ServerInstance server, DateTime timestamp)> _detectionCache = new();
+    private readonly ConcurrentDictionary<int, (ServerInstance server, DateTime timestamp)> _detectionCache = new();
 
     /// <summary>
     /// 端口扫描结果缓存 TTL —— 比自动检测间隔长，避免每轮都 TCP connect
@@ -550,6 +555,20 @@ public class ServerDetector : IServerDetector
     /// 端口扫描缓存读写锁 —— 保护 <see cref="_portScanCache"/> 的并发访问
     /// </summary>
     private readonly object _portScanCacheLock = new();
+
+    /// <summary>
+    /// 缓存定期清理计时器 —— 周期性扫描两个缓存字典，移除已过期条目，防止内存持续增长
+    /// </summary>
+    /// <remarks>
+    /// 清理间隔（30 秒）远大于检测缓存 TTL（15 秒）与端口缓存 TTL，
+    /// 确保过期条目在合理时间内被回收，同时避免频繁扫描带来的开销。
+    /// </remarks>
+    private readonly Timer _cacheCleanupTimer;
+
+    /// <summary>
+    /// 缓存清理间隔 —— 每 30 秒执行一次过期条目扫描
+    /// </summary>
+    private static readonly TimeSpan CacheCleanupInterval = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// 自动检测循环的取消令牌源
@@ -648,11 +667,72 @@ public class ServerDetector : IServerDetector
     }
 
     /// <summary>
+    /// 缓存定期清理回调 —— 扫描两个缓存字典，移除已过期条目
+    /// </summary>
+    /// <param name="state">计时器状态参数（未使用）</param>
+    /// <remarks>
+    /// <para>_detectionCache 清理：移除超过 <see cref="DetectionCacheTtl"/> 的 PID 缓存条目。</para>
+    /// <para>_portScanCache 清理：移除超过 <see cref="PortScanCacheTtl"/> 的端口扫描结果条目。</para>
+    /// <para>该回调由 <see cref="_cacheCleanupTimer"/> 每 30 秒触发一次，在后台线程池执行。</para>
+    /// </remarks>
+    private void CleanupExpiredCacheEntries(object? state)
+    {
+        var now = DateTime.Now;
+        int detectionRemoved = 0;
+        int portRemoved = 0;
+
+        // 清理 PID 生命周期缓存（ConcurrentDictionary 支持遍历时安全移除）
+        foreach (var kv in _detectionCache)
+        {
+            if ((now - kv.Value.timestamp) >= DetectionCacheTtl)
+            {
+                if (_detectionCache.TryRemove(kv.Key, out _))
+                    detectionRemoved++;
+            }
+        }
+
+        // 清理端口扫描缓存（需加锁保护普通 Dictionary）
+        lock (_portScanCacheLock)
+        {
+            var expiredPorts = _portScanCache
+                .Where(kv => (now - kv.Value.Timestamp) >= PortScanCacheTtl)
+                .Select(kv => kv.Key)
+                .ToList();
+
+            foreach (var port in expiredPorts)
+            {
+                _portScanCache.Remove(port);
+                portRemoved++;
+            }
+        }
+
+        if (detectionRemoved > 0 || portRemoved > 0)
+        {
+            Log.Debug("🧹 缓存清理：移除 {Detection} 个检测缓存 + {Port} 个端口缓存",
+                detectionRemoved, portRemoved);
+        }
+    }
+
+    /// <summary>
     /// 释放编排器占用的所有资源
     /// </summary>
+    /// <remarks>
+    /// 停止自动检测循环、释放缓存清理计时器、清空缓存字典。
+    /// </remarks>
     public void Dispose()
     {
         StopAutoDetect();
+
+        // 停止并释放缓存清理计时器
+        _cacheCleanupTimer.Dispose();
+
+        // 清空缓存，释放引用
+        _detectionCache.Clear();
+        lock (_portScanCacheLock)
+        {
+            _portScanCache.Clear();
+        }
+
         GC.SuppressFinalize(this);
     }
 }

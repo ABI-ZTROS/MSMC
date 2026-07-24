@@ -23,11 +23,12 @@ using Serilog;
 /// <para>规则列表基于内部 ConcurrentDictionary，无需解析 netsh 文本输出。</para>
 /// <para>每条规则独立后台 AcceptTcpClientAsync 循环，取消时停止 listener 并断开所有活动连接。</para>
 /// </remarks>
-public sealed class TcpForwarderService : ITcpForwarder
+public sealed class TcpForwarderService : ITcpForwarder, IDisposable
 {
     private readonly ConcurrentDictionary<(string ListenAddress, int ListenPort, string Protocol), ForwardSession> _sessions = new();
     private readonly object _errorLock = new();
     private string _lastError = string.Empty;
+    private bool _disposed;
 
     public string LastError
     {
@@ -167,6 +168,53 @@ public sealed class TcpForwarderService : ITcpForwarder
             stats[(kv.Key.ListenAddress, kv.Key.ListenPort)] = new ForwardStats(activeCount, totalBytes);
         }
         return stats;
+    }
+
+    /// <summary>
+    /// 释放 TCP 转发引擎占用的所有资源
+    /// </summary>
+    /// <remarks>
+    /// 遍历所有活动转发会话，逐一取消 Accept 循环、停止 TcpListener、断开活动连接、释放取消令牌。
+    /// 幂等设计：重复调用安全。
+    /// </remarks>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        Log.Information("🧹 TcpForwarderService 释放资源中，共 {Count} 个活动会话", _sessions.Count);
+
+        // 快照会话列表，避免在遍历时修改字典
+        var sessions = _sessions.ToArray();
+        _sessions.Clear();
+
+        foreach (var kv in sessions)
+        {
+            var session = kv.Value;
+            try
+            {
+                session.Cts.Cancel();
+                session.Listener.Stop();
+
+                lock (session.ActiveClients)
+                {
+                    foreach (var client in session.ActiveClients)
+                    {
+                        try { client.Close(); } catch { }
+                    }
+                    session.ActiveClients.Clear();
+                }
+
+                session.Cts.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "TcpForwarder 释放会话异常: {Key}", kv.Key);
+            }
+        }
+
+        GC.SuppressFinalize(this);
+        Log.Information("✅ TcpForwarderService 资源释放完成");
     }
 
     private static async Task AcceptLoopAsync(ForwardSession session, IPAddress connectAddr, int connectPort, CancellationToken ct)

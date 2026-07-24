@@ -77,13 +77,42 @@ public partial class UserAgreementWindow : Window
         Loaded += UserAgreementWindow_Loaded;
         Activated += UserAgreementWindow_Activated;
         Deactivated += UserAgreementWindow_Deactivated;
+        Closed += UserAgreementWindow_Closed;
+    }
+
+    /// <summary>
+    /// 窗口关闭事件处理程序 —— 清理计时器与事件订阅，防止资源泄漏
+    /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="e">事件参数</param>
+    /// <remarks>
+    /// 停止并解绑倒计时与晃动计时器，取消窗口生命周期事件订阅，
+    /// 关闭所有残留的提示窗口，确保窗口销毁后无后台计时器或事件引用残留。
+    /// </remarks>
+    private void UserAgreementWindow_Closed(object? sender, EventArgs e)
+    {
+        _countdownTimer.Stop();
+        _countdownTimer.Tick -= CountdownTimer_Tick;
+
+        _shakeTimer.Stop();
+        _shakeTimer.Tick -= ShakeTimer_Tick;
+
+        Loaded -= UserAgreementWindow_Loaded;
+        Activated -= UserAgreementWindow_Activated;
+        Deactivated -= UserAgreementWindow_Deactivated;
+        Closed -= UserAgreementWindow_Closed;
+
+        // 关闭所有残留的提示窗口（防止恶作剧窗口在主窗口关闭后仍残留）
+        foreach (var (w, _, _) in _trollWindows)
+        {
+            try { w.Close(); } catch { }
+        }
+        _trollWindows.Clear();
     }
 
     /// <summary>
     /// 窗口加载事件处理程序
     /// </summary>
-    /// <param name="sender">事件源对象</param>
-    /// <param name="e">路由事件参数</param>
     /// <remarks>
     /// 初始化倒计时显示、启动倒计时、禁用同意按钮、
     /// 配置自定义标题栏拖动功能、注册滚动监听事件。
@@ -107,8 +136,6 @@ public partial class UserAgreementWindow : Window
     /// <summary>
     /// 窗口获得焦点事件处理程序
     /// </summary>
-    /// <param name="sender">事件源对象</param>
-    /// <param name="e">事件参数</param>
     /// <remarks>
     /// 当窗口恢复焦点时，如果倒计时因失焦而暂停，则恢复倒计时。
     /// </remarks>
@@ -125,8 +152,6 @@ public partial class UserAgreementWindow : Window
     /// <summary>
     /// 窗口失去焦点事件处理程序
     /// </summary>
-    /// <param name="sender">事件源对象</param>
-    /// <param name="e">事件参数</param>
     /// <remarks>
     /// 当窗口失去焦点时，暂停倒计时并提示用户保持窗口焦点。
     /// </remarks>
@@ -143,8 +168,6 @@ public partial class UserAgreementWindow : Window
     /// <summary>
     /// 倒计时计时器 Tick 事件处理程序
     /// </summary>
-    /// <param name="sender">事件源对象</param>
-    /// <param name="e">事件参数</param>
     /// <remarks>
     /// 每秒递减剩余阅读时间，时间归零时停止倒计时
     /// 并检查是否满足同意条件。
@@ -164,8 +187,6 @@ public partial class UserAgreementWindow : Window
     /// <summary>
     /// 协议内容滚动变更事件处理程序
     /// </summary>
-    /// <param name="sender">事件源对象</param>
-    /// <param name="e">滚动变更事件参数</param>
     /// <remarks>
     /// 检测滚动位置，当用户滚动至协议底部时
     /// 标记阅读状态并检查是否满足同意条件。
@@ -246,8 +267,6 @@ public partial class UserAgreementWindow : Window
     /// <summary>
     /// 同意按钮点击事件处理程序
     /// </summary>
-    /// <param name="sender">事件源对象</param>
-    /// <param name="e">路由事件参数</param>
     /// <remarks>
     /// 持久化用户同意状态，设置对话框结果为 true，
     /// 并关闭当前窗口。
@@ -262,8 +281,6 @@ public partial class UserAgreementWindow : Window
     /// <summary>
     /// 不同意按钮点击事件处理程序
     /// </summary>
-    /// <param name="sender">事件源对象</param>
-    /// <param name="e">路由事件参数</param>
     /// <remarks>
     /// 记录窗口初始位置，启动视觉警示动画，
     /// 并创建多实例提示窗口以强化用户认知。
@@ -377,8 +394,6 @@ public partial class UserAgreementWindow : Window
     /// <summary>
     /// 视觉警示动画计时器 Tick 事件处理程序
     /// </summary>
-    /// <param name="sender">事件源对象</param>
-    /// <param name="e">事件参数</param>
     /// <remarks>
     /// 通过随机偏移窗口位置实现微扰动视觉效果，
     /// 动画结束后复位窗口位置、关闭所有提示窗口，

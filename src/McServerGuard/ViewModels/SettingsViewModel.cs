@@ -30,6 +30,8 @@ public partial class SettingsViewModel : ObservableObject
     private readonly Services.IThemeService _themeService;
     /// <summary>吐司通知服务</summary>
     private readonly Services.IToastNotificationService _toastService;
+    /// <summary>应用配置服务</summary>
+    private readonly Services.IAppConfigService _appConfigService;
 
     /// <summary>主题主色</summary>
     [ObservableProperty]
@@ -84,6 +86,10 @@ public partial class SettingsViewModel : ObservableObject
     /// <summary>是否启用过渡动画</summary>
     [ObservableProperty]
     private bool _enableAnimations = true;
+
+    /// <summary>是否启用 Windows 通知中心</summary>
+    [ObservableProperty]
+    private bool _enableWindowsNotifications = true;
 
     /// <summary>状态栏消息文本</summary>
     [ObservableProperty]
@@ -216,10 +222,11 @@ public partial class SettingsViewModel : ObservableObject
     /// <param name="themeService">主题服务</param>
     /// <param name="toastService">吐司通知服务</param>
     /// <remarks>构造时从主题服务加载已持久化的设置。</remarks>
-    public SettingsViewModel(Services.IThemeService themeService, Services.IToastNotificationService toastService)
+    public SettingsViewModel(Services.IThemeService themeService, Services.IToastNotificationService toastService, Services.IAppConfigService appConfigService)
     {
         _themeService = themeService;
         _toastService = toastService;
+        _appConfigService = appConfigService;
         LoadSettings();
     }
 
@@ -239,6 +246,7 @@ public partial class SettingsViewModel : ObservableObject
         CornerRadius = _themeService.CornerRadius;
         AnimationDuration = _themeService.AnimationDuration;
         EnableAnimations = _themeService.EnableAnimations;
+        EnableWindowsNotifications = _appConfigService.Config.EnableWindowsNotifications;
 
         StatusMessage = "设置已加载";
         Log.Information("⚙️ 设置页面已加载");
@@ -411,6 +419,8 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             _themeService.SaveSettings();
+            _appConfigService.Config.EnableWindowsNotifications = EnableWindowsNotifications;
+            _appConfigService.Save();
             StatusMessage = "设置已保存";
             _toastService.ShowSuccess("设置已保存", "所有设置已保存到本地");
             Log.Information("💾 设置已保存");

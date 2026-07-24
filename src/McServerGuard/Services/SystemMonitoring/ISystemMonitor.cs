@@ -17,7 +17,7 @@ using McServerGuard.Models;
 /// 多维度指标的快照采集与持续监控能力。作为监控体系的核心接口契约，
 /// 为上层业务提供一致的指标访问入口。
 /// </remarks>
-public interface ISystemMonitor
+public interface ISystemMonitor : IDisposable
 {
     /// <summary>
     /// 采集一次系统指标快照

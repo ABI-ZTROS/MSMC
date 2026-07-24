@@ -213,45 +213,27 @@
                 <ListBox Grid.Row="1"
                          x:Name="NavListBox"
                          SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+                         ItemsSource="{Binding NavItems}"
                          VerticalAlignment="Top"
                          Background="Transparent"
                          BorderThickness="0"
                          Foreground="{DynamicResource MaterialDesignBody}"
                          Style="{StaticResource ModernNavListBoxStyle}"
-                         ItemContainerStyle="{StaticResource ModernNavListBoxItemStyle}"
                          VirtualizingStackPanel.IsVirtualizing="False"
                          Margin="0,4,0,0">
-
-                    <ListBoxItem ToolTip="服务器管理">
-                        <StackPanel Orientation="Horizontal" Margin="4,4">
-                            <iconPacks:PackIconFontAwesome6 Kind="ServerSolid" Width="22" Height="22" Margin="0,0,12,0" />
-                            <TextBlock x:Name="NavItemText1" Text="服务器管理" FontSize="13" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </ListBoxItem>
-                    <ListBoxItem ToolTip="配置编辑">
-                        <StackPanel Orientation="Horizontal" Margin="4,4">
-                            <iconPacks:PackIconFontAwesome6 Kind="FilePenSolid" Width="22" Height="22" Margin="0,0,12,0" />
-                            <TextBlock x:Name="NavItemText2" Text="配置编辑" FontSize="13" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </ListBoxItem>
-                    <ListBoxItem ToolTip="系统监控">
-                        <StackPanel Orientation="Horizontal" Margin="4,4">
-                            <iconPacks:PackIconFontAwesome6 Kind="GaugeHighSolid" Width="22" Height="22" Margin="0,0,12,0" />
-                            <TextBlock x:Name="NavItemText3" Text="系统监控" FontSize="13" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </ListBoxItem>
-                    <ListBoxItem ToolTip="网络监控">
-                        <StackPanel Orientation="Horizontal" Margin="4,4">
-                            <iconPacks:PackIconFontAwesome6 Kind="NetworkWiredSolid" Width="22" Height="22" Margin="0,0,12,0" />
-                            <TextBlock x:Name="NavItemText4" Text="网络监控" FontSize="13" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </ListBoxItem>
-                    <ListBoxItem ToolTip="设置">
-                        <StackPanel Orientation="Horizontal" Margin="4,4">
-                            <iconPacks:PackIconFontAwesome6 Kind="GearSolid" Width="22" Height="22" Margin="0,0,12,0" />
-                            <TextBlock x:Name="NavItemText5" Text="设置" FontSize="13" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </ListBoxItem>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource ModernNavListBoxItemStyle}">
+                            <Setter Property="ToolTip" Value="{Binding Title}" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Margin="4,4">
+                                <iconPacks:PackIconFontAwesome6 Kind="{Binding IconKind}" Width="22" Height="22" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Title}" FontSize="13" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
                 </ListBox>
 
                 <!-- 🔻 底部信息 - 仅展开时显示 -->

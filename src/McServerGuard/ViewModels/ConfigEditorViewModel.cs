@@ -9,7 +9,9 @@
 // -----------------------------------------------------------------------------
 
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.IO;
+using System.Timers;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using McServerGuard.Models;
@@ -71,7 +73,7 @@ public sealed class ConfigEntryGroup
 /// 配置条目加载与分组展示、值编辑与实时验证、脏数据追踪与持久化。
 /// 支持从运行中服务器、已知服务器及手动选择目录三种数据源切换。
 /// </remarks>
-public partial class ConfigEditorViewModel : ObservableObject
+public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 {
     /// <summary>配置管理服务</summary>
     private readonly IConfigManager _configManager;
@@ -104,6 +106,9 @@ public partial class ConfigEditorViewModel : ObservableObject
     /// <summary>撤销操作进行中标志 —— 防止撤销恢复值时再次触发压栈</summary>
     private bool _isUndoing;
 
+    /// <summary>指示当前实例是否已释放，防止重复 Dispose 导致资源二次释放</summary>
+    private bool _disposed;
+
     /// <summary>
     /// 初始化配置编辑器视图模型的新实例（最小依赖版本）
     /// </summary>
@@ -115,9 +120,9 @@ public partial class ConfigEditorViewModel : ObservableObject
 
         _groupUpdateTimer = new System.Timers.Timer(20);
         _groupUpdateTimer.AutoReset = false;
-        _groupUpdateTimer.Elapsed += (s, e) => UpdateGroupedEntries();
+        _groupUpdateTimer.Elapsed += OnGroupUpdateTimerElapsed;
 
-        ConfigEntries.CollectionChanged += (s, e) => ScheduleGroupUpdate();
+        ConfigEntries.CollectionChanged += OnConfigEntriesChanged;
     }
 
     /// <summary>
@@ -344,8 +349,9 @@ public partial class ConfigEditorViewModel : ObservableObject
                 server.ServerJarName = Path.GetFileName(jarFiles[0]);
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Log.Warning(ex, "自动检测 JAR 失败");
         }
 
         Server = server;
@@ -876,6 +882,9 @@ public partial class ConfigEditorViewModel : ObservableObject
 
                 foreach (var entry in batch)
                 {
+                    // 订阅条目属性变更以驱动"已修改"标记与撤销栈。
+                    // 配置条目数量通常在几十个范围内，订阅开销可忽略；
+                    // 切换配置文件时旧条目随 ConfigEntries.Clear() 被 GC 回收，无需手动取消订阅。
                     entry.PropertyChanging += OnConfigEntryChanging;
                     entry.PropertyChanged += OnConfigEntryChanged;
                     ConfigEntries.Add(entry);
@@ -946,5 +955,54 @@ public partial class ConfigEditorViewModel : ObservableObject
 
         HasUnsavedChanges = _modifiedCount > 0;
         UndoCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// 分组更新防抖计时器 Elapsed 回调 —— 触发分组重新计算
+    /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="e">计时器事件参数</param>
+    /// <remarks>命名方法订阅，Dispose 时可精确取消，避免 Lambda 闭包隐式持有 this。</remarks>
+    private void OnGroupUpdateTimerElapsed(object? sender, ElapsedEventArgs e)
+        => UpdateGroupedEntries();
+
+    /// <summary>
+    /// 配置条目集合变更回调 —— 防抖调度分组更新
+    /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="e">集合变更事件参数</param>
+    private void OnConfigEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        => ScheduleGroupUpdate();
+
+    /// <summary>
+    /// 释放配置编辑器视图模型占用的所有资源
+    /// </summary>
+    /// <remarks>
+    /// 停止并释放防抖计时器、取消正在进行的加载任务、解除集合变更订阅。
+    /// 幂等设计：重复调用安全。
+    /// </remarks>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        Log.Information("🧹 ConfigEditorViewModel 释放资源中...");
+
+        ConfigEntries.CollectionChanged -= OnConfigEntriesChanged;
+
+        if (_groupUpdateTimer != null)
+        {
+            _groupUpdateTimer.Elapsed -= OnGroupUpdateTimerElapsed;
+            _groupUpdateTimer.Stop();
+            _groupUpdateTimer.Dispose();
+            _groupUpdateTimer = null;
+        }
+
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = null;
+
+        GC.SuppressFinalize(this);
+        Log.Information("✅ ConfigEditorViewModel 资源释放完成");
     }
 }

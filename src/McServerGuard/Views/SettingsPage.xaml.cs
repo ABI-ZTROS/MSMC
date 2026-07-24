@@ -13,6 +13,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Diagnostics;
+using Serilog;
 using McServerGuard.Services;
 using McServerGuard.Views.Controls;
 using McServerGuard.Views.Helpers;
@@ -153,8 +154,9 @@ public partial class SettingsPage : UserControl
                 UseShellExecute = true
             });
         }
-        catch
+        catch (Exception ex)
         {
+            Log.Warning(ex, "打开 GitHub 链接失败");
         }
     }
 

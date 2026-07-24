@@ -26,6 +26,12 @@ public class AppConfig
     /// 用于应用重启后恢复上次选中的服务器上下文。
     /// </summary>
     public string LastActiveServerId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 是否启用 Windows 通知中心。
+    /// 控制重要信息是否通过系统通知弹出。
+    /// </summary>
+    public bool EnableWindowsNotifications { get; set; } = true;
 }
 
 /// <summary>

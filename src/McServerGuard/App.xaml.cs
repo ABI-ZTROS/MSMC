@@ -55,7 +55,10 @@ public partial class App : Application
     {
         // 初始化日志系统
         // 每次启动生成独立日志文件（含启动时间戳），避免单文件过大
-        var logFileName = $"logs/mcserverguard-{DateTime.Now:yyyyMMdd-HHmmss}.log";
+        // 使用 AppContext.BaseDirectory 确保日志路径不依赖工作目录
+        var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
+        Directory.CreateDirectory(logDir);
+        var logFileName = Path.Combine(logDir, $"mcserverguard-{DateTime.Now:yyyyMMdd-HHmmss}.log");
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .WriteTo.File(logFileName)
@@ -232,6 +235,44 @@ public partial class App : Application
     }
 
     /// <summary>
+    /// 应用程序退出入口 —— 释放主视图模型与 DI 容器资源，确保后台计时器/事件订阅/取消令牌正确清理
+    /// </summary>
+    /// <param name="e">退出事件参数</param>
+    /// <remarks>
+    /// MainViewModel 作为根 ViewModel 持有时钟计时器与所有子页面的事件订阅，
+    /// 级联 Dispose 确保 DispatcherTimer、检测循环、监控循环等后台资源在退出时停止。
+    /// ServiceProvider.Dispose 释放所有 Singleton 服务（含 ServerDetector 等 IDisposable 服务）。
+    /// </remarks>
+    protected override void OnExit(ExitEventArgs e)
+    {
+        Log.Information("👋 应用退出，开始清理资源...");
+
+        try
+        {
+            if (_serviceProvider?.GetService(typeof(MainViewModel)) is IDisposable disposableVm)
+                disposableVm.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ MainViewModel 释放时发生异常（已忽略）");
+        }
+
+        try
+        {
+            _serviceProvider?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ ServiceProvider 释放时发生异常（已忽略）");
+        }
+
+        Log.Information("✅ 资源清理完成，再见！");
+        Log.CloseAndFlush();
+
+        base.OnExit(e);
+    }
+
+    /// <summary>
     /// 配置三层全局异常防护机制
     /// 覆盖 UI 线程异常、非 UI 线程未处理异常、Task 未观察异常三个层级
     /// </summary>
@@ -371,6 +412,19 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         Log.Information("👋 McServerGuard 正在退出，拜拜~");
+
+        // 显式释放关键 IDisposable 服务，确保监控定时器、性能计数器等资源及时回收
+        //（容器 Dispose 也会处理，但提前释放可保证释放顺序与日志可观测性）
+        try
+        {
+            if (_serviceProvider?.GetService(typeof(ISystemMonitor)) is IDisposable systemMonitor)
+                systemMonitor.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "释放 SystemMonitor 失败");
+        }
+
         Log.CloseAndFlush();
         _serviceProvider?.Dispose();
         base.OnExit(e);

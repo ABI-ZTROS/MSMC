@@ -288,9 +288,9 @@ public class MemoryOptimizerService : IDisposable
                 await Task.Delay(1000);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // 线程退出
+            Log.Debug(ex, "GC 监控线程退出");
         }
     }
 
@@ -303,14 +303,22 @@ public class MemoryOptimizerService : IDisposable
     {
         Log.Information("🧹 应用退出，停止内存优化服务");
         Stop();
+        // 取消 GC 通知注册，使 MonitorFullGCNotification 的 WaitForFullGCApproach 返回 Canceled 从而退出循环
+        try { GC.CancelFullGCNotification(); } catch { /* 未注册时忽略 */ }
     }
 
     /// <summary>
     /// 释放资源
     /// </summary>
+    /// <remarks>
+    /// 停止定时器、取消 GC 通知注册（使后台监控线程的 while 循环收到 Canceled 状态而退出）、
+    /// 解除应用退出事件订阅，确保后台线程不再持有实例引用。
+    /// </remarks>
     public void Dispose()
     {
         Stop();
+        try { GC.CancelFullGCNotification(); } catch { /* 未注册时忽略 */ }
+        Application.Current.Exit -= OnApplicationExit;
         GC.SuppressFinalize(this);
     }
 

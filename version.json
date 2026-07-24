@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/Nerdbank.GitVersioning/main/src/NerdBank.GitVersioning/consts.schema.json",
+  "version": "0.2",
+  "publicReleaseRefSpec": [ "^refs/heads/main$" ],
+  "release": { "tagName": "v{version}" }
+}

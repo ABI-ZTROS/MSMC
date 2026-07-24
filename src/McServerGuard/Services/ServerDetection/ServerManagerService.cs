@@ -172,10 +172,10 @@ public class ServerManagerService : IServerManagerService
         {
             try
             {
-                var process = Process.GetProcessById(server.ProcessId);
+                using var process = Process.GetProcessById(server.ProcessId);
                 if (!process.HasExited)
                     return true;
-                
+
                 Log.Information("⚠️ 进程 PID={Pid} 已退出", server.ProcessId);
             }
             catch (ArgumentException)
@@ -579,7 +579,7 @@ public class ServerManagerService : IServerManagerService
             {
                 try
                 {
-                    var childProcess = Process.GetProcessById(childId);
+                    using var childProcess = Process.GetProcessById(childId);
                     if (!childProcess.HasExited)
                     {
                         childProcess.Kill();
@@ -601,7 +601,7 @@ public class ServerManagerService : IServerManagerService
             // 终止父进程
             try
             {
-                var parentProcess = Process.GetProcessById(parentProcessId);
+                using var parentProcess = Process.GetProcessById(parentProcessId);
                 if (parentProcess.HasExited)
                 {
                     // 进程已退出 —— 目标状态已达成，视为成功
@@ -657,10 +657,13 @@ public class ServerManagerService : IServerManagerService
             using var collection = searcher.Get();
             foreach (var obj in collection)
             {
-                if (int.TryParse(obj["ProcessId"]?.ToString(), out var pid))
+                using (obj)
                 {
-                    childIds.Add(pid);
-                    childIds.AddRange(GetChildProcessIds(pid, depth + 1));
+                    if (int.TryParse(obj["ProcessId"]?.ToString(), out var pid))
+                    {
+                        childIds.Add(pid);
+                        childIds.AddRange(GetChildProcessIds(pid, depth + 1));
+                    }
                 }
             }
         }
@@ -691,9 +694,12 @@ public class ServerManagerService : IServerManagerService
             using var collection = searcher.Get();
             foreach (var obj in collection)
             {
-                var cmdLine = obj["CommandLine"]?.ToString();
-                if (!string.IsNullOrWhiteSpace(cmdLine))
-                    return cmdLine;
+                using (obj)
+                {
+                    var cmdLine = obj["CommandLine"]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(cmdLine))
+                        return cmdLine;
+                }
             }
         }
         catch (Exception ex)
@@ -749,7 +755,7 @@ public class ServerManagerService : IServerManagerService
     {
         try
         {
-            var process = Process.GetProcessById(processId);
+            using var process = Process.GetProcessById(processId);
             if (process.HasExited) return null;
             return process.WorkingSet64;
         }
@@ -778,7 +784,7 @@ public class ServerManagerService : IServerManagerService
     {
         try
         {
-            var process = Process.GetProcessById(processId);
+            using var process = Process.GetProcessById(processId);
             if (process.HasExited) return null;
 
             // 使用 TotalProcessorTime 计算需要两次采样

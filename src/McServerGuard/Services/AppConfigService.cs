@@ -40,6 +40,11 @@ public class AppConfigService : IAppConfigService
     private static readonly string ConfigPath = Path.Combine(ConfigDir, "app-config.json");
 
     /// <summary>
+    /// 配置读写锁 —— 保护 Config 及 KnownServers 的并发访问
+    /// </summary>
+    private readonly object _lock = new();
+
+    /// <summary>
     /// 当前内存中的全局配置实例
     /// </summary>
     public AppConfig Config { get; private set; } = new();
@@ -55,50 +60,54 @@ public class AppConfigService : IAppConfigService
     /// </remarks>
     public void Load()
     {
-        try
+        lock (_lock)
         {
-            if (File.Exists(ConfigPath))
-            {
-                var json = File.ReadAllText(ConfigPath);
-                Config = JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
-
-                // 历史数据迁移：清理KnownServer.Name中遗留的PID后缀
-                // 早期版本将运行时PID写入已知服务器名称（如"Folia @ test (PID: 17044)"），
-                // 已知服务器是静态档案，PID属于运行时概念，不应持久化存储。
-                foreach (var ks in Config.KnownServers)
-                {
-                    if (!string.IsNullOrEmpty(ks.Name) && ks.Name.Contains("(PID:"))
-                    {
-                        ks.Name = System.Text.RegularExpressions.Regex.Replace(
-                            ks.Name,
-                            @"\s*\(PID:\s*\d+\)\s*$",
-                            string.Empty).Trim();
-                        Log.Information("🧹 已清理已知服务器名称中的 PID 后缀: {Name}", ks.Name);
-                    }
-                }
-
-                Log.Information("📂 全局配置已加载，已知服务器 {Count} 个", Config.KnownServers.Count);
-            }
-            else
-            {
-                Config = new AppConfig();
-                Log.Information("📂 未找到全局配置文件，使用默认配置");
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "❌ 加载全局配置失败，使用默认配置");
             try
             {
                 if (File.Exists(ConfigPath))
                 {
-                    var bakPath = ConfigPath + ".corrupt.bak";
-                    File.Copy(ConfigPath, bakPath, true);
-                    Log.Warning("📦 已备份损坏的全局配置到: {BakPath}", bakPath);
+                    var json = File.ReadAllText(ConfigPath);
+                    Config = JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
+
+                    // 反序列化后校验集合 null，防止 JSON 字段缺失导致 NRE
+                    Config.KnownServers ??= [];
+
+                    // 历史数据迁移：清理KnownServer.Name中遗留的PID后缀
+                    foreach (var ks in Config.KnownServers)
+                    {
+                        if (!string.IsNullOrEmpty(ks.Name) && ks.Name.Contains("(PID:"))
+                        {
+                            ks.Name = System.Text.RegularExpressions.Regex.Replace(
+                                ks.Name,
+                                @"\s*\(PID:\s*\d+\)\s*$",
+                                string.Empty).Trim();
+                            Log.Information("🧹 已清理已知服务器名称中的 PID 后缀: {Name}", ks.Name);
+                        }
+                    }
+
+                    Log.Information("📂 全局配置已加载，已知服务器 {Count} 个", Config.KnownServers.Count);
+                }
+                else
+                {
+                    Config = new AppConfig();
+                    Log.Information("📂 未找到全局配置文件，使用默认配置");
                 }
             }
-            catch { /* 备份失败不影响主流程 */ }
-            Config = new AppConfig();
+            catch (Exception ex)
+            {
+                Log.Error(ex, "❌ 加载全局配置失败，使用默认配置");
+                try
+                {
+                    if (File.Exists(ConfigPath))
+                    {
+                        var bakPath = ConfigPath + ".corrupt.bak";
+                        File.Copy(ConfigPath, bakPath, true);
+                        Log.Warning("📦 已备份损坏的全局配置到: {BakPath}", bakPath);
+                    }
+                }
+                catch { /* 备份失败不影响主流程 */ }
+                Config = new AppConfig();
+            }
         }
     }
 
@@ -107,14 +116,25 @@ public class AppConfigService : IAppConfigService
     /// </summary>
     public void Save()
     {
-        try
+        string json;
+        lock (_lock)
         {
-            Directory.CreateDirectory(ConfigDir);
-            var json = JsonSerializer.Serialize(Config, new JsonSerializerOptions
+            json = JsonSerializer.Serialize(Config, new JsonSerializerOptions
             {
                 WriteIndented = true
             });
-            File.WriteAllText(ConfigPath, json);
+        }
+
+        try
+        {
+            Directory.CreateDirectory(ConfigDir);
+            // 原子写：先写临时文件再替换，防止写入中途崩溃损坏配置
+            var tmpPath = ConfigPath + ".tmp";
+            File.WriteAllText(tmpPath, json);
+            if (File.Exists(ConfigPath))
+                File.Replace(tmpPath, ConfigPath, null);
+            else
+                File.Move(tmpPath, ConfigPath);
             Log.Information("💾 全局配置已保存");
         }
         catch (Exception ex)
@@ -133,21 +153,25 @@ public class AppConfigService : IAppConfigService
     /// </remarks>
     public void AddKnownServer(KnownServer server)
     {
-        var existing = FindByJarPath(server.ServerJarPath);
-        if (existing != null)
+        lock (_lock)
         {
-            existing.Name = server.Name;
-            existing.WorkingDirectory = server.WorkingDirectory;
-            existing.JavaPath = server.JavaPath;
-            existing.MaxHeapMemoryBytes = server.MaxHeapMemoryBytes;
-            existing.Port = server.Port;
-            existing.LastSeenAt = DateTime.Now;
-            Log.Information("🔄 已知服务器已更新: {Name}", server.Name);
-        }
-        else
-        {
-            Config.KnownServers.Add(server);
-            Log.Information("➕ 新增已知服务器: {Name}", server.Name);
+            var existing = Config.KnownServers.FirstOrDefault(s =>
+                string.Equals(s.ServerJarPath, server.ServerJarPath, StringComparison.OrdinalIgnoreCase));
+            if (existing != null)
+            {
+                existing.Name = server.Name;
+                existing.WorkingDirectory = server.WorkingDirectory;
+                existing.JavaPath = server.JavaPath;
+                existing.MaxHeapMemoryBytes = server.MaxHeapMemoryBytes;
+                existing.Port = server.Port;
+                existing.LastSeenAt = DateTime.Now;
+                Log.Information("🔄 已知服务器已更新: {Name}", server.Name);
+            }
+            else
+            {
+                Config.KnownServers.Add(server);
+                Log.Information("➕ 新增已知服务器: {Name}", server.Name);
+            }
         }
         Save();
     }
@@ -158,13 +182,20 @@ public class AppConfigService : IAppConfigService
     /// <param name="id">服务器档案唯一标识</param>
     public void RemoveKnownServer(string id)
     {
-        var server = Config.KnownServers.FirstOrDefault(s => s.Id == id);
-        if (server != null)
+        lock (_lock)
         {
-            Config.KnownServers.Remove(server);
-            Log.Information("🗑️ 已移除已知服务器: {Name}", server.Name);
-            Save();
+            var server = Config.KnownServers.FirstOrDefault(s => s.Id == id);
+            if (server != null)
+            {
+                Config.KnownServers.Remove(server);
+                Log.Information("🗑️ 已移除已知服务器: {Name}", server.Name);
+            }
+            else
+            {
+                return;
+            }
         }
+        Save();
     }
 
     /// <summary>
@@ -173,12 +204,14 @@ public class AppConfigService : IAppConfigService
     /// <param name="server">更新后的服务器档案</param>
     public void UpdateKnownServer(KnownServer server)
     {
-        var index = Config.KnownServers.FindIndex(s => s.Id == server.Id);
-        if (index >= 0)
+        lock (_lock)
         {
+            var index = Config.KnownServers.FindIndex(s => s.Id == server.Id);
+            if (index < 0)
+                return;
             Config.KnownServers[index] = server;
-            Save();
         }
+        Save();
     }
 
     /// <summary>
@@ -188,8 +221,11 @@ public class AppConfigService : IAppConfigService
     /// <returns>匹配的服务器档案；未找到返回<c>null</c></returns>
     public KnownServer? FindByJarPath(string jarPath)
     {
-        return Config.KnownServers.FirstOrDefault(s =>
-            string.Equals(s.ServerJarPath, jarPath, StringComparison.OrdinalIgnoreCase));
+        lock (_lock)
+        {
+            return Config.KnownServers.FirstOrDefault(s =>
+                string.Equals(s.ServerJarPath, jarPath, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     /// <summary>
@@ -198,6 +234,9 @@ public class AppConfigService : IAppConfigService
     /// <returns>按LastSeenAt降序排列的服务器档案列表</returns>
     public List<KnownServer> GetAllKnownServers()
     {
-        return Config.KnownServers.OrderByDescending(s => s.LastSeenAt).ToList();
+        lock (_lock)
+        {
+            return Config.KnownServers.OrderByDescending(s => s.LastSeenAt).ToList();
+        }
     }
 }

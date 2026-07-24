@@ -8,9 +8,12 @@
 // 设计模式: MVVM 模式, 命令模式, 发布-订阅 (PropertyChanged 事件)
 // -----------------------------------------------------------------------------
 
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using MahApps.Metro.IconPacks;
 using MaterialDesignThemes.Wpf;
 using McServerGuard.Models;
 using McServerGuard.Services;
@@ -31,7 +34,7 @@ namespace McServerGuard.ViewModels;
 /// 通过订阅 <see cref="ServerDetectionViewModel.PropertyChanged"/> 事件
 /// 实现选中服务器在配置编辑页与系统监控页之间的同步。
 /// </remarks>
-public partial class MainViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly IServerDetector _serverDetector;
     private readonly IConfigManager _configManager;
@@ -45,18 +48,15 @@ public partial class MainViewModel : ObservableObject
     private readonly NetworkService _networkService;
     private readonly IPortBridgeService _portBridgeService;
 
+    /// <summary>状态栏实时时钟计时器 —— Dispose 时停止，避免跨页面事件泄漏</summary>
+    private readonly DispatcherTimer _clockTimer;
+
+    /// <summary>指示当前实例是否已释放，防止重复 Dispose 导致资源二次释放</summary>
+    private bool _disposed;
+
     /// <summary>
     /// 初始化主窗口视图模型的新实例
     /// </summary>
-    /// <param name="serverDetector">服务器检测服务</param>
-    /// <param name="configManager">配置管理服务</param>
-    /// <param name="systemMonitor">系统监控服务</param>
-    /// <param name="serverImporter">服务器导入服务</param>
-    /// <param name="serverManager">服务器管理服务</param>
-    /// <param name="themeService">主题服务</param>
-    /// <param name="toastService">吐司通知服务</param>
-    /// <param name="appConfigService">应用配置服务</param>
-    /// <param name="privilegeService">权限提升服务</param>
     /// <remarks>
     /// 通过构造函数依赖注入获取所有外部依赖项，完成子页面 ViewModel 的实例化、
     /// 跨页面属性变更订阅、通知服务初始化以及状态栏时钟启动。
@@ -93,52 +93,34 @@ public partial class MainViewModel : ObservableObject
         ConfigPage = new ConfigEditorViewModel(configManager, serverDetector, appConfigService);
         MonitorPage = new SystemMonitorViewModel(systemMonitor);
         NetworkPage = new NetworkMonitorViewModel(networkService, portBridgeService, trafficService);
-        SettingsPage = new SettingsViewModel(themeService, toastService);
+        SettingsPage = new SettingsViewModel(themeService, toastService, appConfigService);
 
-        DetectionPage.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(ServerDetectionViewModel.SelectedServer))
-            {
-                var server = DetectionPage.SelectedServer;
-                ConfigPage.Server = server;
-                MonitorPage.Server = server;
-            }
-        };
-
-        // 网络监控页的操作反馈（桥接/结束进程/刷新状态）转发到主状态栏，
-        // 否则 NetworkMonitorViewModel.StatusMessage 的更新用户看不到
-        NetworkPage.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(NetworkMonitorViewModel.StatusMessage))
-                StatusMessage = NetworkPage.StatusMessage;
-        };
+        // 命名方法订阅 —— Dispose 时可精确取消，避免 Lambda 闭包导致的隐式引用泄漏
+        DetectionPage.PropertyChanged += OnDetectionPagePropertyChanged;
+        NetworkPage.PropertyChanged += OnNetworkPagePropertyChanged;
 
         _toastService.Initialize();
 
-        var clockTimer = new DispatcherTimer
+        _clockTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(1)
         };
-        clockTimer.Tick += (s, e) => CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        clockTimer.Start();
+        _clockTimer.Tick += OnClockTimerTick;
+        _clockTimer.Start();
 
         Log.Information("🚀 启动时自动检测服务器...");
-        _ = Task.Run(async () =>
+        _ = System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(async () =>
         {
-            // 等待 UI 完全加载后执行
-            await Task.Delay(500);
-            _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(async () =>
+            try
             {
-                try
-                {
-                    await DetectServersAsync();
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "自动检测失败: {Message}", ex.Message);
-                }
-            });
-        });
+                await Task.Delay(500);
+                await DetectServersAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "自动检测失败: {Message}", ex.Message);
+            }
+        }));
     }
 
     /// <summary>
@@ -150,30 +132,27 @@ public partial class MainViewModel : ObservableObject
     /// </remarks>
     public SnackbarMessageQueue SnackbarMessages { get; } = new(TimeSpan.FromSeconds(3));
 
-    /// <summary>
-    /// 服务器检测页视图模型
-    /// </summary>
     public ServerDetectionViewModel DetectionPage { get; }
 
-    /// <summary>
-    /// 配置编辑页视图模型
-    /// </summary>
     public ConfigEditorViewModel ConfigPage { get; }
 
-    /// <summary>
-    /// 系统监控页视图模型
-    /// </summary>
     public SystemMonitorViewModel MonitorPage { get; }
 
-    /// <summary>
-    /// 网络监控页视图模型
-    /// </summary>
     public NetworkMonitorViewModel NetworkPage { get; }
 
-    /// <summary>
-    /// 设置页视图模型
-    /// </summary>
     public SettingsViewModel SettingsPage { get; }
+
+    /// <summary>
+    /// 侧边栏导航项集合 —— 数据驱动渲染导航列表
+    /// </summary>
+    public ObservableCollection<NavItem> NavItems { get; } = new()
+    {
+        new(PackIconFontAwesome6Kind.ServerSolid, "服务器管理", 0),
+        new(PackIconFontAwesome6Kind.FilePenSolid, "配置编辑", 1),
+        new(PackIconFontAwesome6Kind.GaugeHighSolid, "系统监控", 2),
+        new(PackIconFontAwesome6Kind.NetworkWiredSolid, "网络监控", 3),
+        new(PackIconFontAwesome6Kind.GearSolid, "设置", 4),
+    };
 
     /// <summary>
     /// 当前选中的 Tab 索引（0=检测, 1=配置, 2=系统监控, 3=网络监控, 4=设置）
@@ -356,5 +335,71 @@ public partial class MainViewModel : ObservableObject
             4 => "设置 —— 自定义外观、主题和行为 ⚙️",
             _ => StatusMessage
         };
+    }
+
+    /// <summary>
+    /// 服务器检测页属性变更处理 —— 选中服务器时同步分发至配置页与监控页
+    /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="e">属性变更事件参数</param>
+    /// <remarks>命名方法订阅，Dispose 时精确取消，避免 Lambda 闭包隐式持有 this。</remarks>
+    private void OnDetectionPagePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ServerDetectionViewModel.SelectedServer))
+        {
+            var server = DetectionPage.SelectedServer;
+            ConfigPage.Server = server;
+            MonitorPage.Server = server;
+        }
+    }
+
+    /// <summary>
+    /// 网络监控页属性变更处理 —— 将网络页状态消息转发至主状态栏
+    /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="e">属性变更事件参数</param>
+    /// <remarks>网络监控页操作反馈（桥接/结束进程/刷新状态）需在主状态栏可见。</remarks>
+    private void OnNetworkPagePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(NetworkMonitorViewModel.StatusMessage))
+            StatusMessage = NetworkPage.StatusMessage;
+    }
+
+    /// <summary>
+    /// 状态栏时钟计时器 Tick 回调 —— 每秒刷新当前时间字符串
+    /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="e">计时器事件参数</param>
+    private void OnClockTimerTick(object? sender, EventArgs e)
+        => CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+    /// <summary>
+    /// 释放主窗口视图模型占用的所有资源
+    /// </summary>
+    /// <remarks>
+    /// 停止时钟计时器、取消子页面事件订阅、级联释放子 ViewModel 资源。
+    /// 幂等设计：重复调用安全。
+    /// </remarks>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        Log.Information("🧹 MainViewModel 释放资源中...");
+
+        _clockTimer.Stop();
+        _clockTimer.Tick -= OnClockTimerTick;
+
+        DetectionPage.PropertyChanged -= OnDetectionPagePropertyChanged;
+        NetworkPage.PropertyChanged -= OnNetworkPagePropertyChanged;
+
+        // 级联释放子 ViewModel 持有的计时器/事件订阅/取消令牌
+        DetectionPage.Dispose();
+        ConfigPage.Dispose();
+        MonitorPage.Dispose();
+        NetworkPage.Dispose();
+
+        GC.SuppressFinalize(this);
+        Log.Information("✅ MainViewModel 资源释放完成");
     }
 }

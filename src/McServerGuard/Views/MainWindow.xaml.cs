@@ -8,6 +8,7 @@
 // 设计模式: 代码隐藏模式, 依赖属性
 // -----------------------------------------------------------------------------
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,6 +19,7 @@ using System.Windows.Threading;
 using McServerGuard.Services;
 using McServerGuard.Services.ServerDetection;
 using McServerGuard.ViewModels;
+using McServerGuard.Views.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -283,11 +285,8 @@ public partial class MainWindow : Window
     {
         NavHeaderText.Opacity = opacity;
         NavFooter.Opacity = opacity;
-        NavItemText1.Opacity = opacity;
-        NavItemText2.Opacity = opacity;
-        NavItemText3.Opacity = opacity;
-        NavItemText4.Opacity = opacity;
-        NavItemText5.Opacity = opacity;
+        foreach (var textBlock in GetNavItemTextBlocks())
+            textBlock.Opacity = opacity;
     }
 
     /// <summary>
@@ -309,11 +308,24 @@ public partial class MainWindow : Window
 
         Animate(NavHeaderText);
         Animate(NavFooter);
-        Animate(NavItemText1);
-        Animate(NavItemText2);
-        Animate(NavItemText3);
-        Animate(NavItemText4);
-        Animate(NavItemText5);
+        foreach (var textBlock in GetNavItemTextBlocks())
+            Animate(textBlock);
+    }
+
+    /// <summary>
+    /// 遍历 NavListBox 中所有导航项的文字元素（数据驱动渲染后替代 x:Name 硬编码引用）。
+    /// </summary>
+    private IEnumerable<TextBlock> GetNavItemTextBlocks()
+    {
+        foreach (var item in NavListBox.Items)
+        {
+            if (NavListBox.ItemContainerGenerator.ContainerFromItem(item) is ListBoxItem container)
+            {
+                var textBlock = AnimationHelper.FindVisualChild<TextBlock>(container);
+                if (textBlock != null)
+                    yield return textBlock;
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────

@@ -231,4 +231,26 @@ public static class AnimationHelper
             newElement.BeginAnimation(UIElement.OpacityProperty, fadeIn, HandoffBehavior.SnapshotAndReplace);
         }
     }
+
+    /// <summary>
+    /// 在可视化树中深度查找第一个指定类型的子元素。
+    /// </summary>
+    /// <typeparam name="T">目标元素类型</typeparam>
+    /// <param name="parent">搜索起始节点</param>
+    /// <returns>第一个匹配的子元素，未找到时返回 null</returns>
+    public static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        if (parent == null) return null;
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T typed)
+                return typed;
+            var result = FindVisualChild<T>(child);
+            if (result != null)
+                return result;
+        }
+        return null;
+    }
 }

@@ -36,6 +36,21 @@ public interface IServerImporterService
     public ServerInstance? ImportServer(string jarFilePath, List<string> customJvmArguments);
 
     /// <summary>
+    /// 异步从 JAR 文件导入服务器实例 —— 将 WMI 查询与配置文件扫描放到线程池执行，避免阻塞 UI 线程
+    /// </summary>
+    /// <param name="jarFilePath">服务器 JAR 文件路径</param>
+    /// <param name="customJvmArguments">自定义 JVM 参数列表</param>
+    /// <returns>服务器实例对象；导入失败返回 null</returns>
+    public Task<ServerInstance?> ImportServerAsync(string jarFilePath, List<string> customJvmArguments);
+
+    /// <summary>
+    /// 异步从 JAR 文件导入服务器实例（使用默认 JVM 参数）
+    /// </summary>
+    /// <param name="jarFilePath">服务器 JAR 文件路径</param>
+    /// <returns>服务器实例对象；导入失败返回 null</returns>
+    public Task<ServerInstance?> ImportServerAsync(string jarFilePath);
+
+    /// <summary>
     /// 检测 JAR 文件是否正在被使用（文件被占用）
     /// </summary>
     /// <param name="jarFilePath">JAR 文件路径</param>
@@ -124,18 +139,27 @@ public class ServerImporterService : IServerImporterService
 
         if (isRunning)
         {
+            // FindRunningJavaProcess 返回的 Process 对象需在使用后释放，避免句柄泄漏
             var processInfo = FindRunningJavaProcess(jarFilePath);
             if (processInfo != null)
             {
-                processId = processInfo.Id;
-                javaPath = processInfo.MainModule?.FileName ?? string.Empty;
-                fullCommandLine = GetProcessCommandLine(processInfo.Id);
+                try
+                {
+                    processId = processInfo.Id;
+                    try { javaPath = processInfo.MainModule?.FileName ?? string.Empty; }
+                    catch (Exception ex) { Log.Debug(ex, "读取 MainModule 失败 PID={Pid}", processId); }
+                    fullCommandLine = GetProcessCommandLine(processInfo.Id);
 
-                var parsed = CommandLineParser.Parse(fullCommandLine);
-                initialHeapBytes = parsed.InitialHeapMemoryBytes;
-                maxHeapBytes = parsed.MaxHeapMemoryBytes;
-                gcType = parsed.GcType;
-                usesAikarFlags = parsed.UsesAikarFlags;
+                    var parsed = CommandLineParser.Parse(fullCommandLine);
+                    initialHeapBytes = parsed.InitialHeapMemoryBytes;
+                    maxHeapBytes = parsed.MaxHeapMemoryBytes;
+                    gcType = parsed.GcType;
+                    usesAikarFlags = parsed.UsesAikarFlags;
+                }
+                finally
+                {
+                    processInfo.Dispose();
+                }
             }
         }
         else
@@ -176,6 +200,32 @@ public class ServerImporterService : IServerImporterService
 
         Log.Information("服务器导入成功: {DisplayName}", server.DisplayName);
         return server;
+    }
+
+    /// <summary>
+    /// 异步从 JAR 文件导入服务器实例（使用默认 JVM 参数）
+    /// </summary>
+    /// <param name="jarFilePath">服务器 JAR 文件路径</param>
+    /// <returns>服务器实例对象；导入失败返回 null</returns>
+    public Task<ServerInstance?> ImportServerAsync(string jarFilePath)
+    {
+        return ImportServerAsync(jarFilePath, []);
+    }
+
+    /// <summary>
+    /// 异步从 JAR 文件导入服务器实例 —— 将 WMI 查询与配置文件扫描放到线程池执行，避免阻塞 UI 线程
+    /// </summary>
+    /// <param name="jarFilePath">服务器 JAR 文件路径</param>
+    /// <param name="customJvmArguments">自定义 JVM 参数列表</param>
+    /// <returns>服务器实例对象；导入失败返回 null</returns>
+    /// <remarks>
+    /// ImportServer 内部执行 WMI 查询（FindRunningJavaProcess/GetProcessCommandLine）与
+    /// 配置文件扫描（ConfigFileScanner.ScanAll），均为同步阻塞调用。
+    /// 通过 Task.Run 将其封送到线程池，防止用户点击"导入"后 UI 卡顿。
+    /// </remarks>
+    public Task<ServerInstance?> ImportServerAsync(string jarFilePath, List<string> customJvmArguments)
+    {
+        return Task.Run(() => ImportServer(jarFilePath, customJvmArguments));
     }
 
     /// <summary>
@@ -231,7 +281,11 @@ public class ServerImporterService : IServerImporterService
     /// 查找运行中引用指定 JAR 文件的 Java 进程
     /// </summary>
     /// <param name="jarFilePath">JAR 文件路径</param>
-    /// <returns>进程对象；未找到返回 null</returns>
+    /// <returns>进程对象；未找到返回 null（调用方负责 Dispose）</returns>
+    /// <remarks>
+    /// 遍历到的非匹配 Process 对象在此处立即释放，避免句柄泄漏；
+    /// 仅返回匹配进程的所有权给调用方（调用方使用后需 Dispose）。
+    /// </remarks>
     private Process? FindRunningJavaProcess(string jarFilePath)
     {
         var jarName = Path.GetFileName(jarFilePath).ToLowerInvariant();
@@ -241,17 +295,28 @@ public class ServerImporterService : IServerImporterService
             var javaProcesses = Process.GetProcessesByName("java");
             foreach (var process in javaProcesses)
             {
+                bool matched = false;
                 try
                 {
                     var commandLine = GetProcessCommandLine(process.Id);
                     if (!string.IsNullOrEmpty(commandLine) &&
                         commandLine.ToLowerInvariant().Contains(jarName))
                     {
-                        return process;
+                        matched = true; // 标记匹配，阻止 finally 释放
+                        return process; // 所有权转移给调用方
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Log.Debug(ex, "进程访问被拒绝");
+                }
+                finally
+                {
+                    // 仅释放非匹配进程，匹配进程所有权已转移给调用方
+                    if (!matched)
+                    {
+                        try { process.Dispose(); } catch { }
+                    }
                 }
             }
         }
@@ -281,9 +346,12 @@ public class ServerImporterService : IServerImporterService
             using var collection = searcher.Get();
             foreach (var obj in collection)
             {
-                var cmdLine = obj["CommandLine"]?.ToString();
-                if (!string.IsNullOrWhiteSpace(cmdLine))
-                    return cmdLine;
+                using (obj)
+                {
+                    var cmdLine = obj["CommandLine"]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(cmdLine))
+                        return cmdLine;
+                }
             }
         }
         catch (Exception ex)

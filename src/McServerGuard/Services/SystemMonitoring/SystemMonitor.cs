@@ -26,9 +26,6 @@ using Serilog;
 /// </remarks>
 public class SystemMonitor : ISystemMonitor
 {
-    /// <summary>
-    /// 磁盘空间监控器 —— 负责采集磁盘使用率、总容量等存储指标
-    /// </summary>
     private readonly DiskSpaceMonitor _diskMonitor;
 
     /// <summary>
@@ -46,14 +43,8 @@ public class SystemMonitor : ISystemMonitor
     /// </summary>
     private CancellationTokenSource? _monitoringCts;
 
-    /// <summary>
-    /// 定时采集的计时器
-    /// </summary>
     private Timer? _monitoringTimer;
 
-    /// <summary>
-    /// 监控运行状态标志
-    /// </summary>
     private bool _isMonitoring;
 
     /// <summary>
@@ -70,9 +61,6 @@ public class SystemMonitor : ISystemMonitor
     /// <summary>
     /// 初始化系统监控引擎
     /// </summary>
-    /// <param name="diskMonitor">磁盘空间监控器实例</param>
-    /// <param name="memoryMonitor">内存监控器实例</param>
-    /// <param name="threadAnalyzer">线程分析器实例</param>
     public SystemMonitor(
         DiskSpaceMonitor diskMonitor,
         MemoryMonitor memoryMonitor,
@@ -101,7 +89,6 @@ public class SystemMonitor : ISystemMonitor
     /// <summary>
     /// 采集一次系统指标快照
     /// </summary>
-    /// <returns>包含 CPU、内存、磁盘、线程等指标的系统快照</returns>
     /// <remarks>
     /// 采集流程并非原子操作，各项指标存在微小时差，但在监控场景下可接受。
     /// </remarks>
@@ -166,7 +153,6 @@ public class SystemMonitor : ISystemMonitor
     /// <summary>
     /// 异步采集一次系统指标快照 —— 将 WMI/PerformanceCounter 调用放到线程池执行
     /// </summary>
-    /// <returns>包含 CPU、内存、磁盘、线程等指标的系统快照</returns>
     /// <remarks>
     /// 内部通过 <see cref="Task.Run"/> 将同步的 WMI 查询与 <see cref="System.Diagnostics.PerformanceCounter"/> 
     /// 调用封送到线程池，避免阻塞调用线程（特别是 UI 线程）。
@@ -179,7 +165,6 @@ public class SystemMonitor : ISystemMonitor
     /// <summary>
     /// 启动持续监控
     /// </summary>
-    /// <param name="interval">采样间隔</param>
     /// <param name="callback">指标更新回调函数</param>
     /// <param name="cancellationToken">外部取消令牌</param>
     /// <exception cref="InvalidOperationException">当监控已在运行时抛出</exception>
@@ -220,23 +205,10 @@ public class SystemMonitor : ISystemMonitor
         {
             try
             {
+                // 已取消则跳过采集 —— 清理由 StopMonitoring 统一负责，
+                // 不在回调中 Dispose Timer/CTS 自身，避免与 StopMonitoring 竞态导致访问已释放资源
                 if (_monitoringCts?.IsCancellationRequested == true)
-                {
-                    // 不在回调中 Dispose Timer 自身，避免竞态条件
-                    lock (_monitorLock)
-                    {
-                        if (_isMonitoring)
-                        {
-                            _monitoringTimer?.Dispose();
-                            _monitoringTimer = null;
-                            _monitoringCts?.Cancel();
-                            _monitoringCts?.Dispose();
-                            _monitoringCts = null;
-                            _isMonitoring = false;
-                        }
-                    }
                     return;
-                }
 
                 // 异步采集快照，避免 WMI/PerformanceCounter 同步调用阻塞线程池
                 _ = CollectSnapshotAsync().ContinueWith(t =>
@@ -274,12 +246,14 @@ public class SystemMonitor : ISystemMonitor
     /// <remarks>
     /// 采用防御式编程：重复调用 Stop 不会导致异常。
     /// 释放 Timer 与 CancellationTokenSource 资源，将状态标志重置为停止状态。
+    /// Timer 使用 DisposeAsync 释放，等待进行中的回调完成后再回收，避免回调访问已释放资源的竞态。
     /// </remarks>
     public void StopMonitoring()
     {
         // 停止监控入口
         Log.Information("⏹️ 停止监控");
 
+        Timer? timerToDispose;
         lock (_monitorLock)
         {
             if (!_isMonitoring)
@@ -288,13 +262,22 @@ public class SystemMonitor : ISystemMonitor
                 return;
             }
 
-            _monitoringTimer?.Dispose();
+            // 先置空字段并取消 CTS，使后续回调立即跳过采集
+            timerToDispose = _monitoringTimer;
             _monitoringTimer = null;
             _monitoringCts?.Cancel();
             _monitoringCts?.Dispose();
             _monitoringCts = null;
             _isMonitoring = false;
         }
+
+        // 在锁外异步释放 Timer —— DisposeAsync 会等待当前正在执行的回调完成，
+        // 避免回调中访问已 Dispose 的 CTS 而抛 ObjectDisposedException
+        if (timerToDispose != null)
+        {
+            _ = timerToDispose.DisposeAsync();
+        }
+
         Log.Information("系统监控已停止");
     }
 
@@ -340,10 +323,13 @@ public class SystemMonitor : ISystemMonitor
                 int coreCount = 0;
                 foreach (var obj in collection)
                 {
-                    if (obj["LoadPercentage"] is ushort load && load <= 100)
+                    using (obj)
                     {
-                        totalLoad += load;
-                        coreCount++;
+                        if (obj["LoadPercentage"] is ushort load && load <= 100)
+                        {
+                            totalLoad += load;
+                            coreCount++;
+                        }
                     }
                 }
                 if (coreCount > 0)
@@ -450,5 +436,27 @@ public class SystemMonitor : ISystemMonitor
         }
 
         return (validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);
+    }
+
+    /// <summary>
+    /// 是否已释放
+    /// </summary>
+    private bool _disposed;
+
+    /// <summary>
+    /// 释放监控资源：停止监控、释放定时器、取消令牌源、释放性能计数器
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        Log.Information("🧹 释放 SystemMonitor 资源");
+        StopMonitoring();
+
+        _cpuCounter?.Dispose();
+        _cpuCounter = null;
+
+        _disposed = true;
     }
 }

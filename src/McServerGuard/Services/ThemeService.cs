@@ -161,19 +161,10 @@ public class ThemeService : IThemeService
     /// </summary>
     private readonly PaletteHelper _paletteHelper = new();
 
-    /// <summary>
-    /// 主色字段
-    /// </summary>
     private Color _primaryColor = Color.FromRgb(0x3B, 0x82, 0xF6);
 
-    /// <summary>
-    /// 强调色字段
-    /// </summary>
     private Color _accentColor = Color.FromRgb(0xFB, 0x71, 0x85);
 
-    /// <summary>
-    /// 背景色字段
-    /// </summary>
     private Color _backgroundColor = Color.FromRgb(0x02, 0x06, 0x17);
 
     /// <summary>
@@ -181,29 +172,14 @@ public class ThemeService : IThemeService
     /// </summary>
     private Color _cardColor = Color.FromRgb(0x0F, 0x17, 0x2A);
 
-    /// <summary>
-    /// 文本颜色字段
-    /// </summary>
     private Color _textColor = Color.FromRgb(0xE2, 0xE8, 0xF0);
 
-    /// <summary>
-    /// 边框颜色字段
-    /// </summary>
     private Color _borderColor = Color.FromRgb(0x33, 0x41, 0x55);
 
-    /// <summary>
-    /// 圆角半径字段
-    /// </summary>
     private int _cornerRadius = 12;
 
-    /// <summary>
-    /// 动画时长字段
-    /// </summary>
     private int _animationDuration = 300;
 
-    /// <summary>
-    /// 是否启用动画字段
-    /// </summary>
     private bool _enableAnimations = true;
 
     /// <summary>

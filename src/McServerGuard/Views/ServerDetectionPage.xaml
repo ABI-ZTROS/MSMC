@@ -291,6 +291,7 @@
                                             </Border>
                                         </Grid>
                                     </Expander.Header>
+                                    <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" CanContentScroll="True">
                                     <ItemsControl x:Name="RunningServersList"
                                                   ItemsSource="{Binding FilteredRunningServers}"
                                                   Margin="0,4,0,0"
@@ -366,6 +367,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    </ScrollViewer>
                                 </Expander>
 
                                 <!-- 📚 已知服务器分组 -->

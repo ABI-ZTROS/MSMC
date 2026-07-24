@@ -351,11 +351,19 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
     private async void OnRefreshTick(object? sender, EventArgs e)
     {
-        // 端口列表每 5 秒刷新一次（netsh 较慢且端口变化缓慢），流量每秒采样
-        if (_portRefreshCounter % 5 == 0)
-            await RefreshPorts();
-        await RefreshTraffic();
-        _portRefreshCounter++;
+        try
+        {
+            // 端口列表每 5 秒刷新一次（netsh 较慢且端口变化缓慢），流量每秒采样
+            if (_portRefreshCounter % 5 == 0)
+                await RefreshPorts();
+            await RefreshTraffic();
+            _portRefreshCounter++;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "网络监控刷新失败");
+            IsRefreshing = false;
+        }
     }
 
     public async Task RefreshPorts()

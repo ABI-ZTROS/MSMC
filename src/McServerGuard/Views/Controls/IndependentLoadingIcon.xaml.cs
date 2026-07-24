@@ -34,6 +34,10 @@ public partial class IndependentLoadingIcon : UserControl
         if (!AnimationSettings.AnimationsEnabled)
             return;
 
+        // 先停止并清理前一个 Storyboard，防止 Loaded 多次触发导致动画泄漏
+        _storyboard?.Stop();
+        _storyboard = null;
+
         _storyboard = new Storyboard();
         var anim = new DoubleAnimation
         {

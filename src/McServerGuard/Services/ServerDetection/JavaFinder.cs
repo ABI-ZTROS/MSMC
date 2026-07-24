@@ -304,8 +304,9 @@ public static class JavaFinder
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Debug(ex, "Java 路径检查失败");
             }
         }
 
