@@ -52,30 +52,33 @@ public partial class MainWindow : Window
     // 窗口 Loaded 事件处理：初始化 WebView2 和桥接服务
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        Log.Information("🌐 初始化 WebView2...");
+        Log.Information("[UI-1] 🌐 MainWindow_Loaded 触发，开始初始化 WebView2...");
 
         try
         {
-            // 初始化 WebView2 桥接服务
+            Log.Information("[UI-2] 🔧 初始化 WebView2 桥接服务...");
             await _bridgeService.InitializeAsync(MainWebView);
+            Log.Information("[UI-3] ✅ WebView2 桥接服务初始化完成");
 
-            // 注册基础 API 处理程序
+            Log.Information("[UI-4] 📡 注册桥接 API 处理程序...");
             RegisterBridgeApis();
+            Log.Information("[UI-5] ✅ 桥接 API 注册完成");
 
             // 按优先级尝试加载前端：B模式(嵌入zip拦截) -> C模式(zip解压虚拟主机) -> 测试页面
             const string virtualHost = "msmc.local";
+            Log.Information("[UI-6] 🔍 开始加载前端，目标主机: {Host}", virtualHost);
             var loaded = await TryLoadFrontendWithFallbackAsync(virtualHost);
             if (!loaded)
             {
-                Log.Warning("⚠️ 所有前端加载方式都失败，加载内置测试页面");
+                Log.Warning("[UI-7] ⚠️ 所有前端加载方式都失败，加载内置测试页面");
                 LoadTestPage();
             }
 
-            Log.Information("✅ WebView2 初始化完成");
+            Log.Information("[UI-8] ✅ WebView2 初始化全部完成");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ WebView2 初始化失败");
+            Log.Error(ex, "[UI-ERR] ❌ WebView2 初始化失败");
             MessageBox.Show($"WebView2 初始化失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -85,17 +88,24 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task<bool> TryLoadFrontendWithFallbackAsync(string virtualHost)
     {
+        Log.Information("[UI-LOAD-1] 🏭 创建前端资源提供器工厂...");
+
         // 1. 先尝试用工厂选择最优模式（B模式优先）
         var provider = FrontendResourceProviderFactory.Create();
+        Log.Information("[UI-LOAD-2] 📋 工厂选择模式: {Mode}, 是否可用: {Available}", provider.ModeName, provider.IsAvailable);
+
         if (provider.IsAvailable)
         {
+            Log.Information("[UI-LOAD-3] 🚀 尝试用模式 {Mode} 加载前端...", provider.ModeName);
             var loaded = await _bridgeService.LoadFrontendAsync(provider, virtualHost);
+            Log.Information("[UI-LOAD-4] 📊 模式 {Mode} 加载结果: {Result}", provider.ModeName, loaded ? "成功" : "失败");
+
             if (loaded)
             {
-                Log.Information("✅ 前端加载成功 (模式: {Mode})", provider.ModeName);
+                Log.Information("[UI-LOAD-5] ✅ 前端加载成功 (模式: {Mode})", provider.ModeName);
                 return true;
             }
-            Log.Warning("⚠️ 模式 {Mode} 加载失败，尝试降级...", provider.ModeName);
+            Log.Warning("[UI-LOAD-6] ⚠️ 模式 {Mode} 加载失败，尝试降级...", provider.ModeName);
         }
 
         // 2. 如果 B 模式失败，显式尝试 C 模式（Zip 解压）
@@ -103,25 +113,35 @@ public partial class MainWindow : Window
         {
             try
             {
+                Log.Information("[UI-LOAD-7] 🔄 创建 ZipExtract 提供器（C模式兜底）...");
                 var zipProvider = new ZipExtractResourceProvider();
+                Log.Information("[UI-LOAD-8] 📋 ZipExtract 模式是否可用: {Available}", zipProvider.IsAvailable);
+
                 if (zipProvider.IsAvailable)
                 {
-                    Log.Information("🔄 降级到 C 模式 (Zip 解压兜底)...");
+                    Log.Information("[UI-LOAD-9] 🚀 尝试用 C 模式 (Zip 解压) 加载前端...");
                     var loaded = await _bridgeService.LoadFrontendAsync(zipProvider, virtualHost);
+                    Log.Information("[UI-LOAD-10] 📊 C 模式加载结果: {Result}", loaded ? "成功" : "失败");
+
                     if (loaded)
                     {
-                        Log.Information("✅ 前端加载成功 (模式: {Mode})", zipProvider.ModeName);
+                        Log.Information("[UI-LOAD-11] ✅ 前端加载成功 (模式: {Mode})", zipProvider.ModeName);
                         return true;
                     }
-                    Log.Warning("⚠️ C 模式也加载失败");
+                    Log.Warning("[UI-LOAD-12] ⚠️ C 模式也加载失败");
+                }
+                else
+                {
+                    Log.Warning("[UI-LOAD-13] ⚠️ C 模式不可用（zip 资源不存在）");
                 }
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "C 模式加载异常");
+                Log.Error(ex, "[UI-LOAD-ERR] ❌ C 模式加载异常");
             }
         }
 
+        Log.Warning("[UI-LOAD-END] ❌ 所有加载方式都失败了");
         return false;
     }
 

@@ -127,25 +127,30 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
         if (!provider.IsAvailable)
         {
-            Log.Warning("前端资源提供器不可用: {Mode}", provider.ModeName);
+            Log.Warning("[WV2-LOAD] ⚠️ 前端资源提供器不可用: {Mode}", provider.ModeName);
             return false;
         }
 
-        Log.Information("🚀 加载前端资源 (模式: {Mode})", provider.ModeName);
+        Log.Information("[WV2-LOAD] 🚀 开始加载前端资源 (模式: {Mode})", provider.ModeName);
 
         try
         {
             var basePath = await provider.GetBasePathAsync();
+            Log.Information("[WV2-LOAD] 📂 GetBasePathAsync 返回: {Path}", basePath ?? "(null，将使用拦截模式)");
 
             if (basePath != null)
             {
                 // 文件夹模式 / Zip 解压模式：用虚拟主机映射
+                Log.Information("[WV2-LOAD] 🔗 设置虚拟主机映射...");
                 SetVirtualHostMapping(hostName, basePath);
+                Log.Information("[WV2-LOAD] ✅ 虚拟主机映射设置完成");
             }
             else
             {
                 // 嵌入资源模式：注册 WebResourceRequested 拦截
+                Log.Information("[WV2-LOAD] 🔌 注册 WebResourceRequested 拦截器...");
                 RegisterWebResourceRequested(provider, hostName);
+                Log.Information("[WV2-LOAD] ✅ WebResourceRequested 拦截器注册完成");
             }
 
             // 导航到主页
@@ -155,6 +160,8 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             // 注册一次性导航完成事件
             void OnNav(object? sender, CoreWebView2NavigationCompletedEventArgs e)
             {
+                Log.Information("[WV2-LOAD] 📨 NavigationCompleted 触发: IsSuccess={Success}, WebErrorStatus={Status}",
+                    e.IsSuccess, e.WebErrorStatus);
                 if (!e.IsSuccess)
                 {
                     tcs.TrySetResult(false);
@@ -169,8 +176,8 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             _webView.CoreWebView2.NavigationCompleted += OnNav;
 
             // 开始导航
+            Log.Information("[WV2-LOAD] 🧭 开始导航到: {Url}", appUrl);
             _webView.Source = new Uri(appUrl);
-            Log.Information("✅ 前端页面加载中: {Url}", appUrl);
 
             // 等待加载完成（超时 10 秒）
             var timeout = Task.Delay(10000);
@@ -178,22 +185,23 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
             if (completed == timeout)
             {
-                Log.Warning("⏰ 前端页面加载超时 (10s)，模式: {Mode}", provider.ModeName);
+                Log.Warning("[WV2-LOAD] ⏰ 前端页面加载超时 (10s)，模式: {Mode}", provider.ModeName);
                 _webView.CoreWebView2.NavigationCompleted -= OnNav;
                 return false;
             }
 
             var success = tcs.Task.Result;
+            Log.Information("[WV2-LOAD] 🎯 导航完成，结果: {Result}", success ? "成功" : "失败");
             if (!success)
             {
-                Log.Warning("⚠️ 前端页面加载失败，模式: {Mode}", provider.ModeName);
+                Log.Warning("[WV2-LOAD] ⚠️ 前端页面加载失败，模式: {Mode}", provider.ModeName);
             }
 
             return success;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 加载前端资源失败 (模式: {Mode})", provider.ModeName);
+            Log.Error(ex, "[WV2-LOAD-ERR] ❌ 加载前端资源失败 (模式: {Mode})", provider.ModeName);
             return false;
         }
     }
@@ -453,40 +461,49 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         try
         {
             var json = e.WebMessageAsJson;
+            Log.Information("[WV2-MSG] 📨 收到 JS 消息 (原始 JSON 长度: {Len})", json?.Length ?? 0);
+            Log.Debug("[WV2-MSG] 📨 消息内容: {Json}", json);
+
             var message = JsonSerializer.Deserialize<BridgeMessage>(json, JsonOptions);
 
             if (message == null)
             {
-                Log.Warning("收到无效的桥接消息: {Json}", json);
+                Log.Warning("[WV2-MSG] ⚠️ 收到无效的桥接消息: {Json}", json);
                 return;
             }
+
+            Log.Information("[WV2-MSG] 📋 消息类型: {Type}, Action: {Action}, ID: {Id}",
+                message.Type, message.Action, message.Id ?? "(无)");
 
             switch (message.Type)
             {
                 case BridgeMessageType.Request:
+                    Log.Information("[WV2-MSG] 🔄 处理请求: {Action}", message.Action);
                     await HandleRequestAsync(message);
                     break;
 
                 case BridgeMessageType.Response:
+                    Log.Information("[WV2-MSG] 📤 处理响应: {Action}", message.Action);
                     HandleResponse(message);
                     break;
 
                 case BridgeMessageType.Event:
+                    Log.Information("[WV2-MSG] 🎯 处理事件: {Action}", message.Action);
                     HandleJsEvent(message);
                     break;
 
                 case BridgeMessageType.Log:
-                    Log.Debug("[JS] {Payload}", message.Payload);
+                    Log.Information("[WV2-JS] 💬 {Payload}", message.Payload);
                     break;
 
                 default:
-                    Log.Warning("未知的消息类型: {Type}", message.Type);
+                    Log.Warning("[WV2-MSG] ⚠️ 未知的消息类型: {Type}", message.Type);
                     break;
             }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "处理桥接消息时发生异常");
+            Log.Error(ex, "[WV2-MSG-ERR] ❌ 处理桥接消息时发生异常");
         }
     }
 
@@ -495,7 +512,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     /// </summary>
     private async Task HandleRequestAsync(BridgeMessage message)
     {
-        Log.Debug("收到 JS 请求: {Action} (ID={Id})", message.Action, message.Id);
+        Log.Information("[WV2-REQ] 📥 处理请求: {Action} (ID={Id})", message.Action, message.Id);
 
         var response = new BridgeMessage
         {
@@ -508,24 +525,27 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         {
             if (_requestHandlers.TryGetValue(message.Action, out var handler))
             {
+                Log.Information("[WV2-REQ] 🔍 找到处理程序: {Action}", message.Action);
                 var result = await handler(message.Payload);
                 response.Payload = result;
                 response.Success = true;
+                Log.Information("[WV2-REQ] ✅ 请求处理成功: {Action}", message.Action);
             }
             else
             {
                 response.Success = false;
                 response.Error = $"未找到请求处理程序: {message.Action}";
-                Log.Warning("未找到请求处理程序: {Action}", message.Action);
+                Log.Warning("[WV2-REQ] ⚠️ 未找到请求处理程序: {Action}", message.Action);
             }
         }
         catch (Exception ex)
         {
             response.Success = false;
             response.Error = ex.Message;
-            Log.Error(ex, "处理请求 {Action} 时发生异常", message.Action);
+            Log.Error(ex, "[WV2-REQ-ERR] ❌ 处理请求 {Action} 时发生异常", message.Action);
         }
 
+        Log.Information("[WV2-REQ] 📤 发送响应: {Action} (Success={Success})", message.Action, response.Success);
         await SendMessageAsync(response);
     }
 

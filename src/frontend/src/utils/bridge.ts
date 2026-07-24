@@ -25,6 +25,23 @@ type PendingRequest = {
   timeout: number
 }
 
+// 直接向 C# 发送日志（绕过桥接，用于桥接初始化前的日志）
+function rawLog(msg: string): void {
+  console.log('[Bridge]', msg)
+  if (window.chrome?.webview) {
+    try {
+      window.chrome.webview.postMessage({
+        type: 'log',
+        action: 'log',
+        payload: `[JS] ${msg}`,
+        timestamp: Date.now(),
+      })
+    } catch {
+      // ignore
+    }
+  }
+}
+
 class Bridge implements MsmcBridge {
   private pendingRequests = new Map<string, PendingRequest>()
   private eventListeners = new Map<string, Array<(payload: unknown) => void>>()
@@ -33,6 +50,7 @@ class Bridge implements MsmcBridge {
   private initPromise: Promise<void> | null = null
 
   constructor() {
+    rawLog('Bridge 构造函数执行')
     this.init()
   }
 
@@ -41,29 +59,47 @@ class Bridge implements MsmcBridge {
   }
 
   private init(): Promise<void> {
-    if (this.initPromise) return this.initPromise
+    rawLog('init() 开始')
+
+    if (this.initPromise) {
+      rawLog('initPromise 已存在，直接返回')
+      return this.initPromise
+    }
 
     this.initPromise = new Promise((resolve) => {
       const setup = () => {
-        if (this.initialized) return
+        rawLog(`setup() 调用，initialized=${this.initialized}`)
+
+        if (this.initialized) {
+          rawLog('已初始化，跳过')
+          return
+        }
 
         if (window.chrome?.webview) {
+          rawLog('检测到 chrome.webview，注册消息监听')
           window.chrome.webview.addEventListener('message', this.handleMessage.bind(this))
           this.initialized = true
+          rawLog('✅ JS 端桥接初始化完成')
           resolve()
-          console.log('[MSMC Bridge] JS端桥接初始化完成')
+        } else {
+          rawLog('⚠️ 未检测到 chrome.webview')
         }
       }
 
       if (document.readyState === 'complete') {
+        rawLog('document.readyState = complete，立即执行 setup')
         setup()
       } else {
+        rawLog(`document.readyState = ${document.readyState}，等待 load 事件`)
         window.addEventListener('load', setup, { once: true })
       }
 
+      // 多次重试，确保 webview 对象已注入
       setTimeout(setup, 100)
       setTimeout(setup, 500)
       setTimeout(setup, 1000)
+      setTimeout(setup, 2000)
+      setTimeout(setup, 5000)
     })
 
     return this.initPromise
@@ -71,6 +107,8 @@ class Bridge implements MsmcBridge {
 
   private handleMessage(event: { data: unknown }): void {
     const data = event.data as BridgeMessage
+    rawLog(`收到消息: type=${data?.type}, action=${data?.action}, id=${data?.id ?? '(无)'}`)
+
     if (!data || !data.type) return
 
     switch (data.type) {
@@ -81,10 +119,14 @@ class Bridge implements MsmcBridge {
             clearTimeout(pending.timeout)
             this.pendingRequests.delete(data.id)
             if (data.success) {
+              rawLog(`✅ 请求 ${data.action} 成功`)
               pending.resolve(data.payload)
             } else {
+              rawLog(`❌ 请求 ${data.action} 失败: ${data.error}`)
               pending.reject(new Error(data.error || 'Unknown error'))
             }
+          } else {
+            rawLog(`⚠️ 未找到待处理请求: ${data.id}`)
           }
         }
         break
@@ -92,18 +134,22 @@ class Bridge implements MsmcBridge {
       case 'event': {
         const listeners = this.eventListeners.get(data.action)
         if (listeners) {
+          rawLog(`📢 触发事件: ${data.action} (${listeners.length} 个监听器)`)
           listeners.forEach((fn) => {
             try {
               fn(data.payload)
             } catch (e) {
               console.error('Event handler error:', e)
+              rawLog(`❌ 事件处理错误: ${data.action} - ${e}`)
             }
           })
+        } else {
+          rawLog(`⚠️ 事件 ${data.action} 没有监听器`)
         }
         break
       }
       case 'request': {
-        console.warn('Unsupported request from C# to JS')
+        rawLog('⚠️ 收到 C# 发起的请求（暂不支持）')
         break
       }
       case 'log': {
@@ -115,17 +161,25 @@ class Bridge implements MsmcBridge {
 
   private postMessage(message: BridgeMessage): void {
     if (window.chrome?.webview) {
+      rawLog(`📤 发送消息: type=${message.type}, action=${message.action}`)
       window.chrome.webview.postMessage(message)
+    } else {
+      rawLog('⚠️ chrome.webview 不可用，无法发送消息')
     }
   }
 
   async invoke<T = unknown>(action: string, payload?: unknown): Promise<T> {
+    rawLog(`invoke 开始: ${action}`)
     await this.init()
+    rawLog(`init 完成，准备发送请求: ${action}`)
 
     return new Promise<T>((resolve, reject) => {
       const id = this.generateId()
+      rawLog(`生成请求 ID: ${id}`)
+
       const timeout = window.setTimeout(() => {
         this.pendingRequests.delete(id)
+        rawLog(`⏰ 请求超时: ${action}`)
         reject(new Error(`Request timeout: ${action}`))
       }, 30000)
 
@@ -142,11 +196,14 @@ class Bridge implements MsmcBridge {
         payload,
         timestamp: Date.now(),
       })
+
+      rawLog(`请求已发送: ${action} (${id})`)
     })
   }
 
   sendEvent(action: string, payload?: unknown): void {
     this.init().then(() => {
+      rawLog(`发送事件: ${action}`)
       this.postMessage({
         type: 'event',
         action,
@@ -157,6 +214,7 @@ class Bridge implements MsmcBridge {
   }
 
   on(action: string, handler: (payload: unknown) => void): () => void {
+    rawLog(`注册事件监听器: ${action}`)
     if (!this.eventListeners.has(action)) {
       this.eventListeners.set(action, [])
     }

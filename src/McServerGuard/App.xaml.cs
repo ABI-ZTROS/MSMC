@@ -61,7 +61,10 @@ public partial class App : Application
         Directory.CreateDirectory(logDir);
         var logFileName = Path.Combine(logDir, $"mcserverguard-{DateTime.Now:yyyyMMdd-HHmmss}.log");
         Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
+            .MinimumLevel.Warning()
+            .MinimumLevel.Override("McServerGuard.Services.Frontend", Serilog.Events.LogEventLevel.Verbose)
+            .MinimumLevel.Override("McServerGuard.Services.WebView2", Serilog.Events.LogEventLevel.Verbose)
+            .MinimumLevel.Override("McServerGuard.Views.MainWindow", Serilog.Events.LogEventLevel.Verbose)
             .WriteTo.File(logFileName)
             .CreateLogger();
 
