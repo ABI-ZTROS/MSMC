@@ -71,6 +71,7 @@ public class AppConfigService : IAppConfigService
 
                     // 反序列化后校验集合 null，防止 JSON 字段缺失导致 NRE
                     Config.KnownServers ??= [];
+                    Config.CustomJavaPaths ??= [];
 
                     // 历史数据迁移：清理KnownServer.Name中遗留的PID后缀
                     foreach (var ks in Config.KnownServers)

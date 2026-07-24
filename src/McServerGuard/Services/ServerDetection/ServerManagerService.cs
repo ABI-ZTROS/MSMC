@@ -100,6 +100,12 @@ public interface IServerManagerService
 /// </remarks>
 public class ServerManagerService : IServerManagerService
 {
+    private readonly IJavaFinderService _javaFinderService;
+
+    public ServerManagerService(IJavaFinderService javaFinderService)
+    {
+        _javaFinderService = javaFinderService;
+    }
     /// <summary>
     /// 检测指定服务器实例是否正在运行
     /// </summary>
@@ -258,9 +264,30 @@ public class ServerManagerService : IServerManagerService
 
         try
         {
-            var javaExe = string.IsNullOrEmpty(server.JavaPath) 
-                ? JavaFinder.FindJava() 
-                : server.JavaPath;
+            string? javaExe = null;
+            JavaInstallation? javaInfo = null;
+
+            if (!string.IsNullOrEmpty(server.JavaPath))
+            {
+                javaInfo = _javaFinderService.Verify(server.JavaPath);
+                if (javaInfo != null)
+                {
+                    javaExe = _javaFinderService.PreferJavaw && !string.IsNullOrEmpty(javaInfo.JavawPath)
+                        ? javaInfo.JavawPath
+                        : javaInfo.JavaPath;
+                }
+            }
+
+            if (javaExe == null)
+            {
+                javaInfo = _javaFinderService.FindDefault();
+                if (javaInfo != null)
+                {
+                    javaExe = _javaFinderService.PreferJavaw && !string.IsNullOrEmpty(javaInfo.JavawPath)
+                        ? javaInfo.JavawPath
+                        : javaInfo.JavaPath;
+                }
+            }
 
             if (string.IsNullOrEmpty(javaExe))
             {
@@ -274,7 +301,6 @@ public class ServerManagerService : IServerManagerService
                 return null;
             }
 
-            var javaInfo = JavaFinder.VerifyJava(javaExe);
             if (javaInfo != null)
             {
                 Log.Information("☕ 使用 Java: {Version} ({Vendor})", javaInfo.VersionString, javaInfo.Vendor);

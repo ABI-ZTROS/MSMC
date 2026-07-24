@@ -129,6 +129,10 @@ public partial class App : Application
         Log.Information("📁 注册全局配置服务...");
         services.AddSingleton<IAppConfigService, AppConfigService>();
 
+        // Java 查找服务
+        Log.Information("☕ 注册 Java 查找服务...");
+        services.AddSingleton<IJavaFinderService, JavaFinderService>();
+
         // 通知服务
         Log.Information("🔔 注册通知服务...");
         services.AddSingleton<IToastNotificationService, ToastNotificationService>();

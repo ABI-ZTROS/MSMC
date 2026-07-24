@@ -557,6 +557,225 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ☕ Java 运行环境 -->
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Java 运行环境" Style="{StaticResource SectionTitleStyle}" />
+                        <TextBlock Text="管理系统中的 Java 安装，设置默认版本和启动方式" FontSize="12"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,0,0,12" />
+
+                        <!-- 优先使用 javaw.exe -->
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,12">
+                            <ToggleButton IsChecked="{Binding PreferJavaw, Mode=TwoWay}"
+                                          Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                          VerticalAlignment="Center" />
+                            <StackPanel Margin="12,0,0,0">
+                                <TextBlock Text="优先使用 javaw.exe" VerticalAlignment="Center" />
+                                <TextBlock Text="无控制台窗口启动，后台静默运行" FontSize="11"
+                                           Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Java 列表标题栏 -->
+                        <Grid Margin="0,8,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="已检测到的 Java 版本"
+                                       Style="{StaticResource SettingLabelStyle}" />
+                            <Button Grid.Column="1"
+                                    Command="{Binding RescanJavaCommand}"
+                                    IsEnabled="{Binding IsScanningJava, Converter={StaticResource InvertBoolConverter}}"
+                                    Style="{StaticResource OptimizedOutlinedButton}"
+                                    Padding="12,8" MinHeight="32"
+                                    HorizontalAlignment="Right">
+                                <StackPanel Orientation="Horizontal">
+                                    <iconPacks:PackIconFontAwesome6 Kind="RotateSolid" Width="14" Height="14" />
+                                    <TextBlock Text="重新扫描" Margin="6,0,0,0" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- Java 列表 -->
+                        <ListBox x:Name="JavaListBox"
+                                 ItemsSource="{Binding JavaInstallations}"
+                                 SelectedItem="{Binding SelectedJava}"
+                                 Background="{DynamicResource SubtleBorderBrush}"
+                                 BorderThickness="0"
+                                 CornerRadius="{DynamicResource AppCornerRadius}"
+                                 Padding="8"
+                                 MaxHeight="280"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Margin" Value="0,0,0,6" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="Bd"
+                                                        Background="Transparent"
+                                                        BorderBrush="Transparent"
+                                                        BorderThickness="1"
+                                                        CornerRadius="{DynamicResource AppCornerRadiusSmall}"
+                                                        Padding="10">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background"
+                                                                Value="{DynamicResource PrimaryHueLightBrush}" />
+                                                        <Setter TargetName="Bd" Property="BorderBrush"
+                                                                Value="{DynamicResource PrimaryHueMidBrush}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background"
+                                                                Value="{DynamicResource CardBackgroundBrush}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Java 图标 -->
+                                        <Border Grid.Column="0" Width="36" Height="36"
+                                                Background="{DynamicResource PrimarySubtleBorderBrush}"
+                                                CornerRadius="{DynamicResource AppCornerRadiusSmall}"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Center">
+                                            <iconPacks:PackIconFontAwesome6 Kind="MugHotSolid"
+                                                                            Width="20" Height="20"
+                                                                            Foreground="{DynamicResource AccentTextBrush}"
+                                                                            VerticalAlignment="Center"
+                                                                            HorizontalAlignment="Center" />
+                                        </Border>
+
+                                        <!-- Java 信息 -->
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0"
+                                                    VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding VersionDisplay}"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource MaterialDesignBody}"
+                                                           FontSize="13" />
+                                                <TextBlock Text=" · "
+                                                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                           FontSize="12" />
+                                                <TextBlock Text="{Binding ArchitectureDisplay}"
+                                                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                           FontSize="12" />
+                                                <TextBlock Text=" · "
+                                                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                           FontSize="12" />
+                                                <TextBlock Text="{Binding VendorDisplay}"
+                                                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                           FontSize="12" />
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding PathDisplay}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Margin="0,2,0,0"
+                                                       ToolTip="{Binding PathDisplay}" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                <Border x:Name="DefaultBadge"
+                                                        Background="{DynamicResource AccentTextBrush}"
+                                                        CornerRadius="4"
+                                                        Padding="6,2"
+                                                        Visibility="{Binding IsDefault, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <TextBlock Text="默认"
+                                                               FontSize="10"
+                                                               FontWeight="Bold"
+                                                               Foreground="{DynamicResource CardBackgroundBrush}" />
+                                                </Border>
+                                                <Border x:Name="CustomBadge"
+                                                        Background="{DynamicResource PrimaryHueMidBrush}"
+                                                        CornerRadius="4"
+                                                        Padding="6,2"
+                                                        Margin="4,0,0,0"
+                                                        Visibility="{Binding IsCustom, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <TextBlock Text="自定义"
+                                                               FontSize="10"
+                                                               FontWeight="Bold"
+                                                               Foreground="White" />
+                                                </Border>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- 添加自定义路径 -->
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding NewJavaPath, UpdateSourceTrigger=PropertyChanged}"
+                                     materialDesign:HintAssist.Hint="输入 Java 安装目录或 java.exe 路径"
+                                     FontSize="12"
+                                     Padding="10,6"
+                                     Margin="0,0,8,0" />
+                            <Button Grid.Column="1"
+                                    Command="{Binding BrowseJavaPathCommand}"
+                                    Style="{StaticResource OptimizedOutlinedButton}"
+                                    Padding="12,8" MinHeight="36"
+                                    Margin="0,0,8,0">
+                                <iconPacks:PackIconFontAwesome6 Kind="FolderOpenSolid" Width="16" Height="16" />
+                            </Button>
+                            <Button Grid.Column="2"
+                                    Command="{Binding AddJavaPathCommand}"
+                                    Style="{StaticResource OptimizedButtonBase}"
+                                    Background="{DynamicResource AccentGradientBrush}"
+                                    Foreground="White"
+                                    Padding="16,8" MinHeight="36">
+                                <StackPanel Orientation="Horizontal">
+                                    <iconPacks:PackIconFontAwesome6 Kind="PlusSolid" Width="14" Height="14" />
+                                    <TextBlock Text="添加" Margin="6,0,0,0" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- 操作按钮 -->
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <Button Command="{Binding SetDefaultJavaCommand}"
+                                    IsEnabled="{Binding SelectedJava, Converter={StaticResource NullToBoolConverter}}"
+                                    Style="{StaticResource OptimizedOutlinedButton}"
+                                    Padding="16,8" MinHeight="36" Margin="0,0,8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <iconPacks:PackIconFontAwesome6 Kind="StarSolid" Width="14" Height="14" />
+                                    <TextBlock Text="设为默认" Margin="6,0,0,0" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding RemoveJavaPathCommand}"
+                                    IsEnabled="{Binding SelectedJava.IsCustom, FallbackValue=False}"
+                                    Style="{StaticResource OptimizedOutlinedButton}"
+                                    Padding="16,8" MinHeight="36">
+                                <StackPanel Orientation="Horizontal">
+                                    <iconPacks:PackIconFontAwesome6 Kind="TrashSolid" Width="14" Height="14" />
+                                    <TextBlock Text="移除" Margin="6,0,0,0" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock Text="选中自定义路径后可移除；系统检测到的 Java 无法移除" FontSize="11"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+
                 <!-- ℹ️ 关于 -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel>

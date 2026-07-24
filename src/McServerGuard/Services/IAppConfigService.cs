@@ -32,6 +32,24 @@ public class AppConfig
     /// 控制重要信息是否通过系统通知弹出。
     /// </summary>
     public bool EnableWindowsNotifications { get; set; } = true;
+
+    /// <summary>
+    /// 用户自定义的 Java 安装路径列表。
+    /// 用于查找默认路径外的 Java 运行时。
+    /// </summary>
+    public List<string> CustomJavaPaths { get; set; } = [];
+
+    /// <summary>
+    /// 用户指定的默认 Java 路径。
+    /// 为空时自动选择版本最高的 64 位 Java。
+    /// </summary>
+    public string DefaultJavaPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 是否优先使用 javaw.exe（无控制台窗口）。
+    /// 启用后启动服务器时优先使用 javaw.exe 避免弹出命令行窗口。
+    /// </summary>
+    public bool PreferJavaw { get; set; } = true;
 }
 
 /// <summary>

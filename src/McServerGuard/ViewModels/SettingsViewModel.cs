@@ -8,9 +8,11 @@
 // 设计模式: MVVM 模式, 命令模式, 策略模式 (主题预设切换), 观察者 (PropertyChanged)
 // -----------------------------------------------------------------------------
 
+using System.Collections.ObjectModel;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using McServerGuard.Services;
 using Serilog;
 
 namespace McServerGuard.ViewModels;
@@ -32,6 +34,8 @@ public partial class SettingsViewModel : ObservableObject
     private readonly Services.IToastNotificationService _toastService;
     /// <summary>应用配置服务</summary>
     private readonly Services.IAppConfigService _appConfigService;
+    /// <summary>Java 查找服务</summary>
+    private readonly Services.IJavaFinderService _javaFinderService;
 
     /// <summary>主题主色</summary>
     [ObservableProperty]
@@ -94,6 +98,26 @@ public partial class SettingsViewModel : ObservableObject
     /// <summary>状态栏消息文本</summary>
     [ObservableProperty]
     private string _statusMessage = string.Empty;
+
+    /// <summary>Java 安装列表</summary>
+    [ObservableProperty]
+    private ObservableCollection<JavaInstallationViewModel> _javaInstallations = [];
+
+    /// <summary>选中的 Java 安装</summary>
+    [ObservableProperty]
+    private JavaInstallationViewModel? _selectedJava;
+
+    /// <summary>是否正在扫描 Java</summary>
+    [ObservableProperty]
+    private bool _isScanningJava;
+
+    /// <summary>是否优先使用 javaw.exe</summary>
+    [ObservableProperty]
+    private bool _preferJavaw = true;
+
+    /// <summary>待添加的 Java 路径</summary>
+    [ObservableProperty]
+    private string _newJavaPath = string.Empty;
 
     /// <summary>
     /// 主色的十六进制字符串表示（#AARRGGBB 格式）
@@ -221,13 +245,17 @@ public partial class SettingsViewModel : ObservableObject
     /// </summary>
     /// <param name="themeService">主题服务</param>
     /// <param name="toastService">吐司通知服务</param>
+    /// <param name="appConfigService">应用配置服务</param>
+    /// <param name="javaFinderService">Java 查找服务</param>
     /// <remarks>构造时从主题服务加载已持久化的设置。</remarks>
-    public SettingsViewModel(Services.IThemeService themeService, Services.IToastNotificationService toastService, Services.IAppConfigService appConfigService)
+    public SettingsViewModel(Services.IThemeService themeService, Services.IToastNotificationService toastService, Services.IAppConfigService appConfigService, Services.IJavaFinderService javaFinderService)
     {
         _themeService = themeService;
         _toastService = toastService;
         _appConfigService = appConfigService;
+        _javaFinderService = javaFinderService;
         LoadSettings();
+        _ = LoadJavaInstallationsAsync();
     }
 
     /// <summary>
@@ -247,6 +275,7 @@ public partial class SettingsViewModel : ObservableObject
         AnimationDuration = _themeService.AnimationDuration;
         EnableAnimations = _themeService.EnableAnimations;
         EnableWindowsNotifications = _appConfigService.Config.EnableWindowsNotifications;
+        PreferJavaw = _appConfigService.Config.PreferJavaw;
 
         StatusMessage = "设置已加载";
         Log.Information("⚙️ 设置页面已加载");
@@ -420,6 +449,7 @@ public partial class SettingsViewModel : ObservableObject
         {
             _themeService.SaveSettings();
             _appConfigService.Config.EnableWindowsNotifications = EnableWindowsNotifications;
+            _appConfigService.Config.PreferJavaw = PreferJavaw;
             _appConfigService.Save();
             StatusMessage = "设置已保存";
             _toastService.ShowSuccess("设置已保存", "所有设置已保存到本地");
@@ -627,5 +657,168 @@ public partial class SettingsViewModel : ObservableObject
     partial void OnCornerRadiusChanged(int value)
     {
         // 实时预览由 ViewModel 自身属性支持，不立即写入 ThemeService
+    }
+
+    /// <summary>
+    /// 异步加载 Java 安装列表
+    /// </summary>
+    private async Task LoadJavaInstallationsAsync()
+    {
+        IsScanningJava = true;
+        try
+        {
+            var installations = await Task.Run(() => _javaFinderService.FindAll());
+            var defaultJava = _javaFinderService.FindDefault();
+
+            JavaInstallations.Clear();
+            foreach (var inst in installations)
+            {
+                var isDefault = defaultJava != null &&
+                    string.Equals(inst.JavaPath, defaultJava.JavaPath, StringComparison.OrdinalIgnoreCase);
+                JavaInstallations.Add(new JavaInstallationViewModel(inst, isDefault));
+            }
+
+            if (defaultJava != null)
+            {
+                SelectedJava = JavaInstallations.FirstOrDefault(j =>
+                    string.Equals(j.Installation.JavaPath, defaultJava.JavaPath, StringComparison.OrdinalIgnoreCase));
+            }
+
+            StatusMessage = $"找到 {installations.Count} 个 Java 安装";
+            Log.Information("☕ 找到 {Count} 个 Java 安装", installations.Count);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Java 扫描失败";
+            Log.Error(ex, "❌ Java 扫描失败");
+        }
+        finally
+        {
+            IsScanningJava = false;
+        }
+    }
+
+    /// <summary>
+    /// 重新扫描 Java 命令
+    /// </summary>
+    [RelayCommand]
+    private async Task RescanJavaAsync()
+    {
+        await LoadJavaInstallationsAsync();
+    }
+
+    /// <summary>
+    /// 添加自定义 Java 路径命令
+    /// </summary>
+    [RelayCommand]
+    private async Task AddJavaPathAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewJavaPath))
+        {
+            StatusMessage = "请输入 Java 路径";
+            return;
+        }
+
+        var path = NewJavaPath.Trim();
+
+        var verification = await Task.Run(() => _javaFinderService.Verify(
+            System.IO.Path.Combine(path, "bin", "java.exe")));
+
+        if (verification == null)
+        {
+            var directVerification = await Task.Run(() => _javaFinderService.Verify(path));
+            if (directVerification != null)
+            {
+                path = directVerification.JavaHome;
+                verification = directVerification;
+            }
+        }
+
+        if (verification == null)
+        {
+            StatusMessage = "无效的 Java 路径";
+            _toastService.ShowError("添加失败", "该路径下未找到有效的 Java 运行时");
+            return;
+        }
+
+        _javaFinderService.AddCustomPath(path);
+        NewJavaPath = string.Empty;
+        await LoadJavaInstallationsAsync();
+        StatusMessage = "已添加 Java 路径";
+        _toastService.ShowSuccess("添加成功", $"已添加 {verification.VersionDisplay()}");
+        Log.Information("➕ 已添加自定义 Java 路径: {Path}", path);
+    }
+
+    /// <summary>
+    /// 移除自定义 Java 路径命令
+    /// </summary>
+    [RelayCommand]
+    private async Task RemoveJavaPathAsync()
+    {
+        if (SelectedJava == null || !SelectedJava.IsCustom)
+        {
+            StatusMessage = "请选择一个自定义 Java 路径";
+            return;
+        }
+
+        _javaFinderService.RemoveCustomPath(SelectedJava.Installation.JavaHome);
+        await LoadJavaInstallationsAsync();
+        StatusMessage = "已移除 Java 路径";
+        _toastService.ShowInfo("已移除", "自定义 Java 路径已移除");
+    }
+
+    /// <summary>
+    /// 设为默认 Java 命令
+    /// </summary>
+    [RelayCommand]
+    private void SetDefaultJava()
+    {
+        if (SelectedJava == null)
+        {
+            StatusMessage = "请选择一个 Java 版本";
+            return;
+        }
+
+        _javaFinderService.DefaultJavaPath = SelectedJava.Installation.JavaPath;
+
+        foreach (var java in JavaInstallations)
+        {
+            java.IsDefault = string.Equals(java.Installation.JavaPath, SelectedJava.Installation.JavaPath,
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        StatusMessage = "已设为默认 Java";
+        _toastService.ShowSuccess("设置成功", $"{SelectedJava.VersionDisplay} 已设为默认 Java");
+        Log.Information("☕ 默认 Java 已设为: {Version} ({Path})", SelectedJava.VersionDisplay,
+            SelectedJava.Installation.JavaPath);
+    }
+
+    /// <summary>
+    /// 打开文件夹选择对话框添加 Java 路径
+    /// </summary>
+    [RelayCommand]
+    private void BrowseJavaPath()
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "选择 Java 安装目录",
+            Multiselect = false
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            NewJavaPath = dialog.FolderName;
+        }
+    }
+}
+
+/// <summary>
+/// JavaInstallation 扩展方法
+/// </summary>
+internal static class JavaInstallationExtensions
+{
+    public static string VersionDisplay(this JavaInstallation inst)
+    {
+        return string.IsNullOrEmpty(inst.VersionString) ? "未知版本" : $"Java {inst.VersionString}";
     }
 }
