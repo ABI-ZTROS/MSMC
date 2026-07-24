@@ -149,25 +149,10 @@ public class ServerDetector : IServerDetector
             try
             {
                 // 缓存命中判定：TTL 内已检测进程直接复用结果
-                if (_detectionCache.TryGetValue(processId, out var cached)
-                    && (DateTime.Now - cached.timestamp) < DetectionCacheTtl)
+                if (TryGetCachedServer(processId, out var cachedServer))
                 {
-                    // 进程存活验证 —— Process.GetProcessById 在进程不存在时会抛 ArgumentException
-                    try
-                    {
-                        using var p = Process.GetProcessById(processId);
-                        // 进程存活，复用缓存中的 ServerInstance
-                        Log.Debug("♻️ 命中缓存: PID={Pid} Type={Type}", processId, cached.server.ServerType);
-                        servers.Add(cached.server);
-                        continue;
-                    }
-                    catch (ArgumentException)
-                    {
-                        // 进程已退出，执行缓存失效操作
-                        _detectionCache.TryRemove(processId, out _);
-                        Log.Debug("🗑️ 进程 PID={Pid} 已退出，从缓存中移除", processId);
-                        continue;
-                    }
+                    servers.Add(cachedServer!);
+                    continue;
                 }
 
                 // 缓存未命中，执行完整深度检测管道
@@ -190,17 +175,7 @@ public class ServerDetector : IServerDetector
 
         // === 阶段四：主动端口扫描 —— 发现 ProcessScanner 漏掉的实例 ===
         // 典型场景：BungeeCord/Velocity 代理、非 Java 启动器启动的服务器
-        try
-        {
-            var knownPids = processResults.Select(p => p.ProcessId).ToHashSet();
-            var discoveredByPort = await DiscoverByPortScanAsync(knownPids, servers);
-            servers.AddRange(discoveredByPort);
-        }
-        catch (Exception ex)
-        {
-            // 端口扫描失败不影响主流程已识别的服务器
-            Log.Error(ex, "端口扫描阶段失败: {Message}", ex.Message);
-        }
+        await DiscoverServersByPortScanAsync(processResults, servers);
 
         stopwatch.Stop();
         Log.Information("✅ 检测完成，共发现 {Count} 个服务器", servers.Count);
@@ -217,6 +192,58 @@ public class ServerDetector : IServerDetector
     }
 
     /// <summary>
+    /// 缓存命中判定 —— TTL 内已检测进程直接复用结果，进程已退出则清除缓存
+    /// </summary>
+    /// <param name="processId">目标进程 ID</param>
+    /// <param name="cachedServer">缓存命中时输出服务器实例</param>
+    /// <returns>缓存命中返回 true；未命中或进程已退出返回 false</returns>
+    private bool TryGetCachedServer(int processId, out ServerInstance? cachedServer)
+    {
+        cachedServer = null;
+
+        if (!_detectionCache.TryGetValue(processId, out var cached)
+            || (DateTime.Now - cached.timestamp) >= DetectionCacheTtl)
+            return false;
+
+        // 进程存活验证 —— Process.GetProcessById 在进程不存在时会抛 ArgumentException
+        try
+        {
+            using var p = Process.GetProcessById(processId);
+            Log.Debug("♻️ 命中缓存: PID={Pid} Type={Type}", processId, cached.server.ServerType);
+            cachedServer = cached.server;
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            _detectionCache.TryRemove(processId, out _);
+            Log.Debug("🗑️ 进程 PID={Pid} 已退出，从缓存中移除", processId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 主动端口扫描阶段 —— 发现 ProcessScanner 漏掉的实例
+    /// </summary>
+    /// <param name="processResults">进程枚举结果（用于提取已知 PID 集合）</param>
+    /// <param name="servers">已识别的服务器列表（扫描结果追加到此列表）</param>
+    private async Task DiscoverServersByPortScanAsync(
+        List<(int ProcessId, string CommandLine)> processResults,
+        List<ServerInstance> servers)
+    {
+        try
+        {
+            var knownPids = processResults.Select(p => p.ProcessId).ToHashSet();
+            var discoveredByPort = await DiscoverByPortScanAsync(knownPids, servers);
+            servers.AddRange(discoveredByPort);
+        }
+        catch (Exception ex)
+        {
+            // 端口扫描失败不影响主流程已识别的服务器
+            Log.Error(ex, "端口扫描阶段失败: {Message}", ex.Message);
+        }
+    }
+
+    /// <summary>
     /// 从指定 Java 进程构建完整的 ServerInstance 对象
     /// </summary>
     /// <param name="processId">目标进程 ID</param>
@@ -224,7 +251,7 @@ public class ServerDetector : IServerDetector
     /// <returns>构建完成的服务器实例；若为客户端进程则返回 null</returns>
     /// <remarks>
     /// 该方法是检测管道的核心过滤器，依次执行：命令行解析、客户端排除、
-    /// 工作目录解析、配置文件扫描、服务器类型推断五个子步骤。
+    /// 工作目录解析、配置文件扫描、服务器类型推断、网络验证六个子步骤。
     /// </remarks>
     private async Task<ServerInstance?> BuildServerInstanceAsync(int processId, string commandLine)
     {
@@ -249,45 +276,12 @@ public class ServerDetector : IServerDetector
         // 配置文件扫描阶段（异步 I/O）
         var configFiles = await _configScanner.ScanAllAsync(workingDir);
 
-        // 服务器类型推断阶段（策略模式：JAR 名匹配 + 配置文件辅助）
-        var serverType = ServerTypeClassifier.ClassifyByJarNameAndConfigFiles(jarName, workingDir);
+        // 服务器类型推断阶段（含 JAR Manifest 兜底）
+        var serverType = await ResolveServerTypeAsync(jarName, parsed.JarFilePath, workingDir);
 
-        // === 第三级兜底：JAR Manifest 解包识别 ===
-        // 当 JAR 名 + 配置文件识别为基类或 Unknown/Vanilla 时触发，通过 Manifest 区分派生类
-        // 解决场景：JAR 被重命名、Paper 系/Forge 系/BungeeCord 系/Fabric 系派生类互相混淆
-        if (serverType == ServerType.Unknown
-            || serverType == ServerType.Vanilla
-            || serverType == ServerType.Spigot
-            || serverType == ServerType.Bukkit
-            || serverType == ServerType.Paper
-            || serverType == ServerType.Forge
-            || serverType == ServerType.Fabric
-            || serverType == ServerType.BungeeCord)
-        {
-            if (!string.IsNullOrEmpty(parsed.JarFilePath) && File.Exists(parsed.JarFilePath))
-            {
-                var manifestType = await _jarCoreIdentifier.IdentifyAsync(parsed.JarFilePath);
-                if (manifestType != ServerType.Unknown && manifestType != serverType)
-                {
-                    Log.Information("🔬 JAR Manifest 识别为核心类型: {Type}（覆盖原 {Old}）", manifestType, serverType);
-                    serverType = manifestType;
-                }
-            }
-        }
-
-        // === 网络套件：双向交叉验证 ===
-        // 1. 从 server.properties 解析配置端口
-        var configuredPort = _portResolver.ResolveConfiguredPort(workingDir ?? string.Empty);
-
-        // 2. TCP 探测端口连通性 + PID 反查（走缓存，避免每轮 3 秒循环都 connect）
-        var (isPortOpen, listeningPid) = await ProbePortWithCacheAsync(configuredPort);
-
-        // 3. 双向交叉验证：配置端口开放但监听 PID 与进程 PID 不一致 → 端口被占用
-        if (isPortOpen && listeningPid.HasValue && listeningPid.Value != processId)
-        {
-            Log.Warning("⚠️ 端口 {Port} 开放但监听 PID={Actual} 与进程 PID={Expected} 不一致，端口可能被占用",
-                configuredPort, listeningPid.Value, processId);
-        }
+        // 网络套件：双向交叉验证
+        var (configuredPort, isPortOpen, listeningPid) =
+            await ValidatePortBindingAsync(processId, workingDir);
 
         Log.Information(
             "构建服务器实例: PID={Pid}, Type={Type}, Jar={Jar}, Dir={Dir}, Port={Port} ({Status})",
@@ -317,6 +311,78 @@ public class ServerDetector : IServerDetector
             ActualListeningPid = listeningPid,
             DetectedAt = DateTime.Now,
         };
+    }
+
+    /// <summary>
+    /// 服务器类型推断 —— 策略模式：JAR 名匹配 + 配置文件辅助 + JAR Manifest 兜底
+    /// </summary>
+    /// <param name="jarName">JAR 文件名</param>
+    /// <param name="jarFilePath">JAR 文件完整路径（用于 Manifest 解包）</param>
+    /// <param name="workingDir">工作目录（用于配置文件辅助判定）</param>
+    /// <returns>推断出的服务器类型</returns>
+    /// <remarks>
+    /// 三级识别策略：
+    /// 1. JAR 名 + 配置文件匹配（快速路径）
+    /// 2. JAR Manifest 解包识别（兜底，区分派生类）
+    /// 解决场景：JAR 被重命名、Paper 系/Forge 系/BungeeCord 系/Fabric 系派生类互相混淆
+    /// </remarks>
+    private async Task<ServerType> ResolveServerTypeAsync(
+        string jarName, string? jarFilePath, string? workingDir)
+    {
+        var serverType = ServerTypeClassifier.ClassifyByJarNameAndConfigFiles(jarName, workingDir);
+
+        // 第三级兜底：当识别为基类或 Unknown/Vanilla 时，通过 Manifest 区分派生类
+        if (IsAmbiguousServerType(serverType)
+            && !string.IsNullOrEmpty(jarFilePath)
+            && File.Exists(jarFilePath))
+        {
+            var manifestType = await _jarCoreIdentifier.IdentifyAsync(jarFilePath);
+            if (manifestType != ServerType.Unknown && manifestType != serverType)
+            {
+                Log.Information("🔬 JAR Manifest 识别为核心类型: {Type}（覆盖原 {Old}）", manifestType, serverType);
+                serverType = manifestType;
+            }
+        }
+
+        return serverType;
+    }
+
+    /// <summary>
+    /// 判断服务器类型是否模糊（需要 JAR Manifest 兜底识别）
+    /// </summary>
+    private static bool IsAmbiguousServerType(ServerType type)
+        => type == ServerType.Unknown
+           || type == ServerType.Vanilla
+           || type == ServerType.Spigot
+           || type == ServerType.Bukkit
+           || type == ServerType.Paper
+           || type == ServerType.Forge
+           || type == ServerType.Fabric
+           || type == ServerType.BungeeCord;
+
+    /// <summary>
+    /// 网络套件双向交叉验证 —— 解析配置端口、TCP 探测、PID 反查
+    /// </summary>
+    /// <param name="processId">进程 ID（用于交叉验证）</param>
+    /// <param name="workingDir">工作目录（用于解析 server.properties）</param>
+    /// <returns>（配置端口, 端口是否开放, 监听 PID）</returns>
+    private async Task<(int ConfiguredPort, bool IsPortOpen, int? ListeningPid)> ValidatePortBindingAsync(
+        int processId, string? workingDir)
+    {
+        // 1. 从 server.properties 解析配置端口
+        var configuredPort = _portResolver.ResolveConfiguredPort(workingDir ?? string.Empty);
+
+        // 2. TCP 探测端口连通性 + PID 反查（走缓存，避免每轮 3 秒循环都 connect）
+        var (isPortOpen, listeningPid) = await ProbePortWithCacheAsync(configuredPort);
+
+        // 3. 双向交叉验证：配置端口开放但监听 PID 与进程 PID 不一致 → 端口被占用
+        if (isPortOpen && listeningPid.HasValue && listeningPid.Value != processId)
+        {
+            Log.Warning("⚠️ 端口 {Port} 开放但监听 PID={Actual} 与进程 PID={Expected} 不一致，端口可能被占用",
+                configuredPort, listeningPid.Value, processId);
+        }
+
+        return (configuredPort, isPortOpen, listeningPid);
     }
 
     /// <summary>
