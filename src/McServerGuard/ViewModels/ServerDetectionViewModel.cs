@@ -230,6 +230,47 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     public bool CanShowOperation => IsBusy;
 
     /// <summary>
+    /// 开始一个操作作用域 —— 保存当前操作状态并切换到新操作，Dispose 时自动恢复
+    /// </summary>
+    /// <param name="operation">要开始的操作类型</param>
+    /// <returns>IDisposable 作用域对象，using 结束时自动恢复原操作状态</returns>
+    /// <remarks>
+    /// 消除 7 处重复的 `var previousOperation = ActiveOperation; ActiveOperation = Xxx;
+    /// try { ... } finally { if (ActiveOperation == Xxx) ActiveOperation = previousOperation; }` 模式。
+    /// 仅当 Dispose 时 ActiveOperation 仍为本次设置值才恢复，避免被嵌套操作覆盖后错误回滚。
+    /// </remarks>
+    private OperationScope BeginOperation(ServerOperation operation)
+    {
+        var previous = ActiveOperation;
+        ActiveOperation = operation;
+        return new OperationScope(this, operation, previous);
+    }
+
+    /// <summary>
+    /// 操作作用域 —— 配合 <see cref="BeginOperation"/> 使用，Dispose 时恢复原操作状态
+    /// </summary>
+    private readonly struct OperationScope : IDisposable
+    {
+        private readonly ServerDetectionViewModel _owner;
+        private readonly ServerOperation _currentOperation;
+        private readonly ServerOperation _previousOperation;
+
+        public OperationScope(ServerDetectionViewModel owner, ServerOperation current, ServerOperation previous)
+        {
+            _owner = owner;
+            _currentOperation = current;
+            _previousOperation = previous;
+        }
+
+        public void Dispose()
+        {
+            // 仅当当前操作仍为本次设置值才恢复，避免嵌套操作被错误回滚
+            if (_owner.ActiveOperation == _currentOperation)
+                _owner.ActiveOperation = _previousOperation;
+        }
+    }
+
+    /// <summary>
     /// 活动操作变更回调 —— 由源生成器在属性变更时调用
     /// </summary>
     /// <param name="value">新的操作状态</param>
@@ -794,8 +835,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         var server = GetActiveServer();
         if (server is null) return;
 
-        var previousOperation = ActiveOperation;
-        ActiveOperation = ServerOperation.Starting;
+        using var scope = BeginOperation(ServerOperation.Starting);
         CurrentServerStatus = ServerStatus.Starting;
         OperationMessage = "🚀 正在启动服务器...";
 
@@ -846,10 +886,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            if (ActiveOperation == ServerOperation.Starting)
-            {
-                ActiveOperation = previousOperation;
-            }
+            // OperationScope.Dispose 已恢复 ActiveOperation，此处仅刷新服务器状态
             RefreshCurrentStatus();
         }
     }
@@ -883,8 +920,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         var server = GetActiveServer();
         if (server is null) return;
 
-        var previousOperation = ActiveOperation;
-        ActiveOperation = ServerOperation.Stopping;
+        using var scope = BeginOperation(ServerOperation.Stopping);
         CurrentServerStatus = ServerStatus.Stopping;
         OperationMessage = "🛑 正在停止服务器...";
 
@@ -907,10 +943,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            if (ActiveOperation == ServerOperation.Stopping)
-            {
-                ActiveOperation = previousOperation;
-            }
+            // OperationScope.Dispose 已恢复 ActiveOperation，此处仅刷新服务器状态
             RefreshCurrentStatus();
         }
     }
@@ -1019,8 +1052,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var previousOperation = ActiveOperation;
-        ActiveOperation = ServerOperation.Importing;
+        using var scope = BeginOperation(ServerOperation.Importing);
         OperationMessage = "📦 正在导入服务器...";
 
         try
@@ -1088,7 +1120,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            ActiveOperation = previousOperation;
+            // OperationScope.Dispose 已恢复 ActiveOperation
         }
     }
 
@@ -1113,7 +1145,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     {
         if (IsBusy) return;
         Log.Information("🔍 开始扫描服务器进程...");
-        ActiveOperation = ServerOperation.Detecting;
+        using var scope = BeginOperation(ServerOperation.Detecting);
 
         try
         {
@@ -1145,7 +1177,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            ActiveOperation = ServerOperation.None;
+            // OperationScope.Dispose 已恢复 ActiveOperation
         }
     }
 
@@ -1199,8 +1231,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         if (IsBusy) return;
         if (SelectedServer is null) return;
 
-        var previousOperation = ActiveOperation;
-        ActiveOperation = ServerOperation.SavingConfig;
+        using var scope = BeginOperation(ServerOperation.SavingConfig);
         OperationMessage = "💾 正在保存配置...";
 
         try
@@ -1255,7 +1286,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            ActiveOperation = previousOperation;
+            // OperationScope.Dispose 已恢复 ActiveOperation
         }
     }
 
@@ -1294,8 +1325,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             Log.Warning(ex, "⚠️ 检查服务器运行状态失败，跳过删除前校验");
         }
 
-        var previousOperation = ActiveOperation;
-        ActiveOperation = ServerOperation.Deleting;
+        using var scope = BeginOperation(ServerOperation.Deleting);
 
         try
         {
@@ -1312,7 +1342,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            ActiveOperation = previousOperation;
+            // OperationScope.Dispose 已恢复 ActiveOperation
         }
     }
 
@@ -1340,8 +1370,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         if (IsBusy) return;
         if (server is null) return;
 
-        var previousOperation = ActiveOperation;
-        ActiveOperation = ServerOperation.Starting;
+        using var scope = BeginOperation(ServerOperation.Starting);
 
         try
         {
@@ -1386,10 +1415,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            if (ActiveOperation == ServerOperation.Starting)
-            {
-                ActiveOperation = previousOperation;
-            }
+            // OperationScope.Dispose 已恢复 ActiveOperation
         }
     }
 

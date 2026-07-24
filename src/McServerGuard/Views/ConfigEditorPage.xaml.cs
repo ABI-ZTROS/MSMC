@@ -9,10 +9,7 @@
 // -----------------------------------------------------------------------------
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Threading;
-using McServerGuard.Services;
 using McServerGuard.Views.Helpers;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace McServerGuard.Views;
 
@@ -23,13 +20,11 @@ namespace McServerGuard.Views;
 /// </summary>
 public partial class ConfigEditorPage : UserControl
 {
-    private readonly IThemeService _themeService;
     private bool _animationPlayed;
 
     public ConfigEditorPage()
     {
         InitializeComponent();
-        _themeService = App.Services.GetRequiredService<IThemeService>();
         Loaded += OnLoaded;
     }
 
@@ -43,10 +38,6 @@ public partial class ConfigEditorPage : UserControl
         }
         _animationPlayed = true;
 
-        var duration = _themeService.EnableAnimations ? _themeService.AnimationDuration : 0;
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-        {
-            AnimationHelper.FadeAndSlideIn(this, duration);
-        });
+        AnimationHelper.PlayPageEntrance(this);
     }
 }

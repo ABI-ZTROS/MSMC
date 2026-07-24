@@ -10,12 +10,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 using McServerGuard.Models;
-using McServerGuard.Services;
 using McServerGuard.ViewModels;
 using McServerGuard.Views.Helpers;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace McServerGuard.Views;
 
@@ -26,13 +23,11 @@ namespace McServerGuard.Views;
 /// </summary>
 public partial class ServerDetectionPage : UserControl
 {
-    private readonly IThemeService _themeService;
     private bool _animationPlayed;
 
     public ServerDetectionPage()
     {
         InitializeComponent();
-        _themeService = App.Services.GetRequiredService<IThemeService>();
         Loaded += OnLoaded;
     }
 
@@ -47,19 +42,8 @@ public partial class ServerDetectionPage : UserControl
         }
         _animationPlayed = true;
 
-        var duration = _themeService.EnableAnimations ? _themeService.AnimationDuration : 0;
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-        {
-            AnimationHelper.FadeAndSlideInFromLeft(this, duration);
-
-            if (_themeService.EnableAnimations)
-            {
-                Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-                {
-                    PlayStaggeredEntrance();
-                });
-            }
-        });
+        // 负偏移量触发 X 轴滑入（等价于原 FadeAndSlideInFromLeft）
+        AnimationHelper.PlayPageEntrance(this, slideFromOffset: -20, onStaggeredEntrance: PlayStaggeredEntrance);
     }
 
     // 播放列表项错落入场动画

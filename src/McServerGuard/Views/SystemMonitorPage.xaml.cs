@@ -9,10 +9,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Threading;
-using McServerGuard.Services;
 using McServerGuard.Views.Helpers;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace McServerGuard.Views;
 
@@ -23,13 +20,11 @@ namespace McServerGuard.Views;
 /// </summary>
 public partial class SystemMonitorPage : UserControl
 {
-    private readonly IThemeService _themeService;
     private bool _animationPlayed;
 
     public SystemMonitorPage()
     {
         InitializeComponent();
-        _themeService = App.Services.GetRequiredService<IThemeService>();
         Loaded += OnLoaded;
     }
 
@@ -43,19 +38,7 @@ public partial class SystemMonitorPage : UserControl
         }
         _animationPlayed = true;
 
-        var duration = _themeService.EnableAnimations ? _themeService.AnimationDuration : 0;
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-        {
-            AnimationHelper.FadeAndSlideIn(this, duration);
-
-            if (_themeService.EnableAnimations)
-            {
-                Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-                {
-                    PlayStaggeredEntrance();
-                });
-            }
-        });
+        AnimationHelper.PlayPageEntrance(this, onStaggeredEntrance: PlayStaggeredEntrance);
     }
 
     // 播放卡片错落入场动画

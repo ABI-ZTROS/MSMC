@@ -12,7 +12,9 @@ namespace McServerGuard.Views.Helpers;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using McServerGuard.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 /// 动画工具类。
@@ -24,6 +26,49 @@ using McServerGuard.Services;
 /// </summary>
 public static class AnimationHelper
 {
+    /// <summary>
+    /// 页面入场统一动画：淡入 + 滑动（可选）+ 子元素错落入场（可选）。
+    /// 通过 IThemeService 读取 EnableAnimations 与 AnimationDuration 配置，
+    /// 封装 4 个页面共同的 Loaded 入场逻辑，消除各页面重复代码与服务定位器调用。
+    /// </summary>
+    /// <param name="target">目标页面元素（通常是页面自身 this）</param>
+    /// <param name="themeService">主题服务，为 null 时内部从 App.Services 获取</param>
+    /// <param name="slideFromOffset">滑动起始偏移量：正值从下方滑入（Y 轴），负值从右侧滑入（X 轴），0 仅淡入</param>
+    /// <param name="onStaggeredEntrance">子元素错落入场回调，仅在动画启用时于背景优先级调度执行</param>
+    public static void PlayPageEntrance(FrameworkElement target, IThemeService? themeService = null,
+        double slideFromOffset = 20, Action? onStaggeredEntrance = null)
+    {
+        // 未显式传入主题服务时，统一在此处解析，避免各页面重复调用服务定位器
+        themeService ??= App.Services.GetRequiredService<IThemeService>();
+
+        var duration = themeService.EnableAnimations ? themeService.AnimationDuration : 0;
+
+        target.Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            if (slideFromOffset > 0)
+            {
+                // 正偏移：Y 轴从下方滑入
+                FadeAndSlideIn(target, duration, slideFromOffset);
+            }
+            else if (slideFromOffset < 0)
+            {
+                // 负偏移：X 轴从右侧滑入（取绝对值，与 FadeAndSlideInFromLeft 语义一致）
+                FadeAndSlideInFromLeft(target, duration, -slideFromOffset);
+            }
+            else
+            {
+                // 零偏移：仅淡入
+                FadeIn(target, duration);
+            }
+
+            // 动画启用且提供了错落入场回调时，于背景优先级再调度一次，确保主入场已启动
+            if (themeService.EnableAnimations && onStaggeredEntrance != null)
+            {
+                target.Dispatcher.BeginInvoke(DispatcherPriority.Background, onStaggeredEntrance);
+            }
+        });
+    }
+
     /// <summary>
     /// 淡入 + 从下方滑入组合动画（页面入场标准效果）。
     /// 动画完成后清除动画对象持有，释放相关资源。

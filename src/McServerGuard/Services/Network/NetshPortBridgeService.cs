@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.ServiceProcess;
+using System.Text;
 using McServerGuard.Models;
 using Serilog;
 
@@ -61,42 +62,12 @@ public sealed class NetshPortBridgeService : IPortBridgeService
 
             Log.Information("执行 portproxy 添加规则: {Args}", args);
 
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = "netsh",
-                Arguments = args,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            });
+            var (success, _, error, exitCode) = RunNetsh(args, timeoutMs: 10000,
+                redirectOutput: true, redirectError: true);
 
-            if (process == null)
+            if (!success)
             {
-                LastError = "无法启动 netsh 进程";
-                Log.Error("{Error}", LastError);
-                return false;
-            }
-
-            var exited = process.WaitForExit(10000);
-            if (!exited)
-            {
-                LastError = "netsh 命令执行超时";
-                Log.Error("{Error}", LastError);
-                process.Kill();
-                return false;
-            }
-
-            var exitCode = process.ExitCode;
-            var stdout = process.StandardOutput.ReadToEnd();
-            var error = process.StandardError.ReadToEnd();
-
-            if (exitCode != 0)
-            {
-                // 暴露 netsh 真实错误（如"请求的操作需要提升""对象已存在"等）给 UI
-                LastError = string.IsNullOrWhiteSpace(error)
-                    ? (string.IsNullOrWhiteSpace(stdout) ? $"netsh 退出码 {exitCode}" : stdout.Trim())
-                    : error.Trim();
+                LastError = error;
                 Log.Error("端口桥接规则添加失败 (ExitCode={ExitCode}): {Error}", exitCode, LastError);
                 return false;
             }
@@ -163,37 +134,12 @@ public sealed class NetshPortBridgeService : IPortBridgeService
                        $"listenaddress={listenAddress} " +
                        $"listenport={listenPort}";
 
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = "netsh",
-                Arguments = args,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardError = true
-            });
+            var (success, _, error, exitCode) = RunNetsh(args, timeoutMs: 5000,
+                redirectOutput: false, redirectError: true);
 
-            if (process == null)
+            if (!success)
             {
-                LastError = "无法启动 netsh 进程";
-                return false;
-            }
-
-            var exited = process.WaitForExit(5000);
-            if (!exited)
-            {
-                LastError = "netsh 删除命令超时";
-                process.Kill();
-                return false;
-            }
-
-            var exitCode = process.ExitCode;
-            var error = process.StandardError.ReadToEnd();
-
-            if (exitCode != 0)
-            {
-                LastError = string.IsNullOrWhiteSpace(error)
-                    ? $"netsh 删除退出码 {exitCode}"
-                    : error.Trim();
+                LastError = error;
                 Log.Warning("删除端口桥接规则失败 ({Addr}:{Port} {Proto}): {Error}",
                     listenAddress, listenPort, proto, LastError);
                 return false;
@@ -216,18 +162,8 @@ public sealed class NetshPortBridgeService : IPortBridgeService
 
         try
         {
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = "netsh",
-                Arguments = "interface portproxy show all",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                StandardOutputEncoding = System.Text.Encoding.UTF8
-            });
-
-            process?.WaitForExit(5000);
-            var output = process?.StandardOutput.ReadToEnd();
+            // 使用 RunNetshForOutput 获取 UTF8 编码的标准输出
+            var output = RunNetshForOutput("interface portproxy show all", timeoutMs: 5000);
 
             if (string.IsNullOrEmpty(output))
                 return rules;
@@ -293,39 +229,12 @@ public sealed class NetshPortBridgeService : IPortBridgeService
             var args = $"advfirewall firewall add rule name=\"MSMC Port Bridge {listenPort}\"" +
                        $" dir=in action=allow protocol={proto} localport={listenPort}";
 
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = "netsh",
-                Arguments = args,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardError = true
-            });
+            var (success, _, error, exitCode) = RunNetsh(args, timeoutMs: 10000,
+                redirectOutput: false, redirectError: true);
 
-            if (process == null)
+            if (!success)
             {
-                LastError = "无法启动 netsh 进程添加防火墙规则";
-                Log.Error("{Error}", LastError);
-                return false;
-            }
-
-            var exited = process.WaitForExit(10000);
-            if (!exited)
-            {
-                LastError = "防火墙规则添加超时";
-                Log.Error("{Error}", LastError);
-                process.Kill();
-                return false;
-            }
-
-            var exitCode = process.ExitCode;
-            var error = process.StandardError.ReadToEnd();
-
-            if (exitCode != 0)
-            {
-                LastError = string.IsNullOrWhiteSpace(error)
-                    ? $"防火墙规则添加退出码 {exitCode}"
-                    : error.Trim();
+                LastError = error;
                 Log.Error("防火墙规则添加失败 (ExitCode={ExitCode}): {Error}", exitCode, LastError);
                 return false;
             }
@@ -347,28 +256,13 @@ public sealed class NetshPortBridgeService : IPortBridgeService
         {
             var args = $"advfirewall firewall delete rule name=\"MSMC Port Bridge {listenPort}\"";
 
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = "netsh",
-                Arguments = args,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardError = true
-            });
-
-            if (process == null)
-            {
-                LastError = "无法启动 netsh 进程删除防火墙规则";
-                return false;
-            }
-
-            process.WaitForExit(5000);
-            var success = process.ExitCode == 0;
+            var (success, _, error, exitCode) = RunNetsh(args, timeoutMs: 5000,
+                redirectOutput: false, redirectError: true);
 
             if (!success)
             {
-                LastError = $"防火墙规则删除退出码 {process.ExitCode}";
-                Log.Warning("删除防火墙规则失败: {Port}", listenPort);
+                LastError = error;
+                Log.Warning("删除防火墙规则失败: {Port} (ExitCode={ExitCode})", listenPort, exitCode);
             }
 
             return success;
@@ -379,5 +273,107 @@ public sealed class NetshPortBridgeService : IPortBridgeService
             Log.Error(ex, "删除防火墙规则失败");
             return false;
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // netsh 进程执行辅助方法 —— 消除 5 处 Process.Start 重复，统一超时/错误处理
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 执行 netsh 命令并返回执行结果 —— 统一 Process 启动、超时处理、错误收集逻辑
+    /// </summary>
+    /// <param name="args">netsh 命令参数</param>
+    /// <param name="timeoutMs">超时毫秒数，超时后 Kill 进程</param>
+    /// <param name="redirectOutput">是否重定向标准输出</param>
+    /// <param name="redirectError">是否重定向标准错误</param>
+    /// <returns>（是否成功, 标准输出, 错误消息, 退出码）</returns>
+    /// <remarks>
+    /// 统一处理以下逻辑（原 5 处各自实现，存在不一致和僵尸进程风险）：
+    /// - ProcessStartInfo 配置（FileName/UseShellExecute/CreateNoWindow/重定向）
+    /// - null 检查（Process.Start 返回 null 时报错）
+    /// - 超时检查（WaitForExit 返回 false 时 Kill 进程，避免僵尸进程）
+    /// - 退出码检查（非零时收集 stderr/stdout 作为错误消息）
+    /// </remarks>
+    private (bool Success, string Output, string Error, int ExitCode) RunNetsh(
+        string args, int timeoutMs, bool redirectOutput, bool redirectError)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "netsh",
+            Arguments = args,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = redirectOutput,
+            RedirectStandardError = redirectError
+        };
+
+        using var process = Process.Start(startInfo);
+        if (process == null)
+        {
+            return (false, string.Empty, "无法启动 netsh 进程", -1);
+        }
+
+        var exited = process.WaitForExit(timeoutMs);
+        if (!exited)
+        {
+            try { process.Kill(); } catch { }
+            return (false, string.Empty, $"netsh 命令执行超时（{timeoutMs}ms）", -1);
+        }
+
+        var exitCode = process.ExitCode;
+        var stdout = redirectOutput ? process.StandardOutput.ReadToEnd() : string.Empty;
+        var stderr = redirectError ? process.StandardError.ReadToEnd() : string.Empty;
+
+        if (exitCode != 0)
+        {
+            // 优先使用 stderr，为空时降级到 stdout，两者都空时用退出码
+            var error = string.IsNullOrWhiteSpace(stderr)
+                ? (string.IsNullOrWhiteSpace(stdout) ? $"netsh 退出码 {exitCode}" : stdout.Trim())
+                : stderr.Trim();
+            return (false, stdout, error, exitCode);
+        }
+
+        return (true, stdout, string.Empty, exitCode);
+    }
+
+    /// <summary>
+    /// 执行 netsh 命令并返回 UTF8 编码的标准输出 —— 专用于 GetAllBridgeRules 的输出解析场景
+    /// </summary>
+    /// <param name="args">netsh 命令参数</param>
+    /// <param name="timeoutMs">超时毫秒数</param>
+    /// <returns>标准输出文本；失败返回空字符串</returns>
+    /// <remarks>
+    /// 与 <see cref="RunNetsh"/> 的区别：设置 UTF8 编码以正确解析中文 locale 输出，
+    /// 不重定向 stderr（仅用于读取规则列表，不需要错误详情）。
+    /// </remarks>
+    private string RunNetshForOutput(string args, int timeoutMs)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "netsh",
+            Arguments = args,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            StandardOutputEncoding = Encoding.UTF8
+        };
+
+        using var process = Process.Start(startInfo);
+        if (process == null)
+        {
+            Log.Warning("无法启动 netsh 进程（RunNetshForOutput）");
+            return string.Empty;
+        }
+
+        // 修复原实现忽略超时返回值的僵尸进程风险
+        var exited = process.WaitForExit(timeoutMs);
+        if (!exited)
+        {
+            try { process.Kill(); } catch { }
+            Log.Warning("netsh 命令超时（{Timeout}ms），已终止进程", timeoutMs);
+            return string.Empty;
+        }
+
+        return process.StandardOutput.ReadToEnd();
     }
 }
