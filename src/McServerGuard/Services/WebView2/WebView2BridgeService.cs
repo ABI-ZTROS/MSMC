@@ -6,6 +6,7 @@
 // 设计模式: 单例模式 + 消息模式 + 请求/响应模式 + 观察者模式
 // -----------------------------------------------------------------------------
 using System.Collections.Concurrent;
+using System.IO;
 using System.Text.Json;
 using McServerGuard.Services.Frontend;
 using Microsoft.Web.WebView2.Core;
@@ -152,10 +153,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             // 注册一次性导航完成事件
             void OnNav(object? sender, CoreWebView2NavigationCompletedEventArgs e)
             {
-                if (e.WebErrorStatus == CoreWebView2WebErrorStatus.UnknownUriScheme ||
-                    e.WebErrorStatus == CoreWebView2WebErrorStatus.ConnectionFailure ||
-                    e.WebErrorStatus == CoreWebView2WebErrorStatus.NameNotResolved ||
-                    !e.IsSuccess)
+                if (!e.IsSuccess)
                 {
                     tcs.TrySetResult(false);
                 }
