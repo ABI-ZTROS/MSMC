@@ -5,7 +5,7 @@
 // 依赖组件: Microsoft.Web.WebView2.Wpf, System.Text.Json
 // 设计模式: 服务接口契约 + 观察者模式 + 消息模式
 // -----------------------------------------------------------------------------
-using Microsoft.Web.WebView2.Wpf;
+using WpfWebView2 = Microsoft.Web.WebView2.Wpf.WebView2;
 
 namespace McServerGuard.Services.WebView2;
 
@@ -38,7 +38,7 @@ public interface IWebView2BridgeService
     /// 初始化桥接服务，绑定到指定的 WebView2 控件
     /// </summary>
     /// <param name="webView">要绑定的 WebView2 控件</param>
-    Task InitializeAsync(WebView2 webView);
+    Task InitializeAsync(WpfWebView2 webView);
 
     /// <summary>
     /// 注册请求处理程序（JS 调用 C# 方法）

@@ -8,7 +8,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
+using WpfWebView2 = Microsoft.Web.WebView2.Wpf.WebView2;
 using Serilog;
 
 namespace McServerGuard.Services.WebView2;
@@ -31,7 +31,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     /// <summary>
     /// 绑定的 WebView2 控件引用
     /// </summary>
-    private WebView2? _webView;
+    private WpfWebView2? _webView;
 
     /// <summary>
     /// 请求处理程序字典（JS → C#）
@@ -66,7 +66,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     /// 初始化桥接服务，绑定到指定的 WebView2 控件
     /// </summary>
     /// <param name="webView">要绑定的 WebView2 控件</param>
-    public async Task InitializeAsync(WebView2 webView)
+    public async Task InitializeAsync(WpfWebView2 webView)
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(WebView2BridgeService));
