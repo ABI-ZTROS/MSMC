@@ -403,30 +403,4 @@ public partial class App : Application
             return "（崩溃转储写入失败）";
         }
     }
-
-    /// <summary>
-    /// 应用程序退出处理
-    /// 释放资源、关闭日志、销毁 DI 容器
-    /// </summary>
-    /// <param name="e">退出事件参数</param>
-    protected override void OnExit(ExitEventArgs e)
-    {
-        Log.Information("👋 McServerGuard 正在退出，拜拜~");
-
-        // 显式释放关键 IDisposable 服务，确保监控定时器、性能计数器等资源及时回收
-        //（容器 Dispose 也会处理，但提前释放可保证释放顺序与日志可观测性）
-        try
-        {
-            if (_serviceProvider?.GetService(typeof(ISystemMonitor)) is IDisposable systemMonitor)
-                systemMonitor.Dispose();
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "释放 SystemMonitor 失败");
-        }
-
-        Log.CloseAndFlush();
-        _serviceProvider?.Dispose();
-        base.OnExit(e);
-    }
 }
