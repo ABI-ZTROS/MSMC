@@ -1,73 +1,429 @@
 // -----------------------------------------------------------------------------
 // 文件名: MainWindow.xaml.cs
 // 命名空间: McServerGuard.Views
-// 功能描述: 主窗口代码隐藏类，实现自定义标题栏交互、鼠标悬停侧边栏展开/折叠动画、
-//           页面切换过渡动画及关闭确认逻辑。
+// 功能描述: 主窗口代码隐藏类 - WebView2 重构版
+//           实现自定义标题栏交互、WebView2 初始化与桥接服务绑定
 // 依赖组件: PresentationFramework, MaterialDesignThemes,
-//           MahApps.Metro.IconPacks, System.Windows.Media
-// 设计模式: 代码隐藏模式, 依赖属性
+//           MahApps.Metro.IconPacks, Microsoft.Web.WebView2.Wpf
+// 设计模式: 代码隐藏模式
 // -----------------------------------------------------------------------------
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using McServerGuard.Services;
-using McServerGuard.Services.ServerDetection;
+using McServerGuard.Services.WebView2;
 using McServerGuard.ViewModels;
-using McServerGuard.Views.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace McServerGuard.Views;
 
 /// <summary>
-/// 主窗口代码隐藏类。
-/// 负责自定义标题栏拖动与最大化交互、侧边栏悬停展开/折叠动画、
-/// 页面切换过渡效果以及关闭前服务器运行状态确认。
+/// 主窗口代码隐藏类 - WebView2 重构版
+/// 负责自定义标题栏交互、WebView2 初始化与桥接服务绑定
 /// </summary>
 public partial class MainWindow : Window
 {
     private readonly IThemeService _themeService;
+    private readonly IWebView2BridgeService _bridgeService;
     private MainViewModel? _vm;
-    private readonly DispatcherTimer _collapseTimer;
-    private bool _isSidebarExpanded;
     private bool _isClosing;
 
     public MainWindow()
     {
-        Log.Information("🏗️ MainWindow 正在初始化...");
+        Log.Information("🏗️ MainWindow (WebView2) 正在初始化...");
         InitializeComponent();
-        // IThemeService 暂保留服务定位器（A6 提取 AnimationHelper 后统一处理）
+
         _themeService = App.Services.GetRequiredService<IThemeService>();
-
-        MainContent.RenderTransform = new TranslateTransform();
-
-        _collapseTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
-        _collapseTimer.Tick += CollapseTimer_Tick;
+        _bridgeService = App.Services.GetRequiredService<IWebView2BridgeService>();
 
         Loaded += MainWindow_Loaded;
         DataContextChanged += MainWindow_DataContextChanged;
         Closing += MainWindow_Closing;
         StateChanged += MainWindow_StateChanged;
 
-        Log.Information("✅ MainWindow 初始化完成");
+        Log.Information("✅ MainWindow (WebView2) 初始化完成");
     }
 
-    // 窗口 Loaded 事件处理：初始化侧边栏折叠状态与文本透明度，播放入场动画
-    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    // 窗口 Loaded 事件处理：初始化 WebView2 和桥接服务
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        _isSidebarExpanded = false;
-        SetTextElementsOpacity(0);
+        Log.Information("🌐 初始化 WebView2...");
 
-        MainContent.Opacity = 1;
+        try
+        {
+            // 初始化 WebView2 桥接服务
+            await _bridgeService.InitializeAsync(MainWebView);
+
+            // 注册基础 API 处理程序
+            RegisterBridgeApis();
+
+            // 构建前端页面路径
+            var frontendPath = GetFrontendIndexPath();
+            Log.Information("📄 加载前端页面: {Path}", frontendPath);
+
+            if (File.Exists(frontendPath))
+            {
+                MainWebView.Source = new Uri(frontendPath);
+            }
+            else
+            {
+                Log.Warning("⚠️ 前端构建产物不存在，加载内置测试页面");
+                LoadTestPage();
+            }
+
+            // 发送应用初始化事件
+            await _bridgeService.SendEventAsync("app:ready", new
+            {
+                version = typeof(App).Assembly.GetName().Version?.ToString() ?? "0.0.0",
+                isAdmin = _vm?.IsAdminMode ?? false,
+                theme = new
+                {
+                    mode = _themeService.IsDarkMode ? "dark" : "light",
+                    primaryColor = _themeService.PrimaryColor,
+                }
+            });
+
+            Log.Information("✅ WebView2 初始化完成");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "❌ WebView2 初始化失败");
+            MessageBox.Show($"WebView2 初始化失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
-    // DataContext 变更事件处理：订阅/取消订阅 ViewModel 的 PropertyChanged 事件
+    /// <summary>
+    /// 获取前端 index.html 路径
+    /// 优先查找构建产物，不存在则返回测试页面路径
+    /// </summary>
+    private static string GetFrontendIndexPath()
+    {
+        // 1. 优先查找发布时的嵌入式资源目录
+        var baseDir = AppContext.BaseDirectory;
+        var frontendDir = Path.Combine(baseDir, "wwwroot");
+        var indexPath = Path.Combine(frontendDir, "index.html");
+
+        if (File.Exists(indexPath))
+            return indexPath;
+
+        // 2. 开发环境：查找 src/frontend/dist
+        var solutionDir = FindSolutionDirectory();
+        if (solutionDir != null)
+        {
+            var devPath = Path.Combine(solutionDir, "src", "frontend", "dist", "index.html");
+            if (File.Exists(devPath))
+                return devPath;
+        }
+
+        return indexPath;
+    }
+
+    /// <summary>
+    /// 查找解决方案根目录
+    /// </summary>
+    private static string? FindSolutionDirectory()
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir != null && Directory.GetParent(dir) != null)
+        {
+            if (File.Exists(Path.Combine(dir, "McServerGuard.sln")))
+                return dir;
+            dir = Directory.GetParent(dir)?.FullName;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// 加载内置测试页面（用于前端未构建时的桥接验证）
+    /// </summary>
+    private void LoadTestPage()
+    {
+        var testHtml = GenerateTestHtml();
+        MainWebView.NavigateToString(testHtml);
+    }
+
+    /// <summary>
+    /// 生成测试用 HTML 页面
+    /// </summary>
+    private static string GenerateTestHtml()
+    {
+        return @"
+<!DOCTYPE html>
+<html lang='zh-CN'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>MSMC - WebView2 Bridge Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .subtitle {
+            color: #94a3b8;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        .status-card {
+            background: #334155;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-left: 4px solid #22c55e;
+        }
+        .status-card.error { border-left-color: #ef4444; }
+        .status-card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #e2e8f0;
+        }
+        .status-card p {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+        .status-dot.error { background: #ef4444; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .test-section {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #475569;
+        }
+        .test-section h2 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: #e2e8f0;
+        }
+        .test-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .test-btn:hover { background: #2563eb; transform: translateY(-1px); }
+        .test-btn:active { transform: translateY(0); }
+        .test-btn.secondary { background: #475569; }
+        .test-btn.secondary:hover { background: #64748b; }
+        .log-area {
+            background: #0f172a;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 16px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .log-entry { padding: 4px 0; color: #94a3b8; }
+        .log-entry .time { color: #64748b; margin-right: 8px; }
+        .log-entry .success { color: #22c55e; }
+        .log-entry .error { color: #f87171; }
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <h1>MSMC WebView2 Bridge</h1>
+        <p class='subtitle'>Minecraft Server Management Console - Web UI 桥接测试</p>
+
+        <div class='status-card' id='bridge-status'>
+            <h3><span class='status-dot'></span>桥接状态</h3>
+            <p id='bridge-text'>正在检测桥接连接...</p>
+        </div>
+
+        <div class='status-card' id='app-status'>
+            <h3>应用信息</h3>
+            <p id='app-info'>等待接收应用初始化事件...</p>
+        </div>
+
+        <div class='test-section'>
+            <h2>通信测试</h2>
+            <button class='test-btn' onclick='testPing()'>测试 Ping</button>
+            <button class='test-btn secondary' onclick='testGetTime()'>获取服务器时间</button>
+            <button class='test-btn secondary' onclick='testSendEvent()'>发送事件到 C#</button>
+            <div class='log-area' id='log-area'></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logArea = document.getElementById('log-area');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = '<span class=\"time\">[' + time + ']</span>' +
+                              '<span class=\"' + type + '\">' + message + '</span>';
+            logArea.appendChild(entry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function setBridgeStatus(connected, message) {
+            const card = document.getElementById('bridge-status');
+            const dot = card.querySelector('.status-dot');
+            const text = document.getElementById('bridge-text');
+            if (connected) {
+                card.classList.remove('error');
+                dot.classList.remove('error');
+            } else {
+                card.classList.add('error');
+                dot.classList.add('error');
+            }
+            text.textContent = message;
+        }
+
+        // 检测桥接是否可用
+        function checkBridge() {
+            if (window.__msmc_bridge__) {
+                setBridgeStatus(true, '桥接已连接，JS 端桥接对象已就绪');
+                log('桥接对象已就绪', 'success');
+                return true;
+            }
+            setBridgeStatus(false, '桥接对象未找到');
+            log('桥接对象未找到', 'error');
+            return false;
+        }
+
+        // 测试 Ping
+        async function testPing() {
+            if (!checkBridge()) return;
+            log('发送 ping 请求...');
+            try {
+                const result = await window.__msmc_bridge__.invoke('ping', { hello: 'from JS' });
+                log('Ping 成功: ' + JSON.stringify(result), 'success');
+            } catch (e) {
+                log('Ping 失败: ' + e.message, 'error');
+            }
+        }
+
+        // 测试获取服务器时间
+        async function testGetTime() {
+            if (!checkBridge()) return;
+            log('请求服务器时间...');
+            try {
+                const result = await window.__msmc_bridge__.invoke('app:getTime');
+                log('服务器时间: ' + result, 'success');
+            } catch (e) {
+                log('获取时间失败: ' + e.message, 'error');
+            }
+        }
+
+        // 测试发送事件
+        function testSendEvent() {
+            if (!checkBridge()) return;
+            window.__msmc_bridge__.sendEvent('test:event', { test: true, value: 42 });
+            log('已发送测试事件到 C#', 'success');
+        }
+
+        // 监听应用就绪事件
+        if (window.__msmc_bridge__) {
+            window.__msmc_bridge__.on('app:ready', function(data) {
+                log('收到 app:ready 事件', 'success');
+                document.getElementById('app-info').textContent =
+                    '版本: ' + data.version + ' | 管理员: ' + (data.isAdmin ? '是' : '否');
+            });
+        }
+
+        // 页面加载后延迟检测桥接
+        setTimeout(checkBridge, 500);
+        setTimeout(checkBridge, 1000);
+        setTimeout(checkBridge, 2000);
+
+        log('页面加载完成，等待桥接初始化...');
+    </script>
+</body>
+</html>";
+    }
+
+    /// <summary>
+    /// 注册桥接 API 处理程序
+    /// </summary>
+    private void RegisterBridgeApis()
+    {
+        // Ping - 基础连通性测试
+        _bridgeService.RegisterRequestHandler("ping", payload =>
+        {
+            Log.Debug("🏓 收到 Ping 请求: {Payload}", payload);
+            return Task.FromResult<object?>(new
+            {
+                pong = true,
+                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                message = "Hello from C#!"
+            });
+        });
+
+        // 获取当前时间
+        _bridgeService.RegisterRequestHandler("app:getTime", _ =>
+        {
+            return Task.FromResult<object?>(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        });
+
+        // 获取应用信息
+        _bridgeService.RegisterRequestHandler("app:getInfo", _ =>
+        {
+            return Task.FromResult<object?>(new
+            {
+                version = typeof(App).Assembly.GetName().Version?.ToString() ?? "0.0.0",
+                name = "MSMC",
+                fullName = "Minecraft Server Management Console",
+            });
+        });
+
+        // 订阅来自 JS 的事件（调试用）
+        _bridgeService.SubscribeToEvents((action, payload) =>
+        {
+            Log.Debug("📨 收到 JS 事件: {Action} = {Payload}", action, payload);
+        });
+
+        Log.Information("✅ 桥接 API 注册完成");
+    }
+
+    // DataContext 变更事件处理
     private void MainWindow_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (_vm is not null)
@@ -79,57 +435,23 @@ public partial class MainWindow : Window
             _vm.PropertyChanged += Vm_PropertyChanged;
     }
 
-    // ViewModel 属性变更事件处理：当前页面切换时触发过渡动画
+    // ViewModel 属性变更事件处理
     private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainViewModel.CurrentPage))
+        // 当状态消息变化时，通过桥接推送到前端
+        if (e.PropertyName == nameof(MainViewModel.StatusMessage) && _bridgeService.IsInitialized)
         {
-            AnimatePageTransition();
+            _ = _bridgeService.SendEventAsync("status:update", new
+            {
+                message = _vm?.StatusMessage ?? string.Empty
+            });
         }
     }
 
-    /// <summary>
-    /// 执行页面切换过渡动画，包含淡入与位移动画。
-    /// 动画参数（时长、缓动函数）由主题服务统一配置。
-    /// </summary>
-    private void AnimatePageTransition()
-    {
-        if (!_themeService.EnableAnimations)
-        {
-            MainContent.Opacity = 1;
-            if (MainContent.RenderTransform is TranslateTransform transform)
-                transform.X = 0;
-            return;
-        }
-
-        var duration = _themeService.AnimationDuration;
-
-        var fadeIn = new DoubleAnimation
-        {
-            From = 0,
-            To = 1,
-            Duration = TimeSpan.FromMilliseconds(duration * 0.8),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-        };
-
-        var slideIn = new DoubleAnimation
-        {
-            From = 20,
-            To = 0,
-            Duration = TimeSpan.FromMilliseconds(duration),
-            EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
-        };
-
-        MainContent.BeginAnimation(UIElement.OpacityProperty, fadeIn);
-        if (MainContent.RenderTransform is TranslateTransform tt)
-            tt.BeginAnimation(TranslateTransform.XProperty, slideIn);
-    }
-
     // ─────────────────────────────────────────────────────────────────────
-    // 自定义标题栏交互：拖动移动 + 双击最大化/还原
+    // 自定义标题栏交互
     // ─────────────────────────────────────────────────────────────────────
 
-    // 标题栏鼠标左键按下事件处理：双击切换最大化状态，单击拖动窗口
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2)
@@ -142,33 +464,26 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>
-    /// 切换窗口最大化与正常状态。
-    /// </summary>
     private void ToggleMaximize()
     {
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     }
 
-    // 最小化按钮点击事件处理
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
     {
         WindowState = WindowState.Minimized;
     }
 
-    // 最大化按钮点击事件处理
     private void MaximizeButton_Click(object sender, RoutedEventArgs e)
     {
         ToggleMaximize();
     }
 
-    // 关闭按钮点击事件处理
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Close();
     }
 
-    // 窗口状态变更事件处理：同步最大化按钮图标
     private void MainWindow_StateChanged(object? sender, EventArgs e)
     {
         if (MaximizeIcon != null)
@@ -180,173 +495,32 @@ public partial class MainWindow : Window
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // 侧边栏交互：鼠标悬停自动展开，延迟自动折叠
+    // 关闭确认
     // ─────────────────────────────────────────────────────────────────────
 
-    // 侧边栏鼠标进入事件处理：停止折叠计时器并展开侧边栏
-    private void NavSidebar_MouseEnter(object sender, MouseEventArgs e)
-    {
-        _collapseTimer.Stop();
-        ExpandSidebar();
-    }
-
-    // 侧边栏鼠标离开事件处理：启动折叠计时器
-    private void NavSidebar_MouseLeave(object sender, MouseEventArgs e)
-    {
-        _collapseTimer.Stop();
-        _collapseTimer.Start();
-    }
-
-    // 折叠计时器 Tick 事件处理：延迟后若鼠标已离开则折叠侧边栏
-    private void CollapseTimer_Tick(object? sender, EventArgs e)
-    {
-        _collapseTimer.Stop();
-        if (!NavSidebar.IsMouseOver)
-        {
-            CollapseSidebar();
-        }
-    }
-
-    /// <summary>
-    /// 展开侧边栏动画。通过 Width 属性动画驱动（56→240），
-    /// 同时配合文本透明度渐变实现平滑过渡效果。
-    /// </summary>
-    private void ExpandSidebar()
-    {
-        if (_isSidebarExpanded) return;
-        _isSidebarExpanded = true;
-
-        var durationMs = _themeService.EnableAnimations ? 200 : 0;
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-        {
-            NavSidebar.UpdateLayout();
-            if (durationMs > 0)
-            {
-                var widthAnim = new DoubleAnimation(240, TimeSpan.FromMilliseconds(durationMs))
-                {
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-                    FillBehavior = FillBehavior.Stop
-                };
-                widthAnim.Completed += (_, _) =>
-                {
-                    NavSidebar.Width = 240;
-                };
-                NavSidebar.BeginAnimation(WidthProperty, widthAnim, HandoffBehavior.SnapshotAndReplace);
-                AnimateTextOpacity(1, durationMs);
-            }
-            else
-            {
-                NavSidebar.Width = 240;
-                SetTextElementsOpacity(1);
-            }
-        });
-    }
-
-    /// <summary>
-    /// 折叠侧边栏动画。与展开动画对称，Width 从 240 收回 56。
-    /// </summary>
-    private void CollapseSidebar()
-    {
-        if (!_isSidebarExpanded) return;
-        _isSidebarExpanded = false;
-
-        var durationMs = _themeService.EnableAnimations ? 200 : 0;
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-        {
-            NavSidebar.UpdateLayout();
-            if (durationMs > 0)
-            {
-                var widthAnim = new DoubleAnimation(56, TimeSpan.FromMilliseconds(durationMs))
-                {
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-                    FillBehavior = FillBehavior.Stop
-                };
-                widthAnim.Completed += (_, _) =>
-                {
-                    NavSidebar.Width = 56;
-                };
-                NavSidebar.BeginAnimation(WidthProperty, widthAnim, HandoffBehavior.SnapshotAndReplace);
-                AnimateTextOpacity(0, durationMs);
-            }
-            else
-            {
-                NavSidebar.Width = 56;
-                SetTextElementsOpacity(0);
-            }
-        });
-    }
-
-    /// <summary>
-    /// 直接设置侧边栏所有文本元素的不透明度。
-    /// </summary>
-    /// <param name="opacity">目标不透明度值（0.0 - 1.0）</param>
-    private void SetTextElementsOpacity(double opacity)
-    {
-        NavHeaderText.Opacity = opacity;
-        NavFooter.Opacity = opacity;
-        foreach (var textBlock in GetNavItemTextBlocks())
-            textBlock.Opacity = opacity;
-    }
-
-    /// <summary>
-    /// 以动画形式过渡侧边栏文本元素的不透明度。
-    /// 使用 CubicEase 缓动函数实现自然的加速-减速曲线。
-    /// </summary>
-    /// <param name="toOpacity">目标不透明度</param>
-    /// <param name="durationMs">动画时长（毫秒）</param>
-    private void AnimateTextOpacity(double toOpacity, int durationMs)
-    {
-        var duration = TimeSpan.FromMilliseconds(durationMs);
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-
-        void Animate(UIElement element)
-        {
-            element.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(toOpacity, duration) { EasingFunction = ease });
-        }
-
-        Animate(NavHeaderText);
-        Animate(NavFooter);
-        foreach (var textBlock in GetNavItemTextBlocks())
-            Animate(textBlock);
-    }
-
-    /// <summary>
-    /// 遍历 NavListBox 中所有导航项的文字元素（数据驱动渲染后替代 x:Name 硬编码引用）。
-    /// </summary>
-    private IEnumerable<TextBlock> GetNavItemTextBlocks()
-    {
-        foreach (var item in NavListBox.Items)
-        {
-            if (NavListBox.ItemContainerGenerator.ContainerFromItem(item) is ListBoxItem container)
-            {
-                var textBlock = AnimationHelper.FindVisualChild<TextBlock>(container);
-                if (textBlock != null)
-                    yield return textBlock;
-            }
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // 关闭确认：检测服务器运行状态，必要时弹出确认对话框
-    // ─────────────────────────────────────────────────────────────────────
-
-    // 窗口 Closing 事件处理：若存在运行中的服务器则弹出确认提示
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
         if (_isClosing)
             return;
 
-        // 清理事件订阅和计时器，防止内存泄漏
+        // 清理事件订阅
         if (_vm is not null)
         {
             _vm.PropertyChanged -= Vm_PropertyChanged;
             _vm = null;
         }
-        _collapseTimer.Stop();
-        _collapseTimer.Tick -= CollapseTimer_Tick;
 
-        // 通过 ViewModel 链透传检查服务器运行状态，避免直接持有 IServerManagerService
+        // 关闭桥接服务
+        try
+        {
+            _bridgeService.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "关闭桥接服务时发生异常");
+        }
+
+        // 关闭确认
         if (_vm?.AnyServerRunning == true)
         {
             var result = MessageBox.Show(
@@ -369,12 +543,13 @@ public partial class MainWindow : Window
         _isClosing = true;
 
         var duration = TimeSpan.FromMilliseconds(200);
-        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+        var ease = new System.Windows.Media.Animation.CubicEase
+        { EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn };
 
-        var fadeOut = new DoubleAnimation(0, duration)
+        var fadeOut = new System.Windows.Media.Animation.DoubleAnimation(0, duration)
         {
             EasingFunction = ease,
-            FillBehavior = FillBehavior.Stop
+            FillBehavior = System.Windows.Media.Animation.FillBehavior.Stop
         };
         fadeOut.Completed += (_, _) =>
         {
@@ -382,6 +557,6 @@ public partial class MainWindow : Window
             BeginAnimation(OpacityProperty, null);
             Close();
         };
-        BeginAnimation(OpacityProperty, fadeOut, HandoffBehavior.SnapshotAndReplace);
+        BeginAnimation(OpacityProperty, fadeOut, System.Windows.Media.Animation.HandoffBehavior.SnapshotAndReplace);
     }
 }

@@ -91,6 +91,20 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Nerdbank.GitVersioning" Version="3.*" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.*" />
   </ItemGroup>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 🌐 前端构建与资源集成                                       -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <ItemGroup>
+    <None Include="..\frontend\dist\**" CopyToOutputDirectory="PreserveNewest" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <Target Name="BuildFrontend" BeforeTargets="BeforeBuild" Condition="!Exists('..\frontend\dist\index.html')">
+    <Message Text="🌐 构建前端项目..." Importance="high" />
+    <Exec Command="npm install" WorkingDirectory="..\frontend" ContinueOnError="false" />
+    <Exec Command="npm run build" WorkingDirectory="..\frontend" ContinueOnError="false" />
+  </Target>
 
 </Project>

@@ -15,6 +15,7 @@ using McServerGuard.Services.Privilege;
 using McServerGuard.Services.ServerDetection;
 using McServerGuard.Services.SystemMonitoring;
 using McServerGuard.Services.Network;
+using McServerGuard.Services.WebView2;
 using McServerGuard.ViewModels;
 using McServerGuard.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -144,6 +145,10 @@ public partial class App : Application
         // 内存优化服务
         Log.Information("🧹 注册内存优化服务...");
         services.AddSingleton<MemoryOptimizerService>();
+
+        // WebView2 桥接服务
+        Log.Information("🌉 注册 WebView2 桥接服务...");
+        services.AddSingleton<IWebView2BridgeService, WebView2BridgeService>();
 
         // 子页面 ViewModel —— 走 DI 注入，避免 MainViewModel 手动 new 导致的 God Object
         Log.Information("🧩 注册子页面 ViewModel...");
