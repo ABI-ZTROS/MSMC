@@ -14,6 +14,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using McServerGuard.Services;
+using McServerGuard.Services.Frontend;
 using McServerGuard.Services.WebView2;
 using McServerGuard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,19 +62,22 @@ public partial class MainWindow : Window
             // 注册基础 API 处理程序
             RegisterBridgeApis();
 
-            // 设置虚拟主机映射（用 HTTP 协议访问本地资源，避免 file:// 的 CORS 限制）
-            var frontendFolder = GetFrontendFolderPath();
+            // 使用工厂获取前端资源提供器，按优先级自动选择最佳加载方式
             const string virtualHost = "msmc.local";
-            if (Directory.Exists(frontendFolder))
+            var provider = FrontendResourceProviderFactory.Create();
+
+            if (provider.IsAvailable)
             {
-                _bridgeService.SetVirtualHostMapping(virtualHost, frontendFolder);
-                var appUrl = $"https://{virtualHost}/index.html";
-                Log.Information("📄 加载前端页面: {Url} (文件夹: {Folder})", appUrl, frontendFolder);
-                MainWebView.Source = new Uri(appUrl);
+                var loaded = await _bridgeService.LoadFrontendAsync(provider, virtualHost);
+                if (!loaded)
+                {
+                    Log.Warning("⚠️ 前端资源加载失败，回退到测试页面");
+                    LoadTestPage();
+                }
             }
             else
             {
-                Log.Warning("⚠️ 前端构建产物不存在，加载内置测试页面");
+                Log.Warning("⚠️ 没有可用的前端资源提供器，加载内置测试页面");
                 LoadTestPage();
             }
 
@@ -96,45 +100,6 @@ public partial class MainWindow : Window
             Log.Error(ex, "❌ WebView2 初始化失败");
             MessageBox.Show($"WebView2 初始化失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-    }
-
-    /// <summary>
-    /// 获取前端资源文件夹路径
-    /// </summary>
-    private static string GetFrontendFolderPath()
-    {
-        // 1. 优先查找发布时的嵌入式资源目录
-        var baseDir = AppContext.BaseDirectory;
-        var wwwrootDir = Path.Combine(baseDir, "wwwroot");
-
-        if (Directory.Exists(wwwrootDir) && File.Exists(Path.Combine(wwwrootDir, "index.html")))
-            return wwwrootDir;
-
-        // 2. 开发环境：查找 src/frontend/dist
-        var solutionDir = FindSolutionDirectory();
-        if (solutionDir != null)
-        {
-            var devDir = Path.Combine(solutionDir, "src", "frontend", "dist");
-            if (Directory.Exists(devDir) && File.Exists(Path.Combine(devDir, "index.html")))
-                return devDir;
-        }
-
-        return wwwrootDir;
-    }
-
-    /// <summary>
-    /// 查找解决方案根目录
-    /// </summary>
-    private static string? FindSolutionDirectory()
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir != null && Directory.GetParent(dir) != null)
-        {
-            if (File.Exists(Path.Combine(dir, "McServerGuard.sln")))
-                return dir;
-            dir = Directory.GetParent(dir)?.FullName;
-        }
-        return null;
     }
 
     /// <summary>

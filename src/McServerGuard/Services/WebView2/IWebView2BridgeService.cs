@@ -5,6 +5,7 @@
 // 依赖组件: Microsoft.Web.WebView2.Wpf, System.Text.Json
 // 设计模式: 服务接口契约 + 观察者模式 + 消息模式
 // -----------------------------------------------------------------------------
+using McServerGuard.Services.Frontend;
 using WpfWebView2 = Microsoft.Web.WebView2.Wpf.WebView2;
 
 namespace McServerGuard.Services.WebView2;
@@ -47,6 +48,15 @@ public interface IWebView2BridgeService
     /// <param name="hostName">虚拟主机名（如 app.local）</param>
     /// <param name="folderPath">本地文件夹路径</param>
     void SetVirtualHostMapping(string hostName, string folderPath);
+
+    /// <summary>
+    /// 加载前端资源并导航到主页
+    /// 根据提供器类型自动选择虚拟主机映射或 WebResourceRequested 拦截模式
+    /// </summary>
+    /// <param name="provider">前端资源提供器</param>
+    /// <param name="hostName">虚拟主机名</param>
+    /// <returns>是否加载成功</returns>
+    Task<bool> LoadFrontendAsync(IFrontendResourceProvider provider, string hostName);
 
     /// <summary>
     /// 注册请求处理程序（JS 调用 C# 方法）

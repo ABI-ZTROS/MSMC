@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------------
 using System.Collections.Concurrent;
 using System.Text.Json;
+using McServerGuard.Services.Frontend;
 using Microsoft.Web.WebView2.Core;
 using WpfWebView2 = Microsoft.Web.WebView2.Wpf.WebView2;
 using Serilog;
@@ -113,6 +114,126 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
 
         Log.Information("🌐 虚拟主机映射已设置: {HostName} -> {FolderPath}", hostName, folderPath);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> LoadFrontendAsync(IFrontendResourceProvider provider, string hostName)
+    {
+        if (_webView?.CoreWebView2 == null)
+            throw new InvalidOperationException("桥接未初始化");
+
+        if (!provider.IsAvailable)
+        {
+            Log.Warning("前端资源提供器不可用: {Mode}", provider.ModeName);
+            return false;
+        }
+
+        Log.Information("🚀 加载前端资源 (模式: {Mode})", provider.ModeName);
+
+        try
+        {
+            var basePath = await provider.GetBasePathAsync();
+
+            if (basePath != null)
+            {
+                // 文件夹模式 / Zip 解压模式：用虚拟主机映射
+                SetVirtualHostMapping(hostName, basePath);
+            }
+            else
+            {
+                // 嵌入资源模式：注册 WebResourceRequested 拦截
+                RegisterWebResourceRequested(provider, hostName);
+            }
+
+            // 导航到主页
+            var appUrl = $"https://{hostName}/index.html";
+            _webView.Source = new Uri(appUrl);
+
+            Log.Information("✅ 前端页面加载中: {Url}", appUrl);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "❌ 加载前端资源失败 (模式: {Mode})", provider.ModeName);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 注册 WebResourceRequested 事件拦截（B 模式：嵌入资源）
+    /// </summary>
+    private void RegisterWebResourceRequested(IFrontendResourceProvider provider, string hostName)
+    {
+        if (_webView?.CoreWebView2 == null) return;
+
+        // 只拦截 GET 请求
+        _webView.CoreWebView2.AddWebResourceRequestedFilter(
+            $"https://{hostName}/*",
+            CoreWebView2WebResourceContext.All);
+
+        _webView.CoreWebView2.WebResourceRequested += (sender, args) =>
+        {
+            try
+            {
+                HandleWebResourceRequested(args, provider, hostName);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "处理 WebResourceRequested 时出错: {Uri}", args.Request?.Uri);
+            }
+        };
+
+        Log.Information("🔌 WebResourceRequested 拦截已注册: https://{HostName}/*", hostName);
+    }
+
+    /// <summary>
+    /// 处理 WebResourceRequested 事件
+    /// </summary>
+    private void HandleWebResourceRequested(
+        CoreWebView2WebResourceRequestedEventArgs args,
+        IFrontendResourceProvider provider,
+        string hostName)
+    {
+        var request = args.Request;
+        if (request == null) return;
+
+        // 只处理 GET 请求
+        if (!string.Equals(request.Method, "GET", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var uri = request.Uri;
+        if (string.IsNullOrEmpty(uri)) return;
+
+        // 解析相对路径
+        var baseUri = $"https://{hostName}";
+        if (!uri.StartsWith(baseUri, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var relativePath = uri[baseUri.Length..];
+        if (string.IsNullOrEmpty(relativePath) || relativePath == "/")
+            relativePath = "/index.html";
+
+        // 获取资源流
+        var resourceStream = provider.GetResourceAsync(relativePath).GetAwaiter().GetResult();
+        if (resourceStream == null)
+        {
+            // 404 Not Found
+            args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
+                null, 404, "Not Found", "Content-Type: text/plain");
+            return;
+        }
+
+        // 获取 MIME 类型
+        var mimeType = provider.GetMimeType(relativePath);
+
+        // 构造响应
+        args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
+            resourceStream,
+            200,
+            "OK",
+            $"Content-Type: {mimeType}\r\nCache-Control: public, max-age=3600");
+
+        Log.Debug("📦 嵌入资源响应: {Path} ({MimeType})", relativePath, mimeType);
     }
 
     /// <summary>

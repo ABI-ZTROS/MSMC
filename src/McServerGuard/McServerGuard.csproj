@@ -97,14 +97,37 @@
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <!-- 🌐 前端构建与资源集成                                       -->
   <!-- ═══════════════════════════════════════════════════════════════ -->
-  <ItemGroup>
-    <None Include="..\frontend\dist\**" CopyToOutputDirectory="PreserveNewest" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
-  </ItemGroup>
 
-  <Target Name="BuildFrontend" BeforeTargets="BeforeBuild" Condition="!Exists('..\frontend\dist\index.html')">
+  <!-- 确保前端在嵌入资源之前构建完成 -->
+  <Target Name="BuildFrontend" BeforeTargets="PrepareForBuild" Condition="!Exists('..\frontend\dist\index.html')">
     <Message Text="🌐 构建前端项目..." Importance="high" />
     <Exec Command="npm install" WorkingDirectory="..\frontend" ContinueOnError="false" />
     <Exec Command="npm run build" WorkingDirectory="..\frontend" ContinueOnError="false" />
   </Target>
+
+  <!-- 将前端 dist 打包成 zip 后作为嵌入资源
+       运行时通过 ZipArchive 从内存读取，避免多文件资源名映射问题 -->
+  <Target Name="PackFrontendToZip" BeforeTargets="BeforeResGen" Condition="Exists('..\frontend\dist\index.html')">
+    <!-- 删除旧 zip -->
+    <Delete Files="$(IntermediateOutputPath)wwwroot.zip" />
+
+    <!-- 创建 zip 包（用 PowerShell 压缩，兼容性好） -->
+    <Exec Command="powershell -NoProfile -Command &quot;Compress-Archive -Path '..\frontend\dist\*' -DestinationPath '$(IntermediateOutputPath)wwwroot.zip' -Force&quot;"
+          ContinueOnError="false" />
+
+    <!-- 将 zip 作为嵌入资源 -->
+    <ItemGroup>
+      <EmbeddedResource Include="$(IntermediateOutputPath)wwwroot.zip">
+        <LogicalName>$(RootNamespace).wwwroot.zip</LogicalName>
+      </EmbeddedResource>
+    </ItemGroup>
+
+    <Message Text="📦 前端资源已打包为嵌入资源 (wwwroot.zip)" Importance="high" />
+  </Target>
+
+  <!-- 同时保留文件夹复制方式（开发时用，方便热重载） -->
+  <ItemGroup Condition="Exists('..\frontend\dist\index.html')">
+    <None Include="..\frontend\dist\**" CopyToOutputDirectory="PreserveNewest" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
 
 </Project>
