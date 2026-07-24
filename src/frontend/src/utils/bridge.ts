@@ -111,7 +111,10 @@ class Bridge implements MsmcBridge {
 
     if (!data || !data.type) return
 
-    switch (data.type) {
+    // 统一转小写，兼容 C# 端枚举序列化的大小写
+    const type = String(data.type).toLowerCase()
+
+    switch (type) {
       case 'response': {
         if (data.id) {
           const pending = this.pendingRequests.get(data.id)
@@ -154,6 +157,10 @@ class Bridge implements MsmcBridge {
       }
       case 'log': {
         console.log('[C#]', data.payload)
+        break
+      }
+      default: {
+        rawLog(`⚠️ 未知消息类型: ${data.type}`)
         break
       }
     }
