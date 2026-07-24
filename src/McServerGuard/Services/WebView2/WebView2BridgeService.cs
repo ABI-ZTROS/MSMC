@@ -8,6 +8,7 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using McServerGuard.Services.Frontend;
 using Microsoft.Web.WebView2.Core;
 using WpfWebView2 = Microsoft.Web.WebView2.Wpf.WebView2;
@@ -28,6 +29,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = false,
+        Converters = { new JsonStringEnumConverter() },
     };
 
     /// <summary>
