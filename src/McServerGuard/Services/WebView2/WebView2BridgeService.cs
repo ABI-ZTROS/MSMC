@@ -203,21 +203,24 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     {
         if (_webView?.CoreWebView2 == null) return;
 
-        // 注册多个过滤器，确保所有路径都能被拦截
-        // 1. 带通配符的（匹配所有子路径）
-        _webView.CoreWebView2.AddWebResourceRequestedFilter(
-            $"https://{hostName}/*",
-            CoreWebView2WebResourceContext.All);
-
-        // 2. 根路径（确保 index.html 也能被匹配）
-        _webView.CoreWebView2.AddWebResourceRequestedFilter(
+        // 注册多层过滤器，确保所有深度的路径都能被拦截
+        // WebView2 的 * 通配符不跨路径分隔符，所以需要多层
+        var filters = new[]
+        {
+            $"https://{hostName}",
             $"https://{hostName}/",
-            CoreWebView2WebResourceContext.All);
+            $"https://{hostName}/*",
+            $"https://{hostName}/*/*",
+            $"https://{hostName}/*/*/*",
+            $"https://{hostName}/*/*/*/*",
+        };
 
-        // 3. 直接的 index.html
-        _webView.CoreWebView2.AddWebResourceRequestedFilter(
-            $"https://{hostName}/index.html",
-            CoreWebView2WebResourceContext.All);
+        foreach (var filter in filters)
+        {
+            _webView.CoreWebView2.AddWebResourceRequestedFilter(
+                filter,
+                CoreWebView2WebResourceContext.All);
+        }
 
         _webView.CoreWebView2.WebResourceRequested += (sender, args) =>
         {
@@ -231,7 +234,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             }
         };
 
-        Log.Information("🔌 WebResourceRequested 拦截已注册: https://{HostName}/*", hostName);
+        Log.Information("🔌 WebResourceRequested 拦截已注册 ({Count} 个过滤器): https://{HostName}", filters.Length, hostName);
     }
 
     /// <summary>
@@ -261,7 +264,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         if (string.IsNullOrEmpty(relativePath) || relativePath == "/")
             relativePath = "/index.html";
 
-        Log.Debug("📥 WebResource 请求: {Path}", relativePath);
+        Log.Information("📥 WebResource 请求: {Path}", relativePath);
 
         try
         {
@@ -284,7 +287,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             var mimeType = provider.GetMimeType(relativePath);
 
             // 构造响应头
-            var headers = $"Content-Type: {mimeType}\r\nContent-Length: {memoryStream.Length}\r\nCache-Control: public, max-age=3600";
+            var headers = $"Content-Type: {mimeType}\r\nContent-Length: {memoryStream.Length}\r\nCache-Control: public, max-age=3600\r\nAccess-Control-Allow-Origin: *";
 
             // 构造响应
             args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
@@ -293,7 +296,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                 "OK",
                 headers);
 
-            Log.Debug("✅ 嵌入资源响应: {Path} ({MimeType}, {Size} bytes)", relativePath, mimeType, memoryStream.Length);
+            Log.Information("✅ 嵌入资源响应: {Path} ({MimeType}, {Size} bytes)", relativePath, mimeType, memoryStream.Length);
         }
         catch (Exception ex)
         {

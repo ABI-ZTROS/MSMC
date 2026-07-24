@@ -25,6 +25,7 @@ export interface AppReadyEvent {
   version: string
   isAdmin: boolean
   theme: ThemeInfo
+  statusMessage?: string
 }
 
 export interface StatusUpdateEvent {

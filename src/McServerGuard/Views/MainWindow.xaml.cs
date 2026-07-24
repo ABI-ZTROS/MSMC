@@ -71,18 +71,6 @@ public partial class MainWindow : Window
                 LoadTestPage();
             }
 
-            // 发送应用初始化事件
-            await _bridgeService.SendEventAsync("app:ready", new
-            {
-                version = typeof(App).Assembly.GetName().Version?.ToString() ?? "0.0.0",
-                isAdmin = _vm?.IsAdminMode ?? false,
-                theme = new
-                {
-                    mode = _themeService.IsDarkMode ? "dark" : "light",
-                    primaryColor = _themeService.PrimaryColor.ToString(),
-                }
-            });
-
             Log.Information("✅ WebView2 初始化完成");
         }
         catch (Exception ex)
@@ -411,6 +399,22 @@ public partial class MainWindow : Window
                 version = typeof(App).Assembly.GetName().Version?.ToString() ?? "0.0.0",
                 name = "MSMC",
                 fullName = "Minecraft Server Management Console",
+            });
+        });
+
+        // 获取应用就绪状态（JS 端主动拉取，避免时序问题）
+        _bridgeService.RegisterRequestHandler("app:getReadyState", _ =>
+        {
+            return Task.FromResult<object?>(new
+            {
+                version = typeof(App).Assembly.GetName().Version?.ToString() ?? "0.0.0",
+                isAdmin = _vm?.IsAdminMode ?? false,
+                theme = new
+                {
+                    mode = _themeService.IsDarkMode ? "dark" : "light",
+                    primaryColor = _themeService.PrimaryColor.ToString(),
+                },
+                statusMessage = _vm?.StatusMessage ?? string.Empty,
             });
         });
 
