@@ -41,8 +41,11 @@ public partial class UserAgreementWindow : Window
     /// <summary>视觉警示动画计时器，用于驱动窗口位置微扰动效果</summary>
     private readonly DispatcherTimer _shakeTimer;
 
-    /// <summary>多实例提示窗口集合，用于批量展示通知信息</summary>
-    private readonly List<Window> _trollWindows = [];
+    /// <summary>多实例提示窗口集合及其原始位置，用于批量展示通知信息与晃动动画</summary>
+    private readonly List<(Window Window, double OriginalLeft, double OriginalTop)> _trollWindows = [];
+
+    /// <summary>倒计时是否因窗口失去焦点而暂停</summary>
+    private bool _isCountdownPaused;
 
     /// <summary>视觉警示动画剩余执行时长（毫秒）</summary>
     private int _shakeRemainingMs;
@@ -72,6 +75,8 @@ public partial class UserAgreementWindow : Window
         _shakeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         _shakeTimer.Tick += ShakeTimer_Tick;
         Loaded += UserAgreementWindow_Loaded;
+        Activated += UserAgreementWindow_Activated;
+        Deactivated += UserAgreementWindow_Deactivated;
     }
 
     /// <summary>
@@ -96,6 +101,42 @@ public partial class UserAgreementWindow : Window
         if (scrollViewer != null)
         {
             scrollViewer.ScrollChanged += AgreementScrollViewer_ScrollChanged;
+        }
+    }
+
+    /// <summary>
+    /// 窗口获得焦点事件处理程序
+    /// </summary>
+    /// <param name="sender">事件源对象</param>
+    /// <param name="e">事件参数</param>
+    /// <remarks>
+    /// 当窗口恢复焦点时，如果倒计时因失焦而暂停，则恢复倒计时。
+    /// </remarks>
+    private void UserAgreementWindow_Activated(object? sender, EventArgs e)
+    {
+        if (_isCountdownPaused && _remainingSeconds > 0)
+        {
+            _countdownTimer.Start();
+            _isCountdownPaused = false;
+            UpdateCountdownDisplay();
+        }
+    }
+
+    /// <summary>
+    /// 窗口失去焦点事件处理程序
+    /// </summary>
+    /// <param name="sender">事件源对象</param>
+    /// <param name="e">事件参数</param>
+    /// <remarks>
+    /// 当窗口失去焦点时，暂停倒计时并提示用户保持窗口焦点。
+    /// </remarks>
+    private void UserAgreementWindow_Deactivated(object? sender, EventArgs e)
+    {
+        if (_countdownTimer.IsEnabled && _remainingSeconds > 0)
+        {
+            _countdownTimer.Stop();
+            _isCountdownPaused = true;
+            CountdownText.Text = "⚠️ 请保持窗口焦点，倒计时已暂停";
         }
     }
 
@@ -246,7 +287,7 @@ public partial class UserAgreementWindow : Window
         for (int i = 0; i < 40; i++)
         {
             var troll = CreateTrollWindow();
-            _trollWindows.Add(troll);
+            _trollWindows.Add((troll, troll.Left, troll.Top));
             troll.Show();
         }
     }
@@ -347,23 +388,32 @@ public partial class UserAgreementWindow : Window
     {
         _shakeRemainingMs -= 50;
 
-        // 位置微扰动计算（±50px 范围内随机偏移）
-        int offsetX = _random.Next(-50, 51);
-        int offsetY = _random.Next(-50, 51);
-        Left = _originalLeft + offsetX;
-        Top = _originalTop + offsetY;
+        // 主窗口位置微扰动（±50px 范围内随机偏移）
+        Left = _originalLeft + _random.Next(-50, 51);
+        Top = _originalTop + _random.Next(-50, 51);
+
+        // 所有提示窗口同步随机晃动（各窗口独立偏移，营造混乱效果）
+        foreach (var (w, origLeft, origTop) in _trollWindows)
+        {
+            try
+            {
+                w.Left = origLeft + _random.Next(-30, 31);
+                w.Top = origTop + _random.Next(-30, 31);
+            }
+            catch { }
+        }
 
         // 动画执行时长耗尽，执行收尾流程
         if (_shakeRemainingMs <= 0)
         {
             _shakeTimer.Stop();
 
-            // 复位窗口位置至初始坐标
+            // 复位主窗口位置至初始坐标
             Left = _originalLeft;
             Top = _originalTop;
 
             // 关闭所有多实例提示窗口
-            foreach (var w in _trollWindows)
+            foreach (var (w, _, _) in _trollWindows)
             {
                 try { w.Close(); } catch { }
             }
