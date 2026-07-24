@@ -272,10 +272,12 @@ public class SystemMonitor : ISystemMonitor
         }
 
         // 在锁外异步释放 Timer —— DisposeAsync 会等待当前正在执行的回调完成，
-        // 避免回调中访问已 Dispose 的 CTS 而抛 ObjectDisposedException
+        // 避免回调中访问已 Dispose 的 CTS 而抛 ObjectDisposedException。
+        // 用 Task.Run 包裹 await 避免 CA2012（ValueTask 未使用警告），
+        // 同时将等待操作放到线程池，不阻塞 StopMonitoring 调用方。
         if (timerToDispose != null)
         {
-            _ = timerToDispose.DisposeAsync();
+            _ = Task.Run(async () => await timerToDispose.DisposeAsync().ConfigureAwait(false));
         }
 
         Log.Information("系统监控已停止");
