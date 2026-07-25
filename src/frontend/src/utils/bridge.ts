@@ -3,6 +3,7 @@ import type {
   AppInfo,
   AppReadyEvent,
   SystemMetrics,
+  HistoryPoint,
   ServerListResponse,
   ServerInfo,
   NetworkStatus,
@@ -306,6 +307,10 @@ export function onStatusUpdate(handler: (data: { message: string }) => void): ()
 
 export function getSystemMetrics(): Promise<SystemMetrics> {
   return bridge.invoke<SystemMetrics>('systemMonitor:getMetrics')
+}
+
+export function getSystemHistory(): Promise<HistoryPoint[]> {
+  return bridge.invoke<HistoryPoint[]>('systemMonitor:getHistory')
 }
 
 // ═════════════════════════════════════════════════════════════════════

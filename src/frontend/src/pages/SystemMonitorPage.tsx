@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { GaugeRing } from '@/components/ui'
-import { bridge, getSystemMetrics } from '@/utils/bridge'
-import type { SystemMetrics } from '@/types/bridge'
+import { bridge, getSystemMetrics, getSystemHistory } from '@/utils/bridge'
+import type { SystemMetrics, HistoryPoint } from '@/types/bridge'
+
+// 字节数转 GB
+function bytesToGB(bytes: number): number {
+  if (!bytes || bytes <= 0) return 0
+  return bytes / (1024 * 1024 * 1024)
+}
 
 // 格式化容量明细文本（已用 / 总共 GB）
-function formatCapacityInfo(used: number, total: number): string {
-  if (!total || total <= 0) return ''
+function formatCapacityInfo(usedBytes: number, totalBytes: number): string {
+  const total = bytesToGB(totalBytes)
+  const used = bytesToGB(usedBytes)
+  if (total <= 0) return ''
   return `${used.toFixed(1)} / ${total.toFixed(1)} GB`
 }
 
@@ -112,10 +120,11 @@ function SimpleLineChart({ data, color, height = 200, label }: LineChartProps): 
 
 export function SystemMonitorPage(): JSX.Element {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
+  const [history, setHistory] = useState<HistoryPoint[]>([])
   const [loadError, setLoadError] = useState(false)
   const intervalRef = useRef<number | null>(null)
 
-  // 拉取系统指标（含历史曲线，与 WPF 端 2 秒推送节奏一致）
+  // 拉取系统指标
   const fetchMetrics = async () => {
     try {
       const data = await getSystemMetrics()
@@ -127,10 +136,21 @@ export function SystemMonitorPage(): JSX.Element {
     }
   }
 
+  // 拉取历史数据（用于折线图）
+  const fetchHistory = async () => {
+    try {
+      const data = await getSystemHistory()
+      setHistory(data)
+    } catch (e) {
+      console.error('获取历史数据失败:', e)
+    }
+  }
+
   const handleStart = async () => {
     try {
       await bridge.invoke('systemMonitor:start')
       await fetchMetrics()
+      await fetchHistory()
     } catch (e) {
       console.error('启动监控失败:', e)
     }
@@ -148,10 +168,12 @@ export function SystemMonitorPage(): JSX.Element {
   useEffect(() => {
     // 初始拉取
     fetchMetrics()
+    fetchHistory()
 
-    // 每 2 秒自动刷新，与 WPF 版一致
+    // 每 2 秒自动刷新指标，与 WPF 版一致
     intervalRef.current = window.setInterval(() => {
       fetchMetrics()
+      fetchHistory()
     }, 2000)
 
     return () => {
@@ -161,12 +183,14 @@ export function SystemMonitorPage(): JSX.Element {
     }
   }, [])
 
-  const cpu = metrics?.cpuUsage ?? 0
-  const mem = metrics?.memoryUsage ?? 0
-  const disk = metrics?.diskUsage ?? 0
-  const threads = metrics?.threadCount ?? 0
-  const cpuHistory = metrics?.cpuHistory ?? []
-  const memHistory = metrics?.memoryHistory ?? []
+  // 从历史数据提取 CPU 和内存曲线
+  const cpuHistory = history.map(h => h.cpuUsagePercent)
+  const memHistory = history.map(h => h.memoryUsagePercent)
+
+  const cpu = metrics?.cpuUsagePercent ?? 0
+  const mem = metrics?.memoryUsagePercent ?? 0
+  const disk = metrics?.diskUsagePercent ?? 0
+  const threads = metrics?.totalThreadCount ?? 0
 
   return (
     <div className="md-page-enter h-full overflow-auto" style={{ padding: 8 }}>
@@ -231,7 +255,7 @@ export function SystemMonitorPage(): JSX.Element {
               textAlign: 'center',
             }}
           >
-            {metrics ? formatCapacityInfo(metrics.usedMemoryGB, metrics.totalMemoryGB) : ''}
+            {metrics ? formatCapacityInfo(metrics.usedMemoryBytes, metrics.totalMemoryBytes) : ''}
           </div>
         </div>
 
@@ -256,7 +280,7 @@ export function SystemMonitorPage(): JSX.Element {
               textAlign: 'center',
             }}
           >
-            {metrics ? formatCapacityInfo(metrics.usedDiskGB, metrics.totalDiskGB) : ''}
+            {metrics ? formatCapacityInfo(metrics.diskUsedBytes, metrics.diskTotalBytes) : ''}
           </div>
         </div>
 
@@ -279,7 +303,7 @@ export function SystemMonitorPage(): JSX.Element {
               marginTop: 8,
             }}
           >
-            ⚠
+            ⚡
           </div>
           <div
             style={{

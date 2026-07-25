@@ -45,23 +45,27 @@ export interface StatusUpdateEvent {
 // ─────────────────────────────────────────────────────────────────────
 
 export interface SystemMetrics {
-  cpuUsage: number
-  memoryUsage: number
-  diskUsage: number
-  threadCount: number
-  uptime: string
-  processCount: number
-  networkLatency: number
-  serverStatus: string
+  cpuUsagePercent: number
+  memoryUsagePercent: number
+  diskUsagePercent: number
+  totalMemoryBytes: number
+  usedMemoryBytes: number
+  diskTotalBytes: number
+  diskUsedBytes: number
+  diskName: string
+  totalThreadCount: number
+  javaCpuUsagePercent: number
+  javaWorkingSetBytes: number
+  javaThreadCount: number
   isMonitoring: boolean
-  javaMemoryUsed: number
-  javaMemoryMax: number
-  totalMemoryGB: number
-  usedMemoryGB: number
-  totalDiskGB: number
-  usedDiskGB: number
-  cpuHistory: number[]
-  memoryHistory: number[]
+  memoryInfoText: string
+  diskInfoText: string
+}
+
+export interface HistoryPoint {
+  timestamp: string
+  cpuUsagePercent: number
+  memoryUsagePercent: number
 }
 
 // ─────────────────────────────────────────────────────────────────────
