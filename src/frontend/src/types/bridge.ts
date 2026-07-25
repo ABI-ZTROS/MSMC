@@ -329,3 +329,27 @@ export interface SwatchesResponse {
 export interface PresetsResponse {
   presets: PresetInfo[]
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 关于页面 - 团队信息类型
+// ─────────────────────────────────────────────────────────────────────
+
+export interface TeamMember {
+  name: string
+  role: string
+  github?: string
+  avatar?: string
+  note?: string
+  isClickable?: boolean
+  hasHeartIcon?: boolean
+  hasCrossIcon?: boolean
+  isMemorial?: boolean
+  description?: string
+}
+
+export interface TeamInfoResponse {
+  primaryDevelopers: TeamMember[]
+  specialThanks: TeamMember[]
+  memorial: TeamMember[]
+  contributors: TeamMember[]
+}

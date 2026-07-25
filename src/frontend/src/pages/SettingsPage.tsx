@@ -6,6 +6,10 @@ import {
   FaCheck,
   FaShield,
   FaMugHot,
+  FaHeart,
+  FaGithub,
+  FaXmark,
+  FaUser,
 } from 'react-icons/fa6'
 import {
   getSettings,
@@ -23,6 +27,7 @@ import {
   getPresets,
   getPrimarySwatches,
   getAccentSwatches,
+  getTeamInfo,
 } from '@/utils/bridge'
 import type {
   SettingsData,
@@ -32,6 +37,7 @@ import type {
   ThemePreset,
   SwatchInfo,
   PresetInfo,
+  TeamInfoResponse,
 } from '@/types/bridge'
 import { applySettingsToCss } from '@/utils/theme'
 
@@ -58,6 +64,10 @@ export function SettingsPage(): JSX.Element {
   const [accentSwatches, setAccentSwatches] = useState<SwatchInfo[]>([])
   const [presetOptions, setPresetOptions] = useState<PresetInfo[]>([])
   const [swatchesLoading, setSwatchesLoading] = useState(true)
+
+  // 团队信息
+  const [teamInfo, setTeamInfo] = useState<TeamInfoResponse | null>(null)
+  const [teamLoading, setTeamLoading] = useState(true)
 
   // HEX 输入框本地值（失焦时才提交到后端）
   const [primaryHexInput, setPrimaryHexInput] = useState('')
@@ -114,14 +124,27 @@ export function SettingsPage(): JSX.Element {
     }
   }, [])
 
+  const loadTeamInfo = useCallback(async (): Promise<void> => {
+    try {
+      setTeamLoading(true)
+      const resp = await getTeamInfo()
+      setTeamInfo(resp)
+    } catch (e) {
+      console.error('获取团队信息失败:', e)
+    } finally {
+      setTeamLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     loadSettings()
     loadJavaList()
     loadSwatchesAndPresets()
+    loadTeamInfo()
     getAppInfo()
       .then((info) => setAppInfo(info))
       .catch((e) => console.error('获取应用信息失败:', e))
-  }, [loadSettings, loadJavaList, loadSwatchesAndPresets])
+  }, [loadSettings, loadJavaList, loadSwatchesAndPresets, loadTeamInfo])
 
   // ─── 颜色设置 ───
   const handleSetPrimary = async (hex: string): Promise<void> => {
@@ -1035,23 +1058,563 @@ export function SettingsPage(): JSX.Element {
           </div>
         </div>
 
-        {/* 测试通知按钮 */}
-        <button
-          className="md-btn md-btn-outlined"
-          style={{ padding: '12px 20px', minHeight: 44 }}
-          onClick={handleTestNotification}
-        >
-          <FaBell size={16} />
-          <span style={{ marginLeft: 8 }}>发送测试通知</span>
-        </button>
+        {/* 开发团队标题 */}
         <div
           style={{
-            fontSize: 12,
-            color: 'var(--md-body-light)',
-            marginTop: 8,
+            borderTop: '1px solid var(--md-card-subtle-border)',
+            paddingTop: 16,
+            marginBottom: 12,
           }}
         >
-          点击测试按钮可以验证通知功能是否正常工作
+          <h3
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              color: 'var(--md-body)',
+              margin: 0,
+              textAlign: 'center',
+            }}
+          >
+            开发团队
+          </h3>
+        </div>
+
+        {teamLoading ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: 12,
+                    backgroundColor: 'var(--md-card-hover)',
+                    borderRadius: 'var(--md-radius)',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                  }}
+                >
+                  <div className="flex items-center">
+                    <div
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: '50%',
+                        backgroundColor: 'var(--md-subtle-border)',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ marginLeft: 10, flex: 1 }}>
+                      <div
+                        style={{
+                          width: '60%',
+                          height: 14,
+                          backgroundColor: 'var(--md-subtle-border)',
+                          borderRadius: 2,
+                          marginBottom: 6,
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: '80%',
+                          height: 12,
+                          backgroundColor: 'var(--md-subtle-border)',
+                          borderRadius: 2,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div
+              style={{
+                padding: 16,
+                backgroundColor: 'var(--md-card-hover)',
+                borderRadius: 'var(--md-radius)',
+                animation: 'pulse 1.5s ease-in-out infinite',
+              }}
+            >
+              <div className="flex items-center justify-center">
+                <div
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--md-subtle-border)',
+                  }}
+                />
+              </div>
+              <div
+                style={{
+                  width: '40%',
+                  height: 14,
+                  backgroundColor: 'var(--md-subtle-border)',
+                  borderRadius: 2,
+                  margin: '10px auto 6px auto',
+                }}
+              />
+              <div
+                style={{
+                  width: '60%',
+                  height: 12,
+                  backgroundColor: 'var(--md-subtle-border)',
+                  borderRadius: 2,
+                  margin: '0 auto',
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* 主开发者 + 特别感谢 两列布局 */}
+            <div className="grid grid-cols-2 gap-4" style={{ marginBottom: 16 }}>
+              {/* 主开发者 */}
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'var(--md-body-light)',
+                    marginBottom: 8,
+                    textAlign: 'center',
+                  }}
+                >
+                  主开发者
+                </div>
+                <div className="space-y-2">
+                  {teamInfo?.primaryDevelopers.map((member, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: 12,
+                        backgroundColor: 'var(--md-card-hover)',
+                        borderRadius: 'var(--md-radius)',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--md-primary-subtle-background)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <FaUser
+                          size={24}
+                          style={{ color: 'var(--md-accent-text)' }}
+                        />
+                      </div>
+                      <div style={{ marginLeft: 10, flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: 'var(--md-body)',
+                            fontSize: 13,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          {member.name}
+                          {member.hasHeartIcon && (
+                            <FaHeart
+                              size={12}
+                              style={{ color: '#FB7185' }}
+                            />
+                          )}
+                          {member.hasCrossIcon && (
+                            <FaXmark
+                              size={14}
+                              style={{ color: 'var(--md-body-light)' }}
+                            />
+                          )}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: 'var(--md-body-light)',
+                            marginTop: 2,
+                          }}
+                        >
+                          {member.role}
+                        </div>
+                        {member.github && (
+                          <a
+                            href={`https://github.com/${member.github}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: 11,
+                              color: 'var(--md-accent-text)',
+                              marginTop: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            <FaGithub size={12} />
+                            @{member.github}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 中间爱心 + 特别感谢 */}
+              <div style={{ position: 'relative' }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'var(--md-body-light)',
+                    marginBottom: 8,
+                    textAlign: 'center',
+                  }}
+                >
+                  特别感谢
+                </div>
+                <div className="space-y-2">
+                  {teamInfo?.specialThanks.map((member, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: 12,
+                        backgroundColor: 'var(--md-card-hover)',
+                        borderRadius: 'var(--md-radius)',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--md-primary-subtle-background)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <FaUser
+                          size={24}
+                          style={{ color: 'var(--md-accent-text)' }}
+                        />
+                      </div>
+                      <div style={{ marginLeft: 10, flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: 'var(--md-body)',
+                            fontSize: 13,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          {member.name}
+                          {member.hasHeartIcon && (
+                            <FaHeart
+                              size={12}
+                              style={{ color: '#FB7185' }}
+                            />
+                          )}
+                          {member.hasCrossIcon && (
+                            <FaXmark
+                              size={14}
+                              style={{ color: 'var(--md-body-light)' }}
+                            />
+                          )}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: 'var(--md-body-light)',
+                            marginTop: 2,
+                          }}
+                        >
+                          {member.role}
+                        </div>
+                        {member.github && (
+                          <a
+                            href={`https://github.com/${member.github}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: 11,
+                              color: 'var(--md-accent-text)',
+                              marginTop: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            <FaGithub size={12} />
+                            @{member.github}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 中间爱心装饰 */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                margin: '-28px 0 12px 0',
+                position: 'relative',
+                zIndex: 1,
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--md-card-background)',
+                  border: '2px solid var(--md-card-subtle-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <FaHeart
+                  size={18}
+                  style={{ color: '#FB7185' }}
+                />
+              </div>
+            </div>
+
+            {/* 纪念卡片 */}
+            {teamInfo?.memorial && teamInfo.memorial.length > 0 && (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: 20,
+                  background: 'linear-gradient(135deg, #2D1F14 0%, #3D2A1A 100%)',
+                  border: '2px solid #D4AF37',
+                  borderRadius: 'var(--md-radius)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.15) 0%, transparent 60%)',
+                    pointerEvents: 'none',
+                  }}
+                />
+                {teamInfo.memorial.map((member, idx) => (
+                  <div
+                    key={idx}
+                    className="flex flex-col items-center"
+                    style={{ position: 'relative', zIndex: 1 }}
+                  >
+                    <div
+                      style={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: '50%',
+                        backgroundColor: 'rgba(212, 175, 55, 0.2)',
+                        border: '2px solid #D4AF37',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <FaUser
+                        size={32}
+                        style={{ color: '#D4AF37' }}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: '#D4AF37',
+                        marginTop: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      {member.name}
+                      <FaHeart
+                        size={14}
+                        style={{ color: '#FB7185' }}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: '#C9A86C',
+                        marginTop: 4,
+                      }}
+                    >
+                      {member.role}
+                    </div>
+                    {member.description && (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: '#B8956A',
+                          marginTop: 8,
+                          textAlign: 'center',
+                          fontStyle: 'italic',
+                        }}
+                      >
+                        {member.description}
+                      </div>
+                    )}
+                    {member.github && (
+                      <a
+                        href={`https://github.com/${member.github}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: 11,
+                          color: '#D4AF37',
+                          marginTop: 6,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          textDecoration: 'none',
+                        }}
+                      >
+                        <FaGithub size={12} />
+                        @{member.github}
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 贡献者 */}
+            {teamInfo?.contributors && teamInfo.contributors.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'var(--md-body-light)',
+                    marginBottom: 8,
+                    textAlign: 'center',
+                  }}
+                >
+                  贡献者
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {teamInfo.contributors.map((member, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: 10,
+                        backgroundColor: 'var(--md-card-hover)',
+                        borderRadius: 'var(--md-radius)',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--md-primary-subtle-background)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <FaUser
+                          size={20}
+                          style={{ color: 'var(--md-accent-text)' }}
+                        />
+                      </div>
+                      <div style={{ marginLeft: 8, flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: 'var(--md-body)',
+                            fontSize: 12,
+                          }}
+                        >
+                          {member.name}
+                        </div>
+                        {member.github && (
+                          <a
+                            href={`https://github.com/${member.github}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: 10,
+                              color: 'var(--md-accent-text)',
+                              marginTop: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 3,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            <FaGithub size={10} />
+                            @{member.github}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* 测试通知按钮 */}
+        <div
+          style={{
+            borderTop: '1px solid var(--md-card-subtle-border)',
+            paddingTop: 16,
+          }}
+        >
+          <button
+            className="md-btn md-btn-outlined"
+            style={{ padding: '12px 20px', minHeight: 44, width: '100%' }}
+            onClick={handleTestNotification}
+          >
+            <FaBell size={16} />
+            <span style={{ marginLeft: 8 }}>发送测试通知</span>
+          </button>
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--md-body-light)',
+              marginTop: 8,
+              textAlign: 'center',
+            }}
+          >
+            点击测试按钮可以验证通知功能是否正常工作
+          </div>
         </div>
       </div>
 

@@ -1398,6 +1398,64 @@ public partial class MainWindow : Window
             return Task.FromResult<object?>(new { swatches });
         });
 
+        _bridgeService.RegisterRequestHandler("about:getTeamInfo", _ =>
+        {
+            return Task.FromResult<object?>(new
+            {
+                primaryDevelopers = new[]
+                {
+                    new
+                    {
+                        name = "ABI-ZTROS",
+                        role = "主要开发 · 项目发起者",
+                        github = "github.com/ABI-ZTROS",
+                        avatar = "",
+                        isClickable = true
+                    }
+                },
+                specialThanks = new[]
+                {
+                    new
+                    {
+                        name = "烟蓝湘",
+                        role = "情绪支持",
+                        note = "Special Thanks 💖",
+                        avatar = "",
+                        hasHeartIcon = true
+                    }
+                },
+                memorial = new[]
+                {
+                    new
+                    {
+                        name = "Gglaoguan",
+                        role = "已退役 · 铭记贡献",
+                        description = "人生自古谁无死？不幸的，此开发者由于不可控因素已经永远离开了我们。因此无法继续投入到开发工作当中。让我们永远缅怀他。",
+                        github = "github.com/Gglaoguan",
+                        hasCrossIcon = true,
+                        isMemorial = true
+                    }
+                },
+                contributors = new[]
+                {
+                    new
+                    {
+                        name = "MochaCello92377",
+                        role = "Debug · 功能建议",
+                        github = "MochaCello92377",
+                        avatar = ""
+                    },
+                    new
+                    {
+                        name = "CatStack-pixe",
+                        role = "测试环境",
+                        github = "CatStack-pixe",
+                        avatar = ""
+                    }
+                }
+            });
+        });
+
         Log.Information("✅ 设置 API 注册完成");
     }
 

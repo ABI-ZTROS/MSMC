@@ -24,6 +24,7 @@ import type {
   ThemeApplyResult,
   SwatchesResponse,
   PresetsResponse,
+  TeamInfoResponse,
 } from '@/types/bridge'
 
 declare global {
@@ -474,4 +475,12 @@ export function getPrimarySwatches(): Promise<SwatchesResponse> {
 
 export function getAccentSwatches(): Promise<SwatchesResponse> {
   return bridge.invoke<SwatchesResponse>('settings:getAccentSwatches')
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 关于页面 API
+// ═════════════════════════════════════════════════════════════════════
+
+export function getTeamInfo(): Promise<TeamInfoResponse> {
+  return bridge.invoke<TeamInfoResponse>('about:getTeamInfo')
 }
