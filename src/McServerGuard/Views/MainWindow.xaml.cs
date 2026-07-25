@@ -605,6 +605,11 @@ public partial class MainWindow : Window
             });
         });
 
+        // === 补齐网络监控、配置编辑、设置三大模块的 API ===
+        RegisterNetworkApis();
+        RegisterConfigApis();
+        RegisterSettingsApis();
+
         // 订阅来自 JS 的事件（调试用）
         _bridgeService.SubscribeToEvents((action, payload) =>
         {
@@ -612,6 +617,555 @@ public partial class MainWindow : Window
         });
 
         Log.Information("✅ 桥接 API 注册完成");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 网络监控相关桥接 API
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 注册网络监控模块的桥接 API
+    /// </summary>
+    private void RegisterNetworkApis()
+    {
+        var net = _vm?.NetworkPage;
+
+        // 获取网络状态摘要
+        _bridgeService.RegisterRequestHandler("network:getStatus", _ =>
+        {
+            return Task.FromResult<object?>(new
+            {
+                totalPorts = net?.TotalPorts ?? 0,
+                usedPorts = net?.UsedPorts ?? 0,
+                usedPercentage = net?.UsedPercentage ?? 0,
+                systemPorts = net?.SystemPorts ?? 0,
+                registeredPorts = net?.RegisteredPorts ?? 0,
+                dynamicPorts = net?.DynamicPorts ?? 0,
+                uploadSpeedMB = net?.UploadSpeedMB ?? 0,
+                downloadSpeedMB = net?.DownloadSpeedMB ?? 0,
+                speedMaximumMB = net?.SpeedMaximumMB ?? 1.5,
+                uploadSpeedText = net?.UploadSpeedText ?? "0 B/s",
+                downloadSpeedText = net?.DownloadSpeedText ?? "0 B/s",
+                todayUploadText = net?.TodayUploadText ?? "0 B",
+                todayDownloadText = net?.TodayDownloadText ?? "0 B",
+                dailyAnalysisText = net?.DailyAnalysisText ?? string.Empty,
+                isRefreshing = net?.IsRefreshing ?? false,
+                currentHour = net?.CurrentHour ?? DateTime.Now.Hour,
+            });
+        });
+
+        // 获取端口占用列表
+        _bridgeService.RegisterRequestHandler("network:getPorts", _ =>
+        {
+            var ports = net?.ListeningPorts ?? [];
+            var result = ports.Select(p => new
+            {
+                port = p.Port,
+                protocol = p.Protocol,
+                processId = p.ProcessId,
+                processName = p.ProcessName ?? string.Empty,
+                isOpen = p.IsOpen,
+                portRange = p.PortRange.ToString(),
+            }).ToList();
+
+            return Task.FromResult<object?>(new
+            {
+                ports = result,
+                count = result.Count,
+            });
+        });
+
+        // 获取桥接规则列表
+        _bridgeService.RegisterRequestHandler("network:getBridgeRules", _ =>
+        {
+            var rules = net?.BridgeRules ?? [];
+            var result = rules.Select(r => new
+            {
+                listenAddress = r.ListenAddress,
+                listenPort = r.ListenPort,
+                connectAddress = r.ConnectAddress,
+                connectPort = r.ConnectPort,
+                protocol = r.Protocol,
+                engine = r.Engine,
+            }).ToList();
+
+            return Task.FromResult<object?>(new
+            {
+                rules = result,
+                count = result.Count,
+            });
+        });
+
+        // 添加桥接规则
+        _bridgeService.RegisterRequestHandler("network:addBridge", payload =>
+        {
+            try
+            {
+                var json = payload?.ToString() ?? "{}";
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                var listenAddress = root.TryGetProperty("listenAddress", out var la) ? la.GetString() ?? "0.0.0.0" : "0.0.0.0";
+                var listenPort = root.TryGetProperty("listenPort", out var lp) ? lp.GetInt32() : 0;
+                var connectAddress = root.TryGetProperty("connectAddress", out var ca) ? ca.GetString() ?? "127.0.0.1" : "127.0.0.1";
+                var connectPort = root.TryGetProperty("connectPort", out var cp) ? cp.GetInt32() : 0;
+                var addFirewall = root.TryGetProperty("addFirewall", out var af) && af.GetBoolean();
+
+                if (net != null)
+                {
+                    net.BridgeListenAddress = listenAddress;
+                    net.BridgeListenPort = listenPort;
+                    net.BridgeConnectAddress = connectAddress;
+                    net.BridgeConnectPort = connectPort;
+                    net.BridgeAddFirewall = addFirewall;
+                    net.AddBridgeCommand.Execute(null);
+                }
+
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "添加桥接规则失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 删除桥接规则
+        _bridgeService.RegisterRequestHandler("network:removeBridge", payload =>
+        {
+            try
+            {
+                var json = payload?.ToString() ?? "{}";
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                var listenAddress = root.TryGetProperty("listenAddress", out var la) ? la.GetString() ?? "0.0.0.0" : "0.0.0.0";
+                var listenPort = root.TryGetProperty("listenPort", out var lp) ? lp.GetInt32() : 0;
+                var protocol = root.TryGetProperty("protocol", out var p) ? p.GetString() ?? "v4tov4" : "v4tov4";
+
+                if (net != null)
+                {
+                    var rule = net.BridgeRules.FirstOrDefault(r =>
+                        r.ListenAddress == listenAddress && r.ListenPort == listenPort && r.Protocol == protocol);
+                    if (rule != null)
+                    {
+                        net.RemoveBridgeCommand.Execute(rule);
+                    }
+                }
+
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "删除桥接规则失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 结束占用端口的进程
+        _bridgeService.RegisterRequestHandler("network:killProcess", payload =>
+        {
+            try
+            {
+                var json = payload?.ToString() ?? "{}";
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                var port = root.TryGetProperty("port", out var pe) ? pe.GetInt32() : 0;
+                var protocol = root.TryGetProperty("protocol", out var pr) ? pr.GetString() ?? "TCP" : "TCP";
+
+                if (net != null && net.ListeningPorts != null)
+                {
+                    var portInfo = net.ListeningPorts.FirstOrDefault(p => p.Port == port && p.Protocol == protocol);
+                    if (portInfo != null)
+                    {
+                        net.SelectedPort = portInfo;
+                        net.KillProcessCommand.Execute(null);
+                    }
+                }
+
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "结束进程失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 获取常见端口列表
+        _bridgeService.RegisterRequestHandler("network:getCommonPorts", _ =>
+        {
+            var commonPorts = McServerGuard.Constants.CommonPorts.All;
+            var result = commonPorts.Cast<McServerGuard.Models.CommonPort>().Select(p => new
+            {
+                port = p.Port,
+                name = p.Name,
+                description = p.Description,
+                category = p.Category,
+            }).ToList();
+
+            return Task.FromResult<object?>(new { ports = result });
+        });
+
+        // 刷新网络数据
+        _bridgeService.RegisterRequestHandler("network:refresh", async _ =>
+        {
+            if (net != null)
+            {
+                await net.RefreshCommand.ExecuteAsync(null);
+            }
+            return Task.FromResult<object?>(new { success = true });
+        });
+
+        Log.Information("✅ 网络监控 API 注册完成");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 配置编辑相关桥接 API
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 注册配置编辑模块的桥接 API
+    /// </summary>
+    private void RegisterConfigApis()
+    {
+        var cfg = _vm?.ConfigPage;
+
+        // 获取可用服务器列表
+        _bridgeService.RegisterRequestHandler("config:getAvailableServers", _ =>
+        {
+            var servers = cfg?.AvailableServers ?? [];
+            var result = servers.Select(s => new
+            {
+                displayName = s.DisplayName,
+                workingDirectory = s.WorkingDirectory,
+                serverJarName = s.ServerJarName,
+                serverJarPath = s.ServerJarPath,
+                serverPort = s.ServerPort,
+            }).ToList();
+
+            return Task.FromResult<object?>(new { servers = result });
+        });
+
+        // 获取配置文件树
+        _bridgeService.RegisterRequestHandler("config:getFileTree", _ =>
+        {
+            var tree = cfg?.ConfigFileTree ?? [];
+
+            object FormatTree(List<McServerGuard.ViewModels.ConfigFileItem> items) =>
+                items.Select(i => new
+                {
+                    fileName = i.FileName,
+                    fullPath = i.FullPath,
+                    relativePath = i.RelativePath,
+                    isDirectory = i.IsDirectory,
+                    children = i.Children.Count > 0 ? FormatTree(i.Children) : new List<object>(),
+                }).ToList();
+
+            var result = FormatTree(tree);
+
+            return Task.FromResult<object?>(new
+            {
+                tree = result,
+                count = cfg?.ConfigFiles.Count ?? 0,
+                configFileCountText = cfg?.ConfigFileCountText ?? "未找到配置文件",
+                hasServerDirectory = cfg?.HasServerDirectory ?? false,
+                serverWorkingDirectory = cfg?.ServerWorkingDirectory ?? string.Empty,
+                selectedServerName = cfg?.SelectedServerName,
+            });
+        });
+
+        // 选中配置文件（触发加载）
+        _bridgeService.RegisterRequestHandler("config:selectFile", payload =>
+        {
+            try
+            {
+                var relativePath = payload?.ToString() ?? string.Empty;
+                if (cfg != null && !string.IsNullOrEmpty(relativePath))
+                {
+                    cfg.SelectedConfigFile = relativePath;
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 获取当前配置条目（分组）
+        _bridgeService.RegisterRequestHandler("config:getEntries", _ =>
+        {
+            var groups = cfg?.GroupedConfigEntries ?? [];
+
+            object FormatEntry(McServerGuard.Models.ServerConfigEntry e) => new
+            {
+                key = e.Key,
+                value = e.Value,
+                originalValue = e.OriginalValue,
+                displayName = e.DisplayName,
+                friendlyDisplayName = e.FriendlyDisplayName,
+                description = e.Description,
+                isModified = e.IsModified,
+                isValid = e.IsValid,
+                errorMessage = e.ErrorMessage,
+                requiresRestart = e.RequiresRestart,
+                isBoolType = e.IsBoolType,
+                isEnumType = e.IsEnumType,
+                isNumericType = e.IsNumericType,
+                isStringType = e.IsStringType,
+                allowedValues = e.Descriptor?.AllowedValues,
+                minValue = e.Descriptor?.MinValue,
+                maxValue = e.Descriptor?.MaxValue,
+                valueType = e.Descriptor?.ValueType ?? "string",
+            };
+
+            var result = groups.Select(g => new
+            {
+                key = g.Key,
+                items = g.Items.Select(FormatEntry).ToList(),
+            }).ToList();
+
+            return Task.FromResult<object?>(new
+            {
+                groups = result,
+                totalCount = cfg?.ConfigEntries.Count ?? 0,
+                hasUnsavedChanges = cfg?.HasUnsavedChanges ?? false,
+                isLoading = cfg?.IsLoading ?? false,
+                loadProgress = cfg?.LoadProgress ?? 0,
+                selectedConfigFile = cfg?.SelectedConfigFile,
+                selectedConfigFileName = cfg?.SelectedConfigFileName,
+                saveStatusMessage = cfg?.SaveStatusMessage,
+                isSaveError = cfg?.IsSaveError ?? false,
+            });
+        });
+
+        // 更新配置项的值
+        _bridgeService.RegisterRequestHandler("config:updateValue", payload =>
+        {
+            try
+            {
+                var json = payload?.ToString() ?? "{}";
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                var key = root.TryGetProperty("key", out var k) ? k.GetString() : null;
+                var value = root.TryGetProperty("value", out var v) ? v.GetString() : null;
+
+                if (cfg != null && key != null && value != null)
+                {
+                    var entry = cfg.ConfigEntries.FirstOrDefault(e => e.Key == key);
+                    if (entry != null)
+                    {
+                        entry.Value = value;
+                    }
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 保存配置
+        _bridgeService.RegisterRequestHandler("config:save", _ =>
+        {
+            if (cfg != null)
+            {
+                cfg.SaveConfigCommand.Execute(null);
+            }
+            return Task.FromResult<object?>(new
+            {
+                success = !cfg?.IsSaveError ?? false,
+                message = cfg?.SaveStatusMessage,
+            });
+        });
+
+        // 重置变更
+        _bridgeService.RegisterRequestHandler("config:reset", _ =>
+        {
+            cfg?.ResetChangesCommand.Execute(null);
+            return Task.FromResult<object?>(new { success = true });
+        });
+
+        // 撤销
+        _bridgeService.RegisterRequestHandler("config:undo", _ =>
+        {
+            cfg?.UndoCommand.Execute(null);
+            return Task.FromResult<object?>(new { success = true });
+        });
+
+        // 选择服务器
+        _bridgeService.RegisterRequestHandler("config:selectServer", payload =>
+        {
+            try
+            {
+                var name = payload?.ToString() ?? string.Empty;
+                if (cfg != null && !string.IsNullOrEmpty(name))
+                {
+                    cfg.SelectedServerName = name;
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 重新扫描配置文件
+        _bridgeService.RegisterRequestHandler("config:rescan", _ =>
+        {
+            cfg?.RescanConfigFilesCommand.Execute(null);
+            return Task.FromResult<object?>(new { success = true });
+        });
+
+        Log.Information("✅ 配置编辑 API 注册完成");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 设置相关桥接 API
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 注册设置模块的桥接 API
+    /// </summary>
+    private void RegisterSettingsApis()
+    {
+        var settings = _vm?.SettingsPage;
+
+        // 获取所有设置
+        _bridgeService.RegisterRequestHandler("settings:get", _ =>
+        {
+            return Task.FromResult<object?>(new
+            {
+                primaryColorHex = settings?.PrimaryColorHex ?? "#FF3B82F6",
+                accentColorHex = settings?.AccentColorHex ?? "#FFFB7185",
+                backgroundColorHex = settings?.BackgroundColorHex ?? "#FF020617",
+                cardColorHex = settings?.CardColorHex ?? "#FF0F172A",
+                textColorHex = settings?.TextColorHex ?? "#FFE2E8F0",
+                borderColorHex = settings?.BorderColorHex ?? "#FF334155",
+                cornerRadius = settings?.CornerRadius ?? 12,
+                animationDuration = settings?.AnimationDuration ?? 300,
+                enableAnimations = settings?.EnableAnimations ?? true,
+                enableWindowsNotifications = settings?.EnableWindowsNotifications ?? true,
+                preferJavaw = settings?.PreferJavaw ?? true,
+                statusMessage = settings?.StatusMessage ?? string.Empty,
+                isDarkMode = _themeService.IsDarkMode,
+            });
+        });
+
+        // 设置主色
+        _bridgeService.RegisterRequestHandler("settings:setPrimaryColor", payload =>
+        {
+            var hex = payload?.ToString() ?? "#3B82F6";
+            settings?.SetPrimaryColorCommand.Execute(hex);
+            return Task.FromResult<object?>(new { success = true });
+        });
+
+        // 设置强调色
+        _bridgeService.RegisterRequestHandler("settings:setAccentColor", payload =>
+        {
+            var hex = payload?.ToString() ?? "#FB7185";
+            settings?.SetAccentColorCommand.Execute(hex);
+            return Task.FromResult<object?>(new { success = true });
+        });
+
+        // 应用主题
+        _bridgeService.RegisterRequestHandler("settings:applyTheme", _ =>
+        {
+            settings?.ApplyThemeCommand.Execute(null);
+            return Task.FromResult<object?>(new
+            {
+                success = true,
+                primaryColorHex = settings?.PrimaryColorHex,
+                isDarkMode = _themeService.IsDarkMode,
+            });
+        });
+
+        // 保存设置
+        _bridgeService.RegisterRequestHandler("settings:save", _ =>
+        {
+            settings?.SaveSettingsCommand.Execute(null);
+            return Task.FromResult<object?>(new { success = true });
+        });
+
+        // 应用预设
+        _bridgeService.RegisterRequestHandler("settings:setPreset", payload =>
+        {
+            var preset = payload?.ToString() ?? "SkyBlue";
+            settings?.SetPresetCommand.Execute(preset);
+            return Task.FromResult<object?>(new
+            {
+                success = true,
+                primaryColorHex = settings?.PrimaryColorHex,
+                accentColorHex = settings?.AccentColorHex,
+            });
+        });
+
+        // 重置为默认
+        _bridgeService.RegisterRequestHandler("settings:reset", _ =>
+        {
+            settings?.ResetToDefaultCommand.Execute(null);
+            return Task.FromResult<object?>(new
+            {
+                success = true,
+                primaryColorHex = settings?.PrimaryColorHex,
+                accentColorHex = settings?.AccentColorHex,
+            });
+        });
+
+        // 切换动画开关
+        _bridgeService.RegisterRequestHandler("settings:toggleAnimations", _ =>
+        {
+            if (settings != null)
+            {
+                settings.EnableAnimations = !settings.EnableAnimations;
+            }
+            return Task.FromResult<object?>(new
+            {
+                success = true,
+                enableAnimations = settings?.EnableAnimations ?? true,
+            });
+        });
+
+        // 测试通知
+        _bridgeService.RegisterRequestHandler("settings:testNotification", _ =>
+        {
+            settings?.TestNotificationCommand.Execute(null);
+            return Task.FromResult<object?>(new { success = true });
+        });
+
+        // 获取 Java 列表
+        _bridgeService.RegisterRequestHandler("settings:getJavaList", _ =>
+        {
+            var javas = settings?.JavaInstallations ?? [];
+            var result = javas.Select(j => new
+            {
+                javaPath = j.Installation.JavaPath,
+                javaHome = j.Installation.JavaHome,
+                versionString = j.Installation.VersionString,
+                versionDisplay = j.VersionDisplay,
+                isDefault = j.IsDefault,
+                isCustom = j.IsCustom,
+            }).ToList();
+
+            return Task.FromResult<object?>(new
+            {
+                javas = result,
+                isScanning = settings?.IsScanningJava ?? false,
+                selectedJava = settings?.SelectedJava?.Installation.JavaPath,
+            });
+        });
+
+        // 重新扫描 Java
+        _bridgeService.RegisterRequestHandler("settings:rescanJava", _ =>
+        {
+            settings?.RescanJavaCommand.Execute(null);
+            return Task.FromResult<object?>(new { success = true });
+        });
+
+        Log.Information("✅ 设置 API 注册完成");
     }
 
     // DataContext 变更事件处理

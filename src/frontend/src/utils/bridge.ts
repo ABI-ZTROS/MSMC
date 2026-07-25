@@ -1,4 +1,26 @@
-import type { BridgeMessage, AppInfo, AppReadyEvent } from '@/types/bridge'
+import type {
+  BridgeMessage,
+  AppInfo,
+  AppReadyEvent,
+  SystemMetrics,
+  ServerListResponse,
+  ServerInfo,
+  NetworkStatus,
+  PortsResponse,
+  BridgeRulesResponse,
+  CommonPortInfo,
+  AddBridgeRequest,
+  KillProcessRequest,
+  AvailableServersResponse,
+  ConfigFileTreeResponse,
+  ConfigEntriesResponse,
+  UpdateConfigValueRequest,
+  ConfigSaveResult,
+  SettingsData,
+  JavaListResponse,
+  ThemePreset,
+  ThemeApplyResult,
+} from '@/types/bridge'
 
 declare global {
   interface Window {
@@ -254,6 +276,10 @@ class Bridge implements MsmcBridge {
 
 export const bridge = new Bridge()
 
+// ═════════════════════════════════════════════════════════════════════
+// 基础 API
+// ═════════════════════════════════════════════════════════════════════
+
 export function ping(): Promise<{ pong: boolean; timestamp: number; message: string }> {
   return bridge.invoke<{ pong: boolean; timestamp: number; message: string }>('ping')
 }
@@ -272,4 +298,156 @@ export function onAppReady(handler: (data: AppReadyEvent) => void): () => void {
 
 export function onStatusUpdate(handler: (data: { message: string }) => void): () => void {
   return bridge.on('status:update', (payload) => handler(payload as { message: string }))
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 系统监控 API
+// ═════════════════════════════════════════════════════════════════════
+
+export function getSystemMetrics(): Promise<SystemMetrics> {
+  return bridge.invoke<SystemMetrics>('systemMonitor:getMetrics')
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 服务器管理 API
+// ═════════════════════════════════════════════════════════════════════
+
+export function getServerList(): Promise<ServerListResponse> {
+  return bridge.invoke<ServerListResponse>('server:list')
+}
+
+export function getSelectedServer(): Promise<ServerInfo | null> {
+  return bridge.invoke<ServerInfo | null>('server:getSelected')
+}
+
+export function selectServer(displayName: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('server:select', displayName)
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 网络监控 API
+// ═════════════════════════════════════════════════════════════════════
+
+export function getNetworkStatus(): Promise<NetworkStatus> {
+  return bridge.invoke<NetworkStatus>('network:getStatus')
+}
+
+export function getPorts(): Promise<PortsResponse> {
+  return bridge.invoke<PortsResponse>('network:getPorts')
+}
+
+export function getBridgeRules(): Promise<BridgeRulesResponse> {
+  return bridge.invoke<BridgeRulesResponse>('network:getBridgeRules')
+}
+
+export function addBridge(req: AddBridgeRequest): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('network:addBridge', req)
+}
+
+export function removeBridge(listenAddress: string, listenPort: number, protocol: string): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('network:removeBridge', { listenAddress, listenPort, protocol })
+}
+
+export function killProcess(req: KillProcessRequest): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('network:killProcess', req)
+}
+
+export function getCommonPorts(): Promise<{ ports: CommonPortInfo[] }> {
+  return bridge.invoke<{ ports: CommonPortInfo[] }>('network:getCommonPorts')
+}
+
+export function refreshNetwork(): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('network:refresh')
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 配置编辑 API
+// ═════════════════════════════════════════════════════════════════════
+
+export function getAvailableServers(): Promise<AvailableServersResponse> {
+  return bridge.invoke<AvailableServersResponse>('config:getAvailableServers')
+}
+
+export function getConfigFileTree(): Promise<ConfigFileTreeResponse> {
+  return bridge.invoke<ConfigFileTreeResponse>('config:getFileTree')
+}
+
+export function selectConfigFile(relativePath: string): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('config:selectFile', relativePath)
+}
+
+export function getConfigEntries(): Promise<ConfigEntriesResponse> {
+  return bridge.invoke<ConfigEntriesResponse>('config:getEntries')
+}
+
+export function updateConfigValue(req: UpdateConfigValueRequest): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('config:updateValue', req)
+}
+
+export function saveConfig(): Promise<ConfigSaveResult> {
+  return bridge.invoke<ConfigSaveResult>('config:save')
+}
+
+export function resetConfig(): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('config:reset')
+}
+
+export function undoConfig(): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('config:undo')
+}
+
+export function selectConfigServer(name: string): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('config:selectServer', name)
+}
+
+export function rescanConfigFiles(): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('config:rescan')
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 设置 API
+// ═════════════════════════════════════════════════════════════════════
+
+export function getSettings(): Promise<SettingsData> {
+  return bridge.invoke<SettingsData>('settings:get')
+}
+
+export function setPrimaryColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setPrimaryColor', hex)
+}
+
+export function setAccentColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setAccentColor', hex)
+}
+
+export function applyTheme(): Promise<ThemeApplyResult> {
+  return bridge.invoke<ThemeApplyResult>('settings:applyTheme')
+}
+
+export function saveSettings(): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:save')
+}
+
+export function setPreset(preset: ThemePreset): Promise<ThemeApplyResult> {
+  return bridge.invoke<ThemeApplyResult>('settings:setPreset', preset)
+}
+
+export function resetSettings(): Promise<ThemeApplyResult> {
+  return bridge.invoke<ThemeApplyResult>('settings:reset')
+}
+
+export function toggleAnimations(): Promise<{ success: boolean; enableAnimations: boolean }> {
+  return bridge.invoke<{ success: boolean; enableAnimations: boolean }>('settings:toggleAnimations')
+}
+
+export function testNotification(): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:testNotification')
+}
+
+export function getJavaList(): Promise<JavaListResponse> {
+  return bridge.invoke<JavaListResponse>('settings:getJavaList')
+}
+
+export function rescanJava(): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:rescanJava')
 }

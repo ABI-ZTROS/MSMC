@@ -6,7 +6,7 @@ import {
   FaSliders,
   FaChartLine,
   FaNetworkWired,
-  FaCog,
+  FaGear,
   FaShield,
   FaChevronRight,
 } from 'react-icons/fa6'
@@ -22,7 +22,7 @@ const navItems: NavItem[] = [
   { path: '/system', label: '系统监控', icon: <FaChartLine size={16} /> },
   { path: '/network', label: '网络监控', icon: <FaNetworkWired size={16} /> },
   { path: '/config', label: '配置编辑', icon: <FaSliders size={16} /> },
-  { path: '/settings', label: '设置', icon: <FaCog size={16} /> },
+  { path: '/settings', label: '设置', icon: <FaGear size={16} /> },
 ]
 
 export function Sidebar() {
