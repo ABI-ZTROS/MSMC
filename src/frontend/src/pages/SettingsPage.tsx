@@ -40,6 +40,10 @@ import type {
   TeamInfoResponse,
 } from '@/types/bridge'
 import { applySettingsToCss } from '@/utils/theme'
+import abiAvatar from '@/assets/avatars/ABI-ZTROS.png'
+import yanlanxiangAvatar from '@/assets/avatars/yanlanxiang.jpg'
+import mochaAvatar from '@/assets/avatars/MochaCello92377.png'
+import catstackAvatar from '@/assets/avatars/CatStack-pixe.png'
 
 // 颜色归一化：统一为 #RRGGBB 用于比较
 function normalizeHex(hex: string): string {
@@ -47,6 +51,13 @@ function normalizeHex(hex: string): string {
   let h = hex.trim().toUpperCase()
   if (h.length === 8 && h.startsWith('#')) h = '#' + h.slice(2) // #AARRGGBB -> #RRGGBB
   return h
+}
+
+const avatarMap: Record<string, string> = {
+  'ABI-ZTROS': abiAvatar,
+  '烟蓝湘': yanlanxiangAvatar,
+  'MochaCello92377': mochaAvatar,
+  'CatStack-pixe': catstackAvatar,
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -1202,12 +1213,26 @@ export function SettingsPage(): JSX.Element {
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0,
+                          overflow: 'hidden',
                         }}
                       >
-                        <FaUser
-                          size={24}
-                          style={{ color: 'var(--md-accent-text)' }}
-                        />
+                        {member.avatar || avatarMap[member.name] ? (
+                          <img
+                            src={member.avatar || avatarMap[member.name]}
+                            alt={member.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              borderRadius: 'inherit',
+                            }}
+                          />
+                        ) : (
+                          <FaUser
+                            size={24}
+                            style={{ color: 'var(--md-accent-text)' }}
+                          />
+                        )}
                       </div>
                       <div style={{ marginLeft: 10, flex: 1, minWidth: 0 }}>
                         <div
@@ -1303,12 +1328,26 @@ export function SettingsPage(): JSX.Element {
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0,
+                          overflow: 'hidden',
                         }}
                       >
-                        <FaUser
-                          size={24}
-                          style={{ color: 'var(--md-accent-text)' }}
-                        />
+                        {member.avatar || avatarMap[member.name] ? (
+                          <img
+                            src={member.avatar || avatarMap[member.name]}
+                            alt={member.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              borderRadius: 'inherit',
+                            }}
+                          />
+                        ) : (
+                          <FaUser
+                            size={24}
+                            style={{ color: 'var(--md-accent-text)' }}
+                          />
+                        )}
                       </div>
                       <div style={{ marginLeft: 10, flex: 1, minWidth: 0 }}>
                         <div
@@ -1545,12 +1584,26 @@ export function SettingsPage(): JSX.Element {
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0,
+                          overflow: 'hidden',
                         }}
                       >
-                        <FaUser
-                          size={20}
-                          style={{ color: 'var(--md-accent-text)' }}
-                        />
+                        {member.avatar || avatarMap[member.name] ? (
+                          <img
+                            src={member.avatar || avatarMap[member.name]}
+                            alt={member.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              borderRadius: 'inherit',
+                            }}
+                          />
+                        ) : (
+                          <FaUser
+                            size={20}
+                            style={{ color: 'var(--md-accent-text)' }}
+                          />
+                        )}
                       </div>
                       <div style={{ marginLeft: 8, flex: 1, minWidth: 0 }}>
                         <div
