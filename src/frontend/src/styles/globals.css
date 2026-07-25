@@ -1,282 +1,497 @@
+@import './theme.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   * {
-    @apply border-slate-200/60 dark:border-slate-700/50;
+    border-color: var(--md-card-subtle-border);
   }
 
   html,
   body,
   #root {
-    @apply h-full;
+    height: 100%;
   }
 
   body {
-    @apply font-sans text-slate-900 dark:text-slate-100 antialiased;
+    font-family: var(--md-font-family);
+    font-size: var(--md-font-size-base);
+    color: var(--md-body);
+    background-color: var(--md-paper);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-feature-settings: 'cv11', 'ss01';
   }
 
   ::selection {
-    @apply bg-primary-500/30 text-primary-900 dark:text-primary-100;
+    background-color: var(--md-primary-subtle-background);
+    color: var(--md-body);
   }
 
   ::-webkit-scrollbar {
-    @apply w-1.5 h-1.5;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-300/70 dark:bg-slate-600/50 rounded-full transition-all duration-200;
+    background: var(--md-subtle-border);
+    border-radius: 3px;
+    transition: background var(--md-duration-fast) var(--md-ease-standard);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-slate-400 dark:bg-slate-500;
-  }
-
-  @keyframes progressShine {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    background: var(--md-body-lighter);
   }
 }
 
 @layer components {
-  /* ─── 玻璃态卡片 ─── */
-  .glass {
-    @apply bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl backdrop-saturate-150;
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 🃏 Material Design 卡片 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-card {
+    background-color: var(--md-card-background);
+    border: 1px solid var(--md-card-subtle-border);
+    border-radius: var(--md-radius);
+    transition: transform var(--md-duration-normal) var(--md-ease-standard),
+      border-color var(--md-duration-normal) var(--md-ease-standard),
+      background-color var(--md-duration-normal) var(--md-ease-standard);
   }
 
-  .glass-strong {
-    @apply bg-white/85 dark:bg-slate-800/80 backdrop-blur-2xl backdrop-saturate-150;
+  .md-card-hover:hover {
+    transform: translateY(-2px);
+    border-color: var(--md-primary-subtle-border);
+    background-color: var(--md-card-hover);
   }
 
-  .glass-soft {
-    @apply bg-white/40 dark:bg-slate-800/30 backdrop-blur-md backdrop-saturate-150;
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 🔘 Material Design 按钮 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 16px;
+    min-height: 32px;
+    font-size: var(--md-font-size-base);
+    font-weight: 500;
+    font-family: var(--md-font-family);
+    border-radius: var(--md-radius);
+    cursor: pointer;
+    border: none;
+    outline: none;
+    user-select: none;
+    transition: background-color var(--md-duration-fast) var(--md-ease-standard),
+      color var(--md-duration-fast) var(--md-ease-standard),
+      border-color var(--md-duration-fast) var(--md-ease-standard),
+      transform var(--md-duration-fast) var(--md-ease-standard),
+      box-shadow var(--md-duration-fast) var(--md-ease-standard);
   }
 
-  /* ─── 按钮系统 ─── */
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 ease-smooth focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97];
+  .md-btn:active {
+    transform: scale(0.96);
   }
 
-  .btn-primary {
-    @apply bg-gradient-to-b from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25 hover:from-primary-400 hover:to-primary-500 hover:shadow-xl hover:shadow-primary-500/30 hover:-translate-y-0.5;
+  .md-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
   }
 
-  .btn-secondary {
-    @apply bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5 shadow-sm hover:shadow-md;
+  /* 实心按钮（Raised） */
+  .md-btn-primary {
+    background-color: var(--md-primary-hue-mid);
+    color: var(--md-white);
   }
 
-  .btn-ghost {
-    @apply text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-700/50;
+  .md-btn-primary:hover:not(:disabled) {
+    background-color: var(--md-primary-hue-dark);
   }
 
-  .btn-success {
-    @apply bg-gradient-to-b from-success-500 to-success-600 text-white shadow-lg shadow-success-500/25 hover:from-success-400 hover:to-success-500 hover:shadow-xl hover:shadow-success-500/30;
+  /* 危险按钮 */
+  .md-btn-danger {
+    background-color: var(--md-danger);
+    color: var(--md-white);
   }
 
-  .btn-danger {
-    @apply bg-gradient-to-b from-danger-500 to-danger-600 text-white shadow-lg shadow-danger-500/25 hover:from-danger-400 hover:to-danger-500 hover:shadow-xl hover:shadow-danger-500/30;
+  .md-btn-danger:hover:not(:disabled) {
+    background-color: #c62828;
   }
 
-  .btn-icon {
-    @apply w-9 h-9 p-0 rounded-xl;
+  /* 描边按钮（Outlined） */
+  .md-btn-outlined {
+    background-color: transparent;
+    color: var(--md-primary-hue-mid);
+    border: 1px solid var(--md-primary-subtle-border);
   }
 
-  /* ─── 卡片系统 ─── */
-  .card {
-    @apply bg-white dark:bg-slate-800/80 rounded-2xl shadow-soft dark:shadow-soft-dark border border-slate-200/60 dark:border-slate-700/50 transition-all duration-300 ease-smooth overflow-hidden;
+  .md-btn-outlined:hover:not(:disabled) {
+    background-color: var(--md-primary-subtle-background);
+    border-color: var(--md-primary-hue-mid);
   }
 
-  .card-hover {
-    @apply hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer;
+  /* 扁平按钮（Flat） */
+  .md-btn-flat {
+    background-color: transparent;
+    color: var(--md-body);
+    padding: 4px 12px;
+    min-height: 28px;
   }
 
-  .card-glass {
-    @apply glass rounded-2xl shadow-soft dark:shadow-soft-dark border border-white/20 dark:border-slate-700/50;
+  .md-btn-flat:hover:not(:disabled) {
+    background-color: var(--md-card-hover);
   }
 
-  /* ─── 输入框系统 ─── */
-  .input {
-    @apply w-full px-3.5 py-2.5 text-sm border rounded-xl bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400 dark:focus:border-primary-500 transition-all duration-200;
+  /* 图标按钮 */
+  .md-btn-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: var(--md-radius-small);
   }
 
-  /* ─── 导航项 ─── */
-  .nav-item {
-    @apply flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-smooth cursor-pointer relative;
+  .md-btn-icon-lg {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: var(--md-radius-small);
   }
 
-  .nav-item-active {
-    @apply bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300 shadow-sm;
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 📝 Material Design 输入框（Outlined） */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    font-size: var(--md-font-size-base);
+    font-family: var(--md-font-family);
+    color: var(--md-body);
+    background-color: transparent;
+    border: 1px solid var(--md-subtle-border);
+    border-radius: var(--md-radius-small);
+    outline: none;
+    transition: border-color var(--md-duration-fast) var(--md-ease-standard);
   }
 
-  .nav-item-active::before {
+  .md-input:hover {
+    border-color: var(--md-body-light);
+  }
+
+  .md-input:focus {
+    border-color: var(--md-primary-hue-mid);
+    border-width: 2px;
+    padding: 0 11px;
+  }
+
+  .md-input::placeholder {
+    color: var(--md-body-lighter);
+    opacity: 0.7;
+  }
+
+  .md-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: var(--md-font-size-base);
+    font-family: var(--md-font-family);
+    color: var(--md-body);
+    background-color: transparent;
+    border: 1px solid var(--md-subtle-border);
+    border-radius: var(--md-radius-small);
+    outline: none;
+    resize: vertical;
+    transition: border-color var(--md-duration-fast) var(--md-ease-standard);
+  }
+
+  .md-textarea:hover {
+    border-color: var(--md-body-light);
+  }
+
+  .md-textarea:focus {
+    border-color: var(--md-primary-hue-mid);
+    border-width: 2px;
+    padding: 9px 11px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 📑 Material Design Tab */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--md-subtle-border);
+  }
+
+  .md-tab {
+    padding: 10px 16px;
+    font-size: var(--md-font-size-base);
+    font-weight: 500;
+    color: var(--md-body-light);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color var(--md-duration-fast) var(--md-ease-standard),
+      border-color var(--md-duration-fast) var(--md-ease-standard),
+      background-color var(--md-duration-fast) var(--md-ease-standard);
+  }
+
+  .md-tab:hover {
+    color: var(--md-body);
+    background-color: var(--md-card-hover);
+  }
+
+  .md-tab-active {
+    color: var(--md-primary-hue-mid);
+    border-bottom-color: var(--md-primary-hue-mid);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 📦 Expander 可折叠分组 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-expander {
+    border-radius: var(--md-radius-small);
+    overflow: hidden;
+  }
+
+  .md-expander-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--md-duration-fast) var(--md-ease-standard);
+  }
+
+  .md-expander-header:hover {
+    background-color: var(--md-card-hover);
+  }
+
+  .md-expander-icon {
+    width: 12px;
+    height: 12px;
+    transition: transform var(--md-duration-normal) var(--md-ease-standard);
+  }
+
+  .md-expander-icon-expanded {
+    transform: rotate(90deg);
+  }
+
+  .md-expander-content {
+    overflow: hidden;
+    transition: max-height var(--md-duration-medium) var(--md-ease-standard);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 🧭 导航项（侧边栏） */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    margin: 3px 2px;
+    font-size: var(--md-font-size-base);
+    font-weight: 500;
+    color: var(--md-body);
+    border-radius: var(--md-radius-small);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--md-duration-fast) var(--md-ease-standard),
+      transform var(--md-duration-fast) var(--md-ease-standard);
+  }
+
+  .md-nav-item::before {
     content: '';
-    @apply absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-500 rounded-r-full;
+    position: absolute;
+    left: -2px;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: var(--md-radius-small);
+    background-color: var(--md-nav-item-selected-indicator);
+    opacity: 0;
+    transition: opacity var(--md-duration-medium) var(--md-ease-standard);
   }
 
-  .nav-item-inactive {
-    @apply text-slate-600 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-700/40 hover:translate-x-0.5;
+  .md-nav-item:hover {
+    background-color: var(--md-nav-item-hover);
+    transform: scale(1.02);
   }
 
-  /* ─── 状态指示器 ─── */
-  .status-dot {
-    @apply relative inline-flex items-center justify-center w-2.5 h-2.5;
+  .md-nav-item-active {
+    background-color: var(--md-primary-subtle-background);
   }
 
-  .status-dot::before {
-    content: '';
-    @apply absolute inset-0 rounded-full animate-ping opacity-40;
+  .md-nav-item-active::before {
+    opacity: 1;
   }
 
-  .status-dot::after {
-    content: '';
-    @apply relative w-2 h-2 rounded-full;
+  .md-nav-item-active:hover {
+    background-color: var(--md-primary-subtle-background);
   }
 
-  .status-dot-success::before {
-    @apply bg-success-500;
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 🔴 状态点 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
 
-  .status-dot-success::after {
-    @apply bg-success-500;
+  .md-status-dot-green {
+    background-color: var(--md-gauge-green);
   }
 
-  .status-dot-warning::before {
-    @apply bg-warning-500;
+  .md-status-dot-yellow {
+    background-color: var(--md-gauge-yellow);
   }
 
-  .status-dot-warning::after {
-    @apply bg-warning-500;
+  .md-status-dot-red {
+    background-color: var(--md-gauge-red);
   }
 
-  .status-dot-danger::before {
-    @apply bg-danger-500;
+  .md-status-dot-gray {
+    background-color: var(--md-body-lighter);
   }
 
-  .status-dot-danger::after {
-    @apply bg-danger-500;
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 🏷️ 徽章 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px 6px;
+    font-size: var(--md-font-size-xs);
+    font-weight: 700;
+    color: var(--md-white);
+    background: var(--md-accent-gradient);
+    border-radius: var(--md-radius-small);
   }
 
-  .status-dot-muted::before {
-    @apply bg-slate-400 animate-none opacity-0;
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 📄 页面入场动画（复刻 WPF PageEnterStoryboard） */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-page-enter {
+    animation: mdPageEnter var(--md-duration-slow) var(--md-ease-emphasized);
   }
 
-  .status-dot-muted::after {
-    @apply bg-slate-400;
-  }
-
-  /* ─── 进度条 ─── */
-  .progress-bar {
-    @apply h-2 bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden;
-  }
-
-  .progress-fill {
-    @apply h-full rounded-full transition-all duration-500 ease-smooth;
-    background-size: 200% 100%;
-  }
-
-  .progress-primary {
-    @apply bg-gradient-to-r from-primary-400 via-primary-500 to-primary-400;
-  }
-
-  .progress-success {
-    @apply bg-gradient-to-r from-success-400 via-success-500 to-success-400;
-  }
-
-  .progress-warning {
-    @apply bg-gradient-to-r from-warning-400 via-warning-500 to-warning-400;
-  }
-
-  .progress-danger {
-    @apply bg-gradient-to-r from-danger-400 via-danger-500 to-danger-400;
-  }
-
-  .progress-shimmer {
-    animation: progressShine 2s linear infinite;
-  }
-
-  /* ─── 标签徽章 ─── */
-  .badge {
-    @apply inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-medium rounded-full;
-  }
-
-  .badge-primary {
-    @apply bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300;
-  }
-
-  .badge-success {
-    @apply bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300;
-  }
-
-  .badge-warning {
-    @apply bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300;
-  }
-
-  .badge-danger {
-    @apply bg-danger-100 text-danger-700 dark:bg-danger-900/40 dark:text-danger-300;
-  }
-
-  .badge-muted {
-    @apply bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300;
-  }
-
-  /* ─── 分隔线 ─── */
-  .divider {
-    @apply h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700;
-  }
-
-  .divider-vertical {
-    @apply w-px bg-gradient-to-b from-transparent via-slate-200 to-transparent dark:via-slate-700;
-  }
-
-  /* ─── 页面动画容器 ─── */
-  .page-container {
-    @apply w-full h-full;
-    animation: pageEnter 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  @keyframes pageEnter {
+  @keyframes mdPageEnter {
     0% {
       opacity: 0;
-      transform: translateY(12px);
+      transform: translateX(30px);
     }
     100% {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateX(0);
     }
   }
 
-  /* ─── 数值变化动画数字 ─── */
-  .number-animate {
-    font-variant-numeric: tabular-nums;
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 🌀 旋转动画（加载/刷新图标） */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-spin {
+    animation: mdSpin 1s linear infinite;
   }
 
-  /* ─── 工具类：文字渐变 ─── */
-  .text-gradient {
-    @apply bg-clip-text text-transparent;
+  @keyframes mdSpin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
-  .text-gradient-primary {
-    @apply bg-gradient-to-br from-primary-400 via-primary-500 to-accent-500 bg-clip-text text-transparent;
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 🎨 色板按钮（设置页颜色选择器） */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-swatch {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--md-radius);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform var(--md-duration-fast) var(--md-ease-standard),
+      border-color var(--md-duration-fast) var(--md-ease-standard);
+  }
+
+  .md-swatch:hover {
+    border-color: var(--md-swatch-hover-border);
+    transform: scale(1.05);
+  }
+
+  .md-swatch:active {
+    transform: scale(0.9);
+  }
+
+  .md-swatch-selected {
+    border-color: var(--md-swatch-hover-border);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 💻 终端/日志区域 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-terminal {
+    background-color: var(--md-terminal-background);
+    border-radius: var(--md-radius-small);
+    padding: 8px 12px;
+    font-family: var(--md-font-mono);
+    font-size: var(--md-font-size-sm);
+    color: var(--md-success-foreground);
+    line-height: 1.6;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 分隔线 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-divider {
+    height: 1px;
+    background-color: var(--md-subtle-border);
+  }
+
+  .md-divider-vertical {
+    width: 1px;
+    background-color: var(--md-subtle-border);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 标题样式 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-section-title {
+    font-size: var(--md-font-size-lg);
+    font-weight: 700;
+    color: var(--md-body);
+    margin-bottom: 12px;
+  }
+
+  .md-subsection-title {
+    font-size: var(--md-font-size-sm);
+    font-weight: 600;
+    color: var(--md-body-light);
+    opacity: 0.7;
+    margin: 8px 4px 4px 4px;
   }
 }
 
 @layer utilities {
-  .bg-grid {
-    background-image:
-      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size: 24px 24px;
+  .text-gradient {
+    background: var(--md-accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  .bg-glow {
-    background: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.08), transparent 60%);
+  .bg-gradient-accent {
+    background: var(--md-accent-gradient);
   }
 }

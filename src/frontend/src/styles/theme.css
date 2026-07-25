@@ -1,0 +1,111 @@
+:root {
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 🎨 Material Design 主题变量 —— 与 WPF AppResources.xaml 一一对应 */
+  /* ═══════════════════════════════════════════════════════════════ */
+
+  /* ─── 背景色 ─── */
+  --md-paper: #0a0f1e;
+  --md-deep-background: #020617;
+  --md-card-background: #0F172A;
+  --md-card-hover: #1E293B;
+  --md-terminal-background: #0C1222;
+  --md-loading-overlay: rgba(15, 23, 42, 0.8);
+
+  /* ─── 主色（苍穹蓝） ─── */
+  --md-primary-hue-light: #60A5FA;
+  --md-primary-hue-mid: #3B82F6;
+  --md-primary-hue-dark: #2563EB;
+  --md-primary-hue-darker: #1d4ed8;
+
+  --md-nav-item-selected: #3B82F6;
+  --md-nav-item-hover: #1E3A5F;
+  --md-nav-item-selected-hover: #2563EB;
+  --md-nav-item-selected-indicator: #3B82F6;
+
+  --md-primary-subtle-background: rgba(59, 130, 246, 0.1);
+  --md-primary-subtle-border: rgba(59, 130, 246, 0.2);
+
+  /* ─── 强调色（暖珊瑚） ─── */
+  --md-accent-text: #FB7185;
+  --md-accent-subtle-border: rgba(251, 113, 133, 0.2);
+
+  /* ─── 渐变色 ─── */
+  --md-accent-gradient-start: #60A5FA;
+  --md-accent-gradient-end: #3B82F6;
+  --md-accent-gradient: linear-gradient(90deg, #60A5FA 0%, #3B82F6 100%);
+
+  /* ─── 状态色（仪表盘） ─── */
+  --md-gauge-green: #4CAF50;
+  --md-gauge-yellow: #FFC107;
+  --md-gauge-red: #F4364C;
+  --md-danger: #E53935;
+  --md-error-text: #FB7185;
+
+  /* ─── 边框色 ─── */
+  --md-subtle-border: #334155;
+  --md-card-subtle-border: rgba(30, 41, 59, 0.2);
+  --md-swatch-hover-border: #FFFFFF;
+
+  /* ─── 文字色 ─── */
+  --md-body: #E2E8F0;
+  --md-body-light: #94A3B8;
+  --md-body-lighter: #64748B;
+  --md-success-foreground: #7DD3FC;
+  --md-info-foreground: #94A3B8;
+  --md-white: #FFFFFF;
+
+  /* ─── 圆角体系 ─── */
+  --md-radius-small: 8px;
+  --md-radius: 12px;
+  --md-radius-large: 16px;
+
+  /* ─── 间距体系 ─── */
+  --md-spacing-1: 4px;
+  --md-spacing-2: 8px;
+  --md-spacing-3: 12px;
+  --md-spacing-4: 16px;
+  --md-spacing-5: 20px;
+  --md-spacing-6: 24px;
+  --md-spacing-8: 32px;
+
+  /* ─── 字号体系 ─── */
+  --md-font-size-xs: 10px;
+  --md-font-size-sm: 11px;
+  --md-font-size-base: 13px;
+  --md-font-size-md: 14px;
+  --md-font-size-lg: 16px;
+  --md-font-size-xl: 20px;
+  --md-font-size-2xl: 28px;
+  --md-font-size-3xl: 40px;
+
+  /* ─── 字体 ─── */
+  --md-font-family: 'Segoe UI', 'Microsoft YaHei UI', '微软雅黑', system-ui, sans-serif;
+  --md-font-mono: 'Consolas', 'Courier New', monospace;
+
+  /* ─── 动画缓动 ─── */
+  --md-ease-standard: cubic-bezier(0.33, 1, 0.68, 1);
+  --md-ease-emphasized: cubic-bezier(0.25, 1, 0.5, 1);
+  --md-ease-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --md-ease-standard-accelerate: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ─── 动画时长 ─── */
+  --md-duration-fast: 150ms;
+  --md-duration-normal: 200ms;
+  --md-duration-medium: 300ms;
+  --md-duration-slow: 350ms;
+
+  /* ─── 阴影 ─── */
+  --md-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15);
+  --md-shadow-2: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --md-shadow-3: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+
+  /* ─── 侧边栏 ─── */
+  --sidebar-width-collapsed: 56px;
+  --sidebar-width-expanded: 240px;
+
+  /* ─── 状态栏 ─── */
+  --status-bar-height: 32px;
+
+  /* ─── 标题栏 ─── */
+  --title-bar-height: 40px;
+}

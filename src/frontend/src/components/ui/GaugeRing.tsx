@@ -1,174 +1,154 @@
 import { useEffect, useRef, useState } from 'react'
-import { clsx } from 'clsx'
 
 interface GaugeRingProps {
   value: number
-  max?: number
   label?: string
-  sublabel?: string
-  size?: number
-  strokeWidth?: number
-  color?: 'primary' | 'success' | 'warning' | 'danger'
-  showValue?: boolean
   unit?: string
-  animated?: boolean
-  className?: string
-}
-
-const colorMap = {
-  primary: {
-    stroke: '#3b82f6',
-    glow: 'rgba(59, 130, 246, 0.4)',
-  },
-  success: {
-    stroke: '#22c55e',
-    glow: 'rgba(34, 197, 94, 0.4)',
-  },
-  warning: {
-    stroke: '#f59e0b',
-    glow: 'rgba(245, 158, 11, 0.4)',
-  },
-  danger: {
-    stroke: '#ef4444',
-    glow: 'rgba(239, 68, 68, 0.4)',
-  },
+  maximum?: number
+  arcThickness?: number
+  size?: number
+  enableAnimation?: boolean
+  animationDuration?: number
 }
 
 export function GaugeRing({
   value,
-  max = 100,
-  label,
-  sublabel,
-  size = 160,
-  strokeWidth = 10,
-  color = 'primary',
-  showValue = true,
+  label = '',
   unit = '%',
-  animated = true,
-  className,
-}: GaugeRingProps): JSX.Element {
+  maximum = 100,
+  arcThickness = 12,
+  size = 160,
+  enableAnimation = true,
+  animationDuration = 600,
+}: GaugeRingProps) {
   const [displayValue, setDisplayValue] = useState(0)
-  const rafRef = useRef<number>()
-
-  const radius = (size - strokeWidth) / 2
-  const circumference = radius * 2 * Math.PI
-  const clampedValue = Math.min(Math.max(value, 0), max)
-  const progress = clampedValue / max
-  const offset = circumference - progress * circumference
+  const animRef = useRef<number | null>(null)
+  const startValueRef = useRef(0)
+  const startTimeRef = useRef(0)
 
   useEffect(() => {
-    if (!animated) {
-      setDisplayValue(clampedValue)
+    if (!enableAnimation) {
+      setDisplayValue(value)
       return
     }
 
-    const startValue = displayValue
-    const endValue = clampedValue
-    const duration = 800
-    const startTime = performance.now()
+    if (animRef.current) {
+      cancelAnimationFrame(animRef.current)
+    }
 
-    const animate = (currentTime: number) => {
-      const elapsed = currentTime - startTime
-      const progress = Math.min(elapsed / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      const current = startValue + (endValue - startValue) * eased
+    startValueRef.current = displayValue
+    startTimeRef.current = performance.now()
 
+    const animate = (now: number) => {
+      const elapsed = now - startTimeRef.current
+      const progress = Math.min(elapsed / animationDuration, 1)
+      const ease = 1 - Math.pow(1 - progress, 4)
+      const current = startValueRef.current + (value - startValueRef.current) * ease
       setDisplayValue(current)
 
       if (progress < 1) {
-        rafRef.current = requestAnimationFrame(animate)
+        animRef.current = requestAnimationFrame(animate)
       }
     }
 
-    rafRef.current = requestAnimationFrame(animate)
+    animRef.current = requestAnimationFrame(animate)
 
     return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current)
+      if (animRef.current) {
+        cancelAnimationFrame(animRef.current)
       }
     }
-  }, [clampedValue, animated])
+  }, [value, enableAnimation, animationDuration])
 
-  const colors = colorMap[color]
+  const max = maximum > 0 ? maximum : 100
+  const clampedValue = Math.max(0, Math.min(max, displayValue))
+  const percent = (clampedValue / max) * 100
+
+  let color = 'var(--md-gauge-green)'
+  if (percent >= 60 && percent < 85) {
+    color = 'var(--md-gauge-yellow)'
+  } else if (percent >= 85) {
+    color = 'var(--md-gauge-red)'
+  }
+
+  const cx = size / 2
+  const cy = size / 2
+  const radius = Math.min(cx, cy) - arcThickness - 4
+  const startAngle = -135
+  const endAngle = 135
+  const sweepAngle = (clampedValue / max) * 270
+
+  const polarToCartesian = (angle: number) => {
+    const rad = (angle * Math.PI) / 180
+    return {
+      x: cx + radius * Math.cos(rad),
+      y: cy + radius * Math.sin(rad),
+    }
+  }
+
+  const describeArc = (start: number, end: number) => {
+    const startPt = polarToCartesian(start)
+    const endPt = polarToCartesian(end)
+    const largeArc = end - start > 180 ? 1 : 0
+    return `M ${startPt.x} ${startPt.y} A ${radius} ${radius} 0 ${largeArc} 1 ${endPt.x} ${endPt.y}`
+  }
+
+  const trackPath = describeArc(startAngle, endAngle)
+  const progressPath = sweepAngle > 0.1 ? describeArc(startAngle, startAngle + sweepAngle) : ''
+
+  const numFontSize = Math.min(28, radius * 0.5)
+  const labelFontSize = Math.min(12, radius * 0.22)
+  const valueText = clampedValue.toFixed(1)
 
   return (
-    <div className={clsx('relative inline-flex items-center justify-center', className)}>
-      <svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        className="transform -rotate-90"
-      >
-        <defs>
-          <filter id={`glow-${color}`} x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <linearGradient id={`gradient-${color}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={colors.stroke} stopOpacity="1" />
-            <stop offset="100%" stopColor={colors.stroke} stopOpacity="0.7" />
-          </linearGradient>
-        </defs>
-
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
+    <div
+      className="relative inline-flex items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      <svg width={size} height={size}>
+        <path
+          d={trackPath}
           fill="none"
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          className="text-slate-100 dark:text-slate-700/50"
-        />
-
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={`url(#gradient-${color})`}
-          strokeWidth={strokeWidth}
+          stroke="var(--md-card-hover)"
+          strokeWidth={arcThickness}
           strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          filter={`url(#glow-${color})`}
-          style={{
-            transition: animated ? 'stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
-          }}
         />
+        {progressPath && (
+          <path
+            d={progressPath}
+            fill="none"
+            stroke={color}
+            strokeWidth={arcThickness}
+            strokeLinecap="round"
+          />
+        )}
       </svg>
 
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        {showValue && (
-          <>
-            <span
-              className="text-3xl font-bold number-animate text-slate-900 dark:text-slate-100"
-              style={{ fontSize: size * 0.22 }}
-            >
-              {Math.round(displayValue)}
-              <span className="text-lg font-medium text-slate-400 dark:text-slate-500 ml-0.5">
-                {unit}
-              </span>
-            </span>
-          </>
-        )}
+        <div
+          className="font-bold"
+          style={{
+            fontSize: numFontSize,
+            color: 'var(--md-body)',
+            lineHeight: 1,
+            marginBottom: 4,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {valueText}
+          <span style={{ fontSize: numFontSize * 0.5, opacity: 0.7 }}>{unit}</span>
+        </div>
         {label && (
-          <span
-            className="text-slate-500 dark:text-slate-400 font-medium mt-1"
-            style={{ fontSize: size * 0.085 }}
+          <div
+            style={{
+              fontSize: labelFontSize,
+              color: 'var(--md-body-light)',
+              opacity: 0.7,
+              marginTop: radius * 0.05,
+            }}
           >
             {label}
-          </span>
-        )}
-        {sublabel && (
-          <span
-            className="text-slate-400 dark:text-slate-500 mt-0.5"
-            style={{ fontSize: size * 0.07 }}
-          >
-            {sublabel}
-          </span>
+          </div>
         )}
       </div>
     </div>
