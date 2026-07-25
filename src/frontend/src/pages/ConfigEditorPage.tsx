@@ -583,10 +583,9 @@ export function ConfigEditorPage(): JSX.Element {
               </div>
             </div>
             {/* 右侧：操作按钮 */}
-            <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 className="md-btn md-btn-outlined"
-                style={{ opacity: hasUnsavedChanges && !isServerRunning ? 1 : 0.4 }}
                 disabled={!hasUnsavedChanges || isServerRunning}
                 title="撤销最近一次编辑"
                 onClick={handleUndo}
@@ -596,7 +595,6 @@ export function ConfigEditorPage(): JSX.Element {
               </button>
               <button
                 className="md-btn md-btn-outlined"
-                style={{ opacity: hasUnsavedChanges && !isServerRunning ? 1 : 0.4 }}
                 disabled={!hasUnsavedChanges || isServerRunning}
                 onClick={handleReset}
               >
@@ -605,7 +603,6 @@ export function ConfigEditorPage(): JSX.Element {
               </button>
               <button
                 className="md-btn md-btn-primary"
-                style={{ opacity: hasUnsavedChanges && !isServerRunning ? 1 : 0.4, fontWeight: 600 }}
                 disabled={!hasUnsavedChanges || isServerRunning}
                 title="Ctrl+S 也可以保存哦"
                 onClick={handleSave}
@@ -1058,7 +1055,7 @@ export function ConfigEditorPage(): JSX.Element {
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="flex justify-end gap-2 mt-6">
               <button
                 className="md-btn md-btn-outlined"
                 onClick={() => setShowRestartConfirm(false)}

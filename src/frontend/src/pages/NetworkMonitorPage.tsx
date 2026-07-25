@@ -401,7 +401,7 @@ export function NetworkMonitorPage(): JSX.Element {
             <button
               className="md-btn md-btn-flat"
               onClick={handleRefresh}
-              style={{ marginLeft: 8, padding: '4px 8px', fontSize: 11 }}
+              style={{ marginLeft: 8 }}
               title="立即刷新"
             >
               刷新
@@ -506,7 +506,7 @@ export function NetworkMonitorPage(): JSX.Element {
                 </div>
                 <div className="flex justify-end p-2" style={{ borderTop: '1px solid var(--md-card-subtle-border)' }}>
                   <button
-                    className="md-btn md-btn-outline"
+                    className="md-btn md-btn-outlined"
                     onClick={handleKillProcess}
                     disabled={!selectedPort}
                     style={{ color: 'var(--md-gauge-red)', borderColor: 'var(--md-gauge-red)' }}
@@ -668,9 +668,9 @@ export function NetworkMonitorPage(): JSX.Element {
                             </td>
                             <td>
                               <button
-                                className="md-btn md-btn-flat"
+                                className="md-btn md-btn-flat md-btn-icon"
                                 onClick={() => handleRemoveBridge(r)}
-                                style={{ padding: 2, color: 'var(--md-gauge-red)' }}
+                                style={{ color: 'var(--md-gauge-red)' }}
                                 title="删除"
                               >
                                 <FaTrash size={14} />

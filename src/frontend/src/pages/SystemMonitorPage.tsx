@@ -199,14 +199,14 @@ export function SystemMonitorPage(): JSX.Element {
         <button
           onClick={handleStart}
           className="md-btn md-btn-primary"
-          style={{ padding: '10px 16px', fontSize: 13 }}
+          style={{ minHeight: 36, padding: '8px 16px' }}
         >
           开始监控
         </button>
         <button
           onClick={handleStop}
           className="md-btn md-btn-outlined"
-          style={{ padding: '10px 16px', fontSize: 13 }}
+          style={{ minHeight: 36, padding: '8px 16px' }}
         >
           停止监控
         </button>

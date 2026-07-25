@@ -345,32 +345,29 @@ export function DashboardPage(): JSX.Element {
           onClick={handleRefresh}
           disabled={isBusy}
           className="md-btn md-btn-primary"
-          style={{ padding: '8px 14px', gap: 6 }}
           title="立即刷新服务器列表"
         >
           <span className={clsx(isBusy && 'md-spin')}>🔄</span>
-          <span style={{ fontSize: 12, fontWeight: 600 }}>刷新</span>
+          <span style={{ fontWeight: 600 }}>刷新</span>
         </button>
 
         <button
           onClick={handleToggleAutoDetect}
           className="md-btn md-btn-outlined"
-          style={{ padding: '8px 10px', gap: 6 }}
           title={autoDetectEnabled ? '点击停止自动检测' : '点击开始自动检测'}
         >
           <span>{autoDetectEnabled ? '⏸' : '▶'}</span>
-          <span style={{ fontSize: 12 }}>{autoDetectEnabled ? '自动检测中' : '开启自动检测'}</span>
+          <span>{autoDetectEnabled ? '自动检测中' : '开启自动检测'}</span>
         </button>
 
         <button
           onClick={handleImport}
           disabled={isBusy}
           className="md-btn md-btn-outlined"
-          style={{ padding: '8px 14px', gap: 6 }}
           title="选择 JAR 文件导入到已知服务器列表"
         >
           <span>➕</span>
-          <span style={{ fontSize: 12, fontWeight: 500 }}>导入服务器</span>
+          <span>导入服务器</span>
         </button>
 
         {/* 中间：选中服务器状态 */}
@@ -455,7 +452,6 @@ export function DashboardPage(): JSX.Element {
                   onClick={() => setSearchKeyword('')}
                   className="md-btn md-btn-flat md-btn-icon"
                   title="清空搜索"
-                  style={{ width: 28, height: 28 }}
                 >
                   ✕
                 </button>
@@ -575,7 +571,7 @@ export function DashboardPage(): JSX.Element {
                           onClick={handleStart}
                           disabled={isBusy}
                           className="md-btn md-btn-primary"
-                          style={{ padding: '10px 18px', gap: 6 }}
+                          style={{ minHeight: 36, padding: '8px 16px' }}
                         >
                           <span>▶</span>
                           <span style={{ fontWeight: 600 }}>启动服务器</span>
@@ -584,7 +580,7 @@ export function DashboardPage(): JSX.Element {
                           onClick={handleStop}
                           disabled={isBusy}
                           className="md-btn md-btn-danger"
-                          style={{ padding: '10px 18px', gap: 6 }}
+                          style={{ minHeight: 36, padding: '8px 16px' }}
                         >
                           <span>⏹</span>
                           <span style={{ fontWeight: 600 }}>停止服务器</span>
@@ -597,10 +593,10 @@ export function DashboardPage(): JSX.Element {
                               .catch(console.error)
                           }
                           className="md-btn md-btn-outlined"
-                          style={{ padding: '10px 18px', gap: 6 }}
+                          style={{ minHeight: 36, padding: '8px 16px' }}
                         >
                           <span>💾</span>
-                          <span style={{ fontWeight: 500 }}>保存到已知</span>
+                          <span>保存到已知</span>
                         </button>
                       </div>
                       {operationMessage && (
@@ -799,19 +795,19 @@ export function DashboardPage(): JSX.Element {
                     <div className="flex items-center" style={{ gap: 8, marginBottom: 12 }}>
                       <button
                         className="md-btn md-btn-outlined"
-                        style={{ padding: '6px 12px', fontSize: 11, gap: 4 }}
+                        style={{ fontSize: 'var(--md-font-size-sm)' }}
                       >
                         🚀 Aikar
                       </button>
                       <button
                         className="md-btn md-btn-outlined"
-                        style={{ padding: '6px 12px', fontSize: 11, gap: 4 }}
+                        style={{ fontSize: 'var(--md-font-size-sm)' }}
                       >
                         📊 G1GC
                       </button>
                       <button
                         className="md-btn md-btn-outlined"
-                        style={{ padding: '6px 12px', fontSize: 11, gap: 4 }}
+                        style={{ fontSize: 'var(--md-font-size-sm)' }}
                       >
                         ⚡ ZGC
                       </button>
@@ -884,7 +880,6 @@ export function DashboardPage(): JSX.Element {
                       <button
                         onClick={handleCopyCommand}
                         className="md-btn md-btn-outlined"
-                        style={{ padding: '6px 12px', gap: 6 }}
                       >
                         📋 复制
                       </button>

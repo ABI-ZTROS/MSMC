@@ -29,23 +29,47 @@
     color: var(--md-body);
   }
 
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--md-body-lighter) 50%, transparent) transparent;
+  }
+
+  *:hover {
+    scrollbar-color: var(--md-body-lighter) transparent;
+  }
+
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
 
   ::-webkit-scrollbar-track {
     background: transparent;
+    border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--md-subtle-border);
-    border-radius: 3px;
-    transition: background var(--md-duration-fast) var(--md-ease-standard);
+    background: color-mix(in srgb, var(--md-body-lighter) 50%, transparent);
+    border-radius: 4px;
+    transition: background-color var(--md-duration-normal) var(--md-ease-standard),
+      width var(--md-duration-fast) var(--md-ease-standard),
+      height var(--md-duration-fast) var(--md-ease-standard);
+    border: 2px solid transparent;
+    background-clip: padding-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
     background: var(--md-body-lighter);
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:active {
+    background: var(--md-body-light);
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }
 }
 

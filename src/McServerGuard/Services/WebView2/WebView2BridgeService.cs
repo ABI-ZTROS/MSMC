@@ -86,8 +86,41 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
         try
         {
+            // 设置默认背景色为黑色，防止白屏闪烁
+            _webView.DefaultBackgroundColor = System.Drawing.Color.Black;
+            Log.Information("🎨 WebView2 默认背景色已设置为黑色");
+
             // 确保 CoreWebView2 已创建
             await _webView.EnsureCoreWebView2Async();
+
+            // 配置桌面应用体验优化
+            Log.Information("⚙️ 配置 WebView2 桌面应用体验优化...");
+
+            // 禁用开发者工具（F12）
+            _webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+            Log.Information("   ✅ 已禁用开发者工具");
+
+            // 禁用浏览器快捷键（F5刷新、Ctrl+R刷新、Ctrl+N新窗口等）
+            _webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+            Log.Information("   ✅ 已禁用浏览器快捷键");
+
+            // 禁用默认上下文菜单（右键菜单）
+            _webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+            Log.Information("   ✅ 已禁用默认上下文菜单");
+
+            // 禁用状态条（左下角显示链接地址）
+            _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+            Log.Information("   ✅ 已禁用状态条");
+
+            // 禁止缩放
+            _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
+            Log.Information("   ✅ 已禁用缩放控制");
+
+            // 禁用默认脚本对话框（alert/confirm/prompt）
+            _webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
+            Log.Information("   ✅ 已禁用默认脚本对话框");
+
+            Log.Information("⚙️ WebView2 桌面应用体验优化配置完成");
 
             // 注册消息接收事件
             _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;

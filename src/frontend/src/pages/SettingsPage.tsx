@@ -507,8 +507,6 @@ export function SettingsPage(): JSX.Element {
                   key={i}
                   className="md-btn md-btn-outlined"
                   style={{
-                    padding: '12px 20px',
-                    minHeight: 44,
                     backgroundColor: 'var(--md-card-hover)',
                     borderColor: 'transparent',
                     animation: 'pulse 1.5s ease-in-out infinite',
@@ -548,7 +546,6 @@ export function SettingsPage(): JSX.Element {
                 <button
                   key={p.key}
                   className="md-btn md-btn-outlined"
-                  style={{ padding: '12px 20px', minHeight: 44 }}
                   onClick={() => handleSetPreset(p.key)}
                 >
                   <span
@@ -877,7 +874,6 @@ export function SettingsPage(): JSX.Element {
           </div>
           <button
             className="md-btn md-btn-outlined"
-            style={{ padding: '8px 12px', minHeight: 32 }}
             disabled={isScanningJava}
             onClick={handleRescanJava}
           >
@@ -885,7 +881,7 @@ export function SettingsPage(): JSX.Element {
               size={14}
               className={isScanningJava ? 'md-spin' : ''}
             />
-            <span style={{ marginLeft: 6, fontSize: 12 }}>重新扫描</span>
+            <span style={{ marginLeft: 6 }}>重新扫描</span>
           </button>
         </div>
 
@@ -1652,7 +1648,7 @@ export function SettingsPage(): JSX.Element {
         >
           <button
             className="md-btn md-btn-outlined"
-            style={{ padding: '12px 20px', minHeight: 44, width: '100%' }}
+            style={{ width: '100%' }}
             onClick={handleTestNotification}
           >
             <FaBell size={16} />
@@ -1677,7 +1673,6 @@ export function SettingsPage(): JSX.Element {
       <div className="flex" style={{ gap: 8, marginTop: 16 }}>
         <button
           className="md-btn md-btn-outlined"
-          style={{ padding: '12px 20px', minHeight: 44 }}
           onClick={handleReset}
         >
           <FaRotate size={16} />
@@ -1685,7 +1680,6 @@ export function SettingsPage(): JSX.Element {
         </button>
         <button
           className="md-btn md-btn-primary"
-          style={{ padding: '12px 20px', minHeight: 44 }}
           onClick={handleApplyTheme}
         >
           <FaCheck size={16} />
@@ -1693,7 +1687,6 @@ export function SettingsPage(): JSX.Element {
         </button>
         <button
           className="md-btn md-btn-primary"
-          style={{ padding: '12px 20px', minHeight: 44, fontWeight: 600 }}
           onClick={handleSave}
         >
           <FaCheck size={16} />
