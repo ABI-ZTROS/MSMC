@@ -564,11 +564,11 @@ public partial class MainWindow : Window
         });
 
         // 刷新服务器列表
-        _bridgeService.RegisterRequestHandler("server:refresh", async _ =>
+        _bridgeService.RegisterRequestHandler("server:refresh", _ =>
         {
             if (_vm?.DetectionPage != null)
             {
-                await _vm.DetectionPage.DetectCommand.ExecuteAsync(null);
+                _vm.DetectionPage.DetectCommand.Execute(null);
             }
             return Task.FromResult<object?>(new { success = true });
         });
@@ -809,11 +809,11 @@ public partial class MainWindow : Window
         });
 
         // 刷新网络数据
-        _bridgeService.RegisterRequestHandler("network:refresh", async _ =>
+        _bridgeService.RegisterRequestHandler("network:refresh", _ =>
         {
             if (net != null)
             {
-                await net.RefreshCommand.ExecuteAsync(null);
+                net.RefreshCommand.Execute(null);
             }
             return Task.FromResult<object?>(new { success = true });
         });
