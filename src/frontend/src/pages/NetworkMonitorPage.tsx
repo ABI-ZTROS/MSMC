@@ -15,12 +15,14 @@ import {
   killProcess,
   getCommonPorts,
   refreshNetwork,
+  getHourlyHistory,
 } from '@/utils/bridge'
 import type {
   NetworkStatus,
   PortInfo,
   BridgeRule,
   CommonPortInfo,
+  HourlyHistoryResponse,
 } from '@/types/bridge'
 
 type TabKey = 'ports' | 'common' | 'bridge'
@@ -44,6 +46,27 @@ interface PortDistributionPieProps {
 }
 
 function PortDistributionPie({ systemPorts, registeredPorts, dynamicPorts, usedPorts }: PortDistributionPieProps) {
+  const [colors, setColors] = useState({
+    red: '',
+    primary: '',
+    green: '',
+  })
+
+  useEffect(() => {
+    const updateColors = () => {
+      const styles = getComputedStyle(document.documentElement)
+      setColors({
+        red: styles.getPropertyValue('--md-gauge-red').trim(),
+        primary: styles.getPropertyValue('--md-primary-hue-mid').trim(),
+        green: styles.getPropertyValue('--md-gauge-green').trim(),
+      })
+    }
+    updateColors()
+    const observer = new MutationObserver(updateColors)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] })
+    return () => observer.disconnect()
+  }, [])
+
   const total = systemPorts + registeredPorts + dynamicPorts
   const size = 200
   const cx = size / 2
@@ -52,9 +75,9 @@ function PortDistributionPie({ systemPorts, registeredPorts, dynamicPorts, usedP
   const innerRadius = 45
 
   const segments = [
-    { value: systemPorts, color: '#F87171', label: '系统' },
-    { value: registeredPorts, color: '#60A5FA', label: '注册' },
-    { value: dynamicPorts, color: '#4ADE80', label: '动态' },
+    { value: systemPorts, color: colors.red, label: '系统' },
+    { value: registeredPorts, color: colors.primary, label: '注册' },
+    { value: dynamicPorts, color: colors.green, label: '动态' },
   ]
 
   let currentAngle = -90
@@ -120,17 +143,12 @@ function PortDistributionPie({ systemPorts, registeredPorts, dynamicPorts, usedP
 // ─────────────────────────────────────────────────────────────────────
 interface HourlyThroughputChartProps {
   currentHour: number
-  downloadSpeed: number
+  downloadData: number[]
+  uploadData?: number[]
 }
 
-function HourlyThroughputChart({ currentHour, downloadSpeed }: HourlyThroughputChartProps) {
-  const hours = Array.from({ length: 24 }, (_, i) => i)
-  const values = hours.map((h) => {
-    if (h > currentHour) return 0
-    const base = Math.sin((h / 24) * Math.PI) * 0.6 + 0.2
-    const variation = Math.sin(h * 0.7) * 0.15
-    return Math.max(0, Math.min(1, base + variation)) * (h === currentHour ? downloadSpeed * 0.8 : 1)
-  })
+function HourlyThroughputChart({ currentHour, downloadData }: HourlyThroughputChartProps) {
+  const values = downloadData
 
   const width = 500
   const height = 180
@@ -219,6 +237,7 @@ export function NetworkMonitorPage(): JSX.Element {
   const [commonPorts, setCommonPorts] = useState<CommonPortInfo[]>([])
   const [selectedPort, setSelectedPort] = useState<PortInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [hourlyHistory, setHourlyHistory] = useState<HourlyHistoryResponse | null>(null)
 
   const [form, setForm] = useState<AddBridgeForm>({
     listenAddress: '0.0.0.0',
@@ -230,16 +249,18 @@ export function NetworkMonitorPage(): JSX.Element {
 
   const loadData = useCallback(async () => {
     try {
-      const [s, p, b, c] = await Promise.all([
+      const [s, p, b, c, h] = await Promise.all([
         getNetworkStatus(),
         getPorts(),
         getBridgeRules(),
         getCommonPorts(),
+        getHourlyHistory(),
       ])
       setStatus(s)
       setPorts(p.ports)
       setBridgeRules(b.rules)
       setCommonPorts(c.ports)
+      setHourlyHistory(h)
       setLoading(false)
     } catch (err) {
       console.error('加载网络数据失败:', err)
@@ -318,7 +339,7 @@ export function NetworkMonitorPage(): JSX.Element {
 
         <div className="md-stat-card" style={{ width: 160 }}>
           <div className="md-stat-label">已占用</div>
-          <div className="md-stat-value" style={{ color: 'var(--md-accent-text, #FB7185)' }}>
+          <div className="md-stat-value" style={{ color: 'var(--md-accent-text)' }}>
             {status?.usedPorts ?? 0}
           </div>
         </div>
@@ -715,10 +736,18 @@ export function NetworkMonitorPage(): JSX.Element {
               每日网络吞吐量
             </div>
             <div className="flex-1 overflow-hidden">
-              <HourlyThroughputChart
-                currentHour={status?.currentHour ?? new Date().getHours()}
-                downloadSpeed={status?.downloadSpeedMB ?? 0}
-              />
+              {hourlyHistory ? (
+                <HourlyThroughputChart
+                  currentHour={status?.currentHour ?? new Date().getHours()}
+                  downloadData={hourlyHistory.download}
+                  uploadData={hourlyHistory.upload}
+                />
+              ) : (
+                <div className="md-empty-state h-full">
+                  <div className="md-empty-state-icon">📊</div>
+                  <div className="md-empty-state-text">加载中...</div>
+                </div>
+              )}
             </div>
             <div
               style={{

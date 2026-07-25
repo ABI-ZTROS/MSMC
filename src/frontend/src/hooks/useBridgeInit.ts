@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { useAppStore } from '@/stores/appStore'
-import { bridge, onStatusUpdate } from '@/utils/bridge'
+import { bridge, onStatusUpdate, getSettings } from '@/utils/bridge'
 import type { AppReadyEvent } from '@/types/bridge'
+import { applySettingsToCss } from '@/utils/theme'
 
 // 简单的日志函数，同时输出到 console 和 C# 日志
 function log(msg: string): void {
@@ -52,6 +53,14 @@ export function useBridgeInit(): void {
         setStatusMessage(data.statusMessage ?? '')
         setReady(true)
 
+        try {
+          const settings = await getSettings()
+          applySettingsToCss(settings)
+          log('✅ 设置已应用到 CSS')
+        } catch (e) {
+          log(`⚠️ 获取设置失败: ${e}`)
+        }
+
         log('✅ 应用初始化完成，isReady = true')
       } catch (e) {
         log(`❌ 获取就绪状态失败: ${e}`)
@@ -66,13 +75,21 @@ export function useBridgeInit(): void {
           log(`🔄 第 ${retries} 次重试...`)
           bridge
             .invoke<AppReadyEvent>('app:getReadyState')
-            .then((data) => {
+            .then(async (data) => {
               if (cancelled) return
               setVersion(data.version)
               setAdmin(data.isAdmin)
               setTheme(data.theme)
               setStatusMessage(data.statusMessage ?? '')
               setReady(true)
+
+              try {
+                const settings = await getSettings()
+                applySettingsToCss(settings)
+              } catch {
+                // ignore
+              }
+
               log(`✅ 第 ${retries} 次重试成功`)
             })
             .catch(() => {

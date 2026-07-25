@@ -1,10 +1,13 @@
 import { clsx } from 'clsx'
+import { useState, useEffect, useRef } from 'react'
 
 interface ChartPlaceholderProps {
   title?: string
   height?: number
   type?: 'line' | 'bar' | 'area'
   className?: string
+  startColor?: string
+  endColor?: string
 }
 
 export function ChartPlaceholder({
@@ -12,7 +15,39 @@ export function ChartPlaceholder({
   height = 200,
   type = 'line',
   className,
+  startColor,
+  endColor,
 }: ChartPlaceholderProps): JSX.Element {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [resolvedStartColor, setResolvedStartColor] = useState(startColor || '')
+  const [resolvedEndColor, setResolvedEndColor] = useState(endColor || '')
+
+  useEffect(() => {
+    if (startColor && endColor) {
+      setResolvedStartColor(startColor)
+      setResolvedEndColor(endColor)
+      return
+    }
+
+    if (typeof window === 'undefined') return
+
+    const computedStyle = getComputedStyle(containerRef.current || document.documentElement)
+    const cssStartColor = computedStyle.getPropertyValue('--md-primary-hue-mid').trim()
+    const cssEndColor = computedStyle.getPropertyValue('--md-primary-hue-light').trim()
+
+    if (!startColor && cssStartColor) {
+      setResolvedStartColor(cssStartColor)
+    } else if (startColor) {
+      setResolvedStartColor(startColor)
+    }
+
+    if (!endColor && cssEndColor) {
+      setResolvedEndColor(cssEndColor)
+    } else if (endColor) {
+      setResolvedEndColor(endColor)
+    }
+  }, [startColor, endColor])
+
   const points = [15, 35, 28, 52, 42, 68, 55, 72, 65, 80, 70, 88]
   const max = Math.max(...points)
 
@@ -43,7 +78,7 @@ export function ChartPlaceholder({
   }
 
   return (
-    <div className={clsx('card p-5', className)}>
+    <div ref={containerRef} className={clsx('card p-5', className)}>
       {title && (
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">
           {title}
@@ -57,12 +92,12 @@ export function ChartPlaceholder({
         >
           <defs>
             <linearGradient id="chartArea" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
+              <stop offset="0%" stopColor={resolvedStartColor} stopOpacity="0.3" />
+              <stop offset="100%" stopColor={resolvedStartColor} stopOpacity="0.02" />
             </linearGradient>
             <linearGradient id="chartLine" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#60a5fa" />
-              <stop offset="100%" stopColor="#8b5cf6" />
+              <stop offset="0%" stopColor={resolvedStartColor} />
+              <stop offset="100%" stopColor={resolvedEndColor} />
             </linearGradient>
           </defs>
 

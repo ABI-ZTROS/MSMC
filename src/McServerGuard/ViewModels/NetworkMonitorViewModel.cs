@@ -190,6 +190,10 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
     public int CurrentHour => DateTime.Now.Hour;
 
+    public double[] HourlyUploadMBArray => _hourlyUploadValues.ToArray();
+
+    public double[] HourlyDownloadMBArray => _hourlyDownloadValues.ToArray();
+
     // ── 桥接属性 ──
 
     private string _bridgeListenAddress = "0.0.0.0";

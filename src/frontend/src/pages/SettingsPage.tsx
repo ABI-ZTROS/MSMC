@@ -20,6 +20,9 @@ import {
   getJavaList,
   rescanJava,
   getAppInfo,
+  getPresets,
+  getPrimarySwatches,
+  getAccentSwatches,
 } from '@/utils/bridge'
 import type {
   SettingsData,
@@ -27,52 +30,10 @@ import type {
   JavaListResponse,
   AppInfo,
   ThemePreset,
+  SwatchInfo,
+  PresetInfo,
 } from '@/types/bridge'
-
-// ─────────────────────────────────────────────────────────────────────
-// 预设色板（与 WPF SettingsPage.xaml 保持一致）
-// ─────────────────────────────────────────────────────────────────────
-interface Swatch {
-  color: string
-  label: string
-}
-
-const primarySwatches: Swatch[] = [
-  { color: '#7B1FA2', label: '深紫' },
-  { color: '#1565C0', label: '蓝' },
-  { color: '#00897B', label: '青绿' },
-  { color: '#C62828', label: '红' },
-  { color: '#F57C00', label: '橙' },
-  { color: '#2E7D32', label: '绿' },
-  { color: '#0D47A1', label: '深蓝' },
-  { color: '#4A148C', label: '深紫红' },
-]
-
-const accentSwatches: Swatch[] = [
-  { color: '#CDDC39', label: '青柠' },
-  { color: '#FF9800', label: '橙' },
-  { color: '#E91E63', label: '粉红' },
-  { color: '#FFD600', label: '黄' },
-  { color: '#00BCD4', label: '青' },
-  { color: '#8BC34A', label: '浅绿' },
-  { color: '#FF5722', label: '深橙' },
-  { color: '#6366F1', label: '靛蓝' },
-]
-
-interface PresetOption {
-  key: ThemePreset
-  label: string
-  primary: string
-  accent: string
-}
-
-const presetOptions: PresetOption[] = [
-  { key: 'SkyBlue', label: '苍穹蓝', primary: '#3B82F6', accent: '#FB7185' },
-  { key: 'BlueOrange', label: '科技蓝', primary: '#1565C0', accent: '#FF9800' },
-  { key: 'TealPink', label: '清新绿', primary: '#00897B', accent: '#E91E63' },
-  { key: 'RedYellow', label: '火焰红', primary: '#C62828', accent: '#FFD600' },
-  { key: 'OceanBlue', label: '海洋蓝', primary: '#0097A7', accent: '#FFD740' },
-]
+import { applySettingsToCss } from '@/utils/theme'
 
 // 颜色归一化：统一为 #RRGGBB 用于比较
 function normalizeHex(hex: string): string {
@@ -91,6 +52,12 @@ export function SettingsPage(): JSX.Element {
   const [javaList, setJavaList] = useState<JavaInstallationInfo[]>([])
   const [isScanningJava, setIsScanningJava] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
+
+  // 色板和预设数据
+  const [primarySwatches, setPrimarySwatches] = useState<SwatchInfo[]>([])
+  const [accentSwatches, setAccentSwatches] = useState<SwatchInfo[]>([])
+  const [presetOptions, setPresetOptions] = useState<PresetInfo[]>([])
+  const [swatchesLoading, setSwatchesLoading] = useState(true)
 
   // HEX 输入框本地值（失焦时才提交到后端）
   const [primaryHexInput, setPrimaryHexInput] = useState('')
@@ -113,6 +80,7 @@ export function SettingsPage(): JSX.Element {
       setEnableWindowsNotifications(resp.enableWindowsNotifications)
       setPreferJavaw(resp.preferJavaw)
       setStatusMessage(resp.statusMessage)
+      applySettingsToCss(resp)
     } catch (e) {
       console.error('获取设置失败:', e)
     }
@@ -128,13 +96,32 @@ export function SettingsPage(): JSX.Element {
     }
   }, [])
 
+  const loadSwatchesAndPresets = useCallback(async (): Promise<void> => {
+    try {
+      setSwatchesLoading(true)
+      const [presetsResp, primaryResp, accentResp] = await Promise.all([
+        getPresets(),
+        getPrimarySwatches(),
+        getAccentSwatches(),
+      ])
+      setPresetOptions(presetsResp.presets)
+      setPrimarySwatches(primaryResp.swatches)
+      setAccentSwatches(accentResp.swatches)
+    } catch (e) {
+      console.error('获取色板和预设失败:', e)
+    } finally {
+      setSwatchesLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     loadSettings()
     loadJavaList()
+    loadSwatchesAndPresets()
     getAppInfo()
       .then((info) => setAppInfo(info))
       .catch((e) => console.error('获取应用信息失败:', e))
-  }, [loadSettings, loadJavaList])
+  }, [loadSettings, loadJavaList, loadSwatchesAndPresets])
 
   // ─── 颜色设置 ───
   const handleSetPrimary = async (hex: string): Promise<void> => {
@@ -348,18 +335,31 @@ export function SettingsPage(): JSX.Element {
               预设主色
             </div>
             <div className="flex flex-wrap" style={{ gap: 10 }}>
-              {primarySwatches.map((s) => {
-                const selected = normalizeHex(s.color) === normalizeHex(primaryColorHex)
-                return (
-                  <button
-                    key={s.color}
-                    className={`md-swatch ${selected ? 'md-swatch-selected' : ''}`}
-                    style={{ backgroundColor: s.color }}
-                    title={s.label}
-                    onClick={() => handleSetPrimary(s.color)}
+              {swatchesLoading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="md-swatch"
+                    style={{
+                      backgroundColor: 'var(--md-card-hover)',
+                      animation: 'pulse 1.5s ease-in-out infinite',
+                    }}
                   />
-                )
-              })}
+                ))
+              ) : (
+                primarySwatches.map((s) => {
+                  const selected = normalizeHex(s.color) === normalizeHex(primaryColorHex)
+                  return (
+                    <button
+                      key={s.color}
+                      className={`md-swatch ${selected ? 'md-swatch-selected' : ''}`}
+                      style={{ backgroundColor: s.color }}
+                      title={s.label}
+                      onClick={() => handleSetPrimary(s.color)}
+                    />
+                  )
+                })
+              )}
             </div>
           </div>
 
@@ -426,18 +426,31 @@ export function SettingsPage(): JSX.Element {
               预设强调色
             </div>
             <div className="flex flex-wrap" style={{ gap: 10 }}>
-              {accentSwatches.map((s) => {
-                const selected = normalizeHex(s.color) === normalizeHex(accentColorHex)
-                return (
-                  <button
-                    key={s.color}
-                    className={`md-swatch ${selected ? 'md-swatch-selected' : ''}`}
-                    style={{ backgroundColor: s.color }}
-                    title={s.label}
-                    onClick={() => handleSetAccent(s.color)}
+              {swatchesLoading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="md-swatch"
+                    style={{
+                      backgroundColor: 'var(--md-card-hover)',
+                      animation: 'pulse 1.5s ease-in-out infinite',
+                    }}
                   />
-                )
-              })}
+                ))
+              ) : (
+                accentSwatches.map((s) => {
+                  const selected = normalizeHex(s.color) === normalizeHex(accentColorHex)
+                  return (
+                    <button
+                      key={s.color}
+                      className={`md-swatch ${selected ? 'md-swatch-selected' : ''}`}
+                      style={{ backgroundColor: s.color }}
+                      title={s.label}
+                      onClick={() => handleSetAccent(s.color)}
+                    />
+                  )
+                })
+              )}
             </div>
           </div>
         </div>
@@ -454,33 +467,77 @@ export function SettingsPage(): JSX.Element {
             快速方案
           </div>
           <div className="flex flex-wrap" style={{ gap: 8 }}>
-            {presetOptions.map((p) => (
-              <button
-                key={p.key}
-                className="md-btn md-btn-outlined"
-                style={{ padding: '12px 20px', minHeight: 44 }}
-                onClick={() => handleSetPreset(p.key)}
-              >
-                <span
+            {swatchesLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="md-btn md-btn-outlined"
                   style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 4,
-                    backgroundColor: p.primary,
+                    padding: '12px 20px',
+                    minHeight: 44,
+                    backgroundColor: 'var(--md-card-hover)',
+                    borderColor: 'transparent',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                    opacity: 0.6,
                   }}
-                />
-                <span
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 4,
-                    backgroundColor: p.accent,
-                    marginLeft: 4,
-                  }}
-                />
-                <span style={{ marginLeft: 8 }}>{p.label}</span>
-              </button>
-            ))}
+                >
+                  <span
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      backgroundColor: 'var(--md-subtle-border)',
+                    }}
+                  />
+                  <span
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      backgroundColor: 'var(--md-subtle-border)',
+                      marginLeft: 4,
+                    }}
+                  />
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      width: 60,
+                      height: 14,
+                      backgroundColor: 'var(--md-subtle-border)',
+                      borderRadius: 2,
+                    }}
+                  />
+                </div>
+              ))
+            ) : (
+              presetOptions.map((p) => (
+                <button
+                  key={p.key}
+                  className="md-btn md-btn-outlined"
+                  style={{ padding: '12px 20px', minHeight: 44 }}
+                  onClick={() => handleSetPreset(p.key)}
+                >
+                  <span
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      backgroundColor: p.primary,
+                    }}
+                  />
+                  <span
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      backgroundColor: p.accent,
+                      marginLeft: 4,
+                    }}
+                  />
+                  <span style={{ marginLeft: 8 }}>{p.label}</span>
+                </button>
+              ))
+            )}
           </div>
         </div>
 

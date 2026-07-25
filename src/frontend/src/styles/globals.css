@@ -120,7 +120,8 @@
   }
 
   .md-btn-danger:hover:not(:disabled) {
-    background-color: #c62828;
+    background-color: var(--md-danger);
+    filter: brightness(0.85);
   }
 
   /* 描边按钮（Outlined） */
@@ -614,9 +615,18 @@
     outline: none;
     cursor: pointer;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394A3B8' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    background-image: linear-gradient(var(--md-body-light), var(--md-body-light));
     background-repeat: no-repeat;
     background-position: right 10px center;
+    background-size: 12px 12px;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: right 10px center;
+    mask-position: right 10px center;
+    -webkit-mask-size: 12px 12px;
+    mask-size: 12px 12px;
     transition: border-color var(--md-duration-fast) var(--md-ease-standard);
   }
 
@@ -674,17 +684,17 @@
 
   .md-chip-success {
     color: var(--md-gauge-green);
-    background-color: rgba(76, 175, 80, 0.1);
+    background-color: var(--md-success-subtle-background);
   }
 
   .md-chip-warning {
     color: var(--md-gauge-yellow);
-    background-color: rgba(255, 193, 7, 0.1);
+    background-color: var(--md-warning-subtle-background);
   }
 
   .md-chip-danger {
     color: var(--md-gauge-red);
-    background-color: rgba(244, 54, 76, 0.1);
+    background-color: var(--md-danger-subtle-background);
   }
 
   .md-chip-neutral {
@@ -766,7 +776,7 @@
   }
 
   .md-link:hover {
-    color: var(--md-primary-hue-lighter, #93C5FD);
+    color: var(--md-primary-hue-lighter);
     text-decoration: underline;
   }
 }

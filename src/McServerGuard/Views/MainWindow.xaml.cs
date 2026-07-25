@@ -606,6 +606,179 @@ public partial class MainWindow : Window
             });
         });
 
+        // 选择服务器
+        _bridgeService.RegisterRequestHandler("server:select", payload =>
+        {
+            try
+            {
+                var displayName = payload?.ToString() ?? string.Empty;
+                if (_vm?.DetectionPage != null && !string.IsNullOrEmpty(displayName))
+                {
+                    var server = _vm.DetectionPage.DetectionResult?.Servers
+                        .FirstOrDefault(s => s.DisplayName == displayName);
+                    if (server != null)
+                    {
+                        _vm.DetectionPage.SelectedServer = server;
+                    }
+                    else
+                    {
+                        var known = _vm.DetectionPage.KnownServers
+                            .FirstOrDefault(k => k.Name == displayName);
+                        if (known != null)
+                        {
+                            _vm.DetectionPage.SelectedKnownServer = known;
+                        }
+                    }
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "选择服务器失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 启动当前选中的服务器
+        _bridgeService.RegisterRequestHandler("server:start", async _ =>
+        {
+            try
+            {
+                if (_vm?.DetectionPage != null)
+                {
+                    await _vm.DetectionPage.StartCurrentServerCommand.ExecuteAsync(null);
+                }
+                return new { success = true };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "启动服务器失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // 停止当前选中的服务器
+        _bridgeService.RegisterRequestHandler("server:stop", async _ =>
+        {
+            try
+            {
+                if (_vm?.DetectionPage != null)
+                {
+                    await _vm.DetectionPage.StopCurrentServerCommand.ExecuteAsync(null);
+                }
+                return new { success = true };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "停止服务器失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // 导入服务器
+        _bridgeService.RegisterRequestHandler("server:import", _ =>
+        {
+            try
+            {
+                if (_vm?.DetectionPage != null)
+                {
+                    _vm.DetectionPage.BrowseAndImportServerCommand.Execute(null);
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "导入服务器失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 切换自动检测
+        _bridgeService.RegisterRequestHandler("server:toggleAutoDetect", _ =>
+        {
+            try
+            {
+                if (_vm?.DetectionPage != null)
+                {
+                    _vm.DetectionPage.ToggleAutoDetectCommand.Execute(null);
+                }
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    isEnabled = _vm?.DetectionPage?.IsAutoDetectEnabled ?? false
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "切换自动检测失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 启动已知服务器
+        _bridgeService.RegisterRequestHandler("server:startKnown", async payload =>
+        {
+            try
+            {
+                var name = payload?.ToString() ?? string.Empty;
+                if (_vm?.DetectionPage != null && !string.IsNullOrEmpty(name))
+                {
+                    var known = _vm.DetectionPage.KnownServers.FirstOrDefault(k => k.Name == name);
+                    if (known != null)
+                    {
+                        await _vm.DetectionPage.StartKnownServerCommand.ExecuteAsync(known);
+                    }
+                }
+                return new { success = true };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "启动已知服务器失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // 删除已知服务器
+        _bridgeService.RegisterRequestHandler("server:removeKnown", payload =>
+        {
+            try
+            {
+                var name = payload?.ToString() ?? string.Empty;
+                if (_vm?.DetectionPage != null && !string.IsNullOrEmpty(name))
+                {
+                    var known = _vm.DetectionPage.KnownServers.FirstOrDefault(k => k.Name == name);
+                    if (known != null)
+                    {
+                        _vm.DetectionPage.RemoveKnownServerCommand.Execute(known);
+                    }
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "删除已知服务器失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 保存为已知服务器
+        _bridgeService.RegisterRequestHandler("server:saveAsKnown", _ =>
+        {
+            try
+            {
+                if (_vm?.DetectionPage != null)
+                {
+                    _vm.DetectionPage.SaveAsKnownServerCommand.Execute(null);
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "保存为已知服务器失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
         // === 补齐网络监控、配置编辑、设置三大模块的 API ===
         RegisterNetworkApis();
         RegisterConfigApis();
@@ -816,6 +989,17 @@ public partial class MainWindow : Window
                 net.RefreshCommand.Execute(null);
             }
             return Task.FromResult<object?>(new { success = true });
+        });
+
+        // 获取24小时历史流量数据
+        _bridgeService.RegisterRequestHandler("network:getHourlyHistory", _ =>
+        {
+            return Task.FromResult<object?>(new
+            {
+                upload = net?.HourlyUploadMBArray ?? new double[24],
+                download = net?.HourlyDownloadMBArray ?? new double[24],
+                currentHour = net?.CurrentHour ?? DateTime.Now.Hour,
+            });
         });
 
         Log.Information("✅ 网络监控 API 注册完成");
@@ -1164,6 +1348,54 @@ public partial class MainWindow : Window
         {
             settings?.RescanJavaCommand.Execute(null);
             return Task.FromResult<object?>(new { success = true });
+        });
+
+        // 获取预设主题列表
+        _bridgeService.RegisterRequestHandler("settings:getPresets", _ =>
+        {
+            var presets = new[]
+            {
+                new { key = "SkyBlue", label = "苍穹蓝", primary = "#3B82F6", accent = "#FB7185" },
+                new { key = "BlueOrange", label = "科技蓝", primary = "#1565C0", accent = "#FF9800" },
+                new { key = "TealPink", label = "清新绿", primary = "#00897B", accent = "#E91E63" },
+                new { key = "RedYellow", label = "火焰红", primary = "#C62828", accent = "#FFD600" },
+                new { key = "OceanBlue", label = "海洋蓝", primary = "#0097A7", accent = "#FFD740" },
+            };
+            return Task.FromResult<object?>(new { presets });
+        });
+
+        // 获取主色色板
+        _bridgeService.RegisterRequestHandler("settings:getPrimarySwatches", _ =>
+        {
+            var swatches = new[]
+            {
+                new { color = "#7B1FA2", label = "深紫" },
+                new { color = "#1565C0", label = "蓝" },
+                new { color = "#00897B", label = "青绿" },
+                new { color = "#C62828", label = "红" },
+                new { color = "#F57C00", label = "橙" },
+                new { color = "#2E7D32", label = "绿" },
+                new { color = "#0D47A1", label = "深蓝" },
+                new { color = "#4A148C", label = "深紫红" },
+            };
+            return Task.FromResult<object?>(new { swatches });
+        });
+
+        // 获取强调色色板
+        _bridgeService.RegisterRequestHandler("settings:getAccentSwatches", _ =>
+        {
+            var swatches = new[]
+            {
+                new { color = "#CDDC39", label = "青柠" },
+                new { color = "#FF9800", label = "橙" },
+                new { color = "#E91E63", label = "粉红" },
+                new { color = "#FFD600", label = "黄" },
+                new { color = "#00BCD4", label = "青" },
+                new { color = "#8BC34A", label = "浅绿" },
+                new { color = "#FF5722", label = "深橙" },
+                new { color = "#6366F1", label = "靛蓝" },
+            };
+            return Task.FromResult<object?>(new { swatches });
         });
 
         Log.Information("✅ 设置 API 注册完成");

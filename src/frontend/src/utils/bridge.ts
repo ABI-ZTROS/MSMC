@@ -12,6 +12,7 @@ import type {
   CommonPortInfo,
   AddBridgeRequest,
   KillProcessRequest,
+  HourlyHistoryResponse,
   AvailableServersResponse,
   ConfigFileTreeResponse,
   ConfigEntriesResponse,
@@ -21,6 +22,8 @@ import type {
   JavaListResponse,
   ThemePreset,
   ThemeApplyResult,
+  SwatchesResponse,
+  PresetsResponse,
 } from '@/types/bridge'
 
 declare global {
@@ -365,6 +368,10 @@ export function refreshNetwork(): Promise<{ success: boolean }> {
   return bridge.invoke<{ success: boolean }>('network:refresh')
 }
 
+export function getHourlyHistory(): Promise<HourlyHistoryResponse> {
+  return bridge.invoke<HourlyHistoryResponse>('network:getHourlyHistory')
+}
+
 // ═════════════════════════════════════════════════════════════════════
 // 配置编辑 API
 // ═════════════════════════════════════════════════════════════════════
@@ -455,4 +462,16 @@ export function getJavaList(): Promise<JavaListResponse> {
 
 export function rescanJava(): Promise<{ success: boolean }> {
   return bridge.invoke<{ success: boolean }>('settings:rescanJava')
+}
+
+export function getPresets(): Promise<PresetsResponse> {
+  return bridge.invoke<PresetsResponse>('settings:getPresets')
+}
+
+export function getPrimarySwatches(): Promise<SwatchesResponse> {
+  return bridge.invoke<SwatchesResponse>('settings:getPrimarySwatches')
+}
+
+export function getAccentSwatches(): Promise<SwatchesResponse> {
+  return bridge.invoke<SwatchesResponse>('settings:getAccentSwatches')
 }

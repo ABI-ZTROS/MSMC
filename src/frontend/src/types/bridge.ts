@@ -179,6 +179,11 @@ export interface KillProcessRequest {
   protocol: string
 }
 
+export interface HourlyHistoryResponse {
+  upload: number[]
+  download: number[]
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // 配置编辑类型
 // ─────────────────────────────────────────────────────────────────────
@@ -303,4 +308,24 @@ export interface ThemeApplyResult {
   accentColorHex?: string
   isDarkMode?: boolean
   enableAnimations?: boolean
+}
+
+export interface SwatchInfo {
+  color: string
+  label: string
+}
+
+export interface PresetInfo {
+  key: ThemePreset
+  label: string
+  primary: string
+  accent: string
+}
+
+export interface SwatchesResponse {
+  swatches: SwatchInfo[]
+}
+
+export interface PresetsResponse {
+  presets: PresetInfo[]
 }

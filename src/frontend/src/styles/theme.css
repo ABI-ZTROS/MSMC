@@ -12,6 +12,7 @@
   --md-loading-overlay: rgba(15, 23, 42, 0.8);
 
   /* ─── 主色（苍穹蓝） ─── */
+  --md-primary-hue-lighter: #93C5FD;
   --md-primary-hue-light: #60A5FA;
   --md-primary-hue-mid: #3B82F6;
   --md-primary-hue-dark: #2563EB;
@@ -40,6 +41,10 @@
   --md-gauge-red: #F4364C;
   --md-danger: #E53935;
   --md-error-text: #FB7185;
+
+  --md-success-subtle-background: rgba(76, 175, 80, 0.1);
+  --md-warning-subtle-background: rgba(255, 193, 7, 0.1);
+  --md-danger-subtle-background: rgba(244, 54, 76, 0.1);
 
   /* ─── 边框色 ─── */
   --md-subtle-border: #334155;
