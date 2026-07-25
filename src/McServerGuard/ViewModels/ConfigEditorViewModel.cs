@@ -385,6 +385,10 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isSaveError;
 
+    /// <summary>保存错误类型，null 表示无错误</summary>
+    [ObservableProperty]
+    private string? _saveErrorType;
+
     /// <summary>是否正在加载配置文件</summary>
     [ObservableProperty]
     private bool _isLoading;
@@ -429,6 +433,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         {
             var errorMsg = $"文件被占用，保存失败：\n\n{ioEx.Message}\n\n请关闭正在使用该文件的程序（如服务器进程或文本编辑器）后重试。";
             IsSaveError = true;
+            SaveErrorType = "FileLocked";
             SaveStatusMessage = "文件被占用，保存失败（请关闭正在使用该文件的程序）";
 
             System.Windows.MessageBox.Show(
@@ -444,6 +449,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         {
             var errorMsg = $"权限不足，保存失败：\n\n{authEx.Message}";
             IsSaveError = true;
+            SaveErrorType = "UnauthorizedAccess";
             SaveStatusMessage = $"权限不足，保存失败：{authEx.Message}";
 
             System.Windows.MessageBox.Show(
@@ -473,6 +479,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             UndoCommand.NotifyCanExecuteChanged();
 
             IsSaveError = false;
+            SaveErrorType = null;
             SaveStatusMessage = $"配置已保存，共 {currentConfig.Count} 项";
 
             Log.Information("✅ 配置保存成功，共保存 {Count} 项配置", currentConfig.Count);
@@ -481,6 +488,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         {
             var errorMsg = $"保存失败：\n\n{ex.Message}\n\n文件可能被其他程序占用，请关闭后重试。";
             IsSaveError = true;
+            SaveErrorType = IsFileLocked(ex) ? "FileLocked" : "Unknown";
             SaveStatusMessage = $"保存失败：{ex.Message}（文件可能被其他程序占用）";
 
             System.Windows.MessageBox.Show(
@@ -495,6 +503,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         {
             var errorMsg = $"保存失败：\n\n{ex.Message}";
             IsSaveError = true;
+            SaveErrorType = "Unknown";
             SaveStatusMessage = $"保存失败：{ex.Message}";
 
             System.Windows.MessageBox.Show(
@@ -555,6 +564,8 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         _undoStack.Clear();
         UndoCommand.NotifyCanExecuteChanged();
         SaveStatusMessage = null;
+        SaveErrorType = null;
+        IsSaveError = false;
     }
 
     /// <summary>

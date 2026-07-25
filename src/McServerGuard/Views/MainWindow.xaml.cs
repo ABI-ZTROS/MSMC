@@ -1111,10 +1111,21 @@ public partial class MainWindow : Window
                 items = g.Items.Select(FormatEntry).ToList(),
             }).ToList();
 
+            var selectedServerName = cfg?.SelectedServerName;
+            bool isCurrentServerRunning = false;
+            if (!string.IsNullOrEmpty(selectedServerName) && _vm?.DetectionPage?.DetectionResult?.Servers != null)
+            {
+                isCurrentServerRunning = _vm.DetectionPage.DetectionResult.Servers.Any(s =>
+                    s.DisplayName == selectedServerName || s.ServerJarName == selectedServerName);
+            }
+
+            var modifiedCount = cfg?.ConfigEntries.Count(e => e.IsModified) ?? 0;
+
             return Task.FromResult<object?>(new
             {
                 groups = result,
                 totalCount = cfg?.ConfigEntries.Count ?? 0,
+                modifiedCount = modifiedCount,
                 hasUnsavedChanges = cfg?.HasUnsavedChanges ?? false,
                 isLoading = cfg?.IsLoading ?? false,
                 loadProgress = cfg?.LoadProgress ?? 0,
@@ -1122,6 +1133,7 @@ public partial class MainWindow : Window
                 selectedConfigFileName = cfg?.SelectedConfigFileName,
                 saveStatusMessage = cfg?.SaveStatusMessage,
                 isSaveError = cfg?.IsSaveError ?? false,
+                isCurrentServerRunning = isCurrentServerRunning,
             });
         });
 
@@ -1159,10 +1171,26 @@ public partial class MainWindow : Window
             {
                 cfg.SaveConfigCommand.Execute(null);
             }
+
+            var isSuccess = !cfg?.IsSaveError ?? false;
+            var requiresRestart = cfg?.ConfigEntries.Any(e => e.IsModified && e.RequiresRestart) ?? false;
+
+            string? errorType = null;
+            string? errorDetail = null;
+
+            if (!isSuccess)
+            {
+                errorType = cfg?.SaveErrorType ?? "Unknown";
+                errorDetail = cfg?.SaveStatusMessage;
+            }
+
             return Task.FromResult<object?>(new
             {
-                success = !cfg?.IsSaveError ?? false,
+                success = isSuccess,
                 message = cfg?.SaveStatusMessage,
+                errorType = errorType,
+                errorDetail = errorDetail,
+                requiresRestart = requiresRestart,
             });
         });
 

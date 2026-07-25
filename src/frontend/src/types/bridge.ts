@@ -253,6 +253,8 @@ export interface ConfigEntriesResponse {
   selectedConfigFileName: string | null
   saveStatusMessage: string | null
   isSaveError: boolean
+  isCurrentServerRunning?: boolean
+  modifiedCount?: number
 }
 
 export interface UpdateConfigValueRequest {
@@ -263,6 +265,9 @@ export interface UpdateConfigValueRequest {
 export interface ConfigSaveResult {
   success: boolean
   message: string | null
+  requiresRestart?: boolean
+  errorType?: string
+  errorDetail?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────

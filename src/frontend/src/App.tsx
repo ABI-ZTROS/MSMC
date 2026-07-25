@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/AppLayout'
+import { ToastContainer } from '@/components/ui/Toast'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ConfigEditorPage } from '@/pages/ConfigEditorPage'
 import { SystemMonitorPage } from '@/pages/SystemMonitorPage'
@@ -24,18 +25,21 @@ function App(): JSX.Element {
   }
 
   return (
-    <HashRouter>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/config" element={<ConfigEditorPage />} />
-          <Route path="/system" element={<SystemMonitorPage />} />
-          <Route path="/network" element={<NetworkMonitorPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </HashRouter>
+    <>
+      <HashRouter>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/config" element={<ConfigEditorPage />} />
+            <Route path="/system" element={<SystemMonitorPage />} />
+            <Route path="/network" element={<NetworkMonitorPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </HashRouter>
+      <ToastContainer />
+    </>
   )
 }
 

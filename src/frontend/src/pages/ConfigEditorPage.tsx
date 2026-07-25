@@ -10,6 +10,10 @@ import {
   FaFloppyDisk,
   FaLightbulb,
   FaChevronRight,
+  FaCheck,
+  FaCircleExclamation,
+  FaPowerOff,
+  FaTriangleExclamation,
 } from 'react-icons/fa6'
 import {
   getAvailableServers,
@@ -23,6 +27,7 @@ import {
   selectConfigServer,
   rescanConfigFiles,
 } from '@/utils/bridge'
+import { useToastStore } from '@/stores/toastStore'
 import type {
   AvailableServer,
   ConfigFileItem,
@@ -212,6 +217,8 @@ function ConfigEntryEditor({
 // 配置编辑页主组件
 // ─────────────────────────────────────────────────────────────────────
 export function ConfigEditorPage(): JSX.Element {
+  const showToast = useToastStore((s) => s.showToast)
+
   const [availableServers, setAvailableServers] = useState<AvailableServer[]>([])
   const [selectedServerName, setSelectedServerName] = useState<string | null>(null)
   const [serverWorkingDirectory, setServerWorkingDirectory] = useState('')
@@ -229,10 +236,16 @@ export function ConfigEditorPage(): JSX.Element {
   const [isLoading, setIsLoading] = useState(false)
   const [loadProgress, setLoadProgress] = useState(0)
   const [isFetchingEntries, setIsFetchingEntries] = useState(false)
+  const [isServerRunning, setIsServerRunning] = useState(false)
+  const [modifiedCount, setModifiedCount] = useState(0)
 
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [pendingValues, setPendingValues] = useState<Record<string, string>>({})
+
+  const [showSaveErrorModal, setShowSaveErrorModal] = useState(false)
+  const [saveErrorInfo, setSaveErrorInfo] = useState<{ type: string; detail: string } | null>(null)
+  const [showRestartConfirm, setShowRestartConfirm] = useState(false)
 
   const loadFileTree = useCallback(async (): Promise<void> => {
     try {
@@ -259,6 +272,8 @@ export function ConfigEditorPage(): JSX.Element {
       setLoadProgress(resp.loadProgress)
       setSelectedConfigFile(resp.selectedConfigFile)
       setSelectedConfigFileName(resp.selectedConfigFileName)
+      setIsServerRunning(resp.isCurrentServerRunning ?? false)
+      setModifiedCount(resp.modifiedCount ?? 0)
       return resp
     } catch (e) {
       console.error('获取配置条目失败:', e)
@@ -358,10 +373,29 @@ export function ConfigEditorPage(): JSX.Element {
       setIsSaveError(!result.success)
       setPendingValues({})
       await loadEntries()
+
+      if (result.success) {
+        if (result.requiresRestart) {
+          setShowRestartConfirm(true)
+        } else {
+          showToast('配置保存成功', 'success')
+        }
+      } else {
+        if (result.errorType === 'FileLocked') {
+          setSaveErrorInfo({
+            type: result.errorType,
+            detail: result.errorDetail ?? result.message ?? '',
+          })
+          setShowSaveErrorModal(true)
+        } else {
+          showToast(result.message ?? '保存失败', 'error')
+        }
+      }
     } catch (e) {
       console.error('保存配置失败:', e)
       setSaveStatusMessage('保存失败')
       setIsSaveError(true)
+      showToast('保存失败', 'error')
     }
   }
 
@@ -516,16 +550,29 @@ export function ConfigEditorPage(): JSX.Element {
           <div className="flex items-center justify-between gap-3">
             {/* 左侧：当前文件名 + 副标题 */}
             <div className="min-w-0">
-              <div
-                className="truncate"
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: 'var(--md-body)',
-                }}
-                title={selectedConfigFile ?? ''}
-              >
-                {selectedConfigFileName ?? '未选择文件'}
+              <div className="flex items-center gap-3">
+                <div
+                  className="truncate"
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: 'var(--md-body)',
+                  }}
+                  title={selectedConfigFile ?? ''}
+                >
+                  {selectedConfigFileName ?? '未选择文件'}
+                </div>
+                {modifiedCount > 0 && (
+                  <div
+                    style={{
+                      fontSize: 'var(--md-font-size-sm)',
+                      color: 'var(--md-body-light)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    已修改 {modifiedCount} 项
+                  </div>
+                )}
               </div>
               <div
                 className="flex items-center mt-1"
@@ -539,8 +586,8 @@ export function ConfigEditorPage(): JSX.Element {
             <div className="flex items-center gap-3 flex-shrink-0">
               <button
                 className="md-btn md-btn-outlined"
-                style={{ opacity: hasUnsavedChanges ? 1 : 0.4 }}
-                disabled={!hasUnsavedChanges}
+                style={{ opacity: hasUnsavedChanges && !isServerRunning ? 1 : 0.4 }}
+                disabled={!hasUnsavedChanges || isServerRunning}
                 title="撤销最近一次编辑"
                 onClick={handleUndo}
               >
@@ -549,8 +596,8 @@ export function ConfigEditorPage(): JSX.Element {
               </button>
               <button
                 className="md-btn md-btn-outlined"
-                style={{ opacity: hasUnsavedChanges ? 1 : 0.4 }}
-                disabled={!hasUnsavedChanges}
+                style={{ opacity: hasUnsavedChanges && !isServerRunning ? 1 : 0.4 }}
+                disabled={!hasUnsavedChanges || isServerRunning}
                 onClick={handleReset}
               >
                 <FaRotate size={16} />
@@ -558,8 +605,8 @@ export function ConfigEditorPage(): JSX.Element {
               </button>
               <button
                 className="md-btn md-btn-primary"
-                style={{ opacity: hasUnsavedChanges ? 1 : 0.4, fontWeight: 600 }}
-                disabled={!hasUnsavedChanges}
+                style={{ opacity: hasUnsavedChanges && !isServerRunning ? 1 : 0.4, fontWeight: 600 }}
+                disabled={!hasUnsavedChanges || isServerRunning}
                 title="Ctrl+S 也可以保存哦"
                 onClick={handleSave}
               >
@@ -568,6 +615,37 @@ export function ConfigEditorPage(): JSX.Element {
               </button>
             </div>
           </div>
+          {/* 服务器运行警告横幅 */}
+          {isServerRunning && (
+            <div
+              className="flex items-center"
+              style={{
+                height: 40,
+                paddingLeft: 16,
+                paddingRight: 16,
+                backgroundColor: 'var(--md-warning-subtle-background)',
+                borderRadius: 'var(--md-radius-small)',
+                marginBottom: 12,
+              }}
+            >
+              <FaTriangleExclamation
+                size={18}
+                style={{
+                  color: 'var(--md-gauge-yellow)',
+                  marginRight: 10,
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 'var(--md-font-size-base)',
+                  color: 'var(--md-body)',
+                }}
+              >
+                服务器正在运行，修改配置不会立即生效，请停止服务器后保存
+              </span>
+            </div>
+          )}
           {/* 保存状态消息 */}
           {saveStatusMessage && (
             <div
@@ -838,6 +916,169 @@ export function ConfigEditorPage(): JSX.Element {
           )}
         </div>
       </div>
+
+      {showSaveErrorModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'mdFadeIn 0.2s ease-out',
+          }}
+          onClick={() => setShowSaveErrorModal(false)}
+        >
+          <div
+            className="md-card"
+            style={{
+              width: 420,
+              padding: 24,
+              borderRadius: 'var(--md-radius-large)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              animation: 'mdModalIn 0.2s ease-out',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4">
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--md-error-subtle)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <FaCircleExclamation
+                  size={24}
+                  style={{ color: 'var(--md-error-text)' }}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: 'var(--md-body)',
+                    marginBottom: 8,
+                  }}
+                >
+                  保存失败 - 文件被占用
+                </div>
+                <div
+                  style={{
+                    fontSize: 'var(--md-font-size-base)',
+                    color: 'var(--md-body-light)',
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {saveErrorInfo?.detail}
+                  <br />
+                  请关闭正在使用该文件的程序（如服务器进程或文本编辑器）后重试
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end mt-6">
+              <button
+                className="md-btn md-btn-primary"
+                onClick={() => setShowSaveErrorModal(false)}
+              >
+                我知道了
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRestartConfirm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'mdFadeIn 0.2s ease-out',
+          }}
+          onClick={() => setShowRestartConfirm(false)}
+        >
+          <div
+            className="md-card"
+            style={{
+              width: 420,
+              padding: 24,
+              borderRadius: 'var(--md-radius-large)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              animation: 'mdModalIn 0.2s ease-out',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4">
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--md-primary-subtle)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <FaCheck size={24} style={{ color: 'var(--md-primary-hue-mid)' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: 'var(--md-body)',
+                    marginBottom: 8,
+                  }}
+                >
+                  保存成功，是否重启服务器？
+                </div>
+                <div
+                  style={{
+                    fontSize: 'var(--md-font-size-base)',
+                    color: 'var(--md-body-light)',
+                    lineHeight: 1.6,
+                  }}
+                >
+                  部分配置需要重启服务器才能生效，是否现在重启？
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                className="md-btn md-btn-outlined"
+                onClick={() => setShowRestartConfirm(false)}
+              >
+                稍后重启
+              </button>
+              <button
+                className="md-btn md-btn-primary"
+                onClick={() => {
+                  setShowRestartConfirm(false)
+                  showToast('重启功能开发中', 'info')
+                }}
+              >
+                <FaPowerOff size={14} />
+                立即重启
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
