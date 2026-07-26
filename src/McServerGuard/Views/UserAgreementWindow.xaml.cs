@@ -104,7 +104,7 @@ public partial class UserAgreementWindow : Window
         Closed -= UserAgreementWindow_Closed;
 
         // 关闭所有残留的提示窗口（防止恶作剧窗口在主窗口关闭后仍残留）
-        foreach (var (w, _, _) in _trollWindows)
+        foreach (var (w, _, _, _) in _trollWindows)
         {
             try { w.Close(); } catch { }
         }
