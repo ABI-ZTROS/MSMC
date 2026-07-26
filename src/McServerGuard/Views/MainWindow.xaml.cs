@@ -464,6 +464,7 @@ public partial class MainWindow : Window
                     javaCpuUsagePercent = 0.0,
                     javaWorkingSetBytes = 0L,
                     javaThreadCount = 0,
+                    perCoreCpuUsages = Array.Empty<double>(),
                     isMonitoring = _vm?.MonitorPage?.IsMonitoring ?? false,
                     memoryInfoText = "等待数据...",
                     diskInfoText = "等待数据...",
@@ -484,6 +485,7 @@ public partial class MainWindow : Window
                 javaCpuUsagePercent = metrics.JavaCpuUsagePercent,
                 javaWorkingSetBytes = metrics.JavaWorkingSetBytes,
                 javaThreadCount = metrics.JavaThreadCount,
+                perCoreCpuUsages = metrics.PerCoreCpuUsages,
                 isMonitoring = _vm?.MonitorPage?.IsMonitoring ?? false,
                 memoryInfoText = _vm?.MonitorPage?.MemoryInfoText ?? string.Empty,
                 diskInfoText = _vm?.MonitorPage?.DiskInfoText ?? string.Empty,
@@ -516,6 +518,44 @@ public partial class MainWindow : Window
         {
             _vm?.MonitorPage?.StopMonitoringCommand.Execute(null);
             return Task.FromResult<object?>(new { success = true });
+        });
+
+        // 获取 CPU 拓扑信息
+        _bridgeService.RegisterRequestHandler("systemMonitor:getCpuInfo", _ =>
+        {
+            try
+            {
+                var cpuIdentifier = App.Services.GetRequiredService<Services.HardwareInfo.CpuIdentifier>();
+                var cpuInfo = cpuIdentifier.GetCpuInfo();
+                return Task.FromResult<object?>(new
+                {
+                    modelName = cpuInfo.ModelName,
+                    manufacturer = cpuInfo.Manufacturer,
+                    physicalCores = cpuInfo.PhysicalCores,
+                    logicalCores = cpuInfo.LogicalCores,
+                    socketCount = cpuInfo.SocketCount,
+                    numaNodeCount = cpuInfo.NumaNodeCount,
+                    isHyperThreadingEnabled = cpuInfo.IsHyperThreadingEnabled,
+                    logicalToPhysicalCoreMap = cpuInfo.LogicalToPhysicalCoreMap,
+                    isRecognized = cpuInfo.IsRecognized,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("获取 CPU 拓扑信息失败: {Msg}", ex.Message);
+                return Task.FromResult<object?>(new
+                {
+                    modelName = "未知 CPU",
+                    manufacturer = "未知",
+                    physicalCores = 0,
+                    logicalCores = 0,
+                    socketCount = 0,
+                    numaNodeCount = 0,
+                    isHyperThreadingEnabled = false,
+                    logicalToPhysicalCoreMap = Array.Empty<int>(),
+                    isRecognized = false,
+                });
+            }
         });
 
         // === 服务器管理相关 API ===

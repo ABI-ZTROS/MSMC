@@ -22,6 +22,12 @@ public partial class SystemMetrics : ObservableObject
     [ObservableProperty] private double _cpuUsagePercent;
 
     /// <summary>
+    /// 每个逻辑 CPU 核心的使用率百分比数组。
+    /// 数组索引对应核心编号（0 开始）。
+    /// </summary>
+    [ObservableProperty] private double[] _perCoreCpuUsages = [];
+
+    /// <summary>
     /// 系统总物理内存容量，单位为字节。
     /// </summary>
     [ObservableProperty] private long _totalMemoryBytes;

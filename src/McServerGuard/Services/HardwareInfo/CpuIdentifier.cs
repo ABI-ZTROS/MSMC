@@ -79,6 +79,19 @@ public class CpuIdentifier
                 "FROM Win32_Processor");
 
             using var collection = searcher.Get();
+            int socketCount = collection.Count;
+            int totalPhysicalCores = 0;
+            int totalLogicalCores = 0;
+            string? firstModelName = null;
+            string? firstManufacturer = null;
+            uint firstMaxClockSpeed = 0;
+            uint firstCurrentClockSpeed = 0;
+            string? firstArch = null;
+            int firstGeneration = 0;
+            string? firstTier = null;
+            double firstPerfScore = 0;
+            bool firstIsRecognized = false;
+
             foreach (var obj in collection)
             {
                 using (obj)
@@ -90,26 +103,69 @@ public class CpuIdentifier
                     var maxClockSpeed = (uint)(obj["MaxClockSpeed"] ?? 0);
                     var currentClockSpeed = (uint)(obj["CurrentClockSpeed"] ?? 0);
 
-                    var normalizedName = NormalizeCpuName(modelName);
-                    var (arch, generation, tier) = ParseCpuModel(normalizedName, manufacturer);
-                    var perfScore = CalculatePerformanceScore((int)physicalCores, (int)logicalCores, maxClockSpeed, tier);
+                    totalPhysicalCores += (int)physicalCores;
+                    totalLogicalCores += (int)logicalCores;
 
-                    return new CpuInfo
+                    if (firstModelName == null)
                     {
-                        ModelName = normalizedName,
-                        Manufacturer = manufacturer,
-                        Architecture = arch,
-                        Generation = generation,
-                        PhysicalCores = (int)physicalCores,
-                        LogicalCores = (int)logicalCores,
-                        BaseClockGHz = Math.Round(maxClockSpeed / 1000.0, 2),
-                        BoostClockGHz = Math.Round(currentClockSpeed / 1000.0, 2),
-                        Tier = tier,
-                        PerformanceScore = perfScore,
-                        IsRecognized = arch != "未知架构"
-                    };
+                        var normalizedName = NormalizeCpuName(modelName);
+                        var (arch, generation, tier) = ParseCpuModel(normalizedName, manufacturer);
+                        var perfScore = CalculatePerformanceScore((int)physicalCores, (int)logicalCores, maxClockSpeed, tier);
+
+                        firstModelName = normalizedName;
+                        firstManufacturer = manufacturer;
+                        firstMaxClockSpeed = maxClockSpeed;
+                        firstCurrentClockSpeed = currentClockSpeed;
+                        firstArch = arch;
+                        firstGeneration = generation;
+                        firstTier = tier;
+                        firstPerfScore = perfScore;
+                        firstIsRecognized = arch != "未知架构";
+                    }
                 }
             }
+
+            if (totalLogicalCores == 0)
+                totalLogicalCores = Environment.ProcessorCount;
+            if (totalPhysicalCores == 0)
+                totalPhysicalCores = totalLogicalCores;
+
+            var isHyperThreading = totalLogicalCores > totalPhysicalCores;
+
+            var logicalToPhysicalMap = new int[totalLogicalCores];
+            if (totalPhysicalCores > 0 && totalLogicalCores >= totalPhysicalCores)
+            {
+                var threadsPerCore = (int)Math.Round((double)totalLogicalCores / totalPhysicalCores);
+                if (threadsPerCore < 1) threadsPerCore = 1;
+                for (int i = 0; i < totalLogicalCores; i++)
+                {
+                    logicalToPhysicalMap[i] = i / threadsPerCore;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < totalLogicalCores; i++)
+                    logicalToPhysicalMap[i] = i;
+            }
+
+            return new CpuInfo
+            {
+                ModelName = firstModelName ?? "未知 CPU",
+                Manufacturer = firstManufacturer ?? "未知",
+                Architecture = firstArch ?? "未知架构",
+                Generation = firstGeneration,
+                PhysicalCores = totalPhysicalCores,
+                LogicalCores = totalLogicalCores,
+                BaseClockGHz = Math.Round(firstMaxClockSpeed / 1000.0, 2),
+                BoostClockGHz = Math.Round(firstCurrentClockSpeed / 1000.0, 2),
+                Tier = firstTier ?? "未知",
+                PerformanceScore = firstPerfScore,
+                SocketCount = Math.Max(socketCount, 1),
+                NumaNodeCount = Math.Max(socketCount, 1),
+                IsHyperThreadingEnabled = isHyperThreading,
+                LogicalToPhysicalCoreMap = logicalToPhysicalMap,
+                IsRecognized = firstIsRecognized
+            };
         }
         catch (Exception ex)
         {
@@ -130,6 +186,14 @@ public class CpuIdentifier
         var physicalCores = logicalCores / 2;
         if (physicalCores < 1) physicalCores = 1;
 
+        var logicalToPhysicalMap = new int[logicalCores];
+        var threadsPerCore = logicalCores / physicalCores;
+        if (threadsPerCore < 1) threadsPerCore = 1;
+        for (int i = 0; i < logicalCores; i++)
+        {
+            logicalToPhysicalMap[i] = i / threadsPerCore;
+        }
+
         return new CpuInfo
         {
             ModelName = "未知 CPU",
@@ -142,6 +206,10 @@ public class CpuIdentifier
             BoostClockGHz = 0,
             Tier = "未知",
             PerformanceScore = 0,
+            SocketCount = 1,
+            NumaNodeCount = 1,
+            IsHyperThreadingEnabled = logicalCores > physicalCores,
+            LogicalToPhysicalCoreMap = logicalToPhysicalMap,
             IsRecognized = false
         };
     }

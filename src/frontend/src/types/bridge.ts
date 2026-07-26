@@ -57,9 +57,22 @@ export interface SystemMetrics {
   javaCpuUsagePercent: number
   javaWorkingSetBytes: number
   javaThreadCount: number
+  perCoreCpuUsages: number[]
   isMonitoring: boolean
   memoryInfoText: string
   diskInfoText: string
+}
+
+export interface CpuInfo {
+  modelName: string
+  manufacturer: string
+  physicalCores: number
+  logicalCores: number
+  socketCount: number
+  numaNodeCount: number
+  isHyperThreadingEnabled: boolean
+  logicalToPhysicalCoreMap: number[]
+  isRecognized: boolean
 }
 
 export interface HistoryPoint {

@@ -84,6 +84,36 @@ public class SystemMonitor : ISystemMonitor
         {
             Log.Warning("CPU 计数器预热失败，将使用 WMI 备用方案: {Msg}", ex.Message);
         }
+
+        // 每核 CPU 计数器初始化
+        InitPerCoreCounters();
+    }
+
+    /// <summary>
+    /// 初始化每核 CPU 性能计数器
+    /// </summary>
+    private void InitPerCoreCounters()
+    {
+        try
+        {
+            var coreCount = Environment.ProcessorCount;
+            _perCoreCpuCounters = new PerformanceCounter[coreCount];
+            for (int i = 0; i < coreCount; i++)
+            {
+                _perCoreCpuCounters[i] = new PerformanceCounter(
+                    "Processor",
+                    "% Processor Time",
+                    i.ToString(),
+                    true);
+                _perCoreCpuCounters[i].NextValue();
+            }
+            Log.Debug("每核 CPU 计数器已初始化，共 {Count} 个核心", coreCount);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "初始化每核 CPU 计数器失败: {Msg}", ex.Message);
+            _perCoreCpuCounters = null;
+        }
     }
 
     /// <summary>
@@ -100,6 +130,7 @@ public class SystemMonitor : ISystemMonitor
 
         // CPU 使用率采集
         var cpuUsage = GetCpuUsage();
+        var perCoreUsages = GetPerCoreCpuUsage();
 
         // 内存指标采集
         var totalMemory = _memoryMonitor.GetTotalPhysicalMemory();
@@ -128,6 +159,7 @@ public class SystemMonitor : ISystemMonitor
         {
             Timestamp = timestamp,
             CpuUsagePercent = cpuUsage,
+            PerCoreCpuUsages = perCoreUsages,
             TotalMemoryBytes = totalMemory,
             UsedMemoryBytes = usedMemory,
             MemoryUsagePercent = memoryUsagePercent,
@@ -347,9 +379,41 @@ public class SystemMonitor : ISystemMonitor
     }
 
     /// <summary>
+    /// 获取每个 CPU 核心的使用率
+    /// </summary>
+    /// <returns>每核使用率数组，索引对应核心编号；获取失败返回空数组</returns>
+    private double[] GetPerCoreCpuUsage()
+    {
+        if (_perCoreCpuCounters == null || _perCoreCpuCounters.Length == 0)
+            return [];
+
+        try
+        {
+            var result = new double[_perCoreCpuCounters.Length];
+            for (int i = 0; i < _perCoreCpuCounters.Length; i++)
+            {
+                var value = _perCoreCpuCounters[i].NextValue();
+                result[i] = Math.Round(Math.Max(0, Math.Min(100, value)), 2);
+            }
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Log.Debug("获取每核 CPU 使用率失败: {Msg}", ex.Message);
+            return [];
+        }
+    }
+
+    /// <summary>
     /// CPU 性能计数器实例缓存 —— 避免重复创建导致的性能开销
     /// </summary>
     private PerformanceCounter? _cpuCounter;
+
+    /// <summary>
+    /// 每个 CPU 核心的性能计数器数组
+    /// 数组索引对应核心编号（0 开始）
+    /// </summary>
+    private PerformanceCounter[]? _perCoreCpuCounters;
 
     /// <summary>
     /// 获取 Java 进程统计信息
@@ -458,6 +522,13 @@ public class SystemMonitor : ISystemMonitor
 
         _cpuCounter?.Dispose();
         _cpuCounter = null;
+
+        if (_perCoreCpuCounters != null)
+        {
+            foreach (var counter in _perCoreCpuCounters)
+                counter.Dispose();
+            _perCoreCpuCounters = null;
+        }
 
         _disposed = true;
     }

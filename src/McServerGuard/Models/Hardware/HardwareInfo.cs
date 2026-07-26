@@ -98,6 +98,28 @@ public record CpuInfo
     public double PerformanceScore { get; init; }
 
     /// <summary>
+    /// 物理 CPU 插槽数（即 CPU 芯片个数）。
+    /// </summary>
+    public int SocketCount { get; init; }
+
+    /// <summary>
+    /// NUMA 节点数量。
+    /// </summary>
+    public int NumaNodeCount { get; init; }
+
+    /// <summary>
+    /// 是否启用超线程（逻辑核心数 > 物理核心数）。
+    /// </summary>
+    public bool IsHyperThreadingEnabled { get; init; }
+
+    /// <summary>
+    /// 逻辑核心编号到物理核心编号的映射数组。
+    /// 数组索引为逻辑核心号，值为物理核心号。
+    /// 例如 [0, 0, 1, 1] 表示 2 个物理核心，每个物理核心 2 个线程。
+    /// </summary>
+    public int[] LogicalToPhysicalCoreMap { get; init; } = [];
+
+    /// <summary>
     /// 指示 CPU 是否被成功识别。
     /// 未识别时其他字段可能为默认值或空。
     /// </summary>

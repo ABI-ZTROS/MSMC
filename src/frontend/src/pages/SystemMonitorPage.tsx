@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { GaugeRing } from '@/components/ui'
-import { bridge, getSystemMetrics, getSystemHistory } from '@/utils/bridge'
-import type { SystemMetrics, HistoryPoint } from '@/types/bridge'
+import { bridge, getSystemMetrics, getSystemHistory, getCpuInfo } from '@/utils/bridge'
+import type { SystemMetrics, HistoryPoint, CpuInfo } from '@/types/bridge'
 
 // 字节数转 GB
 function bytesToGB(bytes: number): number {
@@ -19,19 +19,37 @@ function formatCapacityInfo(usedBytes: number, totalBytes: number): string {
 
 interface LineChartProps {
   data: number[]
+  timestamps?: string[]
   color: string
   height?: number
   label: string
 }
 
-// 简单 SVG 折线图：网格 + 面积 + 曲线，颜色全部走 CSS 变量
-function SimpleLineChart({ data, color, height = 200, label }: LineChartProps): JSX.Element {
+// 格式化时间戳为 HH:MM:SS
+function formatTime(isoString: string): string {
+  try {
+    const d = new Date(isoString)
+    const hh = String(d.getHours()).padStart(2, '0')
+    const mm = String(d.getMinutes()).padStart(2, '0')
+    const ss = String(d.getSeconds()).padStart(2, '0')
+    return `${hh}:${mm}:${ss}`
+  } catch {
+    return ''
+  }
+}
+
+// 简单 SVG 折线图：网格 + 面积 + 曲线 + 交互式 Tooltip
+function SimpleLineChart({ data, timestamps = [], color, height = 200, label }: LineChartProps): JSX.Element {
   const width = 600
   const titleHeight = 28
   const padding = { top: 12, right: 12, bottom: 24, left: 36 }
   const chartHeight = height - titleHeight - padding.top - padding.bottom
   const chartWidth = width - padding.left - padding.right
   const yLabels = [0, 25, 50, 75, 100]
+
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
+  const svgRef = useRef<SVGSVGElement>(null)
 
   const points = data.map((val, i) => {
     const safeVal = Math.max(0, Math.min(100, val))
@@ -48,71 +66,306 @@ function SimpleLineChart({ data, color, height = 200, label }: LineChartProps): 
     ? `${pathD} L ${points[points.length - 1].x.toFixed(1)} ${padding.top + chartHeight} L ${points[0].x.toFixed(1)} ${padding.top + chartHeight} Z`
     : ''
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      if (points.length === 0 || !svgRef.current) return
+      const rect = svgRef.current.getBoundingClientRect()
+      const scaleX = width / rect.width
+      const mouseX = (e.clientX - rect.left) * scaleX
+
+      const relativeX = mouseX - padding.left
+      if (relativeX < 0 || relativeX > chartWidth) {
+        setHoverIndex(null)
+        return
+      }
+
+      const ratio = Math.max(0, Math.min(1, relativeX / chartWidth))
+      const index = Math.round(ratio * (points.length - 1))
+      setHoverIndex(index)
+      setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+    },
+    [points, chartWidth, width]
+  )
+
+  const handleMouseLeave = useCallback(() => {
+    setHoverIndex(null)
+  }, [])
+
+  const hoverPoint = hoverIndex !== null ? points[hoverIndex] : null
+  const hoverValue = hoverIndex !== null ? data[hoverIndex] : 0
+  const hoverTime = hoverIndex !== null && timestamps[hoverIndex] ? formatTime(timestamps[hoverIndex]) : ''
+
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col" style={{ position: 'relative' }}>
       {/* 标题行 */}
       <div className="flex items-center" style={{ gap: 6, marginBottom: 8, height: titleHeight - 8 }}>
         <span style={{ fontSize: 16, color, display: 'inline-flex' }}>📈</span>
         <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--md-body)' }}>{label}</span>
       </div>
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0" style={{ position: 'relative' }}>
         {data.length === 0 ? (
           <div className="md-empty-state" style={{ height: chartHeight + padding.top + padding.bottom }}>
             <div className="md-empty-state-icon">📈</div>
             <div className="md-empty-state-text">暂无趋势数据</div>
           </div>
         ) : (
-          <svg
-            width="100%"
-            height={chartHeight + padding.top + padding.bottom}
-            viewBox={`0 0 ${width} ${chartHeight + padding.top + padding.bottom}`}
-            preserveAspectRatio="none"
-          >
-            {/* Y 轴网格线和标签 */}
-            {yLabels.map((val) => {
-              const y = padding.top + (1 - val / 100) * chartHeight
-              return (
-                <g key={val}>
-                  <line
-                    x1={padding.left}
-                    y1={y}
-                    x2={width - padding.right}
-                    y2={y}
-                    stroke="var(--md-subtle-border)"
-                    strokeWidth="1"
-                    strokeDasharray="3,3"
-                    opacity="0.5"
+          <>
+            <svg
+              ref={svgRef}
+              width="100%"
+              height={chartHeight + padding.top + padding.bottom}
+              viewBox={`0 0 ${width} ${chartHeight + padding.top + padding.bottom}`}
+              preserveAspectRatio="none"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+              style={{ cursor: 'crosshair' }}
+            >
+              {/* Y 轴网格线和标签 */}
+              {yLabels.map((val) => {
+                const y = padding.top + (1 - val / 100) * chartHeight
+                return (
+                  <g key={val}>
+                    <line
+                      x1={padding.left}
+                      y1={y}
+                      x2={width - padding.right}
+                      y2={y}
+                      stroke="var(--md-subtle-border)"
+                      strokeWidth="1"
+                      strokeDasharray="3,3"
+                      opacity="0.5"
+                    />
+                    <text
+                      x={padding.left - 6}
+                      y={y + 3}
+                      fill="var(--md-body-lighter)"
+                      fontSize="10"
+                      textAnchor="end"
+                    >
+                      {val}%
+                    </text>
+                  </g>
+                )
+              })}
+
+              {/* 面积填充 */}
+              {areaD && <path d={areaD} fill={color} opacity="0.15" />}
+
+              {/* 折线 */}
+              {pathD && (
+                <path
+                  d={pathD}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+
+              {/* 悬停指示线 */}
+              {hoverPoint && (
+                <line
+                  x1={hoverPoint.x}
+                  y1={padding.top}
+                  x2={hoverPoint.x}
+                  y2={padding.top + chartHeight}
+                  stroke={color}
+                  strokeWidth="1"
+                  strokeDasharray="4,3"
+                  opacity="0.6"
+                />
+              )}
+
+              {/* 悬停数据点 */}
+              {hoverPoint && (
+                <g>
+                  <circle
+                    cx={hoverPoint.x}
+                    cy={hoverPoint.y}
+                    r="6"
+                    fill={color}
+                    opacity="0.25"
                   />
-                  <text
-                    x={padding.left - 6}
-                    y={y + 3}
-                    fill="var(--md-body-lighter)"
-                    fontSize="10"
-                    textAnchor="end"
-                  >
-                    {val}%
-                  </text>
+                  <circle
+                    cx={hoverPoint.x}
+                    cy={hoverPoint.y}
+                    r="4"
+                    fill="var(--md-card-bg)"
+                    stroke={color}
+                    strokeWidth="2"
+                  />
                 </g>
-              )
-            })}
+              )}
+            </svg>
 
-            {/* 面积填充 */}
-            {areaD && <path d={areaD} fill={color} opacity="0.15" />}
-
-            {/* 折线 */}
-            {pathD && (
-              <path
-                d={pathD}
-                fill="none"
-                stroke={color}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+            {/* Tooltip 浮层 */}
+            {hoverPoint && hoverIndex !== null && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: tooltipPos.x + 12,
+                  top: tooltipPos.y - 10,
+                  transform: 'translateY(-100%)',
+                  background: 'var(--md-card-bg)',
+                  border: '1px solid var(--md-subtle-border)',
+                  borderRadius: 8,
+                  padding: '8px 12px',
+                  fontSize: 12,
+                  color: 'var(--md-body)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  pointerEvents: 'none',
+                  zIndex: 10,
+                  whiteSpace: 'nowrap',
+                  minWidth: 100,
+                }}
+              >
+                <div style={{ fontWeight: 700, color, fontSize: 16, marginBottom: 4, fontVariantNumeric: 'tabular-nums' }}>
+                  {hoverValue.toFixed(2)}%
+                </div>
+                {hoverTime && (
+                  <div style={{ fontSize: 11, color: 'var(--md-body-light)', opacity: 0.7 }}>
+                    ⏱ {hoverTime}
+                  </div>
+                )}
+              </div>
             )}
-          </svg>
+          </>
         )}
+      </div>
+    </div>
+  )
+}
+
+interface CpuTopologyProps {
+  cpuInfo: CpuInfo | null
+  perCoreUsages: number[]
+}
+
+function CpuTopology({ cpuInfo, perCoreUsages }: CpuTopologyProps): JSX.Element {
+  const coreCount = cpuInfo?.logicalCores ?? perCoreUsages.length ?? 0
+  const columns = Math.min(8, Math.max(4, Math.ceil(Math.sqrt(coreCount))))
+
+  const getCoreColor = (usage: number): string => {
+    if (usage < 50) return 'var(--md-gauge-green)'
+    if (usage < 80) return 'var(--md-gauge-yellow)'
+    return 'var(--md-gauge-red)'
+  }
+
+  if (coreCount === 0) {
+    return (
+      <div className="md-card" style={{ padding: 16 }}>
+        <div className="flex items-center" style={{ gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 18 }}>🖥️</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--md-body)' }}>
+            CPU 物理拓扑
+          </span>
+        </div>
+        <div className="md-empty-state" style={{ height: 120 }}>
+          <div className="md-empty-state-text">正在获取 CPU 信息...</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="md-card" style={{ padding: 16 }}>
+      <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+        <div className="flex items-center" style={{ gap: 8 }}>
+          <span style={{ fontSize: 18 }}>🖥️</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--md-body)' }}>
+            CPU 物理拓扑
+          </span>
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--md-body-light)', opacity: 0.8 }}>
+          {cpuInfo?.physicalCores} 物理核 / {cpuInfo?.logicalCores} 逻辑核
+          {cpuInfo?.isHyperThreadingEnabled && ' · 超线程开启'}
+        </div>
+      </div>
+
+      {cpuInfo?.modelName && (
+        <div style={{ fontSize: 12, color: 'var(--md-body-light)', marginBottom: 12, opacity: 0.7 }}>
+          {cpuInfo.modelName}
+        </div>
+      )}
+
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `repeat(${columns}, 1fr)`,
+          gap: 8,
+        }}
+      >
+        {Array.from({ length: coreCount }).map((_, i) => {
+          const usage = perCoreUsages[i] ?? 0
+          const physicalCore = cpuInfo?.logicalToPhysicalCoreMap?.[i]
+          const color = getCoreColor(usage)
+
+          return (
+            <div
+              key={i}
+              className="md-card"
+              title={`逻辑核 ${i}${physicalCore !== undefined ? ` · 物理核 ${physicalCore}` : ''}\n${usage.toFixed(2)}%`}
+              style={{
+                padding: 10,
+                textAlign: 'center',
+                cursor: 'default',
+                borderLeft: `3px solid ${color}`,
+                transition: 'transform 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)'
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  color: 'var(--md-body-light)',
+                  marginBottom: 4,
+                  opacity: 0.7,
+                }}
+              >
+                Core {i}
+                {physicalCore !== undefined && (
+                  <span style={{ opacity: 0.5 }}> · P{physicalCore}</span>
+                )}
+              </div>
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color,
+                  fontVariantNumeric: 'tabular-nums',
+                  lineHeight: 1.2,
+                }}
+              >
+                {usage.toFixed(1)}%
+              </div>
+              <div
+                style={{
+                  marginTop: 6,
+                  height: 4,
+                  borderRadius: 2,
+                  background: 'var(--md-subtle-border)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${Math.min(100, usage)}%`,
+                    height: '100%',
+                    background: color,
+                    transition: 'width 0.3s ease',
+                  }}
+                />
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -121,6 +374,7 @@ function SimpleLineChart({ data, color, height = 200, label }: LineChartProps): 
 export function SystemMonitorPage(): JSX.Element {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
   const [history, setHistory] = useState<HistoryPoint[]>([])
+  const [cpuInfo, setCpuInfo] = useState<CpuInfo | null>(null)
   const [loadError, setLoadError] = useState(false)
   const intervalRef = useRef<number | null>(null)
 
@@ -146,11 +400,22 @@ export function SystemMonitorPage(): JSX.Element {
     }
   }
 
+  // 拉取 CPU 拓扑信息
+  const fetchCpuInfo = async () => {
+    try {
+      const data = await getCpuInfo()
+      setCpuInfo(data)
+    } catch (e) {
+      console.error('获取 CPU 信息失败:', e)
+    }
+  }
+
   const handleStart = async () => {
     try {
       await bridge.invoke('systemMonitor:start')
       await fetchMetrics()
       await fetchHistory()
+      await fetchCpuInfo()
     } catch (e) {
       console.error('启动监控失败:', e)
     }
@@ -169,6 +434,7 @@ export function SystemMonitorPage(): JSX.Element {
     // 初始拉取
     fetchMetrics()
     fetchHistory()
+    fetchCpuInfo()
 
     // 每 2 秒自动刷新指标，与 WPF 版一致
     intervalRef.current = window.setInterval(() => {
@@ -186,6 +452,7 @@ export function SystemMonitorPage(): JSX.Element {
   // 从历史数据提取 CPU 和内存曲线
   const cpuHistory = history.map(h => h.cpuUsagePercent)
   const memHistory = history.map(h => h.memoryUsagePercent)
+  const historyTimestamps = history.map(h => h.timestamp)
 
   const cpu = metrics?.cpuUsagePercent ?? 0
   const mem = metrics?.memoryUsagePercent ?? 0
@@ -329,11 +596,20 @@ export function SystemMonitorPage(): JSX.Element {
         </div>
       </div>
 
+      {/* ═══ CPU 物理拓扑 ═══ */}
+      <div style={{ marginBottom: 12 }}>
+        <CpuTopology
+          cpuInfo={cpuInfo}
+          perCoreUsages={metrics?.perCoreCpuUsages ?? []}
+        />
+      </div>
+
       {/* ═══ 折线图区域：左右两栏 ═══ */}
       <div className="grid grid-cols-2" style={{ gap: 12 }}>
         <div className="md-card" style={{ padding: 16 }}>
           <SimpleLineChart
             data={cpuHistory}
+            timestamps={historyTimestamps}
             color="var(--md-gauge-green)"
             height={228}
             label="CPU 使用率趋势"
@@ -342,6 +618,7 @@ export function SystemMonitorPage(): JSX.Element {
         <div className="md-card" style={{ padding: 16 }}>
           <SimpleLineChart
             data={memHistory}
+            timestamps={historyTimestamps}
             color="var(--md-primary-hue-mid)"
             height={228}
             label="内存使用率趋势"

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 在系统监控页面添加 CPU 物理拓扑结构可视化（每核负载展示），并为 CPU/内存趋势图添加鼠标悬停提示（显示精确百分比与时间）。
+**Goal:** 在系统监控页面添加 CPU 物理拓扑结构可视化（每核负载展示），并为 **CPU 和内存**两张趋势图添加鼠标悬停提示（显示精确百分比与时间戳）。
 
-**Architecture:** 后端使用 Windows PerformanceCounter 采集每核 CPU 使用率，通过 WMI 获取物理拓扑信息（物理核/逻辑核/超线程）；前端以网格卡片形式展示每核负载，并为折线图添加交互式 tooltip。
+**Architecture:** 后端使用 Windows PerformanceCounter 采集每核 CPU 使用率，通过 WMI 获取物理拓扑信息（物理核/逻辑核/超线程）；前端以网格卡片形式展示每核负载，并为折线图组件添加通用的交互式 tooltip（CPU 和内存趋势图复用同一组件）。
 
 **Tech Stack:** C# (.NET WPF) + System.Diagnostics.PerformanceCounter + System.Management (WMI) + React + TypeScript + SVG
 
@@ -728,8 +728,9 @@ CPU 趋势图：
    - 每个核心显示当前负载百分比和视觉填充
    - 鼠标悬停显示核心编号和精确负载
 
-2. **趋势图 Tooltip**
-   - 鼠标移到趋势图上显示垂直指示线和数据点高亮
+2. **趋势图 Tooltip（CPU + 内存两张图）**
+   - CPU 使用率趋势图：鼠标移到图上显示垂直指示线和数据点高亮
+   - 内存使用率趋势图：鼠标移到图上显示垂直指示线和数据点高亮
    - 显示精确的百分比值（保留 2 位小数）
    - 显示对应时间戳（时:分:秒 格式）
    - 鼠标移出后 tooltip 消失
