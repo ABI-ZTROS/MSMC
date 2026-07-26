@@ -43,7 +43,10 @@ public partial class UserAgreementWindow : Window
     private readonly DispatcherTimer _shakeTimer;
 
     /// <summary>多实例提示窗口集合及其原始位置，用于批量展示通知信息与晃动动画</summary>
-    private readonly List<(Window Window, double OriginalLeft, double OriginalTop, TranslateTransform ContentTransform)> _trollWindows = [];
+    private readonly List<(Window Window, double OriginalLeft, double OriginalTop, List<TranslateTransform> ContentTransforms)> _trollWindows = [];
+
+    /// <summary>主窗口内参与独立抖动的 UI 元素及其变换对象</summary>
+    private readonly List<(UIElement Element, TranslateTransform Transform)> _shakeElements = [];
 
     /// <summary>倒计时是否因窗口失去焦点而暂停</summary>
     private bool _isCountdownPaused;
@@ -109,6 +112,9 @@ public partial class UserAgreementWindow : Window
             try { w.Close(); } catch { }
         }
         _trollWindows.Clear();
+
+        // 清理抖动元素列表
+        _shakeElements.Clear();
     }
 
     /// <summary>
@@ -266,6 +272,49 @@ public partial class UserAgreementWindow : Window
     }
 
     /// <summary>
+    /// 递归收集主窗口内所有可独立抖动的 UI 元素
+    /// </summary>
+    /// <param name="parent">父依赖对象</param>
+    /// <remarks>
+    /// 深度优先遍历视觉树，为每个 UIElement 创建 TranslateTransform
+    /// 并保存到 _shakeElements 列表。跳过纯布局容器（Panel、Decorator 等），
+    /// 只对实际显示内容的叶子元素启用抖动，避免布局偏移叠加导致错乱。
+    /// </remarks>
+    private void CollectShakeElements(System.Windows.DependencyObject parent)
+    {
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+
+            if (child is UIElement element && child is not System.Windows.Controls.Panel && child is not System.Windows.Controls.Decorator && child is not System.Windows.Controls.ContentPresenter && child is not System.Windows.Controls.ScrollContentPresenter)
+            {
+                if (element.RenderTransform is not TranslateTransform)
+                {
+                    element.RenderTransform = new TranslateTransform();
+                }
+                var transform = (TranslateTransform)element.RenderTransform;
+                _shakeElements.Add((element, transform));
+            }
+
+            CollectShakeElements(child);
+        }
+    }
+
+    /// <summary>
+    /// 复位所有抖动元素的偏移量至零
+    /// </summary>
+    private void ResetShakeElements()
+    {
+        foreach (var (_, transform) in _shakeElements)
+        {
+            transform.X = 0;
+            transform.Y = 0;
+        }
+        _shakeElements.Clear();
+    }
+
+    /// <summary>
     /// 同意按钮点击事件处理程序
     /// </summary>
     /// <remarks>
@@ -298,14 +347,17 @@ public partial class UserAgreementWindow : Window
         DisagreeButton.IsEnabled = false;
         AgreeButton.IsEnabled = false;
 
+        // 收集主窗口内所有可抖动的 UI 元素
+        CollectShakeElements(ContentRoot);
+
         // 启动视觉警示动画（与通知窗口并行执行）
         _shakeTimer.Start();
 
         // 创建并展示多实例提示窗口（非模态、随机分布、无标题栏样式）
         for (int i = 0; i < 40; i++)
         {
-            var (troll, transform) = CreateTrollWindow();
-            _trollWindows.Add((troll, troll.Left, troll.Top, transform));
+            var (troll, transforms) = CreateTrollWindow();
+            _trollWindows.Add((troll, troll.Left, troll.Top, transforms));
             troll.Show();
         }
     }
@@ -313,13 +365,14 @@ public partial class UserAgreementWindow : Window
     /// <summary>
     /// 创建单实例提示窗口
     /// </summary>
-    /// <returns>配置完成的提示窗口实例与内容变换对象</returns>
+    /// <returns>配置完成的提示窗口实例与各内容元素的变换对象列表</returns>
     /// <remarks>
     /// 在屏幕范围内随机分布窗口位置，采用置顶显示、
     /// 无标题栏、不可调整大小的样式配置。
     /// 用于多实例通知场景下的信息强化展示。
+    /// 每个内容元素都有独立的 TranslateTransform，用于逐元素抖动。
     /// </remarks>
-    private (Window Window, TranslateTransform ContentTransform) CreateTrollWindow()
+    private (Window Window, List<TranslateTransform> ContentTransforms) CreateTrollWindow()
     {
         var screenWidth = SystemParameters.PrimaryScreenWidth;
         var screenHeight = SystemParameters.PrimaryScreenHeight;
@@ -352,22 +405,25 @@ public partial class UserAgreementWindow : Window
             Orientation = System.Windows.Controls.Orientation.Horizontal
         };
 
-        var contentTransform = new TranslateTransform();
-        panel.RenderTransform = contentTransform;
+        var transforms = new List<TranslateTransform>();
 
+        var iconTransform = new TranslateTransform();
         var icon = new System.Windows.Controls.TextBlock
         {
             Text = "❌",
             FontSize = 36,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 16, 0)
+            Margin = new Thickness(0, 0, 16, 0),
+            RenderTransform = iconTransform
         };
+        transforms.Add(iconTransform);
 
         var textPanel = new System.Windows.Controls.StackPanel
         {
             VerticalAlignment = VerticalAlignment.Center
         };
 
+        var titleTransform = new TranslateTransform();
         var title = new System.Windows.Controls.TextBlock
         {
             Text = "没同意用户协议用你妈呢傻逼玩意???",
@@ -375,16 +431,21 @@ public partial class UserAgreementWindow : Window
             FontWeight = FontWeights.Bold,
             Foreground = Brushes.OrangeRed,
             TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 0, 0, 8)
+            Margin = new Thickness(0, 0, 0, 8),
+            RenderTransform = titleTransform
         };
+        transforms.Add(titleTransform);
 
+        var subTransform = new TranslateTransform();
         var sub = new System.Windows.Controls.TextBlock
         {
             Text = "爱用就用不用给老子爬",
             FontSize = 11,
             Foreground = Brushes.LightGray,
-            TextWrapping = TextWrapping.Wrap
+            TextWrapping = TextWrapping.Wrap,
+            RenderTransform = subTransform
         };
+        transforms.Add(subTransform);
 
         textPanel.Children.Add(title);
         textPanel.Children.Add(sub);
@@ -392,39 +453,54 @@ public partial class UserAgreementWindow : Window
         panel.Children.Add(textPanel);
         window.Content = panel;
 
-        return (window, contentTransform);
+        return (window, transforms);
     }
 
     /// <summary>
     /// 视觉警示动画计时器 Tick 事件处理程序
     /// </summary>
     /// <remarks>
-    /// 通过随机偏移窗口位置实现微扰动视觉效果，
-    /// 同时对窗口内部内容应用 TranslateTransform 抖动，
-    /// 动画结束后复位窗口位置与内容偏移、关闭所有提示窗口，
+    /// 通过三层抖动实现强烈的视觉冲击效果：
+    /// 1. 窗口整体位置随机偏移（±50px）
+    /// 2. 窗口内容整体偏移（±10px）
+    /// 3. 每个 UI 元素独立随机抖动（±4px）
+    /// 动画结束后复位所有偏移、关闭所有提示窗口，
     /// 并终止应用程序运行。
     /// </remarks>
     private void ShakeTimer_Tick(object? sender, EventArgs e)
     {
         _shakeRemainingMs -= 50;
 
-        // 主窗口位置微扰动（±50px 范围内随机偏移）
+        // 第一层：主窗口位置微扰动（±50px 范围内随机偏移）
         Left = _originalLeft + _random.Next(-50, 51);
         Top = _originalTop + _random.Next(-50, 51);
 
-        // 主窗口内容抖动（±10px 范围内随机偏移，增强视觉冲击）
+        // 第二层：主窗口内容整体抖动（±10px 范围内随机偏移）
         ContentTranslate.X = _random.Next(-10, 11);
         ContentTranslate.Y = _random.Next(-10, 11);
 
+        // 第三层：每个 UI 元素独立随机抖动（±4px，幅度小于整体内容抖动）
+        foreach (var (_, transform) in _shakeElements)
+        {
+            transform.X = _random.Next(-4, 5);
+            transform.Y = _random.Next(-4, 5);
+        }
+
         // 所有提示窗口同步随机晃动（各窗口独立偏移，营造混乱效果）
-        foreach (var (w, origLeft, origTop, contentTransform) in _trollWindows)
+        foreach (var (w, origLeft, origTop, contentTransforms) in _trollWindows)
         {
             try
             {
+                // Troll 窗口位置抖动（±30px）
                 w.Left = origLeft + _random.Next(-30, 31);
                 w.Top = origTop + _random.Next(-30, 31);
-                contentTransform.X = _random.Next(-6, 7);
-                contentTransform.Y = _random.Next(-6, 7);
+
+                // Troll 窗口内每个元素独立抖动（±3px，幅度小于窗口）
+                foreach (var t in contentTransforms)
+                {
+                    t.X = _random.Next(-3, 4);
+                    t.Y = _random.Next(-3, 4);
+                }
             }
             catch { }
         }
@@ -441,6 +517,9 @@ public partial class UserAgreementWindow : Window
             // 复位主窗口内容偏移
             ContentTranslate.X = 0;
             ContentTranslate.Y = 0;
+
+            // 复位所有独立抖动元素
+            ResetShakeElements();
 
             // 关闭所有多实例提示窗口
             foreach (var (w, _, _, _) in _trollWindows)
