@@ -5,19 +5,19 @@ import { useToastStore, type ToastItem as ToastItemType } from '@/stores/toastSt
 const typeStyles: Record<ToastItemType['type'], { bg: string; border: string; icon: string; iconColor: string }> = {
   success: {
     bg: 'var(--md-success-subtle-background)',
-    border: 'rgba(76, 175, 80, 0.3)',
+    border: 'var(--md-success-subtle-border)',
     icon: 'var(--md-gauge-green)',
     iconColor: 'var(--md-gauge-green)',
   },
   error: {
     bg: 'var(--md-danger-subtle-background)',
-    border: 'rgba(244, 54, 76, 0.3)',
+    border: 'var(--md-danger-subtle-border)',
     icon: 'var(--md-gauge-red)',
     iconColor: 'var(--md-error-text)',
   },
   warning: {
     bg: 'var(--md-warning-subtle-background)',
-    border: 'rgba(255, 193, 7, 0.3)',
+    border: 'var(--md-warning-subtle-border)',
     icon: 'var(--md-gauge-yellow)',
     iconColor: 'var(--md-gauge-yellow)',
   },
@@ -137,7 +137,7 @@ const ToastItem = ({ toast, onClose }: ToastItemProps) => {
           transition: 'background-color 150ms, color 150ms',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
+          e.currentTarget.style.backgroundColor = 'var(--md-card-hover)'
           e.currentTarget.style.color = 'var(--md-body)'
         }}
         onMouseLeave={(e) => {

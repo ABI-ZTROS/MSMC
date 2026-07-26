@@ -43,13 +43,25 @@
   --md-error-text: #FB7185;
 
   --md-success-subtle-background: rgba(76, 175, 80, 0.1);
+  --md-success-subtle-border: rgba(76, 175, 80, 0.3);
   --md-warning-subtle-background: rgba(255, 193, 7, 0.1);
+  --md-warning-subtle-border: rgba(255, 193, 7, 0.3);
   --md-danger-subtle-background: rgba(244, 54, 76, 0.1);
+  --md-danger-subtle-border: rgba(244, 54, 76, 0.3);
 
   /* ─── 边框色 ─── */
   --md-subtle-border: #334155;
   --md-card-subtle-border: rgba(30, 41, 59, 0.2);
   --md-swatch-hover-border: #FFFFFF;
+
+  /* ─── 纪念/金色主题 ─── */
+  --md-memorial-gold: #D4AF37;
+  --md-memorial-gold-soft: #C9A86C;
+  --md-memorial-gold-muted: #B8956A;
+  --md-memorial-gold-bg-start: #2D1F14;
+  --md-memorial-gold-bg-end: #3D2A1A;
+  --md-memorial-gold-glow: rgba(212, 175, 55, 0.15);
+  --md-memorial-gold-bg-soft: rgba(212, 175, 55, 0.2);
 
   /* ─── 文字色 ─── */
   --md-body: #E2E8F0;
@@ -103,6 +115,10 @@
   --md-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15);
   --md-shadow-2: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
   --md-shadow-3: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+  --md-shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.3);
+
+  /* ─── 模态/遮罩 ─── */
+  --md-modal-backdrop: rgba(0, 0, 0, 0.5);
 
   /* ─── 侧边栏 ─── */
   --sidebar-width-collapsed: 56px;

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ThemeInfo } from '@/types/bridge'
-import { argbToRgb } from '@/utils/theme'
+import { applyPrimaryColor } from '@/utils/theme'
 
 interface AppState {
   isReady: boolean
@@ -40,7 +40,7 @@ export const useAppStore = create<AppState>((set) => ({
       document.documentElement.classList.remove('dark')
     }
     if (theme.primaryColor) {
-      document.documentElement.style.setProperty('--md-primary-hue-mid', argbToRgb(theme.primaryColor))
+      applyPrimaryColor(theme.primaryColor)
     }
     set({ theme })
   },

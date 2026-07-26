@@ -919,7 +919,7 @@ export function ConfigEditorPage(): JSX.Element {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.5)',
+            background: 'var(--md-modal-backdrop)',
             zIndex: 10000,
             display: 'flex',
             alignItems: 'center',
@@ -934,7 +934,7 @@ export function ConfigEditorPage(): JSX.Element {
               width: 420,
               padding: 24,
               borderRadius: 'var(--md-radius-large)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              boxShadow: 'var(--md-shadow-modal)',
               animation: 'mdModalIn 0.2s ease-out',
             }}
             onClick={(e) => e.stopPropagation()}
@@ -998,7 +998,7 @@ export function ConfigEditorPage(): JSX.Element {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.5)',
+            background: 'var(--md-modal-backdrop)',
             zIndex: 10000,
             display: 'flex',
             alignItems: 'center',
@@ -1013,7 +1013,7 @@ export function ConfigEditorPage(): JSX.Element {
               width: 420,
               padding: 24,
               borderRadius: 'var(--md-radius-large)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              boxShadow: 'var(--md-shadow-modal)',
               animation: 'mdModalIn 0.2s ease-out',
             }}
             onClick={(e) => e.stopPropagation()}

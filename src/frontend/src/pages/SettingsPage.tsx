@@ -1245,7 +1245,7 @@ export function SettingsPage(): JSX.Element {
                           {member.hasHeartIcon && (
                             <FaHeart
                               size={12}
-                              style={{ color: '#FB7185' }}
+                              style={{ color: 'var(--md-accent-text)' }}
                             />
                           )}
                           {member.hasCrossIcon && (
@@ -1360,7 +1360,7 @@ export function SettingsPage(): JSX.Element {
                           {member.hasHeartIcon && (
                             <FaHeart
                               size={12}
-                              style={{ color: '#FB7185' }}
+                              style={{ color: 'var(--md-accent-text)' }}
                             />
                           )}
                           {member.hasCrossIcon && (
@@ -1429,7 +1429,7 @@ export function SettingsPage(): JSX.Element {
               >
                 <FaHeart
                   size={18}
-                  style={{ color: '#FB7185' }}
+                  style={{ color: 'var(--md-accent-text)' }}
                 />
               </div>
             </div>
@@ -1440,8 +1440,8 @@ export function SettingsPage(): JSX.Element {
                 style={{
                   marginBottom: 16,
                   padding: 20,
-                  background: 'linear-gradient(135deg, #2D1F14 0%, #3D2A1A 100%)',
-                  border: '2px solid #D4AF37',
+                  background: 'linear-gradient(135deg, var(--md-memorial-gold-bg-start) 0%, var(--md-memorial-gold-bg-end) 100%)',
+                  border: '2px solid var(--md-memorial-gold)',
                   borderRadius: 'var(--md-radius)',
                   position: 'relative',
                   overflow: 'hidden',
@@ -1454,7 +1454,7 @@ export function SettingsPage(): JSX.Element {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: 'radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.15) 0%, transparent 60%)',
+                    background: 'radial-gradient(circle at 50% 0%, var(--md-memorial-gold-glow) 0%, transparent 60%)',
                     pointerEvents: 'none',
                   }}
                 />
@@ -1469,8 +1469,8 @@ export function SettingsPage(): JSX.Element {
                         width: 64,
                         height: 64,
                         borderRadius: '50%',
-                        backgroundColor: 'rgba(212, 175, 55, 0.2)',
-                        border: '2px solid #D4AF37',
+                        backgroundColor: 'var(--md-memorial-gold-bg-soft)',
+                        border: '2px solid var(--md-memorial-gold)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1478,14 +1478,14 @@ export function SettingsPage(): JSX.Element {
                     >
                       <FaUser
                         size={32}
-                        style={{ color: '#D4AF37' }}
+                        style={{ color: 'var(--md-memorial-gold)' }}
                       />
                     </div>
                     <div
                       style={{
                         fontSize: 16,
                         fontWeight: 700,
-                        color: '#D4AF37',
+                        color: 'var(--md-memorial-gold)',
                         marginTop: 10,
                         display: 'flex',
                         alignItems: 'center',
@@ -1495,13 +1495,13 @@ export function SettingsPage(): JSX.Element {
                       {member.name}
                       <FaHeart
                         size={14}
-                        style={{ color: '#FB7185' }}
+                        style={{ color: 'var(--md-accent-text)' }}
                       />
                     </div>
                     <div
                       style={{
                         fontSize: 12,
-                        color: '#C9A86C',
+                        color: 'var(--md-memorial-gold-soft)',
                         marginTop: 4,
                       }}
                     >
@@ -1511,7 +1511,7 @@ export function SettingsPage(): JSX.Element {
                       <div
                         style={{
                           fontSize: 11,
-                          color: '#B8956A',
+                          color: 'var(--md-memorial-gold-muted)',
                           marginTop: 8,
                           textAlign: 'center',
                           fontStyle: 'italic',
@@ -1527,7 +1527,7 @@ export function SettingsPage(): JSX.Element {
                         rel="noopener noreferrer"
                         style={{
                           fontSize: 11,
-                          color: '#D4AF37',
+                          color: 'var(--md-memorial-gold)',
                           marginTop: 6,
                           display: 'flex',
                           alignItems: 'center',
