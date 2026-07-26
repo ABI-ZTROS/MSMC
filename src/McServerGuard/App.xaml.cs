@@ -122,6 +122,7 @@ public partial class App : Application
         services.AddSingleton<DiskSpaceMonitor>();
         services.AddSingleton<MemoryMonitor>();
         services.AddSingleton<ThreadAnalyzer>();
+        services.AddSingleton<Services.HardwareInfo.CpuIdentifier>();
 
         // 主题服务
         Log.Information("🎨 注册主题服务...");
