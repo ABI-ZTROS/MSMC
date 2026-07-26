@@ -190,9 +190,13 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
     public int CurrentHour => DateTime.Now.Hour;
 
-    public double[] HourlyUploadMBArray => _hourlyUploadValues.ToArray();
+    public double[] HourlyUploadMBArray => _hourlyUploadValues
+        .Select(v => v / 1048576.0)
+        .ToArray();
 
-    public double[] HourlyDownloadMBArray => _hourlyDownloadValues.ToArray();
+    public double[] HourlyDownloadMBArray => _hourlyDownloadValues
+        .Select(v => v / 1048576.0)
+        .ToArray();
 
     // ── 桥接属性 ──
 

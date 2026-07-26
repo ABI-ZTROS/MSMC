@@ -138,6 +138,14 @@ function PortDistributionPie({ systemPorts, registeredPorts, dynamicPorts, usedP
   )
 }
 
+// 将 MB 数格式化为易读的字符串（MB/GB 自动切换）
+function formatMB(mb: number): string {
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`
+  if (mb >= 1) return `${mb.toFixed(1)} MB`
+  if (mb >= 0.001) return `${(mb * 1024).toFixed(0)} KB`
+  return '0 B'
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // 每日吞吐量柱状图（SVG 实现）
 // ─────────────────────────────────────────────────────────────────────
@@ -182,7 +190,7 @@ function HourlyThroughputChart({ currentHour, downloadData }: HourlyThroughputCh
                 fill="var(--md-body-light)"
                 opacity={0.5}
               >
-                {(maxVal * ratio).toFixed(1)} MB/s
+                {formatMB(maxVal * ratio)}
               </text>
             </g>
           )
