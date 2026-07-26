@@ -55,7 +55,10 @@
         </Style>
     </Window.Resources>
 
-    <Grid Background="{DynamicResource WarningRedBackgroundBrush}">
+    <Grid x:Name="ContentRoot" Background="{DynamicResource WarningRedBackgroundBrush}">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="ContentTranslate" X="0" Y="0" />
+        </Grid.RenderTransform>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />

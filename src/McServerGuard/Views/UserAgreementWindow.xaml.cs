@@ -6,6 +6,7 @@
 // 设计模式: 视觉反馈机制、多实例通知系统、状态机流程控制
 // -----------------------------------------------------------------------------
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using McServerGuard.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,7 +43,7 @@ public partial class UserAgreementWindow : Window
     private readonly DispatcherTimer _shakeTimer;
 
     /// <summary>多实例提示窗口集合及其原始位置，用于批量展示通知信息与晃动动画</summary>
-    private readonly List<(Window Window, double OriginalLeft, double OriginalTop)> _trollWindows = [];
+    private readonly List<(Window Window, double OriginalLeft, double OriginalTop, TranslateTransform ContentTransform)> _trollWindows = [];
 
     /// <summary>倒计时是否因窗口失去焦点而暂停</summary>
     private bool _isCountdownPaused;
@@ -303,8 +304,8 @@ public partial class UserAgreementWindow : Window
         // 创建并展示多实例提示窗口（非模态、随机分布、无标题栏样式）
         for (int i = 0; i < 40; i++)
         {
-            var troll = CreateTrollWindow();
-            _trollWindows.Add((troll, troll.Left, troll.Top));
+            var (troll, transform) = CreateTrollWindow();
+            _trollWindows.Add((troll, troll.Left, troll.Top, transform));
             troll.Show();
         }
     }
@@ -312,13 +313,13 @@ public partial class UserAgreementWindow : Window
     /// <summary>
     /// 创建单实例提示窗口
     /// </summary>
-    /// <returns>配置完成的提示窗口实例</returns>
+    /// <returns>配置完成的提示窗口实例与内容变换对象</returns>
     /// <remarks>
     /// 在屏幕范围内随机分布窗口位置，采用置顶显示、
     /// 无标题栏、不可调整大小的样式配置。
     /// 用于多实例通知场景下的信息强化展示。
     /// </remarks>
-    private Window CreateTrollWindow()
+    private (Window Window, TranslateTransform ContentTransform) CreateTrollWindow()
     {
         var screenWidth = SystemParameters.PrimaryScreenWidth;
         var screenHeight = SystemParameters.PrimaryScreenHeight;
@@ -337,12 +338,12 @@ public partial class UserAgreementWindow : Window
             ResizeMode = ResizeMode.NoResize,
             WindowStyle = WindowStyle.None,
             AllowsTransparency = false,
-            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1a, 0x00, 0x00)),
-            Foreground = System.Windows.Media.Brushes.White,
+            Background = new SolidColorBrush(Color.FromRgb(0x1a, 0x00, 0x00)),
+            Foreground = Brushes.White,
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,
             BorderThickness = new Thickness(2),
-            BorderBrush = System.Windows.Media.Brushes.Red,
+            BorderBrush = Brushes.Red,
         };
 
         var panel = new System.Windows.Controls.StackPanel
@@ -350,6 +351,9 @@ public partial class UserAgreementWindow : Window
             Margin = new Thickness(20),
             Orientation = System.Windows.Controls.Orientation.Horizontal
         };
+
+        var contentTransform = new TranslateTransform();
+        panel.RenderTransform = contentTransform;
 
         var icon = new System.Windows.Controls.TextBlock
         {
@@ -369,7 +373,7 @@ public partial class UserAgreementWindow : Window
             Text = "没同意用户协议用你妈呢傻逼玩意???",
             FontSize = 14,
             FontWeight = FontWeights.Bold,
-            Foreground = System.Windows.Media.Brushes.OrangeRed,
+            Foreground = Brushes.OrangeRed,
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 8)
         };
@@ -378,7 +382,7 @@ public partial class UserAgreementWindow : Window
         {
             Text = "爱用就用不用给老子爬",
             FontSize = 11,
-            Foreground = System.Windows.Media.Brushes.LightGray,
+            Foreground = Brushes.LightGray,
             TextWrapping = TextWrapping.Wrap
         };
 
@@ -388,7 +392,7 @@ public partial class UserAgreementWindow : Window
         panel.Children.Add(textPanel);
         window.Content = panel;
 
-        return window;
+        return (window, contentTransform);
     }
 
     /// <summary>
@@ -396,7 +400,8 @@ public partial class UserAgreementWindow : Window
     /// </summary>
     /// <remarks>
     /// 通过随机偏移窗口位置实现微扰动视觉效果，
-    /// 动画结束后复位窗口位置、关闭所有提示窗口，
+    /// 同时对窗口内部内容应用 TranslateTransform 抖动，
+    /// 动画结束后复位窗口位置与内容偏移、关闭所有提示窗口，
     /// 并终止应用程序运行。
     /// </remarks>
     private void ShakeTimer_Tick(object? sender, EventArgs e)
@@ -407,13 +412,19 @@ public partial class UserAgreementWindow : Window
         Left = _originalLeft + _random.Next(-50, 51);
         Top = _originalTop + _random.Next(-50, 51);
 
+        // 主窗口内容抖动（±10px 范围内随机偏移，增强视觉冲击）
+        ContentTranslate.X = _random.Next(-10, 11);
+        ContentTranslate.Y = _random.Next(-10, 11);
+
         // 所有提示窗口同步随机晃动（各窗口独立偏移，营造混乱效果）
-        foreach (var (w, origLeft, origTop) in _trollWindows)
+        foreach (var (w, origLeft, origTop, contentTransform) in _trollWindows)
         {
             try
             {
                 w.Left = origLeft + _random.Next(-30, 31);
                 w.Top = origTop + _random.Next(-30, 31);
+                contentTransform.X = _random.Next(-6, 7);
+                contentTransform.Y = _random.Next(-6, 7);
             }
             catch { }
         }
@@ -427,8 +438,12 @@ public partial class UserAgreementWindow : Window
             Left = _originalLeft;
             Top = _originalTop;
 
+            // 复位主窗口内容偏移
+            ContentTranslate.X = 0;
+            ContentTranslate.Y = 0;
+
             // 关闭所有多实例提示窗口
-            foreach (var (w, _, _) in _trollWindows)
+            foreach (var (w, _, _, _) in _trollWindows)
             {
                 try { w.Close(); } catch { }
             }
