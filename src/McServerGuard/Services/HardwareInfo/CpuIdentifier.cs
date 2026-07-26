@@ -112,7 +112,7 @@ public class CpuIdentifier
                         var (arch, generation, tier) = ParseCpuModel(normalizedName, manufacturer);
                         var perfScore = CalculatePerformanceScore((int)physicalCores, (int)logicalCores, maxClockSpeed, tier);
 
-                        firstModelName = normalizedName;
+                        firstModelName = modelName;
                         firstManufacturer = manufacturer;
                         firstMaxClockSpeed = maxClockSpeed;
                         firstCurrentClockSpeed = currentClockSpeed;
