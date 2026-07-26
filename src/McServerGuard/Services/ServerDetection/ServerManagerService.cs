@@ -305,9 +305,28 @@ public class ServerManagerService : IServerManagerService
             {
                 Log.Information("☕ 使用 Java: {Version} ({Vendor})", javaInfo.VersionString, javaInfo.Vendor);
 
-                if (javaInfo.Version != null && javaInfo.Version.Major < 21)
+                if (javaInfo.Version != null)
                 {
-                    Log.Warning("⚠️ Java 版本较低 ({Version})，Folia/Paper 1.20.5+ 推荐使用 Java 21 或更高版本", javaInfo.VersionString);
+                    var major = javaInfo.Version.Major;
+                    if (major < 21)
+                    {
+                        Log.Warning("⚠️ Java 版本较低 ({Version})，Minecraft 1.20.5+ / Paper 1.20.5+ 需要 Java 21 或更高版本", javaInfo.VersionString);
+                        Log.Warning("   如果服务器闪退，请先升级到 Java 21");
+                    }
+                    else if (major < 17)
+                    {
+                        Log.Error("❌ Java 版本过低 ({Version})，Minecraft 1.17+ 需要 Java 17 以上", javaInfo.VersionString);
+                    }
+
+                    if (major < 11)
+                    {
+                        Log.Error("❌ Java {Version} 太旧了，几乎所有现代 Minecraft 服务器都无法运行", javaInfo.VersionString);
+                    }
+                }
+
+                if (!javaInfo.Is64Bit)
+                {
+                    Log.Warning("⚠️ 检测到 32 位 Java，内存将被限制在 2GB 以内，强烈建议使用 64 位 Java");
                 }
             }
 
@@ -357,6 +376,38 @@ public class ServerManagerService : IServerManagerService
             {
                 Log.Information("✅ 服务器进程已启动! PID={Pid}", process.Id);
                 server.ProcessId = process.Id;
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(5000);
+                        if (process.HasExited)
+                        {
+                            var exitCode = process.ExitCode;
+                            Log.Warning("⚠️ 服务器进程在 5 秒内异常退出! PID={Pid}, ExitCode={ExitCode}", process.Id, exitCode);
+
+                            if (exitCode == 1)
+                            {
+                                Log.Error("💥 退出码 1：通常是 JVM 启动失败，常见原因：");
+                                Log.Error("   1. Java 版本不兼容（Minecraft 1.20.5+ 需要 Java 21）");
+                                Log.Error("   2. JVM 参数有拼写错误或不支持的参数");
+                                Log.Error("   3. 内存分配超出系统可用物理内存");
+                                Log.Error("   4. JAR 文件损坏或路径不正确");
+                                Log.Error("💡 请查看服务器控制台窗口的具体错误信息");
+                            }
+                            else if (exitCode == -1 || exitCode == 0xC0000005)
+                            {
+                                Log.Error("💥 进程崩溃（退出码 {ExitCode}）：可能是 Java 本身故障、系统内存不足或杀毒软件拦截", exitCode);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "监视服务器进程启动状态时出错");
+                    }
+                });
+
                 return process;
             }
             

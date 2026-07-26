@@ -795,10 +795,13 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// 获取 ZGC 基础 JVM 参数列表
     /// </summary>
     /// <returns>ZGC 参数列表</returns>
+    /// <remarks>
+    /// 注意：-XX:+ZGenerational 仅在 Java 21+ 中支持，且 Java 21+ 中 ZGC 默认为分代模式，
+    /// 无需显式指定。为了兼容性，此处不添加该参数。
+    /// </remarks>
     private static List<string> ApplyZgcFlags() =>
     [
         "-XX:+UseZGC",
-        "-XX:+ZGenerational",
         "-XX:+DisableExplicitGC",
         "-XX:+AlwaysPreTouch",
         "-Dfile.encoding=UTF-8",
