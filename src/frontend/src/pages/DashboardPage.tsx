@@ -499,7 +499,7 @@ export function DashboardPage(): JSX.Element {
                   <KnownServerItem
                     key={`known-${idx}`}
                     server={server}
-                    isSelected={false}
+                    isSelected={selectedServer?.isKnown === true && selectedServer.displayName === server.name}
                     onSelect={() => handleSelectServer(server.name)}
                     onStart={() =>
                       bridge

@@ -11,6 +11,7 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -576,34 +577,82 @@ public partial class MainWindow : Window
         // 获取选中的服务器详情
         _bridgeService.RegisterRequestHandler("server:getSelected", _ =>
         {
+            // 优先返回运行中的服务器，其次返回选中的已知服务器
             var s = _vm?.DetectionPage?.SelectedServer;
-            if (s == null)
+            var known = _vm?.DetectionPage?.SelectedKnownServer;
+
+            // 运行中的服务器
+            if (s != null)
             {
-                return Task.FromResult<object?>(null);
+                return Task.FromResult<object?>(new
+                {
+                    processId = s.ProcessId,
+                    serverType = s.ServerType.ToString(),
+                    workingDirectory = s.WorkingDirectory,
+                    serverJarPath = s.ServerJarPath,
+                    serverJarName = s.ServerJarName,
+                    javaPath = s.JavaPath,
+                    fullCommandLine = s.FullCommandLine,
+                    serverPort = s.ServerPort,
+                    isPortOpen = s.IsPortOpen,
+                    portConflict = s.PortConflict,
+                    displayName = s.DisplayName,
+                    status = "Running",
+                    maxHeapMemoryBytes = s.MaxHeapMemoryBytes,
+                    initialHeapMemoryBytes = s.InitialHeapMemoryBytes,
+                    usesAikarFlags = s.UsesAikarFlags,
+                    gcType = s.GcType,
+                    configFiles = s.ConfigFiles,
+                    networkStatusText = s.NetworkStatusText,
+                    formattedMaxMemory = s.FormattedMaxMemory,
+                    isKnown = false,
+                });
             }
 
-            return Task.FromResult<object?>(new
+            // 已知服务器（未运行）
+            if (known != null)
             {
-                processId = s.ProcessId,
-                serverType = s.ServerType.ToString(),
-                workingDirectory = s.WorkingDirectory,
-                serverJarPath = s.ServerJarPath,
-                serverJarName = s.ServerJarName,
-                javaPath = s.JavaPath,
-                fullCommandLine = s.FullCommandLine,
-                serverPort = s.ServerPort,
-                isPortOpen = s.IsPortOpen,
-                portConflict = s.PortConflict,
-                displayName = s.DisplayName,
-                status = "Running",
-                maxHeapMemoryBytes = s.MaxHeapMemoryBytes,
-                initialHeapMemoryBytes = s.InitialHeapMemoryBytes,
-                usesAikarFlags = s.UsesAikarFlags,
-                gcType = s.GcType,
-                configFiles = s.ConfigFiles,
-                networkStatusText = s.NetworkStatusText,
-                formattedMaxMemory = s.FormattedMaxMemory,
-            });
+                // 从 ViewModel 读取当前编辑的 JVM 参数和内存设置
+                var initialMem = _vm?.DetectionPage?.InitialMemory ?? "0";
+                var maxMem = _vm?.DetectionPage?.MaxMemory ?? "0";
+                var selectedArgs = _vm?.DetectionPage?.SelectedArguments ?? [];
+
+                var fullCmd = string.IsNullOrWhiteSpace(known.JavaPath)
+                    ? $"java {string.Join(' ', selectedArgs)} -Xms{initialMem} -Xmx{maxMem} -jar \"{known.ServerJarPath}\" nogui"
+                    : $"\"{known.JavaPath}\" {string.Join(' ', selectedArgs)} -Xms{initialMem} -Xmx{maxMem} -jar \"{known.ServerJarPath}\" nogui";
+
+                return Task.FromResult<object?>(new
+                {
+                    processId = 0,
+                    serverType = "Unknown",
+                    workingDirectory = known.WorkingDirectory,
+                    serverJarPath = known.ServerJarPath,
+                    serverJarName = Path.GetFileName(known.ServerJarPath),
+                    javaPath = known.JavaPath,
+                    fullCommandLine = fullCmd,
+                    serverPort = known.Port,
+                    isPortOpen = false,
+                    portConflict = false,
+                    displayName = known.Name,
+                    status = "Stopped",
+                    maxHeapMemoryBytes = known.MaxHeapMemoryBytes,
+                    initialHeapMemoryBytes = known.InitialHeapMemoryBytes,
+                    usesAikarFlags = selectedArgs.Any(a => a.Contains("G1GC") || a.Contains("ParallelGC")),
+                    gcType = selectedArgs.FirstOrDefault(a => a.Contains("GC")) ?? "",
+                    configFiles = Array.Empty<string>(),
+                    networkStatusText = "未运行",
+                    formattedMaxMemory = known.MaxHeapMemoryBytes switch
+                    {
+                        >= 1024 * 1024 * 1024 => $"{known.MaxHeapMemoryBytes / (1024.0 * 1024 * 1024):F1} GB",
+                        >= 1024 * 1024 => $"{known.MaxHeapMemoryBytes / (1024.0 * 1024):F0} MB",
+                        >= 1024 => $"{known.MaxHeapMemoryBytes / 1024.0:F0} KB",
+                        _ => $"{known.MaxHeapMemoryBytes} B"
+                    },
+                    isKnown = true,
+                });
+            }
+
+            return Task.FromResult<object?>(null);
         });
 
         // 选择服务器
@@ -611,7 +660,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var displayName = payload?.ToString() ?? string.Empty;
+                var displayName = ExtractStringPayload(payload);
                 if (_vm?.DetectionPage != null && !string.IsNullOrEmpty(displayName))
                 {
                     var server = _vm.DetectionPage.DetectionResult?.Servers
@@ -619,6 +668,7 @@ public partial class MainWindow : Window
                     if (server != null)
                     {
                         _vm.DetectionPage.SelectedServer = server;
+                        _vm.DetectionPage.SelectedKnownServer = null;
                     }
                     else
                     {
@@ -627,6 +677,7 @@ public partial class MainWindow : Window
                         if (known != null)
                         {
                             _vm.DetectionPage.SelectedKnownServer = known;
+                            _vm.DetectionPage.SelectedServer = null;
                         }
                     }
                 }
@@ -720,7 +771,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var name = payload?.ToString() ?? string.Empty;
+                var name = ExtractStringPayload(payload);
                 if (_vm?.DetectionPage != null && !string.IsNullOrEmpty(name))
                 {
                     var known = _vm.DetectionPage.KnownServers.FirstOrDefault(k => k.Name == name);
@@ -743,7 +794,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var name = payload?.ToString() ?? string.Empty;
+                var name = ExtractStringPayload(payload);
                 if (_vm?.DetectionPage != null && !string.IsNullOrEmpty(name))
                 {
                     var known = _vm.DetectionPage.KnownServers.FirstOrDefault(k => k.Name == name);
@@ -791,6 +842,26 @@ public partial class MainWindow : Window
         });
 
         Log.Information("✅ 桥接 API 注册完成");
+    }
+
+    /// <summary>
+    /// 从桥接消息 payload 中提取字符串值。
+    /// 由于 <see cref="BridgeMessage.Payload"/> 类型为 <c>object?</c>，前端发送的
+    /// 字符串经 System.Text.Json 反序列化后会变成 <see cref="JsonElement"/>，
+    /// 直接调用 <c>ToString()</c> 对字符串值会返回带引号的 JSON 表示
+    /// （如 <c>"\"MyServer\""</c> 而非 <c>MyServer</c>），导致按名称查找失败。
+    /// 此方法对 <see cref="JsonElement"/> 调用 <c>GetString()</c> 以拿到原始字符串。
+    /// </summary>
+    private static string ExtractStringPayload(object? payload)
+    {
+        if (payload is null) return string.Empty;
+        if (payload is JsonElement el)
+        {
+            return el.ValueKind == JsonValueKind.String
+                ? el.GetString() ?? string.Empty
+                : el.ToString();
+        }
+        return payload.ToString() ?? string.Empty;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -1065,7 +1136,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var relativePath = payload?.ToString() ?? string.Empty;
+                var relativePath = ExtractStringPayload(payload);
                 if (cfg != null && !string.IsNullOrEmpty(relativePath))
                 {
                     cfg.SelectedConfigFile = relativePath;
@@ -1213,7 +1284,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var name = payload?.ToString() ?? string.Empty;
+                var name = ExtractStringPayload(payload);
                 if (cfg != null && !string.IsNullOrEmpty(name))
                 {
                     cfg.SelectedServerName = name;
@@ -1271,7 +1342,8 @@ public partial class MainWindow : Window
         // 设置主色
         _bridgeService.RegisterRequestHandler("settings:setPrimaryColor", payload =>
         {
-            var hex = payload?.ToString() ?? "#3B82F6";
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#3B82F6";
             settings?.SetPrimaryColorCommand.Execute(hex);
             return Task.FromResult<object?>(new { success = true });
         });
@@ -1279,7 +1351,8 @@ public partial class MainWindow : Window
         // 设置强调色
         _bridgeService.RegisterRequestHandler("settings:setAccentColor", payload =>
         {
-            var hex = payload?.ToString() ?? "#FB7185";
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#FB7185";
             settings?.SetAccentColorCommand.Execute(hex);
             return Task.FromResult<object?>(new { success = true });
         });
@@ -1306,7 +1379,8 @@ public partial class MainWindow : Window
         // 应用预设
         _bridgeService.RegisterRequestHandler("settings:setPreset", payload =>
         {
-            var preset = payload?.ToString() ?? "SkyBlue";
+            var preset = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(preset)) preset = "SkyBlue";
             settings?.SetPresetCommand.Execute(preset);
             return Task.FromResult<object?>(new
             {

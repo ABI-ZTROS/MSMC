@@ -93,6 +93,7 @@ export interface ServerInfo {
   networkStatusText: string
   formattedMaxMemory: string
   lastSeenAt?: string
+  isKnown?: boolean
 }
 
 export interface KnownServerInfo {
