@@ -25,6 +25,11 @@ import type {
   SwatchesResponse,
   PresetsResponse,
   TeamInfoResponse,
+  JvmDefinitionsResponse,
+  JvmStateResponse,
+  JvmUpdateArgumentRequest,
+  JvmSetMemoryRequest,
+  JvmPresetType,
 } from '@/types/bridge'
 
 declare global {
@@ -483,4 +488,49 @@ export function getAccentSwatches(): Promise<SwatchesResponse> {
 
 export function getTeamInfo(): Promise<TeamInfoResponse> {
   return bridge.invoke<TeamInfoResponse>('about:getTeamInfo')
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// JVM 参数相关 API
+// ═════════════════════════════════════════════════════════════════════
+
+export function getJvmDefinitions(): Promise<JvmDefinitionsResponse> {
+  return bridge.invoke<JvmDefinitionsResponse>('jvm:getDefinitions')
+}
+
+export function getJvmState(): Promise<JvmStateResponse> {
+  return bridge.invoke<JvmStateResponse>('jvm:getState')
+}
+
+export function addJvmArgument(flag: string): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('jvm:addArgument', flag)
+}
+
+export function removeJvmArgument(flag: string): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('jvm:removeArgument', flag)
+}
+
+export function updateJvmArgument(
+  oldArg: string,
+  newValue: string,
+): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('jvm:updateArgument', {
+    oldArg,
+    newValue,
+  } as JvmUpdateArgumentRequest)
+}
+
+export function setJvmMemory(initial?: string, max?: string): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('jvm:setMemory', {
+    initial,
+    max,
+  } as JvmSetMemoryRequest)
+}
+
+export function applyJvmPreset(preset: JvmPresetType): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('jvm:applyPreset', preset)
+}
+
+export function addCustomJvmArgument(arg: string): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('jvm:addCustom', arg)
 }

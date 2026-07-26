@@ -14,11 +14,13 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using McServerGuard.Services;
 using McServerGuard.Services.Frontend;
 using McServerGuard.Services.WebView2;
 using McServerGuard.ViewModels;
+using McServerGuard.Constants;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -830,6 +832,194 @@ public partial class MainWindow : Window
             }
         });
 
+        // ─── JVM 参数相关 API ───
+
+        // 获取所有 JVM 参数定义
+        _bridgeService.RegisterRequestHandler("jvm:getDefinitions", _ =>
+        {
+            var definitions = JvmArgumentConstants.AllArguments.Select(a => new
+            {
+                flag = a.Flag,
+                name = a.Name,
+                description = a.Description,
+                valueType = a.ValueType.ToString(),
+                category = a.Category.ToString(),
+                defaultValue = a.DefaultValue,
+                minimumValue = a.MinimumValue,
+                maximumValue = a.MaximumValue,
+                allowedValues = a.AllowedValues,
+                recommended = a.Recommended,
+                warning = a.Warning,
+                requiresExperimentalUnlock = a.RequiresExperimentalUnlock,
+            }).ToArray();
+            return Task.FromResult<object?>(new { definitions });
+        });
+
+        // 获取当前选中已知服务器的 JVM 参数状态
+        _bridgeService.RegisterRequestHandler("jvm:getState", _ =>
+        {
+            var vm = _vm?.DetectionPage;
+            if (vm == null)
+                return Task.FromResult<object?>(new { hasServer = false });
+
+            var known = vm.SelectedKnownServer;
+
+            return Task.FromResult<object?>(new
+            {
+                hasServer = known != null,
+                isKnownServer = known != null,
+                isRunning = vm.SelectedServer != null,
+                initialMemory = vm.InitialMemory,
+                maxMemory = vm.MaxMemory,
+                selectedArguments = vm.SelectedArguments.ToList(),
+            });
+        });
+
+        // 添加 JVM 参数
+        _bridgeService.RegisterRequestHandler("jvm:addArgument", payload =>
+        {
+            try
+            {
+                var flag = ExtractStringPayload(payload);
+                if (!string.IsNullOrEmpty(flag))
+                {
+                    _vm?.DetectionPage?.AddArgumentCommand.Execute(flag);
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "添加 JVM 参数失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 移除 JVM 参数
+        _bridgeService.RegisterRequestHandler("jvm:removeArgument", payload =>
+        {
+            try
+            {
+                var flag = ExtractStringPayload(payload);
+                if (!string.IsNullOrEmpty(flag))
+                {
+                    _vm?.DetectionPage?.RemoveArgumentCommand.Execute(flag);
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "移除 JVM 参数失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 更新 JVM 参数值
+        _bridgeService.RegisterRequestHandler("jvm:updateArgument", payload =>
+        {
+            try
+            {
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    var oldArg = el.GetProperty("oldArg").GetString() ?? string.Empty;
+                    var newValue = el.GetProperty("newValue").GetString() ?? string.Empty;
+
+                    var vm = _vm?.DetectionPage;
+                    if (vm != null && !string.IsNullOrEmpty(oldArg))
+                    {
+                        vm.StartEditArgumentCommand.Execute(oldArg);
+                        vm.EditingArgumentValue = newValue;
+                        vm.SaveEditArgumentCommand.Execute(null);
+                    }
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "更新 JVM 参数失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置内存
+        _bridgeService.RegisterRequestHandler("jvm:setMemory", payload =>
+        {
+            try
+            {
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    var initial = el.GetProperty("initial").GetString();
+                    var max = el.GetProperty("max").GetString();
+
+                    var vm = _vm?.DetectionPage;
+                    if (vm != null)
+                    {
+                        if (!string.IsNullOrEmpty(initial))
+                            vm.InitialMemory = initial;
+                        if (!string.IsNullOrEmpty(max))
+                            vm.MaxMemory = max;
+                    }
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "设置内存失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 应用预设
+        _bridgeService.RegisterRequestHandler("jvm:applyPreset", payload =>
+        {
+            try
+            {
+                var preset = ExtractStringPayload(payload).ToLowerInvariant();
+                var vm = _vm?.DetectionPage;
+                if (vm != null)
+                {
+                    switch (preset)
+                    {
+                        case "aikar":
+                            vm.ApplyAikarPresetCommand.Execute(null);
+                            break;
+                        case "g1gc":
+                            vm.ApplyG1GCPresetCommand.Execute(null);
+                            break;
+                        case "zgc":
+                            vm.ApplyZGCPresetCommand.Execute(null);
+                            break;
+                    }
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "应用 JVM 预设失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 添加自定义参数
+        _bridgeService.RegisterRequestHandler("jvm:addCustom", payload =>
+        {
+            try
+            {
+                var arg = ExtractStringPayload(payload);
+                var vm = _vm?.DetectionPage;
+                if (vm != null && !string.IsNullOrEmpty(arg))
+                {
+                    vm.CustomArgument = arg;
+                    vm.AddCustomArgumentCommand.Execute(null);
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "添加自定义 JVM 参数失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
         // === 补齐网络监控、配置编辑、设置三大模块的 API ===
         RegisterNetworkApis();
         RegisterConfigApis();
@@ -1344,8 +1534,18 @@ public partial class MainWindow : Window
         {
             var hex = ExtractStringPayload(payload);
             if (string.IsNullOrEmpty(hex)) hex = "#3B82F6";
-            settings?.SetPrimaryColorCommand.Execute(hex);
-            return Task.FromResult<object?>(new { success = true });
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetPrimaryColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置主色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 设置强调色
@@ -1353,8 +1553,18 @@ public partial class MainWindow : Window
         {
             var hex = ExtractStringPayload(payload);
             if (string.IsNullOrEmpty(hex)) hex = "#FB7185";
-            settings?.SetAccentColorCommand.Execute(hex);
-            return Task.FromResult<object?>(new { success = true });
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetAccentColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置强调色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 应用主题

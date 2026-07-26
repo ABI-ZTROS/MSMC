@@ -49,8 +49,24 @@ import catstackAvatar from '@/assets/avatars/CatStack-pixe.png'
 function normalizeHex(hex: string): string {
   if (!hex) return ''
   let h = hex.trim().toUpperCase()
-  if (h.length === 8 && h.startsWith('#')) h = '#' + h.slice(2) // #AARRGGBB -> #RRGGBB
+  if (h.length === 8 && h.startsWith('#')) h = '#' + h.slice(2)
   return h
+}
+
+function isValidHex(hex: string): boolean {
+  if (!hex) return false
+  const h = hex.trim()
+  return /^#([0-9A-F]{3}){1,2}$/i.test(h)
+}
+
+function formatHex(hex: string): string {
+  if (!hex) return ''
+  let h = hex.trim()
+  if (!h.startsWith('#')) h = '#' + h
+  if (/^#[0-9A-F]{3}$/i.test(h)) {
+    h = '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3]
+  }
+  return h.toUpperCase()
 }
 
 const avatarMap: Record<string, string> = {
@@ -83,6 +99,8 @@ export function SettingsPage(): JSX.Element {
   // HEX 输入框本地值（失焦时才提交到后端）
   const [primaryHexInput, setPrimaryHexInput] = useState('')
   const [accentHexInput, setAccentHexInput] = useState('')
+  const [primaryHexError, setPrimaryHexError] = useState('')
+  const [accentHexError, setAccentHexError] = useState('')
 
   // 以下设置项桥接 API 暂未提供独立 setter，使用本地状态承载（初始值来自 getSettings）
   const [cornerRadius, setCornerRadius] = useState(0)
@@ -159,34 +177,88 @@ export function SettingsPage(): JSX.Element {
 
   // ─── 颜色设置 ───
   const handleSetPrimary = async (hex: string): Promise<void> => {
+    if (!isValidHex(hex)) {
+      setPrimaryHexError('无效的 HEX 颜色格式，应为 #RRGGBB 或 #RGB')
+      return
+    }
+    const formatted = formatHex(hex)
     try {
-      await setPrimaryColor(hex)
+      const resp = await setPrimaryColor(formatted)
+      if (resp && !resp.success) {
+        setPrimaryHexError('设置失败，请检查颜色格式')
+        return
+      }
+      setPrimaryHexError('')
       await loadSettings()
     } catch (e) {
       console.error('设置主色失败:', e)
+      setPrimaryHexError('设置失败，请稍后重试')
     }
   }
 
   const handleSetAccent = async (hex: string): Promise<void> => {
+    if (!isValidHex(hex)) {
+      setAccentHexError('无效的 HEX 颜色格式，应为 #RRGGBB 或 #RGB')
+      return
+    }
+    const formatted = formatHex(hex)
     try {
-      await setAccentColor(hex)
+      const resp = await setAccentColor(formatted)
+      if (resp && !resp.success) {
+        setAccentHexError('设置失败，请检查颜色格式')
+        return
+      }
+      setAccentHexError('')
       await loadSettings()
     } catch (e) {
       console.error('设置强调色失败:', e)
+      setAccentHexError('设置失败，请稍后重试')
     }
   }
 
   const handlePrimaryHexBlur = async (): Promise<void> => {
     const val = primaryHexInput.trim()
-    if (val && val !== (settings?.primaryColorHex ?? '')) {
-      await handleSetPrimary(val)
+    if (!val) return
+    if (!isValidHex(val)) {
+      setPrimaryHexError('无效的 HEX 颜色格式，应为 #RRGGBB 或 #RGB')
+      return
+    }
+    const formatted = formatHex(val)
+    setPrimaryHexInput(formatted)
+    if (formatted !== normalizeHex(settings?.primaryColorHex ?? '')) {
+      await handleSetPrimary(formatted)
+    } else {
+      setPrimaryHexError('')
     }
   }
 
   const handleAccentHexBlur = async (): Promise<void> => {
     const val = accentHexInput.trim()
-    if (val && val !== (settings?.accentColorHex ?? '')) {
-      await handleSetAccent(val)
+    if (!val) return
+    if (!isValidHex(val)) {
+      setAccentHexError('无效的 HEX 颜色格式，应为 #RRGGBB 或 #RGB')
+      return
+    }
+    const formatted = formatHex(val)
+    setAccentHexInput(formatted)
+    if (formatted !== normalizeHex(settings?.accentColorHex ?? '')) {
+      await handleSetAccent(formatted)
+    } else {
+      setAccentHexError('')
+    }
+  }
+
+  const handlePrimaryHexInputChange = (val: string): void => {
+    setPrimaryHexInput(val)
+    if (primaryHexError && isValidHex(val)) {
+      setPrimaryHexError('')
+    }
+  }
+
+  const handleAccentHexInputChange = (val: string): void => {
+    setAccentHexInput(val)
+    if (accentHexError && isValidHex(val)) {
+      setAccentHexError('')
     }
   }
 
@@ -322,7 +394,10 @@ export function SettingsPage(): JSX.Element {
                 style={{
                   width: 54,
                   height: 54,
-                  backgroundColor: primaryColorHex,
+                  backgroundColor:
+                    isValidHex(primaryHexInput) && !primaryHexError
+                      ? formatHex(primaryHexInput)
+                      : primaryColorHex,
                   border: '2px solid var(--md-swatch-hover-border)',
                   borderRadius: 8,
                   marginRight: 12,
@@ -333,20 +408,26 @@ export function SettingsPage(): JSX.Element {
               <div>
                 <input
                   className="md-input"
-                  style={{ width: 120, height: 32, fontSize: 12 }}
+                  style={{
+                    width: 120,
+                    height: 32,
+                    fontSize: 12,
+                    borderColor: primaryHexError ? 'var(--md-error)' : undefined,
+                  }}
                   value={primaryHexInput}
-                  onChange={(e) => setPrimaryHexInput(e.target.value)}
+                  onChange={(e) => handlePrimaryHexInputChange(e.target.value)}
                   onBlur={handlePrimaryHexBlur}
                   placeholder={primaryColorHex}
                 />
                 <div
                   style={{
                     fontSize: 11,
-                    color: 'var(--md-body-light)',
+                    color: primaryHexError ? 'var(--md-error)' : 'var(--md-body-light)',
                     marginTop: 4,
+                    minHeight: 14,
                   }}
                 >
-                  输入 HEX 值后失焦生效
+                  {primaryHexError || '输入 HEX 值后失焦生效'}
                 </div>
               </div>
             </div>
@@ -413,7 +494,10 @@ export function SettingsPage(): JSX.Element {
                 style={{
                   width: 54,
                   height: 54,
-                  backgroundColor: accentColorHex,
+                  backgroundColor:
+                    isValidHex(accentHexInput) && !accentHexError
+                      ? formatHex(accentHexInput)
+                      : accentColorHex,
                   border: '2px solid var(--md-swatch-hover-border)',
                   borderRadius: 8,
                   marginRight: 12,
@@ -424,20 +508,26 @@ export function SettingsPage(): JSX.Element {
               <div>
                 <input
                   className="md-input"
-                  style={{ width: 120, height: 32, fontSize: 12 }}
+                  style={{
+                    width: 120,
+                    height: 32,
+                    fontSize: 12,
+                    borderColor: accentHexError ? 'var(--md-error)' : undefined,
+                  }}
                   value={accentHexInput}
-                  onChange={(e) => setAccentHexInput(e.target.value)}
+                  onChange={(e) => handleAccentHexInputChange(e.target.value)}
                   onBlur={handleAccentHexBlur}
                   placeholder={accentColorHex}
                 />
                 <div
                   style={{
                     fontSize: 11,
-                    color: 'var(--md-body-light)',
+                    color: accentHexError ? 'var(--md-error)' : 'var(--md-body-light)',
                     marginTop: 4,
+                    minHeight: 14,
                   }}
                 >
-                  输入 HEX 值后失焦生效
+                  {accentHexError || '输入 HEX 值后失焦生效'}
                 </div>
               </div>
             </div>

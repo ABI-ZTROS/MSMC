@@ -359,3 +359,65 @@ export interface TeamInfoResponse {
   memorial: TeamMember[]
   contributors: TeamMember[]
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// JVM 参数类型
+// ─────────────────────────────────────────────────────────────────────
+
+export type JvmArgumentValueType =
+  | 'None'
+  | 'Number'
+  | 'MemorySize'
+  | 'BooleanFlag'
+  | 'String'
+  | 'Enum'
+
+export type JvmArgumentCategory =
+  | 'Memory'
+  | 'GarbageCollection'
+  | 'Performance'
+  | 'Encoding'
+  | 'Security'
+  | 'Debug'
+  | 'ServerBehavior'
+  | 'Other'
+
+export interface JvmArgumentDefinition {
+  flag: string
+  name: string
+  description: string
+  valueType: JvmArgumentValueType
+  category: JvmArgumentCategory
+  defaultValue: string | null
+  minimumValue: string | null
+  maximumValue: string | null
+  allowedValues: string[] | null
+  recommended: boolean
+  warning: string | null
+  requiresExperimentalUnlock: boolean
+}
+
+export interface JvmDefinitionsResponse {
+  definitions: JvmArgumentDefinition[]
+}
+
+export interface JvmStateResponse {
+  hasServer: boolean
+  isKnownServer: boolean
+  isRunning: boolean
+  initialMemory: string
+  maxMemory: string
+  selectedArguments: string[]
+}
+
+export interface JvmUpdateArgumentRequest {
+  oldArg: string
+  newValue: string
+}
+
+export interface JvmSetMemoryRequest {
+  initial?: string
+  max?: string
+}
+
+export type JvmPresetType = 'aikar' | 'g1gc' | 'zgc'

@@ -1,7 +1,27 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { clsx } from 'clsx'
-import { bridge, getServerList, getSelectedServer, selectServer } from '@/utils/bridge'
-import type { ServerInfo, KnownServerInfo, ServerListResponse } from '@/types/bridge'
+import {
+  bridge,
+  getServerList,
+  getSelectedServer,
+  selectServer,
+  getJvmDefinitions,
+  getJvmState,
+  addJvmArgument,
+  removeJvmArgument,
+  updateJvmArgument,
+  setJvmMemory,
+  applyJvmPreset,
+  addCustomJvmArgument,
+} from '@/utils/bridge'
+import type {
+  ServerInfo,
+  KnownServerInfo,
+  ServerListResponse,
+  JvmArgumentDefinition,
+  JvmArgumentCategory,
+  JvmStateResponse,
+} from '@/types/bridge'
 
 // ─── 辅助函数 ───
 
@@ -13,20 +33,71 @@ function getRunningStatusDot(server: ServerInfo): string {
   return 'md-status-dot-green'
 }
 
-// 从完整启动命令中解析出 JVM 参数（- 开头的 token）
-function parseJvmArgs(cmd: string): string[] {
-  if (!cmd) return []
-  const tokens = cmd.match(/"[^"]+"|\S+/g) || []
-  return tokens.filter((t) => t.startsWith('-'))
+// ─── JVM 参数辅助函数 ───
+
+// 分类中文名称映射
+const categoryLabels: Record<JvmArgumentCategory, string> = {
+  Memory: '内存',
+  GarbageCollection: '垃圾回收',
+  Performance: '性能调优',
+  Encoding: '编码',
+  Security: '安全',
+  Debug: '调试',
+  ServerBehavior: '服务器行为',
+  Other: '其他',
 }
 
-// 格式化字节数
-function formatBytes(bytes: number): string {
-  if (!bytes || bytes <= 0) return '-'
-  if (bytes >= 1 << 30) return `${(bytes / (1 << 30)).toFixed(0)}G`
-  if (bytes >= 1 << 20) return `${(bytes / (1 << 20)).toFixed(0)}M`
-  if (bytes >= 1 << 10) return `${(bytes / (1 << 10)).toFixed(0)}K`
-  return `${bytes}B`
+// 从完整参数字符串中提取基础名（去掉值部分）
+function getArgBaseName(arg: string): string {
+  if (!arg) return ''
+  // -XX:+UseG1GC / -XX:-UseG1GC -> -XX:UseG1GC (BooleanFlag)
+  if (arg.startsWith('-XX:+') || arg.startsWith('-XX:-')) {
+    return '-XX:' + arg.slice(5)
+  }
+  // -XX:MaxGCPauseMillis=200 -> -XX:MaxGCPauseMillis=
+  if (arg.startsWith('-XX:') && arg.includes('=')) {
+    return arg.substring(0, arg.indexOf('=') + 1)
+  }
+  // -Xmx4G -> -Xmx
+  if (arg.startsWith('-Xmx') || arg.startsWith('-Xms') || arg.startsWith('-Xss')) {
+    return arg.substring(0, 4)
+  }
+  // -Dfile.encoding=UTF-8 -> -Dfile.encoding=
+  if (arg.startsWith('-D') && arg.includes('=')) {
+    return arg.substring(0, arg.indexOf('=') + 1)
+  }
+  return arg
+}
+
+// 从完整参数字符串中提取值
+function getArgValue(arg: string): string {
+  if (!arg) return ''
+  if (arg.startsWith('-XX:+')) return 'true'
+  if (arg.startsWith('-XX:-')) return 'false'
+  if (arg.startsWith('-XX:') && arg.includes('=')) {
+    return arg.substring(arg.indexOf('=') + 1)
+  }
+  if (arg.startsWith('-Xmx') || arg.startsWith('-Xms') || arg.startsWith('-Xss')) {
+    return arg.substring(4)
+  }
+  if (arg.startsWith('-D') && arg.includes('=')) {
+    return arg.substring(arg.indexOf('=') + 1)
+  }
+  return ''
+}
+
+// 根据参数定义和值构建完整参数字符串
+function buildFullArg(def: JvmArgumentDefinition, value: string): string {
+  if (def.valueType === 'BooleanFlag') {
+    const enabled = value === 'true' || value === '+'
+    return def.flag.replace(/[-+]$/, enabled ? '+' : '-')
+  }
+  if (def.valueType === 'None') {
+    return def.flag
+  }
+  // 带值的参数
+  const base = def.flag.endsWith('=') ? def.flag : def.flag + '='
+  return base + value
 }
 
 // ─── 子组件：运行中服务器列表项 ───
@@ -194,6 +265,15 @@ export function DashboardPage(): JSX.Element {
   const [operationMessage, setOperationMessage] = useState('')
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(false)
 
+  // JVM 参数相关 state
+  const [jvmDefinitions, setJvmDefinitions] = useState<JvmArgumentDefinition[]>([])
+  const [jvmState, setJvmState] = useState<JvmStateResponse | null>(null)
+  const [jvmCategory, setJvmCategory] = useState<JvmArgumentCategory>('GarbageCollection')
+  const [editingArg, setEditingArg] = useState<{ def: JvmArgumentDefinition; value: string; mode: 'add' | 'edit'; oldArg?: string } | null>(null)
+  const [customArgInput, setCustomArgInput] = useState('')
+  const [jvmMemoryInitial, setJvmMemoryInitial] = useState('')
+  const [jvmMemoryMax, setJvmMemoryMax] = useState('')
+
   // 拉取服务器列表
   const fetchServerList = async () => {
     try {
@@ -306,15 +386,154 @@ export function DashboardPage(): JSX.Element {
     }
   }
 
+  // ─── JVM 参数方法 ───
+
+  const fetchJvmDefinitions = useCallback(async () => {
+    try {
+      const resp = await getJvmDefinitions()
+      setJvmDefinitions(resp.definitions)
+    } catch (e) {
+      console.error('获取 JVM 参数定义失败:', e)
+    }
+  }, [])
+
+  const fetchJvmState = useCallback(async () => {
+    try {
+      const resp = await getJvmState()
+      setJvmState(resp)
+      if (resp.hasServer) {
+        setJvmMemoryInitial(resp.initialMemory)
+        setJvmMemoryMax(resp.maxMemory)
+      }
+    } catch (e) {
+      console.error('获取 JVM 状态失败:', e)
+    }
+  }, [])
+
+  const selectedArgBaseNames = useMemo(() => {
+    if (!jvmState?.selectedArguments) return new Set<string>()
+    return new Set(jvmState.selectedArguments.map((a) => getArgBaseName(a).toLowerCase()))
+  }, [jvmState])
+
+  const filteredDefinitions = useMemo(() => {
+    return jvmDefinitions.filter((d) => d.category === jvmCategory)
+  }, [jvmDefinitions, jvmCategory])
+
+  const categories = useMemo(() => {
+    const set = new Set(jvmDefinitions.map((d) => d.category))
+    return Array.from(set) as JvmArgumentCategory[]
+  }, [jvmDefinitions])
+
+  const handleAddArgument = async (def: JvmArgumentDefinition) => {
+    if (def.valueType === 'None' || def.valueType === 'BooleanFlag') {
+      try {
+        await addJvmArgument(def.flag)
+        await fetchJvmState()
+        await fetchSelectedServer()
+      } catch (e) {
+        console.error('添加参数失败:', e)
+      }
+    } else {
+      setEditingArg({ def, value: def.defaultValue ?? '', mode: 'add' })
+    }
+  }
+
+  const handleRemoveArgument = async (arg: string) => {
+    try {
+      await removeJvmArgument(arg)
+      await fetchJvmState()
+      await fetchSelectedServer()
+    } catch (e) {
+      console.error('移除参数失败:', e)
+    }
+  }
+
+  const handleEditArgument = (arg: string) => {
+    const base = getArgBaseName(arg)
+    const value = getArgValue(arg)
+    const def = jvmDefinitions.find(
+      (d) => getArgBaseName(d.flag).toLowerCase() === base.toLowerCase(),
+    )
+    if (def) {
+      setEditingArg({ def, value, mode: 'edit', oldArg: arg })
+    }
+  }
+
+  const handleSaveEditingArg = async () => {
+    if (!editingArg) return
+    const { def, value, mode, oldArg } = editingArg
+
+    if (mode === 'add') {
+      const full = buildFullArg(def, value)
+      try {
+        await addJvmArgument(full)
+      } catch (e) {
+        console.error('添加参数失败:', e)
+      }
+    } else if (mode === 'edit' && oldArg) {
+      try {
+        await updateJvmArgument(oldArg, value)
+      } catch (e) {
+        console.error('更新参数失败:', e)
+      }
+    }
+
+    setEditingArg(null)
+    await fetchJvmState()
+    await fetchSelectedServer()
+  }
+
+  const handleApplyPreset = async (preset: 'aikar' | 'g1gc' | 'zgc') => {
+    try {
+      await applyJvmPreset(preset)
+      await fetchJvmState()
+      await fetchSelectedServer()
+    } catch (e) {
+      console.error('应用预设失败:', e)
+    }
+  }
+
+  const handleAddCustomArg = async () => {
+    if (!customArgInput.trim()) return
+    try {
+      await addCustomJvmArgument(customArgInput.trim())
+      setCustomArgInput('')
+      await fetchJvmState()
+      await fetchSelectedServer()
+    } catch (e) {
+      console.error('添加自定义参数失败:', e)
+    }
+  }
+
+  const handleMemoryBlur = async () => {
+    if (!jvmState?.hasServer) return
+    try {
+      await setJvmMemory(jvmMemoryInitial, jvmMemoryMax)
+      await fetchJvmState()
+      await fetchSelectedServer()
+    } catch (e) {
+      console.error('设置内存失败:', e)
+    }
+  }
+
+  const isArgSelected = (def: JvmArgumentDefinition): boolean => {
+    const base = getArgBaseName(def.flag).toLowerCase()
+    return selectedArgBaseNames.has(base)
+  }
+
   useEffect(() => {
     fetchServerList()
     fetchSelectedServer()
+    fetchJvmDefinitions()
+    fetchJvmState()
     // 后台轮询，不触发忙碌遮罩
     const interval = setInterval(() => {
       fetchServerList()
       fetchSelectedServer()
+      fetchJvmState()
     }, 3000)
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // 搜索过滤
@@ -325,8 +544,6 @@ export function DashboardPage(): JSX.Element {
   const knownServers = (serverList?.known ?? []).filter(
     (s) => !keyword || s.name.toLowerCase().includes(keyword),
   )
-
-  const jvmArgs = selectedServer ? parseJvmArgs(selectedServer.fullCommandLine) : []
 
   return (
     <div className="md-page-enter h-full flex flex-col relative">
@@ -737,134 +954,580 @@ export function DashboardPage(): JSX.Element {
 
                 {/* ─── JVM 参数 Tab ─── */}
                 {detailTab === 'jvm' && (
-                  <div className="md-card" style={{ padding: 16 }}>
-                    <div
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 700,
-                        marginBottom: 12,
-                        color: 'var(--md-body)',
-                      }}
-                    >
-                      ⚙️ JVM 参数设置
-                    </div>
-
-                    {/* 内存设置 */}
-                    <div className="md-subsection-title">内存设置</div>
-                    <div className="grid grid-cols-2" style={{ gap: 12, marginBottom: 12 }}>
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            opacity: 0.7,
-                            marginBottom: 4,
-                            color: 'var(--md-body-light)',
-                          }}
-                        >
-                          初始堆内存 (-Xms)
-                        </div>
-                        <input
-                          readOnly
-                          value={formatBytes(selectedServer.initialHeapMemoryBytes)}
-                          className="md-input"
-                          placeholder="2G"
-                        />
-                      </div>
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            opacity: 0.7,
-                            marginBottom: 4,
-                            color: 'var(--md-body-light)',
-                          }}
-                        >
-                          最大堆内存 (-Xmx)
-                        </div>
-                        <input
-                          readOnly
-                          value={formatBytes(selectedServer.maxHeapMemoryBytes)}
-                          className="md-input"
-                          placeholder="4G"
-                        />
-                      </div>
-                    </div>
-
-                    {/* 快速预设 */}
-                    <div className="md-subsection-title">快速预设</div>
-                    <div className="flex items-center" style={{ gap: 8, marginBottom: 12 }}>
-                      <button
-                        className="md-btn md-btn-outlined"
-                        style={{ fontSize: 'var(--md-font-size-sm)' }}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {/* 内存设置卡片 */}
+                    <div className="md-card" style={{ padding: 16 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          marginBottom: 12,
+                          color: 'var(--md-body)',
+                        }}
                       >
-                        🚀 Aikar
-                      </button>
-                      <button
-                        className="md-btn md-btn-outlined"
-                        style={{ fontSize: 'var(--md-font-size-sm)' }}
-                      >
-                        📊 G1GC
-                      </button>
-                      <button
-                        className="md-btn md-btn-outlined"
-                        style={{ fontSize: 'var(--md-font-size-sm)' }}
-                      >
-                        ⚡ ZGC
-                      </button>
-                    </div>
-
-                    {/* GC 信息 */}
-                    {selectedServer.gcType && (
-                      <>
-                        <div className="md-subsection-title">垃圾回收器</div>
-                        <div style={{ marginBottom: 12 }}>
-                          <span className="md-chip md-chip-primary">{selectedServer.gcType}</span>
-                          {selectedServer.usesAikarFlags && (
-                            <span className="md-chip md-chip-success" style={{ marginLeft: 6 }}>
-                              ✨ Aikar 标志
-                            </span>
-                          )}
-                        </div>
-                      </>
-                    )}
-
-                    {/* 已选参数列表（从启动命令解析） */}
-                    <div className="md-subsection-title">已选参数（来自启动命令）</div>
-                    {jvmArgs.length === 0 ? (
-                      <div className="md-empty-state" style={{ padding: '12px 8px' }}>
-                        <div className="md-empty-state-text" style={{ fontSize: 11 }}>
-                          暂无 JVM 参数
-                        </div>
+                        💾 内存设置
                       </div>
-                    ) : (
-                      <div>
-                        {jvmArgs.map((arg, idx) => (
+                      <div className="grid grid-cols-2" style={{ gap: 12 }}>
+                        <div>
                           <div
-                            key={idx}
-                            className="flex items-center"
                             style={{
-                              background: 'var(--md-card-hover)',
-                              borderRadius: 'var(--md-radius-small)',
-                              padding: '6px 8px',
+                              fontSize: 11,
+                              opacity: 0.7,
                               marginBottom: 4,
-                              gap: 8,
+                              color: 'var(--md-body-light)',
                             }}
                           >
+                            初始堆内存 (-Xms)
+                          </div>
+                          <input
+                            value={jvmMemoryInitial}
+                            onChange={(e) => setJvmMemoryInitial(e.target.value)}
+                            onBlur={handleMemoryBlur}
+                            className="md-input"
+                            placeholder="如 2G、512M"
+                            disabled={!jvmState?.hasServer || jvmState.isRunning}
+                          />
+                        </div>
+                        <div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              opacity: 0.7,
+                              marginBottom: 4,
+                              color: 'var(--md-body-light)',
+                            }}
+                          >
+                            最大堆内存 (-Xmx)
+                          </div>
+                          <input
+                            value={jvmMemoryMax}
+                            onChange={(e) => setJvmMemoryMax(e.target.value)}
+                            onBlur={handleMemoryBlur}
+                            className="md-input"
+                            placeholder="如 4G、2048M"
+                            disabled={!jvmState?.hasServer || jvmState.isRunning}
+                          />
+                        </div>
+                      </div>
+                      {jvmState?.isRunning && (
+                        <div style={{ fontSize: 11, color: 'var(--md-primary-hue-mid)', marginTop: 8 }}>
+                          ⚠️ 服务器运行中无法修改内存设置
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 快速预设卡片 */}
+                    <div className="md-card" style={{ padding: 16 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          marginBottom: 12,
+                          color: 'var(--md-body)',
+                        }}
+                      >
+                        🚀 快速预设
+                      </div>
+                      <div className="flex items-center" style={{ gap: 8, flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => handleApplyPreset('aikar')}
+                          className="md-btn md-btn-outlined"
+                          style={{ fontSize: 'var(--md-font-size-sm)' }}
+                          disabled={!jvmState?.hasServer || jvmState.isRunning}
+                        >
+                          🌟 Aikar 优化
+                        </button>
+                        <button
+                          onClick={() => handleApplyPreset('g1gc')}
+                          className="md-btn md-btn-outlined"
+                          style={{ fontSize: 'var(--md-font-size-sm)' }}
+                          disabled={!jvmState?.hasServer || jvmState.isRunning}
+                        >
+                          📊 G1GC 回收器
+                        </button>
+                        <button
+                          onClick={() => handleApplyPreset('zgc')}
+                          className="md-btn md-btn-outlined"
+                          style={{ fontSize: 'var(--md-font-size-sm)' }}
+                          disabled={!jvmState?.hasServer || jvmState.isRunning}
+                        >
+                          ⚡ ZGC 回收器
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 已选参数卡片 */}
+                    <div className="md-card" style={{ padding: 16 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          marginBottom: 12,
+                          color: 'var(--md-body)',
+                        }}
+                      >
+                        ✅ 已选参数 ({jvmState?.selectedArguments?.length ?? 0})
+                      </div>
+                      {!jvmState?.selectedArguments || jvmState.selectedArguments.length === 0 ? (
+                        <div className="md-empty-state" style={{ padding: '12px 8px' }}>
+                          <div className="md-empty-state-text" style={{ fontSize: 11 }}>
+                            暂无已选参数，从下方分类中添加
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {jvmState.selectedArguments.map((arg, idx) => {
+                            const base = getArgBaseName(arg)
+                            const def = jvmDefinitions.find(
+                              (d) => getArgBaseName(d.flag).toLowerCase() === base.toLowerCase(),
+                            )
+                            return (
+                              <div
+                                key={idx}
+                                className="flex items-center"
+                                style={{
+                                  background: 'var(--md-card-hover)',
+                                  borderRadius: 'var(--md-radius-small)',
+                                  padding: '8px 10px',
+                                  gap: 8,
+                                }}
+                              >
+                                <div className="flex-1" style={{ minWidth: 0 }}>
+                                  <div
+                                    style={{
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      color: 'var(--md-body)',
+                                      marginBottom: 2,
+                                    }}
+                                  >
+                                    {def?.name || base}
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontFamily: 'var(--md-font-mono)',
+                                      fontSize: 11,
+                                      color: 'var(--md-body-light)',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {arg}
+                                  </div>
+                                </div>
+                                {def && def.valueType !== 'None' && (
+                                  <button
+                                    onClick={() => handleEditArgument(arg)}
+                                    className="md-btn md-btn-flat md-btn-icon"
+                                    title="编辑值"
+                                    style={{ fontSize: 12 }}
+                                    disabled={jvmState.isRunning}
+                                  >
+                                    ✏️
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleRemoveArgument(arg)}
+                                  className="md-btn md-btn-flat md-btn-icon"
+                                  title="移除"
+                                  style={{ fontSize: 12, color: 'var(--md-error)' }}
+                                  disabled={jvmState.isRunning}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 可选参数分类卡片 */}
+                    <div className="md-card" style={{ padding: 16 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          marginBottom: 12,
+                          color: 'var(--md-body)',
+                        }}
+                      >
+                        ➕ 添加参数
+                      </div>
+
+                      {/* 分类标签 */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 6,
+                          flexWrap: 'wrap',
+                          marginBottom: 12,
+                        }}
+                      >
+                        {categories.map((cat) => (
+                          <button
+                            key={cat}
+                            onClick={() => setJvmCategory(cat)}
+                            className={clsx(
+                              'md-chip',
+                              jvmCategory === cat && 'md-chip-primary',
+                            )}
+                            style={{
+                              cursor: 'pointer',
+                              fontSize: 11,
+                            }}
+                          >
+                            {categoryLabels[cat]}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* 可选参数列表 */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {filteredDefinitions.map((def) => {
+                          const selected = isArgSelected(def)
+                          return (
                             <div
-                              className="flex-1"
+                              key={def.flag}
+                              className="flex items-center"
                               style={{
-                                fontFamily: 'var(--md-font-mono)',
-                                fontSize: 11,
-                                color: 'var(--md-body)',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
+                                background: selected
+                                  ? 'var(--md-primary-tint-soft)'
+                                  : 'var(--md-card-hover)',
+                                borderRadius: 'var(--md-radius-small)',
+                                padding: '8px 10px',
+                                gap: 8,
+                                opacity: selected ? 0.6 : 1,
                               }}
                             >
-                              {arg}
+                              <div className="flex-1" style={{ minWidth: 0 }}>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    color: 'var(--md-body)',
+                                    marginBottom: 2,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                  }}
+                                >
+                                  {def.name}
+                                  {def.recommended && (
+                                    <span
+                                      style={{
+                                        fontSize: 9,
+                                        color: 'var(--md-success)',
+                                        fontWeight: 700,
+                                        border: '1px solid var(--md-success)',
+                                        borderRadius: 3,
+                                        padding: '0 4px',
+                                      }}
+                                    >
+                                      推荐
+                                    </span>
+                                  )}
+                                  {def.warning && (
+                                    <span
+                                      style={{
+                                        fontSize: 9,
+                                        color: 'var(--md-error)',
+                                        fontWeight: 700,
+                                        border: '1px solid var(--md-error)',
+                                        borderRadius: 3,
+                                        padding: '0 4px',
+                                      }}
+                                    >
+                                      警告
+                                    </span>
+                                  )}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 10.5,
+                                    color: 'var(--md-body-light)',
+                                    lineHeight: 1.4,
+                                  }}
+                                >
+                                  {def.description}
+                                </div>
+                                <div
+                                  style={{
+                                    fontFamily: 'var(--md-font-mono)',
+                                    fontSize: 10,
+                                    color: 'var(--md-muted)',
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {def.flag}
+                                </div>
+                              </div>
+                              {selected ? (
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    color: 'var(--md-success)',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  已添加
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => handleAddArgument(def)}
+                                  className="md-btn md-btn-primary"
+                                  style={{ fontSize: 11, padding: '4px 10px' }}
+                                  disabled={!jvmState?.hasServer || jvmState.isRunning}
+                                >
+                                  + 添加
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })}
+                        {filteredDefinitions.length === 0 && (
+                          <div className="md-empty-state" style={{ padding: '12px 8px' }}>
+                            <div className="md-empty-state-text" style={{ fontSize: 11 }}>
+                              该分类下暂无参数
                             </div>
                           </div>
-                        ))}
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 自定义参数卡片 */}
+                    <div className="md-card" style={{ padding: 16 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          marginBottom: 12,
+                          color: 'var(--md-body)',
+                        }}
+                      >
+                        🛠️ 自定义参数
+                      </div>
+                      <div className="flex items-center" style={{ gap: 8 }}>
+                        <input
+                          value={customArgInput}
+                          onChange={(e) => setCustomArgInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleAddCustomArg()
+                          }}
+                          className="md-input flex-1"
+                          placeholder="输入自定义参数，如 -XX:+UnlockExperimentalVMOptions"
+                          disabled={!jvmState?.hasServer || jvmState.isRunning}
+                        />
+                        <button
+                          onClick={handleAddCustomArg}
+                          className="md-btn md-btn-primary"
+                          style={{ fontSize: 11 }}
+                          disabled={!jvmState?.hasServer || jvmState.isRunning || !customArgInput.trim()}
+                        >
+                          添加
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 参数编辑弹窗 */}
+                    {editingArg && (
+                      <div
+                        style={{
+                          position: 'fixed',
+                          inset: 0,
+                          background: 'rgba(0,0,0,0.5)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          zIndex: 9999,
+                        }}
+                        onClick={() => setEditingArg(null)}
+                      >
+                        <div
+                          className="md-card"
+                          style={{
+                            padding: 20,
+                            width: 360,
+                            maxWidth: '90vw',
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 700,
+                              marginBottom: 4,
+                              color: 'var(--md-body)',
+                            }}
+                          >
+                            {editingArg.mode === 'add' ? '添加参数' : '编辑参数'}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: 'var(--md-body-light)',
+                              marginBottom: 16,
+                            }}
+                          >
+                            {editingArg.def.name}
+                          </div>
+
+                          {editingArg.def.description && (
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: 'var(--md-body-light)',
+                                marginBottom: 12,
+                                padding: 8,
+                                background: 'var(--md-card-hover)',
+                                borderRadius: 'var(--md-radius-small)',
+                              }}
+                            >
+                              {editingArg.def.description}
+                            </div>
+                          )}
+
+                          {/* 根据值类型显示不同控件 */}
+                          {editingArg.def.valueType === 'BooleanFlag' ? (
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                              <button
+                                onClick={() =>
+                                  setEditingArg({ ...editingArg, value: 'true' })
+                                }
+                                className={clsx(
+                                  'md-btn',
+                                  editingArg.value === 'true'
+                                    ? 'md-btn-primary'
+                                    : 'md-btn-outlined',
+                                )}
+                                style={{ flex: 1 }}
+                              >
+                                ✓ 启用 (+)
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setEditingArg({ ...editingArg, value: 'false' })
+                                }
+                                className={clsx(
+                                  'md-btn',
+                                  editingArg.value === 'false'
+                                    ? 'md-btn-primary'
+                                    : 'md-btn-outlined',
+                                )}
+                                style={{ flex: 1 }}
+                              >
+                                ✕ 禁用 (-)
+                              </button>
+                            </div>
+                          ) : editingArg.def.valueType === 'Enum' &&
+                            editingArg.def.allowedValues ? (
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 4,
+                                marginBottom: 16,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  color: 'var(--md-body-light)',
+                                  marginBottom: 4,
+                                }}
+                              >
+                                选择值：
+                              </div>
+                              {editingArg.def.allowedValues.map((val) => (
+                                <button
+                                  key={val}
+                                  onClick={() => setEditingArg({ ...editingArg, value: val })}
+                                  className={clsx(
+                                    'md-btn',
+                                    editingArg.value === val
+                                      ? 'md-btn-primary'
+                                      : 'md-btn-outlined',
+                                  )}
+                                  style={{ textAlign: 'left', fontSize: 11 }}
+                                >
+                                  {val}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{ marginBottom: 16 }}>
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  color: 'var(--md-body-light)',
+                                  marginBottom: 4,
+                                }}
+                              >
+                                值
+                                {editingArg.def.defaultValue && (
+                                  <span style={{ opacity: 0.7 }}>
+                                    {' '}
+                                    （默认：{editingArg.def.defaultValue}）
+                                  </span>
+                                )}
+                              </div>
+                              <input
+                                value={editingArg.value}
+                                onChange={(e) =>
+                                  setEditingArg({ ...editingArg, value: e.target.value })
+                                }
+                                className="md-input"
+                                placeholder={editingArg.def.defaultValue ?? ''}
+                              />
+                              {(editingArg.def.minimumValue || editingArg.def.maximumValue) && (
+                                <div
+                                  style={{
+                                    fontSize: 10,
+                                    color: 'var(--md-muted)',
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  范围：
+                                  {editingArg.def.minimumValue ?? '无下限'} ~{' '}
+                                  {editingArg.def.maximumValue ?? '无上限'}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {editingArg.def.warning && (
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: 'var(--md-error)',
+                                marginBottom: 12,
+                                padding: 8,
+                                background: 'rgba(239,68,68,0.1)',
+                                borderRadius: 'var(--md-radius-small)',
+                              }}
+                            >
+                              ⚠️ {editingArg.def.warning}
+                            </div>
+                          )}
+
+                          <div className="flex items-center" style={{ gap: 8 }}>
+                            <button
+                              onClick={() => setEditingArg(null)}
+                              className="md-btn md-btn-outlined"
+                              style={{ flex: 1 }}
+                            >
+                              取消
+                            </button>
+                            <button
+                              onClick={handleSaveEditingArg}
+                              className="md-btn md-btn-primary"
+                              style={{ flex: 1 }}
+                            >
+                              确定
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
