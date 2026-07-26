@@ -396,7 +396,7 @@ public class ServerManagerService : IServerManagerService
                                 Log.Error("   4. JAR 文件损坏或路径不正确");
                                 Log.Error("💡 请查看服务器控制台窗口的具体错误信息");
                             }
-                            else if (exitCode == -1 || exitCode == 0xC0000005)
+                            else if (exitCode == -1 || exitCode == unchecked((int)0xC0000005))
                             {
                                 Log.Error("💥 进程崩溃（退出码 {ExitCode}）：可能是 Java 本身故障、系统内存不足或杀毒软件拦截", exitCode);
                             }

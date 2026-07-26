@@ -986,7 +986,7 @@ public partial class MainWindow : Window
                             vm.ApplyG1GCPresetCommand.Execute(null);
                             break;
                         case "zgc":
-                            vm.ApplyZGCPresetCommand.Execute(null);
+                            vm.ApplyZgcPresetCommand.Execute(null);
                             break;
                     }
                 }
