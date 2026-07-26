@@ -221,7 +221,7 @@ class Bridge implements MsmcBridge {
         this.pendingRequests.delete(id)
         rawLog(`⏰ 请求超时: ${action}`)
         reject(new Error(`Request timeout: ${action}`))
-      }, 30000)
+      }, 10000)
 
       this.pendingRequests.set(id, {
         resolve: resolve as (value: unknown) => void,

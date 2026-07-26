@@ -37,8 +37,12 @@ public record ThreadAnalysisResult(
 ///   - 基于每核线程数阈值的分级评估机制
 /// </para>
 /// </remarks>
-public class ThreadAnalyzer
+public class ThreadAnalyzer : IDisposable
 {
+    private PerformanceCounter? _systemThreadCounter;
+    private readonly object _counterLock = new();
+    private bool _disposed;
+
     /// <summary>
     /// 获取逻辑处理器核心数量
     /// </summary>
@@ -78,12 +82,22 @@ public class ThreadAnalyzer
     {
         Log.Debug("ThreadAnalyzer: GetTotalThreadCount");
 
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(ThreadAnalyzer));
+
         try
         {
-            using var threadCounter = new PerformanceCounter(
-                "System", "Threads", readOnly: true);
+            if (_systemThreadCounter == null)
+            {
+                lock (_counterLock)
+                {
+                    _systemThreadCounter ??= new PerformanceCounter(
+                        "System", "Threads", readOnly: true);
+                    _systemThreadCounter.NextValue();
+                }
+            }
 
-            return (int)threadCounter.NextValue();
+            return (int)_systemThreadCounter.NextValue();
         }
         catch (Exception ex)
         {
@@ -218,4 +232,17 @@ public class ThreadAnalyzer
     private static extern void GetSystemInfo(out SYSTEM_INFO lpSystemInfo);
 
     #endregion
+
+    /// <summary>
+    /// 释放资源
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _systemThreadCounter?.Dispose();
+        _systemThreadCounter = null;
+        _disposed = true;
+    }
 }

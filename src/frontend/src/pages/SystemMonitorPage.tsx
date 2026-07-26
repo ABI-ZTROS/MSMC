@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { GaugeRing } from '@/components/ui'
 import { bridge, getSystemMetrics, getSystemHistory, getCpuInfo } from '@/utils/bridge'
 import type { SystemMetrics, HistoryPoint, CpuInfo } from '@/types/bridge'
@@ -51,20 +51,26 @@ function SimpleLineChart({ data, timestamps = [], color, height = 200, label }: 
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
   const svgRef = useRef<SVGSVGElement>(null)
 
-  const points = data.map((val, i) => {
-    const safeVal = Math.max(0, Math.min(100, val))
-    const x = padding.left + (data.length > 1 ? (i / (data.length - 1)) * chartWidth : chartWidth / 2)
-    const y = padding.top + (1 - safeVal / 100) * chartHeight
-    return { x, y }
-  })
+  const points = useMemo(() => {
+    return data.map((val, i) => {
+      const safeVal = Math.max(0, Math.min(100, val))
+      const x = padding.left + (data.length > 1 ? (i / (data.length - 1)) * chartWidth : chartWidth / 2)
+      const y = padding.top + (1 - safeVal / 100) * chartHeight
+      return { x, y }
+    })
+  }, [data, chartWidth, chartHeight, padding.left, padding.top])
 
-  const pathD = points.length > 0
-    ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-    : ''
+  const pathD = useMemo(() => {
+    return points.length > 0
+      ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+      : ''
+  }, [points])
 
-  const areaD = points.length > 0
-    ? `${pathD} L ${points[points.length - 1].x.toFixed(1)} ${padding.top + chartHeight} L ${points[0].x.toFixed(1)} ${padding.top + chartHeight} Z`
-    : ''
+  const areaD = useMemo(() => {
+    return points.length > 0
+      ? `${pathD} L ${points[points.length - 1].x.toFixed(1)} ${padding.top + chartHeight} L ${points[0].x.toFixed(1)} ${padding.top + chartHeight} Z`
+      : ''
+  }, [points, pathD, padding.top, chartHeight])
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
@@ -378,19 +384,31 @@ export function SystemMonitorPage(): JSX.Element {
   const [loadError, setLoadError] = useState(false)
   const intervalRef = useRef<number | null>(null)
 
-  // 拉取系统指标
+  // 拉取系统指标（同时追加到历史数组）
   const fetchMetrics = async () => {
     try {
       const data = await getSystemMetrics()
       setMetrics(data)
       setLoadError(false)
+
+      setHistory(prev => {
+        const next = [...prev, {
+          cpuUsagePercent: data.cpuUsagePercent,
+          memoryUsagePercent: data.memoryUsagePercent,
+          timestamp: data.timestamp,
+        }]
+        if (next.length > 120) {
+          return next.slice(next.length - 120)
+        }
+        return next
+      })
     } catch (e) {
       console.error('获取系统指标失败:', e)
       setLoadError(true)
     }
   }
 
-  // 拉取历史数据（用于折线图）
+  // 拉取历史数据（用于折线图）— 初始化或状态切换时使用
   const fetchHistory = async () => {
     try {
       const data = await getSystemHistory()
@@ -436,10 +454,9 @@ export function SystemMonitorPage(): JSX.Element {
     fetchHistory()
     fetchCpuInfo()
 
-    // 每 2 秒自动刷新指标，与 WPF 版一致
+    // 每 2 秒自动刷新指标（只拉最新快照，历史数据前端自行追加）
     intervalRef.current = window.setInterval(() => {
       fetchMetrics()
-      fetchHistory()
     }, 2000)
 
     return () => {

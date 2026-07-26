@@ -598,7 +598,7 @@ public class ServerDetector : IServerDetector
     /// TTL 远大于自动检测间隔，保证大部分检测请求命中缓存（命中率约 95%），
     /// 有效降低重复扫描带来的 I/O 开销。
     /// </remarks>
-    private static readonly TimeSpan DetectionCacheTtl = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan DetectionCacheTtl = TimeSpan.FromSeconds(25);
 
     /// <summary>
     /// PID 生命周期缓存字典 —— Key 为进程 ID，Value 为（服务器实例, 缓存时间戳）元组
@@ -626,7 +626,7 @@ public class ServerDetector : IServerDetector
     /// 缓存定期清理计时器 —— 周期性扫描两个缓存字典，移除已过期条目，防止内存持续增长
     /// </summary>
     /// <remarks>
-    /// 清理间隔（30 秒）远大于检测缓存 TTL（15 秒）与端口缓存 TTL，
+    /// 清理间隔（30 秒）远大于检测缓存 TTL（25 秒）与端口缓存 TTL，
     /// 确保过期条目在合理时间内被回收，同时避免频繁扫描带来的开销。
     /// </remarks>
     private readonly Timer _cacheCleanupTimer;
@@ -660,7 +660,7 @@ public class ServerDetector : IServerDetector
     /// 启动自动检测循环
     /// </summary>
     /// <remarks>
-    /// 检测间隔为 3 秒，配合 15 秒缓存 TTL，采用轮询-差分更新策略：
+    /// 检测间隔为 5 秒，配合 25 秒缓存 TTL，采用轮询-差分更新策略：
     /// 既保证检测响应速度，又大幅降低 I/O 操作频率（避免服务器日志文件被独占读时反复触发异常）。
     /// 调用 <see cref="DetectionCompleted"/> 事件向订阅者推送检测结果。
     /// </remarks>
@@ -700,7 +700,7 @@ public class ServerDetector : IServerDetector
 
                     try
                     {
-                        await Task.Delay(3000, token);
+                        await Task.Delay(5000, token);
                     }
                     catch (OperationCanceledException)
                     {

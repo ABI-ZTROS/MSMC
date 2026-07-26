@@ -70,6 +70,26 @@ public partial class App : Application
             .WriteTo.File(logFileName)
             .CreateLogger();
 
+        // 清理 7 天前的旧日志文件
+        try
+        {
+            var oldFiles = Directory.GetFiles(logDir, "mcserverguard-*.log")
+                .Select(f => new FileInfo(f))
+                .Where(f => (DateTime.Now - f.CreationTime).TotalDays > 7)
+                .ToList();
+            foreach (var file in oldFiles)
+            {
+                try { file.Delete(); }
+                catch { /* 忽略单个文件删除失败 */ }
+            }
+            if (oldFiles.Count > 0)
+                Log.Information("🧹 已清理 {Count} 个旧日志文件", oldFiles.Count);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "清理旧日志文件失败");
+        }
+
         // 挂载全局异常处理
         SetupGlobalExceptionHandling();
 

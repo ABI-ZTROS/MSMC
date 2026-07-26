@@ -452,6 +452,7 @@ public partial class MainWindow : Window
             {
                 return Task.FromResult<object?>(new
                 {
+                    timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                     cpuUsagePercent = 0.0,
                     memoryUsagePercent = 0.0,
                     diskUsagePercent = 0.0,
@@ -473,6 +474,7 @@ public partial class MainWindow : Window
 
             return Task.FromResult<object?>(new
             {
+                timestamp = metrics.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
                 cpuUsagePercent = metrics.CpuUsagePercent,
                 memoryUsagePercent = metrics.MemoryUsagePercent,
                 diskUsagePercent = metrics.DiskUsagePercent,

@@ -45,6 +45,7 @@ export interface StatusUpdateEvent {
 // ─────────────────────────────────────────────────────────────────────
 
 export interface SystemMetrics {
+  timestamp: string
   cpuUsagePercent: number
   memoryUsagePercent: number
   diskUsagePercent: number

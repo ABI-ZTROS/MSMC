@@ -124,34 +124,27 @@ public class SystemMonitor : ISystemMonitor
     /// </remarks>
     public SystemMetrics CollectSnapshot()
     {
-        // 快照采集入口
         Log.Debug("📸 采集系统快照...");
         var timestamp = DateTime.Now;
 
-        // CPU 使用率采集
         var cpuUsage = GetCpuUsage();
         var perCoreUsages = GetPerCoreCpuUsage();
 
-        // 内存指标采集
-        var totalMemory = _memoryMonitor.GetTotalPhysicalMemory();
+        var totalMemory = GetCachedTotalMemory();
         var usedMemory = _memoryMonitor.GetUsedMemory();
         var memoryUsagePercent = totalMemory > 0
             ? Math.Round((double)usedMemory / totalMemory * 100, 2)
             : 0;
 
-        var memoryInfo = _memoryMonitor.GetMemorySystemInfo();
+        var memoryInfo = GetCachedMemoryInfo();
 
-        // 磁盘指标采集（基于当前工作目录所在盘）
         var diskRoot = System.IO.Path.GetPathRoot(Environment.CurrentDirectory) ?? "C:\\";
         var diskInfo = _diskMonitor.GetDiskInfo(diskRoot);
 
-        // Java 进程统计
         var (javaCount, javaWorkingSet, javaPrivateBytes, javaThreadCount) = GetJavaProcessStats();
 
-        // 线程总数采集
         var totalThreads = _threadAnalyzer.GetTotalThreadCount();
 
-        // 快照采集完成
         Log.Debug("✅ 快照采集完成: CPU={Cpu}% 内存={Mem}% 磁盘={Disk}%",
             cpuUsage, memoryUsagePercent, diskInfo.UsagePercent);
 
@@ -237,14 +230,19 @@ public class SystemMonitor : ISystemMonitor
         {
             try
             {
-                // 已取消则跳过采集 —— 清理由 StopMonitoring 统一负责，
-                // 不在回调中 Dispose Timer/CTS 自身，避免与 StopMonitoring 竞态导致访问已释放资源
                 if (_monitoringCts?.IsCancellationRequested == true)
                     return;
 
-                // 异步采集快照，避免 WMI/PerformanceCounter 同步调用阻塞线程池
+                if (_isCollecting)
+                {
+                    Log.Debug("上一次采集尚未完成，跳过本次");
+                    return;
+                }
+
+                _isCollecting = true;
                 _ = CollectSnapshotAsync().ContinueWith(t =>
                 {
+                    _isCollecting = false;
                     if (t.IsCompletedSuccessfully)
                     {
                         try { callback(t.Result); }
@@ -404,6 +402,33 @@ public class SystemMonitor : ISystemMonitor
         }
     }
 
+    private long GetCachedTotalMemory()
+    {
+        if (_cachedTotalMemory >= 0)
+            return _cachedTotalMemory;
+
+        lock (_hardwareCacheLock)
+        {
+            if (_cachedTotalMemory < 0)
+                _cachedTotalMemory = _memoryMonitor.GetTotalPhysicalMemory();
+        }
+
+        return _cachedTotalMemory;
+    }
+
+    private MemorySystemInfo GetCachedMemoryInfo()
+    {
+        if (_cachedMemoryInfo != null)
+            return _cachedMemoryInfo;
+
+        lock (_hardwareCacheLock)
+        {
+            _cachedMemoryInfo ??= _memoryMonitor.GetMemorySystemInfo();
+        }
+
+        return _cachedMemoryInfo;
+    }
+
     /// <summary>
     /// CPU 性能计数器实例缓存 —— 避免重复创建导致的性能开销
     /// </summary>
@@ -415,10 +440,15 @@ public class SystemMonitor : ISystemMonitor
     /// </summary>
     private PerformanceCounter[]? _perCoreCpuCounters;
 
+    private long _cachedTotalMemory = -1;
+    private MemorySystemInfo? _cachedMemoryInfo;
+    private readonly object _hardwareCacheLock = new();
+
+    private bool _isCollecting;
+
     /// <summary>
     /// 获取 Java 进程统计信息
     /// </summary>
-    /// <returns>元组，包含进程数量、工作集总字节数、私有内存总字节数、总线程数</returns>
     /// <remarks>
     /// 正确释放 Process 对象以避免资源泄漏；
     /// 处理进程退出的竞态条件——枚举过程中进程可能随时退出。

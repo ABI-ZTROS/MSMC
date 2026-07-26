@@ -73,10 +73,10 @@ public class MemoryOptimizerService : IDisposable
     {
         Log.Information("🧹 MemoryOptimizerService 初始化");
 
-        // 定时优化（每 30 秒执行一次轻量回收）
+        // 定时优化（每 5 分钟执行一次轻量回收）
         _optimizeTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Interval = TimeSpan.FromSeconds(30)
+            Interval = TimeSpan.FromMinutes(5)
         };
         _optimizeTimer.Tick += OnOptimizeTimerTick;
 
@@ -226,8 +226,8 @@ public class MemoryOptimizerService : IDisposable
         // 轻量回收
         ForceGC(deep: false);
 
-        // 每 5 次轻量回收后执行一次深度回收
-        if ((DateTime.Now - _lastCollectTime).TotalMinutes >= 5)
+        // 每 6 次轻量回收后执行一次深度回收（约 30 分钟）
+        if ((DateTime.Now - _lastCollectTime).TotalMinutes >= 30)
         {
             ForceGC(deep: true);
             TrimWorkingSet();
