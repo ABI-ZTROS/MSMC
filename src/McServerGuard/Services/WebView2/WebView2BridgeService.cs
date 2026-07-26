@@ -575,7 +575,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                 {
                     Log.Debug("[WV2-REQ] 🔄 封送到 UI 线程执行: {Action}", message.Action);
                     var tcs = new TaskCompletionSource<object?>();
-                    _uiDispatcher.BeginInvoke(async () =>
+                    _ = _uiDispatcher.BeginInvoke(async () =>
                     {
                         try
                         {
