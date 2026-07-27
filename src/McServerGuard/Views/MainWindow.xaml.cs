@@ -17,6 +17,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using McServerGuard.Services;
+using McServerGuard.Services.Color;
 using McServerGuard.Services.Frontend;
 using McServerGuard.Services.WebView2;
 using McServerGuard.ViewModels;
@@ -1176,6 +1177,8 @@ public partial class MainWindow : Window
         return payload.ToString() ?? string.Empty;
     }
 
+    private static string ArgbToRgb(string? hex) => ColorHelper.NormalizeHex(hex ?? string.Empty);
+
     // ─────────────────────────────────────────────────────────────────────
     // 网络监控相关桥接 API
     // ─────────────────────────────────────────────────────────────────────
@@ -1704,12 +1707,12 @@ public partial class MainWindow : Window
         {
             return Task.FromResult<object?>(new
             {
-                primaryColorHex = settings?.PrimaryColorHex ?? "#FF3B82F6",
-                accentColorHex = settings?.AccentColorHex ?? "#FFFB7185",
-                backgroundColorHex = settings?.BackgroundColorHex ?? "#FF020617",
-                cardColorHex = settings?.CardColorHex ?? "#FF0F172A",
-                textColorHex = settings?.TextColorHex ?? "#FFE2E8F0",
-                borderColorHex = settings?.BorderColorHex ?? "#FF334155",
+                primaryColorHex = ArgbToRgb(settings?.PrimaryColorHex),
+                accentColorHex = ArgbToRgb(settings?.AccentColorHex),
+                backgroundColorHex = ArgbToRgb(settings?.BackgroundColorHex),
+                cardColorHex = ArgbToRgb(settings?.CardColorHex),
+                textColorHex = ArgbToRgb(settings?.TextColorHex),
+                borderColorHex = ArgbToRgb(settings?.BorderColorHex),
                 cornerRadius = settings?.CornerRadius ?? 12,
                 animationDuration = settings?.AnimationDuration ?? 300,
                 enableAnimations = settings?.EnableAnimations ?? true,
@@ -1767,7 +1770,7 @@ public partial class MainWindow : Window
                 return Task.FromResult<object?>(new
                 {
                     success = true,
-                    primaryColorHex = settings?.PrimaryColorHex,
+                    primaryColorHex = ArgbToRgb(settings?.PrimaryColorHex),
                     isDarkMode = _themeService.IsDarkMode,
                 });
             }
@@ -1804,8 +1807,8 @@ public partial class MainWindow : Window
                 return Task.FromResult<object?>(new
                 {
                     success = true,
-                    primaryColorHex = settings?.PrimaryColorHex,
-                    accentColorHex = settings?.AccentColorHex,
+                    primaryColorHex = ArgbToRgb(settings?.PrimaryColorHex),
+                    accentColorHex = ArgbToRgb(settings?.AccentColorHex),
                 });
             }
             catch (Exception ex)
@@ -1824,8 +1827,8 @@ public partial class MainWindow : Window
                 return Task.FromResult<object?>(new
                 {
                     success = true,
-                    primaryColorHex = settings?.PrimaryColorHex,
-                    accentColorHex = settings?.AccentColorHex,
+                    primaryColorHex = ArgbToRgb(settings?.PrimaryColorHex),
+                    accentColorHex = ArgbToRgb(settings?.AccentColorHex),
                 });
             }
             catch (Exception ex)

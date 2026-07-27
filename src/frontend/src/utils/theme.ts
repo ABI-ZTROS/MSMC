@@ -1,111 +1,174 @@
 import type { SettingsData } from '@/types/bridge'
+import {
+  generate9StepScale,
+  normalizeHex,
+  rgba,
+  hexToRgb,
+  rgbToHex,
+  rgbToOklch,
+  oklchToRgb,
+} from '@/utils/color'
 
-export function argbToRgb(hex: string): string {
-  if (!hex || hex.length < 7) return hex
-  if (hex.length === 9 && hex.startsWith('#')) {
-    return '#' + hex.slice(3)
-  }
-  return hex
+function applyPrimaryScale(baseHex: string, prefix: string, style: CSSStyleDeclaration): void {
+  const scale = generate9StepScale(baseHex)
+  const names = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900']
+  scale.forEach((color, i) => {
+    style.setProperty(`${prefix}-${names[i]}`, color)
+  })
+  style.setProperty(prefix, scale[5])
+  style.setProperty(`${prefix}-foreground`, pickTextColor(scale[5]))
 }
 
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  const clean = argbToRgb(hex).replace('#', '')
-  const r = parseInt(clean.substring(0, 2), 16)
-  const g = parseInt(clean.substring(2, 4), 16)
-  const b = parseInt(clean.substring(4, 6), 16)
-  return { r, g, b }
+function applySurfaceScale(baseHex: string, style: CSSStyleDeclaration): void {
+  const scale = generate9StepScale(baseHex)
+  style.setProperty('--md-paper', scale[9])
+  style.setProperty('--md-deep-background', darkenOklch(scale[9], 0.15))
+  style.setProperty('--md-card-background', scale[8])
+  style.setProperty('--md-card-hover', lightenOklch(scale[8], 0.06))
+  style.setProperty('--md-terminal-background', darkenOklch(scale[8], 0.1))
+  style.setProperty('--md-loading-overlay', rgba(scale[8], 0.8))
+  style.setProperty('--md-surface-0', scale[9])
+  style.setProperty('--md-surface-1', scale[8])
+  style.setProperty('--md-surface-2', scale[7])
+  style.setProperty('--md-surface-3', scale[6])
 }
 
-function rgbToHex(r: number, g: number, b: number): string {
-  const toHex = (v: number) =>
-    Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+function applyTextScale(baseHex: string, style: CSSStyleDeclaration): void {
+  style.setProperty('--md-body', baseHex)
+  style.setProperty('--md-body-light', lightenOklch(baseHex, -0.25))
+  style.setProperty('--md-body-lighter', lightenOklch(baseHex, -0.4))
+  style.setProperty('--md-info-foreground', lightenOklch(baseHex, -0.25))
+  style.setProperty('--md-white', '#FFFFFF')
 }
 
-function lighten(hex: string, amount: number): string {
-  const { r, g, b } = hexToRgb(hex)
-  return rgbToHex(
-    r + (255 - r) * amount,
-    g + (255 - g) * amount,
-    b + (255 - b) * amount,
-  )
+function applyBorderColor(baseHex: string, style: CSSStyleDeclaration): void {
+  style.setProperty('--md-subtle-border', baseHex)
+  style.setProperty('--md-card-subtle-border', rgba(baseHex, 0.2))
+  style.setProperty('--md-swatch-hover-border', '#FFFFFF')
 }
 
-function darken(hex: string, amount: number): string {
-  const { r, g, b } = hexToRgb(hex)
-  return rgbToHex(r * (1 - amount), g * (1 - amount), b * (1 - amount))
+function applyAccentColor(accentHex: string, style: CSSStyleDeclaration): void {
+  const scale = generate9StepScale(accentHex)
+  style.setProperty('--md-accent-text', scale[4])
+  style.setProperty('--md-accent-subtle-border', rgba(scale[4], 0.2))
+  style.setProperty('--md-accent-50', scale[0])
+  style.setProperty('--md-accent-100', scale[1])
+  style.setProperty('--md-accent-200', scale[2])
+  style.setProperty('--md-accent-300', scale[3])
+  style.setProperty('--md-accent-400', scale[4])
+  style.setProperty('--md-accent-500', scale[5])
+  style.setProperty('--md-accent-600', scale[6])
+  style.setProperty('--md-accent-700', scale[7])
+  style.setProperty('--md-accent-800', scale[8])
+  style.setProperty('--md-accent-900', scale[9])
 }
 
-function rgba(hex: string, alpha: number): string {
-  const { r, g, b } = hexToRgb(hex)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
+function applyLegacyAliases(primaryHex: string, style: CSSStyleDeclaration): void {
+  const scale = generate9StepScale(primaryHex)
 
-function applyPrimaryColor(primary: string): void {
-  const style = document.documentElement.style
-  const p = argbToRgb(primary)
-  style.setProperty('--md-primary-hue-lighter', lighten(p, 0.5))
-  style.setProperty('--md-primary-hue-light', lighten(p, 0.25))
-  style.setProperty('--md-primary-hue-mid', p)
-  style.setProperty('--md-primary-hue-dark', darken(p, 0.15))
-  style.setProperty('--md-primary-hue-darker', darken(p, 0.25))
-  style.setProperty('--md-nav-item-selected', p)
-  style.setProperty('--md-nav-item-hover', rgba(p, 0.12))
-  style.setProperty('--md-nav-item-selected-hover', darken(p, 0.1))
-  style.setProperty('--md-nav-item-selected-indicator', p)
-  style.setProperty('--md-primary-subtle-background', rgba(p, 0.1))
-  style.setProperty('--md-primary-subtle-border', rgba(p, 0.2))
-  style.setProperty('--md-accent-gradient-start', lighten(p, 0.25))
-  style.setProperty('--md-accent-gradient-end', p)
+  style.setProperty('--md-primary-hue-lighter', scale[2])
+  style.setProperty('--md-primary-hue-light', scale[4])
+  style.setProperty('--md-primary-hue-mid', scale[5])
+  style.setProperty('--md-primary-hue-dark', scale[6])
+  style.setProperty('--md-primary-hue-darker', scale[7])
+
+  style.setProperty('--md-nav-item-selected', scale[5])
+  style.setProperty('--md-nav-item-hover', rgba(scale[5], 0.12))
+  style.setProperty('--md-nav-item-selected-hover', scale[6])
+  style.setProperty('--md-nav-item-selected-indicator', scale[5])
+
+  style.setProperty('--md-primary-subtle-background', rgba(scale[5], 0.1))
+  style.setProperty('--md-primary-subtle-border', rgba(scale[5], 0.2))
+
+  style.setProperty('--md-accent-gradient-start', scale[3])
+  style.setProperty('--md-accent-gradient-end', scale[5])
   style.setProperty(
     '--md-accent-gradient',
-    `linear-gradient(90deg, ${lighten(p, 0.25)} 0%, ${p} 100%)`,
+    `linear-gradient(90deg, ${scale[3]} 0%, ${scale[5]} 100%)`,
   )
-  style.setProperty('--md-success-foreground', lighten(p, 0.4))
+
+  style.setProperty('--md-success-foreground', lightenOklch(scale[5], 0.3))
+  style.setProperty('--md-primary-bg', rgba(scale[5], 0.1))
+  style.setProperty('--md-primary-border', rgba(scale[5], 0.2))
 }
 
-export function applySettingsToCss(settings: SettingsData): void {
-  const style = document.documentElement.style
-  const primary = argbToRgb(settings.primaryColorHex)
-  const accent = argbToRgb(settings.accentColorHex)
-  const bg = argbToRgb(settings.backgroundColorHex)
-  const card = argbToRgb(settings.cardColorHex)
-  const text = argbToRgb(settings.textColorHex)
-  const border = argbToRgb(settings.borderColorHex)
+function applyStatusColors(style: CSSStyleDeclaration): void {
+  style.setProperty('--md-gauge-green', '#4CAF50')
+  style.setProperty('--md-gauge-yellow', '#FFC107')
+  style.setProperty('--md-gauge-red', '#F4364C')
+  style.setProperty('--md-danger', '#E53935')
+  style.setProperty('--md-error-text', '#FB7185')
 
-  style.setProperty('--md-paper', bg)
-  style.setProperty('--md-deep-background', darken(bg, 0.5))
-  style.setProperty('--md-card-background', card)
-  style.setProperty('--md-card-hover', lighten(card, 0.08))
-  style.setProperty('--md-terminal-background', darken(card, 0.15))
-  style.setProperty('--md-loading-overlay', rgba(card, 0.8))
+  style.setProperty('--md-success-subtle-background', 'rgba(76, 175, 80, 0.1)')
+  style.setProperty('--md-success-subtle-border', 'rgba(76, 175, 80, 0.3)')
+  style.setProperty('--md-warning-subtle-background', 'rgba(255, 193, 7, 0.1)')
+  style.setProperty('--md-warning-subtle-border', 'rgba(255, 193, 7, 0.3)')
+  style.setProperty('--md-danger-subtle-background', 'rgba(244, 54, 76, 0.1)')
+  style.setProperty('--md-danger-subtle-border', 'rgba(244, 54, 76, 0.3)')
+}
 
-  applyPrimaryColor(primary)
+function applyMemorialColors(style: CSSStyleDeclaration): void {
+  style.setProperty('--md-memorial-gold', '#D4AF37')
+  style.setProperty('--md-memorial-gold-soft', '#C9A86C')
+  style.setProperty('--md-memorial-gold-muted', '#B8956A')
+  style.setProperty('--md-memorial-gold-bg-start', '#2D1F14')
+  style.setProperty('--md-memorial-gold-bg-end', '#3D2A1A')
+  style.setProperty('--md-memorial-gold-glow', 'rgba(212, 175, 55, 0.15)')
+  style.setProperty('--md-memorial-gold-bg-soft', 'rgba(212, 175, 55, 0.2)')
+}
 
-  style.setProperty('--md-accent-text', accent)
-  style.setProperty('--md-accent-subtle-border', rgba(accent, 0.2))
+function applyRadius(baseRadius: number, style: CSSStyleDeclaration): void {
+  style.setProperty('--md-radius', `${baseRadius}px`)
+  style.setProperty('--md-radius-small', `${Math.max(4, baseRadius - 4)}px`)
+  style.setProperty('--md-radius-large', `${baseRadius + 4}px`)
+}
 
-  style.setProperty('--md-body', text)
-  style.setProperty('--md-body-light', darken(text, 0.3))
-  style.setProperty('--md-body-lighter', darken(text, 0.45))
-
-  style.setProperty('--md-subtle-border', border)
-  style.setProperty('--md-card-subtle-border', rgba(border, 0.2))
-
-  style.setProperty('--md-info-foreground', darken(text, 0.3))
-
-  style.setProperty('--md-radius', `${settings.cornerRadius}px`)
-  style.setProperty('--md-radius-small', `${Math.max(4, settings.cornerRadius - 4)}px`)
-  style.setProperty('--md-radius-large', `${settings.cornerRadius + 4}px`)
-
-  // 动画时长级联：以用户设置的 normal 为基准，按比例缩放所有时长
-  const baseDuration = settings.animationDuration
-  const ratio = baseDuration / 200 // 200ms 为默认 normal 值
+function applyAnimation(baseDuration: number, enableAnimations: boolean, style: CSSStyleDeclaration): void {
+  const ratio = baseDuration / 200
   style.setProperty('--md-duration-fast', `${Math.round(150 * ratio)}ms`)
   style.setProperty('--md-duration-normal', `${baseDuration}ms`)
   style.setProperty('--md-duration-medium', `${Math.round(300 * ratio)}ms`)
   style.setProperty('--md-duration-slow', `${Math.round(350 * ratio)}ms`)
-  style.setProperty('--md-enable-animations', settings.enableAnimations ? '1' : '0')
+  style.setProperty('--md-enable-animations', enableAnimations ? '1' : '0')
 }
 
-export { applyPrimaryColor }
+function lightenOklch(hex: string, amount: number): string {
+  const { r, g, b } = hexToRgb(hex)
+  const oklch = rgbToOklch(r, g, b)
+  const newL = Math.max(0.02, Math.min(0.98, oklch.l + amount))
+  const result = oklchToRgb(newL, oklch.c, oklch.h)
+  return rgbToHex(result.r, result.g, result.b)
+}
+
+function darkenOklch(hex: string, amount: number): string {
+  return lightenOklch(hex, -amount)
+}
+
+function pickTextColor(bgHex: string): string {
+  const { r, g, b } = hexToRgb(bgHex)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.6 ? '#0F172A' : '#FFFFFF'
+}
+
+export function applySettingsToCss(settings: SettingsData): void {
+  const style = document.documentElement.style
+
+  const primary = normalizeHex(settings.primaryColorHex)
+  const accent = normalizeHex(settings.accentColorHex)
+  const bg = normalizeHex(settings.backgroundColorHex)
+  const text = normalizeHex(settings.textColorHex)
+  const border = normalizeHex(settings.borderColorHex)
+
+  applyPrimaryScale(primary, '--md-primary', style)
+  applyAccentColor(accent, style)
+  applySurfaceScale(bg, style)
+  applyTextScale(text, style)
+  applyBorderColor(border, style)
+  applyStatusColors(style)
+  applyMemorialColors(style)
+  applyLegacyAliases(primary, style)
+  applyRadius(settings.cornerRadius, style)
+  applyAnimation(settings.animationDuration, settings.enableAnimations, style)
+}
+
+export { argbToRgb } from '@/utils/color'

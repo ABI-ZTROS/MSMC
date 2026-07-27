@@ -11,7 +11,23 @@
   --md-terminal-background: #0C1222;
   --md-loading-overlay: rgba(15, 23, 42, 0.8);
 
-  /* ─── 主色（苍穹蓝） ─── */
+  /* ─── 主色 9 级色阶（苍穹蓝） ─── */
+  --md-primary-50: #EFF6FF;
+  --md-primary-100: #DBEAFE;
+  --md-primary-200: #BFDBFE;
+  --md-primary-300: #93C5FD;
+  --md-primary-400: #60A5FA;
+  --md-primary-500: #3B82F6;
+  --md-primary-600: #2563EB;
+  --md-primary-700: #1D4ED8;
+  --md-primary-800: #1E40AF;
+  --md-primary-900: #1E3A8A;
+  --md-primary: var(--md-primary-500);
+  --md-primary-foreground: #FFFFFF;
+  --md-primary-bg: rgba(59, 130, 246, 0.1);
+  --md-primary-border: rgba(59, 130, 246, 0.2);
+
+  /* ─── 主色旧命名（向后兼容） ─── */
   --md-primary-hue-lighter: #93C5FD;
   --md-primary-hue-light: #60A5FA;
   --md-primary-hue-mid: #3B82F6;

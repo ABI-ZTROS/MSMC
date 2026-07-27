@@ -39,36 +39,13 @@ import type {
   PresetInfo,
   TeamInfoResponse,
 } from '@/types/bridge'
-import { applySettingsToCss, argbToRgb } from '@/utils/theme'
+import { applySettingsToCss } from '@/utils/theme'
+import { ColorPicker } from '@/components/ui/ColorPicker'
+import { normalizeHex } from '@/utils/color'
 import abiAvatar from '@/assets/avatars/ABI-ZTROS.png'
 import yanlanxiangAvatar from '@/assets/avatars/yanlanxiang.jpg'
 import mochaAvatar from '@/assets/avatars/MochaCello92377.png'
 import catstackAvatar from '@/assets/avatars/CatStack-pixe.png'
-
-// 颜色归一化：统一为 #RRGGBB 用于比较
-// 后端返回 #AARRGGBB 格式（9字符），需剥离 alpha 通道
-function normalizeHex(hex: string): string {
-  if (!hex) return ''
-  let h = hex.trim().toUpperCase()
-  if (h.length === 9 && h.startsWith('#')) h = '#' + h.slice(3)
-  return h
-}
-
-function isValidHex(hex: string): boolean {
-  if (!hex) return false
-  const h = hex.trim()
-  return /^#([0-9A-F]{3}){1,2}$/i.test(h)
-}
-
-function formatHex(hex: string): string {
-  if (!hex) return ''
-  let h = hex.trim()
-  if (!h.startsWith('#')) h = '#' + h
-  if (/^#[0-9A-F]{3}$/i.test(h)) {
-    h = '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3]
-  }
-  return h.toUpperCase()
-}
 
 const avatarMap: Record<string, string> = {
   'ABI-ZTROS': abiAvatar,
@@ -97,12 +74,6 @@ export function SettingsPage(): JSX.Element {
   const [teamInfo, setTeamInfo] = useState<TeamInfoResponse | null>(null)
   const [teamLoading, setTeamLoading] = useState(true)
 
-  // HEX 输入框本地值（失焦时才提交到后端）
-  const [primaryHexInput, setPrimaryHexInput] = useState('')
-  const [accentHexInput, setAccentHexInput] = useState('')
-  const [primaryHexError, setPrimaryHexError] = useState('')
-  const [accentHexError, setAccentHexError] = useState('')
-
   // 以下设置项桥接 API 暂未提供独立 setter，使用本地状态承载（初始值来自 getSettings）
   // 同时使用 localStorage 做持久化，避免页面刷新后丢失
   const [cornerRadius, setCornerRadius] = useState(() => {
@@ -126,8 +97,6 @@ export function SettingsPage(): JSX.Element {
     try {
       const resp = await getSettings()
       setSettings(resp)
-      setPrimaryHexInput(argbToRgb(resp.primaryColorHex))
-      setAccentHexInput(argbToRgb(resp.accentColorHex))
       setCornerRadius(resp.cornerRadius)
       setAnimationDuration(resp.animationDuration)
       setEnableWindowsNotifications(resp.enableWindowsNotifications)
@@ -191,88 +160,20 @@ export function SettingsPage(): JSX.Element {
 
   // ─── 颜色设置 ───
   const handleSetPrimary = async (hex: string): Promise<void> => {
-    if (!isValidHex(hex)) {
-      setPrimaryHexError('无效的 HEX 颜色格式，应为 #RRGGBB 或 #RGB')
-      return
-    }
-    const formatted = formatHex(hex)
     try {
-      const resp = await setPrimaryColor(formatted)
-      if (resp && !resp.success) {
-        setPrimaryHexError('设置失败，请检查颜色格式')
-        return
-      }
-      setPrimaryHexError('')
+      await setPrimaryColor(hex)
       await loadSettings()
     } catch (e) {
       console.error('设置主色失败:', e)
-      setPrimaryHexError('设置失败，请稍后重试')
     }
   }
 
   const handleSetAccent = async (hex: string): Promise<void> => {
-    if (!isValidHex(hex)) {
-      setAccentHexError('无效的 HEX 颜色格式，应为 #RRGGBB 或 #RGB')
-      return
-    }
-    const formatted = formatHex(hex)
     try {
-      const resp = await setAccentColor(formatted)
-      if (resp && !resp.success) {
-        setAccentHexError('设置失败，请检查颜色格式')
-        return
-      }
-      setAccentHexError('')
+      await setAccentColor(hex)
       await loadSettings()
     } catch (e) {
       console.error('设置强调色失败:', e)
-      setAccentHexError('设置失败，请稍后重试')
-    }
-  }
-
-  const handlePrimaryHexBlur = async (): Promise<void> => {
-    const val = primaryHexInput.trim()
-    if (!val) return
-    if (!isValidHex(val)) {
-      setPrimaryHexError('无效的 HEX 颜色格式，应为 #RRGGBB 或 #RGB')
-      return
-    }
-    const formatted = formatHex(val)
-    setPrimaryHexInput(formatted)
-    if (formatted !== normalizeHex(settings?.primaryColorHex ?? '')) {
-      await handleSetPrimary(formatted)
-    } else {
-      setPrimaryHexError('')
-    }
-  }
-
-  const handleAccentHexBlur = async (): Promise<void> => {
-    const val = accentHexInput.trim()
-    if (!val) return
-    if (!isValidHex(val)) {
-      setAccentHexError('无效的 HEX 颜色格式，应为 #RRGGBB 或 #RGB')
-      return
-    }
-    const formatted = formatHex(val)
-    setAccentHexInput(formatted)
-    if (formatted !== normalizeHex(settings?.accentColorHex ?? '')) {
-      await handleSetAccent(formatted)
-    } else {
-      setAccentHexError('')
-    }
-  }
-
-  const handlePrimaryHexInputChange = (val: string): void => {
-    setPrimaryHexInput(val)
-    if (primaryHexError && isValidHex(val)) {
-      setPrimaryHexError('')
-    }
-  }
-
-  const handleAccentHexInputChange = (val: string): void => {
-    setAccentHexInput(val)
-    if (accentHexError && isValidHex(val)) {
-      setAccentHexError('')
     }
   }
 
@@ -368,8 +269,8 @@ export function SettingsPage(): JSX.Element {
   }
 
   const enableAnimations = settings?.enableAnimations ?? true
-  const primaryColorHex = settings ? argbToRgb(settings.primaryColorHex) : '#3B82F6'
-  const accentColorHex = settings ? argbToRgb(settings.accentColorHex) : '#FB7185'
+  const primaryColorHex = settings?.primaryColorHex ?? '#3B82F6'
+  const accentColorHex = settings?.accentColorHex ?? '#FB7185'
 
   return (
     <div className="md-page-enter p-4 pb-8 max-w-4xl mx-auto">
@@ -406,203 +307,18 @@ export function SettingsPage(): JSX.Element {
         </h2>
 
         <div className="grid grid-cols-2 gap-4">
-          {/* 主色调 */}
-          <div>
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--md-body)',
-                margin: '8px 0 4px 0',
-              }}
-            >
-              主色调
-            </div>
-            <div className="flex items-center" style={{ marginBottom: 8 }}>
-              <div
-                style={{
-                  width: 54,
-                  height: 54,
-                  backgroundColor:
-                    isValidHex(primaryHexInput) && !primaryHexError
-                      ? formatHex(primaryHexInput)
-                      : primaryColorHex,
-                  border: '2px solid var(--md-swatch-hover-border)',
-                  borderRadius: 8,
-                  marginRight: 12,
-                  flexShrink: 0,
-                }}
-                title="当前主色"
-              />
-              <div>
-                <input
-                  className="md-input"
-                  style={{
-                    width: 120,
-                    height: 32,
-                    fontSize: 12,
-                    borderColor: primaryHexError ? 'var(--md-error)' : undefined,
-                  }}
-                  value={primaryHexInput}
-                  onChange={(e) => handlePrimaryHexInputChange(e.target.value)}
-                  onBlur={handlePrimaryHexBlur}
-                  placeholder={primaryColorHex}
-                />
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: primaryHexError ? 'var(--md-error)' : 'var(--md-body-light)',
-                    marginTop: 4,
-                    minHeight: 14,
-                  }}
-                >
-                  {primaryHexError || '输入 HEX 值后失焦生效'}
-                </div>
-              </div>
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: 'var(--md-body-light)',
-                marginBottom: 8,
-              }}
-            >
-              用于标题栏、按钮等主要元素
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: 'var(--md-body-light)',
-                margin: '8px 0 4px 0',
-              }}
-            >
-              预设主色
-            </div>
-            <div className="flex flex-wrap" style={{ gap: 10 }}>
-              {swatchesLoading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="md-swatch md-skeleton"
-                    style={{
-                      backgroundColor: 'var(--md-card-hover)',
-                    }}
-                  />
-                ))
-              ) : (
-                primarySwatches.map((s) => {
-                  const selected = normalizeHex(s.color) === normalizeHex(primaryColorHex)
-                  return (
-                    <button
-                      key={s.color}
-                      className={`md-swatch ${selected ? 'md-swatch-selected' : ''}`}
-                      style={{ backgroundColor: s.color }}
-                      title={s.label}
-                      onClick={() => handleSetPrimary(s.color)}
-                    />
-                  )
-                })
-              )}
-            </div>
-          </div>
-
-          {/* 强调色 */}
-          <div>
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--md-body)',
-                margin: '8px 0 4px 0',
-              }}
-            >
-              强调色
-            </div>
-            <div className="flex items-center" style={{ marginBottom: 8 }}>
-              <div
-                style={{
-                  width: 54,
-                  height: 54,
-                  backgroundColor:
-                    isValidHex(accentHexInput) && !accentHexError
-                      ? formatHex(accentHexInput)
-                      : accentColorHex,
-                  border: '2px solid var(--md-swatch-hover-border)',
-                  borderRadius: 8,
-                  marginRight: 12,
-                  flexShrink: 0,
-                }}
-                title="当前强调色"
-              />
-              <div>
-                <input
-                  className="md-input"
-                  style={{
-                    width: 120,
-                    height: 32,
-                    fontSize: 12,
-                    borderColor: accentHexError ? 'var(--md-error)' : undefined,
-                  }}
-                  value={accentHexInput}
-                  onChange={(e) => handleAccentHexInputChange(e.target.value)}
-                  onBlur={handleAccentHexBlur}
-                  placeholder={accentColorHex}
-                />
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: accentHexError ? 'var(--md-error)' : 'var(--md-body-light)',
-                    marginTop: 4,
-                    minHeight: 14,
-                  }}
-                >
-                  {accentHexError || '输入 HEX 值后失焦生效'}
-                </div>
-              </div>
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: 'var(--md-body-light)',
-                marginBottom: 8,
-              }}
-            >
-              用于高亮文字、图标等强调元素
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: 'var(--md-body-light)',
-                margin: '8px 0 4px 0',
-              }}
-            >
-              预设强调色
-            </div>
-            <div className="flex flex-wrap" style={{ gap: 10 }}>
-              {swatchesLoading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="md-swatch md-skeleton"
-                    style={{
-                      backgroundColor: 'var(--md-card-hover)',
-                    }}
-                  />
-                ))
-              ) : (
-                accentSwatches.map((s) => {
-                  const selected = normalizeHex(s.color) === normalizeHex(accentColorHex)
-                  return (
-                    <button
-                      key={s.color}
-                      className={`md-swatch ${selected ? 'md-swatch-selected' : ''}`}
-                      style={{ backgroundColor: s.color }}
-                      title={s.label}
-                      onClick={() => handleSetAccent(s.color)}
-                    />
-                  )
-                })
-              )}
-            </div>
-          </div>
+          <ColorPicker
+            label="主色调"
+            value={primaryColorHex}
+            onChangeEnd={handleSetPrimary}
+            presets={primarySwatches.map((s) => s.color)}
+          />
+          <ColorPicker
+            label="强调色"
+            value={accentColorHex}
+            onChangeEnd={handleSetAccent}
+            presets={accentSwatches.map((s) => s.color)}
+          />
         </div>
 
         {/* 快速预设方案 */}
