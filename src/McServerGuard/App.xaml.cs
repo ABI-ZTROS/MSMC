@@ -284,9 +284,12 @@ public partial class App : Application
                         };
                     });
 
-                    // 启动内存优化服务
+                    // 启动内存优化服务（必须在 UI 线程上解析，构造函数访问了 Application.Current）
                     startupWindow.AppendLog("🧹 启动内存优化服务...");
-                    _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start();
+                    await startupWindow.Dispatcher.InvokeAsync(() =>
+                    {
+                        _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start();
+                    });
 
                     startupWindow.MarkCompleted();
 
@@ -311,10 +314,12 @@ public partial class App : Application
                     try
                     {
                         startupWindow.MarkFailed($"{ex.Message}");
+                        // MarkFailed 显示退出按钮，用户点击后由 CloseButton_Click 处理退出
+                        // 不再自动 Shutdown，让用户看到错误详情
                     }
                     catch
                     {
-                        // 启动窗口都没了就直接 MessageBox
+                        // 启动窗口都没了就直接 MessageBox + Shutdown
                         MessageBox.Show($"启动失败：{ex.Message}\n\n{ex.StackTrace}",
                             "MSMC 启动失败", MessageBoxButton.OK, MessageBoxImage.Error);
                         Current.Shutdown();

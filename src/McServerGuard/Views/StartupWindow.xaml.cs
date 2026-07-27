@@ -183,7 +183,15 @@ public partial class StartupWindow : Window
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        Close();
+        // 启动失败时点击退出，直接关闭整个应用
+        if (IsFailed)
+        {
+            System.Windows.Application.Current.Shutdown();
+        }
+        else
+        {
+            Close();
+        }
     }
 
     private void WindowBorder_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
