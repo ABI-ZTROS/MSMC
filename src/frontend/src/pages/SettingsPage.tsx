@@ -39,17 +39,18 @@ import type {
   PresetInfo,
   TeamInfoResponse,
 } from '@/types/bridge'
-import { applySettingsToCss } from '@/utils/theme'
+import { applySettingsToCss, argbToRgb } from '@/utils/theme'
 import abiAvatar from '@/assets/avatars/ABI-ZTROS.png'
 import yanlanxiangAvatar from '@/assets/avatars/yanlanxiang.jpg'
 import mochaAvatar from '@/assets/avatars/MochaCello92377.png'
 import catstackAvatar from '@/assets/avatars/CatStack-pixe.png'
 
 // 颜色归一化：统一为 #RRGGBB 用于比较
+// 后端返回 #AARRGGBB 格式（9字符），需剥离 alpha 通道
 function normalizeHex(hex: string): string {
   if (!hex) return ''
   let h = hex.trim().toUpperCase()
-  if (h.length === 8 && h.startsWith('#')) h = '#' + h.slice(2)
+  if (h.length === 9 && h.startsWith('#')) h = '#' + h.slice(3)
   return h
 }
 
@@ -125,8 +126,8 @@ export function SettingsPage(): JSX.Element {
     try {
       const resp = await getSettings()
       setSettings(resp)
-      setPrimaryHexInput(resp.primaryColorHex)
-      setAccentHexInput(resp.accentColorHex)
+      setPrimaryHexInput(argbToRgb(resp.primaryColorHex))
+      setAccentHexInput(argbToRgb(resp.accentColorHex))
       setCornerRadius(resp.cornerRadius)
       setAnimationDuration(resp.animationDuration)
       setEnableWindowsNotifications(resp.enableWindowsNotifications)
@@ -367,8 +368,8 @@ export function SettingsPage(): JSX.Element {
   }
 
   const enableAnimations = settings?.enableAnimations ?? true
-  const primaryColorHex = settings?.primaryColorHex ?? '#3B82F6'
-  const accentColorHex = settings?.accentColorHex ?? '#FB7185'
+  const primaryColorHex = settings ? argbToRgb(settings.primaryColorHex) : '#3B82F6'
+  const accentColorHex = settings ? argbToRgb(settings.accentColorHex) : '#FB7185'
 
   return (
     <div className="md-page-enter p-4 pb-8 max-w-4xl mx-auto">
