@@ -1,7 +1,7 @@
 using System;
 using System.Windows.Media;
 
-namespace McServerGuard.Services.Color
+namespace McServerGuard.Services.Colors
 {
     public static class ColorHelper
     {

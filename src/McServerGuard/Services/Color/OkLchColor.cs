@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Media;
 
-namespace McServerGuard.Services.Color
+namespace McServerGuard.Services.Colors
 {
     public readonly struct OkLchColor
     {

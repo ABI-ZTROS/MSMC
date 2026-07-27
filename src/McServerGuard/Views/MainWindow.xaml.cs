@@ -17,7 +17,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using McServerGuard.Services;
-using McServerGuard.Services.Color;
+using McServerGuard.Services.Colors;
 using McServerGuard.Services.Frontend;
 using McServerGuard.Services.WebView2;
 using McServerGuard.ViewModels;
