@@ -52,7 +52,7 @@ public partial class StartupWindow : Window
         // 订阅主题变更
         _themeService.ThemeChanged += OnThemeChanged;
 
-        // 启动 Logo 呼吸动画
+        // 启动 Logo 呼吸动画（简单透明度动画，不用 Storyboard）
         StartLogoPulseAnimation();
 
         // 设置版本号
@@ -69,30 +69,21 @@ public partial class StartupWindow : Window
 
     private void StartLogoPulseAnimation()
     {
-        var storyboard = new Storyboard
+        // 简单透明度脉动，不用 Storyboard（减少动画系统开销）
+        var anim = new DoubleAnimation
         {
-            RepeatBehavior = RepeatBehavior.Forever,
-            AutoReverse = true
+            From = 0.06,
+            To = 0.20,
+            Duration = TimeSpan.FromSeconds(1.8),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever
         };
-
-        var opacityAnim = new DoubleAnimation
-        {
-            From = 0.25,
-            To = 0.6,
-            Duration = TimeSpan.FromSeconds(1.8)
-        };
-
-        Storyboard.SetTarget(opacityAnim, LogoGlow);
-        Storyboard.SetTargetProperty(opacityAnim, new PropertyPath(OpacityProperty));
-
-        storyboard.Children.Add(opacityAnim);
-        storyboard.Begin();
+        LogoGlow.BeginAnimation(OpacityProperty, anim);
     }
 
     private void OnThemeChanged(object? sender, EventArgs e)
     {
         // 主题色通过 DynamicResource 自动更新，无需额外处理
-        // 日志区域的颜色等由资源字典驱动
     }
 
     /// <summary>
@@ -102,7 +93,8 @@ public partial class StartupWindow : Window
     {
         if (!_dispatcher.CheckAccess())
         {
-            _dispatcher.InvokeAsync(() => AppendLog(message, isError, isSuccess));
+            // 用 Background 优先级，不抢占渲染和输入消息
+            _dispatcher.InvokeAsync(() => AppendLog(message, isError, isSuccess), DispatcherPriority.Background);
             return;
         }
 
@@ -131,7 +123,7 @@ public partial class StartupWindow : Window
     {
         if (!_dispatcher.CheckAccess())
         {
-            _dispatcher.InvokeAsync(() => SetProgress(percent, status));
+            _dispatcher.InvokeAsync(() => SetProgress(percent, status), DispatcherPriority.Background);
             return;
         }
 
@@ -154,7 +146,7 @@ public partial class StartupWindow : Window
     {
         if (!_dispatcher.CheckAccess())
         {
-            _dispatcher.InvokeAsync(() => UpdateStatus(status));
+            _dispatcher.InvokeAsync(() => UpdateStatus(status), DispatcherPriority.Background);
             return;
         }
 
@@ -168,7 +160,7 @@ public partial class StartupWindow : Window
     {
         if (!_dispatcher.CheckAccess())
         {
-            _dispatcher.InvokeAsync(() => MarkFailed(errorMessage));
+            _dispatcher.InvokeAsync(() => MarkFailed(errorMessage), DispatcherPriority.Background);
             return;
         }
 
@@ -201,7 +193,7 @@ public partial class StartupWindow : Window
     {
         if (!_dispatcher.CheckAccess())
         {
-            _dispatcher.InvokeAsync(MarkCompleted);
+            _dispatcher.InvokeAsync(MarkCompleted, DispatcherPriority.Background);
             return;
         }
 

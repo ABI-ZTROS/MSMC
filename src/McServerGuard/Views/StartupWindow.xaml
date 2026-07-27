@@ -7,15 +7,13 @@
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         WindowStyle="None"
-        AllowsTransparency="True"
-        Background="Transparent"
+        Background="{DynamicResource DeepBackgroundBrush}"
         FontFamily="{DynamicResource AppFontFamily}">
 
     <Border x:Name="WindowBorder"
             Background="{DynamicResource DeepBackgroundBrush}"
             BorderBrush="{DynamicResource SubtleBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="{DynamicResource AppCornerRadiusLarge}"
+            BorderThickness="0"
             MouseLeftButtonDown="WindowBorder_MouseLeftButtonDown">
         <Grid>
             <Grid.RowDefinitions>
@@ -31,23 +29,16 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
+                <!-- Logo 光晕用多层半透明 Ellipse 代替 BlurEffect -->
                 <Grid Grid.Column="0" Margin="36,0,20,0" Width="64" Height="64" HorizontalAlignment="Center">
-                    <Ellipse x:Name="LogoGlow"
-                             Width="64" Height="64"
-                             Fill="{DynamicResource NavItemSelectedBrush}"
-                             Opacity="0.3">
-                        <Ellipse.Effect>
-                            <BlurEffect Radius="15" />
-                        </Ellipse.Effect>
-                    </Ellipse>
-                    <Grid Width="64" Height="64">
-                        <Ellipse Fill="{DynamicResource NavItemSelectedBrush}" />
-                        <iconPacks:PackIconFontAwesome6 Kind="ShieldHalvedSolid"
-                                                        Width="32" Height="32"
-                                                        HorizontalAlignment="Center"
-                                                        VerticalAlignment="Center"
-                                                        Foreground="White" />
-                    </Grid>
+                    <Ellipse x:Name="LogoGlow" Width="72" Height="72" Fill="{DynamicResource NavItemSelectedBrush}" Opacity="0.08" />
+                    <Ellipse Width="66" Height="66" Fill="{DynamicResource NavItemSelectedBrush}" Opacity="0.15" />
+                    <Ellipse Width="64" Height="64" Fill="{DynamicResource NavItemSelectedBrush}" />
+                    <iconPacks:PackIconFontAwesome6 Kind="ShieldHalvedSolid"
+                                                    Width="32" Height="32"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    Foreground="White" />
                 </Grid>
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,4,32,0">
@@ -73,7 +64,7 @@
                     Background="{DynamicResource CardBackgroundBrush}"
                     BorderBrush="{DynamicResource SubtleBorderBrush}"
                     BorderThickness="1"
-                    CornerRadius="{DynamicResource AppCornerRadius}">
+                    CornerRadius="8">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -101,15 +92,12 @@
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource MaterialDesignBody}"
                                        VerticalAlignment="Center" />
+                            <!-- 状态指示点去掉 BlurEffect，用简单 Ellipse + 透明度动画 -->
                             <Ellipse Grid.Column="2"
                                      x:Name="StatusDot"
                                      Width="8" Height="8"
                                      HorizontalAlignment="Right"
-                                     Fill="{DynamicResource GaugeGreenBrush}">
-                                <Ellipse.Effect>
-                                    <BlurEffect Radius="3" />
-                                </Ellipse.Effect>
-                            </Ellipse>
+                                     Fill="{DynamicResource GaugeGreenBrush}" />
                         </Grid>
                     </Border>
 

@@ -125,9 +125,12 @@ public partial class App : Application
 
             // ─────────────────────────────────────────────────────
             // 阶段 2：后台线程执行重量级初始化
+            // 用 BeginInvoke(Background) 延迟启动，让窗口先完成首次渲染
             // ─────────────────────────────────────────────────────
-            _ = Task.Run(async () =>
+            Dispatcher.BeginInvoke(new Action(() =>
             {
+                _ = Task.Run(async () =>
+                {
                 try
                 {
                     // 辅助：更新进度并追加日志，每步之间留 80ms 让 UI 渲染
@@ -299,18 +302,16 @@ public partial class App : Application
                     try
                     {
                         startupWindow.MarkFailed($"{ex.Message}");
-                        // MarkFailed 显示退出按钮，用户点击后由 CloseButton_Click 处理退出
-                        // 不再自动 Shutdown，让用户看到错误详情
                     }
                     catch
                     {
-                        // 启动窗口都没了就直接 MessageBox + Shutdown
                         MessageBox.Show($"启动失败：{ex.Message}\n\n{ex.StackTrace}",
                             "MSMC 启动失败", MessageBoxButton.OK, MessageBoxImage.Error);
                         Current.Shutdown();
                     }
                 }
-            });
+                }); // end Task.Run
+            }), DispatcherPriority.Background);
         }
         catch (Exception ex)
         {
