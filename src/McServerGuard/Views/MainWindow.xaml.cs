@@ -410,6 +410,63 @@ public partial class MainWindow : Window
             });
         });
 
+        // 前端日志上报：接收 JS 端的 error / warning 日志，写入 Serilog
+        _bridgeService.RegisterRequestHandler("log:write", payload =>
+        {
+            try
+            {
+                var json = payload as JsonElement?;
+                if (json == null)
+                {
+                    return Task.FromResult<object?>(new { ok = false, reason = "invalid payload" });
+                }
+
+                var el = json.Value;
+                var level = el.TryGetProperty("level", out var lvlProp) ? lvlProp.GetString() ?? "Information" : "Information";
+                var message = el.TryGetProperty("message", out var msgProp) ? msgProp.GetString() ?? "" : "";
+                var stack = el.TryGetProperty("stack", out var stackProp) ? stackProp.GetString() ?? "" : "";
+                var url = el.TryGetProperty("url", out var urlProp) ? urlProp.GetString() ?? "" : "";
+                var ua = el.TryGetProperty("ua", out var uaProp) ? uaProp.GetString() ?? "" : "";
+
+                // 前端来源统一加 [FE] 前缀，便于在日志中检索
+                var fullMessage = string.IsNullOrEmpty(url)
+                    ? message
+                    : $"{message} | url={url}";
+
+                var levelUpper = level?.Trim().ToUpperInvariant();
+                if (!string.IsNullOrEmpty(stack))
+                {
+                    fullMessage += $"\n--- stack ---\n{stack}";
+                }
+
+                switch (levelUpper)
+                {
+                    case "ERROR":
+                    case "ERR":
+                    case "FATAL":
+                        Log.Error("[FE-LOG] {Message}", fullMessage);
+                        break;
+                    case "WARNING":
+                    case "WARN":
+                        Log.Warning("[FE-LOG] {Message}", fullMessage);
+                        break;
+                    case "DEBUG":
+                        Log.Debug("[FE-LOG] {Message}", fullMessage);
+                        break;
+                    default:
+                        Log.Information("[FE-LOG] {Message}", fullMessage);
+                        break;
+                }
+
+                return Task.FromResult<object?>(new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[FE-LOG] 处理前端日志上报失败");
+                return Task.FromResult<object?>(new { ok = false, reason = ex.Message });
+            }
+        });
+
         // 获取当前时间
         _bridgeService.RegisterRequestHandler("app:getTime", _ =>
         {

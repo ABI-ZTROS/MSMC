@@ -4,11 +4,96 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MSMC - Minecraft Server Management Console</title>
-    <script type="module" crossorigin src="/assets/index-Bje7CpLz.js"></script>
+    <style>
+      /* 内联兜底样式：即使外部 CSS 加载失败，也保证深色背景，避免白屏 */
+      html, body { margin: 0; padding: 0; height: 100%; background-color: #0a0f1e; }
+      body { font-family: "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif; color: #e2e8f0; }
+      #root { height: 100%; }
+      /* 启动诊断层：React 渲染成功后会被清空；失败时显示错误信息 */
+      #boot-diagnostics {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        background-color: #0a0f1e; color: #e2e8f0; padding: 24px; z-index: 9999;
+        font-size: 13px; line-height: 1.6;
+      }
+      #boot-diagnostics .box { max-width: 560px; width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 24px; }
+      #boot-diagnostics h2 { margin: 0 0 8px; font-size: 16px; color: #f87171; }
+      #boot-diagnostics p { margin: 4px 0; color: #94a3b8; }
+      #boot-diagnostics .log { margin-top: 12px; padding: 12px; background: #020617; border-radius: 6px; font-family: Consolas, monospace; font-size: 12px; color: #cbd5e1; max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+      #boot-diagnostics .hint { margin-top: 12px; color: #64748b; font-size: 12px; }
+    </style>
+    <script type="module" crossorigin src="/assets/index-Bocwt-mt.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/vendor-BZfcM1qy.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-AJ7TRJwc.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-C0is38ss.css">
   </head>
-  <body class="bg-slate-50 dark:bg-slate-900">
+  <body>
     <div id="root"></div>
+
+    <!-- 启动诊断层：React 挂载前显示加载中，加载失败时显示错误 -->
+    <div id="boot-diagnostics">
+      <div class="box">
+        <h2>MSMC 前端启动中...</h2>
+        <p>正在加载界面资源，请稍候。</p>
+        <div class="log" id="boot-log"></div>
+        <p class="hint">如果长时间停留在此页面，请检查日志文件中的 [FE-BOOT] / [FE-ERR] 记录。</p>
+      </div>
+    </div>
+
+    <script>
+      // 前置诊断脚本：在 React 加载前注册错误捕获，确保任何 JS 错误都能上报到 C# 日志
+      (function () {
+        var bootLog = document.getElementById('boot-log');
+        function appendLog(msg) {
+          if (bootLog) {
+            var line = '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
+            bootLog.textContent += line;
+          }
+        }
+
+        // 尝试通过桥接 API 上报日志到 C#（Serilog）
+        function reportToCsharp(level, message, stack) {
+          try {
+            if (window.__msmc_bridge__ && typeof window.__msmc_bridge__.invoke === 'function') {
+              window.__msmc_bridge__.invoke('log:write', {
+                level: level,
+                message: message,
+                stack: stack || '',
+                url: location.href,
+                ua: navigator.userAgent
+              }).catch(function () { /* 静默失败，避免循环 */ });
+            }
+          } catch (e) { /* 静默 */ }
+        }
+
+        window.__msmcBootErrors = [];
+        window.addEventListener('error', function (e) {
+          var msg = (e.message || '未知错误') + (e.filename ? ' @ ' + e.filename + ':' + (e.lineno || 0) + ':' + (e.colno || 0) : '');
+          window.__msmcBootErrors.push(msg);
+          appendLog('[ERROR] ' + msg);
+          reportToCsharp('Error', '[FE-ERR] ' + msg, e.error && e.error.stack);
+          return false;
+        });
+
+        window.addEventListener('unhandledrejection', function (e) {
+          var reason = e.reason;
+          var msg = (reason && (reason.message || reason.toString())) || '未处理的 Promise 拒绝';
+          window.__msmcBootErrors.push(msg);
+          appendLog('[PROMISE] ' + msg);
+          reportToCsharp('Error', '[FE-ERR] 未处理的 Promise 拒绝: ' + msg, reason && reason.stack);
+        });
+
+        // 检测主入口脚本加载失败
+        window.__msmcMainScriptLoaded = false;
+        appendLog('[BOOT] 启动诊断脚本已就绪，等待主入口加载...');
+
+        // 超时检测：8 秒后如果主脚本未加载完成，标记为可疑
+        setTimeout(function () {
+          if (!window.__msmcMainScriptLoaded) {
+            appendLog('[WARN] 主入口脚本 8 秒内未完成加载，可能存在资源加载失败');
+            reportToCsharp('Warning', '[FE-BOOT] 主入口脚本 8 秒内未完成加载', '');
+          }
+        }, 8000);
+      })();
+    </script>
+
   </body>
 </html>
