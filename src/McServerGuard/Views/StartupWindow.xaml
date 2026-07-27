@@ -60,7 +60,7 @@
 
             <!-- 日志输出区 -->
             <Border Grid.Row="1"
-                    Margin="32,0,32,16"
+                    Margin="32,0,32,28"
                     Background="{DynamicResource CardBackgroundBrush}"
                     BorderBrush="{DynamicResource SubtleBorderBrush}"
                     BorderThickness="1"
@@ -68,9 +68,11 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
+                    <!-- 日志头部 -->
                     <Border Grid.Row="0"
                             Background="{DynamicResource DeepBackgroundBrush}"
                             Padding="12,8">
@@ -101,7 +103,18 @@
                         </Grid>
                     </Border>
 
-                    <ScrollViewer Grid.Row="1"
+                    <!-- 进度条（嵌入日志区域内） -->
+                    <ProgressBar Grid.Row="1"
+                                 x:Name="StartupProgressBar"
+                                 Height="3"
+                                 Margin="0,0,0,0"
+                                 IsIndeterminate="False"
+                                 Minimum="0" Maximum="100" Value="0"
+                                 Foreground="{DynamicResource NavItemSelectedBrush}"
+                                 Background="{DynamicResource DeepBackgroundBrush}"
+                                 BorderThickness="0" />
+
+                    <ScrollViewer Grid.Row="2"
                                   x:Name="LogScrollViewer"
                                   Padding="12,8"
                                   VerticalScrollBarVisibility="Auto"
@@ -123,30 +136,9 @@
                 </Grid>
             </Border>
 
-            <!-- 底部进度 -->
+            <!-- 底部区域：仅失败时显示退出按钮 -->
             <Grid Grid.Row="2" Margin="32,0,32,28">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock x:Name="StatusText"
-                               Text="正在初始化..."
-                               FontSize="12"
-                               Foreground="{DynamicResource MaterialDesignBody}" />
-                    <ProgressBar x:Name="StartupProgressBar"
-                                 Height="4"
-                                 Margin="0,10,0,0"
-                                 IsIndeterminate="False"
-                                 Minimum="0" Maximum="100" Value="0"
-                                 Foreground="{DynamicResource NavItemSelectedBrush}"
-                                 Background="{DynamicResource DeepBackgroundBrush}"
-                                 BorderThickness="0" />
-                </StackPanel>
-
-                <Button Grid.Column="1"
-                        x:Name="CloseButton"
+                <Button x:Name="CloseButton"
                         Width="100" Height="36"
                         Content="退出"
                         Visibility="Collapsed"
@@ -157,7 +149,8 @@
                         FontSize="12"
                         FontWeight="SemiBold"
                         Cursor="Hand"
-                        Padding="12,0,12,0" />
+                        Padding="12,0,12,0"
+                        HorizontalAlignment="Center" />
             </Grid>
         </Grid>
     </Border>

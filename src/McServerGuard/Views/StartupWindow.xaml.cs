@@ -136,21 +136,14 @@ public partial class StartupWindow : Window
         };
 
         StartupProgressBar.BeginAnimation(System.Windows.Controls.ProgressBar.ValueProperty, animation);
-        StatusText.Text = status;
     }
 
     /// <summary>
-    /// 更新状态文本
+    /// 更新状态文本（通过日志输出）
     /// </summary>
     public void UpdateStatus(string status)
     {
-        if (!_dispatcher.CheckAccess())
-        {
-            _dispatcher.InvokeAsync(() => UpdateStatus(status), DispatcherPriority.Background);
-            return;
-        }
-
-        StatusText.Text = status;
+        AppendLog(status);
     }
 
     /// <summary>
@@ -181,8 +174,7 @@ public partial class StartupWindow : Window
             StatusDot.Fill = errorBrush;
         }
 
-        StatusText.Text = "启动失败";
-        AppendLog($"❌ {errorMessage}", isError: true);
+        AppendLog($"❌ 启动失败：{errorMessage}", isError: true);
         CloseButton.Visibility = Visibility.Visible;
     }
 
@@ -205,7 +197,6 @@ public partial class StartupWindow : Window
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
         };
         StartupProgressBar.BeginAnimation(System.Windows.Controls.ProgressBar.ValueProperty, anim);
-        StatusText.Text = "启动完成";
         AppendLog("✅ 初始化完成，正在启动主界面...", isSuccess: true);
     }
 

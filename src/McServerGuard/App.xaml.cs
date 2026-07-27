@@ -133,12 +133,12 @@ public partial class App : Application
                 {
                 try
                 {
-                    // 辅助：更新进度并追加日志，每步之间留 80ms 让 UI 渲染
+                    // 辅助：更新进度并追加日志，每步之间强制 100ms 延迟避免竞争态
                     async Task Step(int percent, string status, string log)
                     {
                         startupWindow.SetProgress(percent, status);
                         startupWindow.AppendLog(log);
-                        await Task.Delay(80);
+                        await Task.Delay(100);
                     }
 
                     await Step(5, "正在搭建 DI 容器...", "🏗️ 搭建 DI 容器...");
