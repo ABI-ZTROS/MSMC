@@ -500,8 +500,7 @@ export function SystemMonitorPage(): JSX.Element {
             style={{ marginLeft: 8, gap: 6, fontSize: 13, color: 'var(--md-gauge-green)' }}
           >
             <span
-              className="md-status-dot md-status-dot-green"
-              style={{ animation: 'mdSpin 1.5s linear infinite' }}
+              className="md-status-dot md-status-dot-green md-status-pulse"
             />
             监控中
           </span>

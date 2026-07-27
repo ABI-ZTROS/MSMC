@@ -467,10 +467,9 @@ export function SettingsPage(): JSX.Element {
                 Array.from({ length: 8 }).map((_, i) => (
                   <div
                     key={i}
-                    className="md-swatch"
+                    className="md-swatch md-skeleton"
                     style={{
                       backgroundColor: 'var(--md-card-hover)',
-                      animation: 'pulse 1.5s ease-in-out infinite',
                     }}
                   />
                 ))
@@ -567,10 +566,9 @@ export function SettingsPage(): JSX.Element {
                 Array.from({ length: 8 }).map((_, i) => (
                   <div
                     key={i}
-                    className="md-swatch"
+                    className="md-swatch md-skeleton"
                     style={{
                       backgroundColor: 'var(--md-card-hover)',
-                      animation: 'pulse 1.5s ease-in-out infinite',
                     }}
                   />
                 ))
@@ -608,11 +606,10 @@ export function SettingsPage(): JSX.Element {
               Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
-                  className="md-btn md-btn-outlined"
+                  className="md-btn md-btn-outlined md-skeleton"
                   style={{
                     backgroundColor: 'var(--md-card-hover)',
                     borderColor: 'transparent',
-                    animation: 'pulse 1.5s ease-in-out infinite',
                     opacity: 0.6,
                   }}
                 >
@@ -1213,10 +1210,9 @@ export function SettingsPage(): JSX.Element {
                   key={i}
                   style={{
                     padding: 12,
-                    backgroundColor: 'var(--md-card-hover)',
                     borderRadius: 'var(--md-radius)',
-                    animation: 'pulse 1.5s ease-in-out infinite',
                   }}
+                  className="md-skeleton"
                 >
                   <div className="flex items-center">
                     <div
@@ -1254,10 +1250,9 @@ export function SettingsPage(): JSX.Element {
             <div
               style={{
                 padding: 16,
-                backgroundColor: 'var(--md-card-hover)',
                 borderRadius: 'var(--md-radius)',
-                animation: 'pulse 1.5s ease-in-out infinite',
               }}
+              className="md-skeleton"
             >
               <div className="flex items-center justify-center">
                 <div

@@ -404,9 +404,9 @@ export function NetworkMonitorPage(): JSX.Element {
           <div className="flex items-center" style={{ gap: 8 }}>
             <FaArrowsRotate
               size={16}
+              className={loading ? 'md-spin' : ''}
               style={{
                 color: 'var(--md-primary-hue-mid)',
-                animation: loading ? 'spin 1s linear infinite' : 'none',
               }}
             />
             <span style={{ fontSize: 12, opacity: 0.7, color: 'var(--md-body-light)' }}>
@@ -825,13 +825,6 @@ export function NetworkMonitorPage(): JSX.Element {
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   )
 }

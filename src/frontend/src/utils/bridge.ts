@@ -81,13 +81,12 @@ class Bridge implements MsmcBridge {
   private requestIdCounter = 0
   private initialized = false
   private initPromise: Promise<void> | null = null
-  private cleanupTimer: number | null = null
 
   constructor() {
     rawLog('Bridge 构造函数执行')
     this.init()
     // 启动周期性清理，防止超时后残留请求对象导致内存泄漏
-    this.cleanupTimer = window.setInterval(() => this.cleanupExpiredRequests(), 30000)
+    window.setInterval(() => this.cleanupExpiredRequests(), 30000)
   }
 
   /// <summary>

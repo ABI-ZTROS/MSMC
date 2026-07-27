@@ -111,6 +111,9 @@
   --md-duration-medium: 300ms;
   --md-duration-slow: 350ms;
 
+  /* ─── 动画开关（1=启用, 0=禁用） ─── */
+  --md-enable-animations: 1;
+
   /* ─── 阴影 ─── */
   --md-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15);
   --md-shadow-2: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);

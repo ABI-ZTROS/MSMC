@@ -4,6 +4,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════ */
+/* 全局动画禁用 —— 当 --md-enable-animations 为 0 时关闭所有动画  */
+/* ═══════════════════════════════════════════════════════════════ */
+:root:has(> * > [style*="--md-enable-animations:0"]),
+:root[style*="--md-enable-animations:0"] {
+  --md-duration-fast: 0ms;
+  --md-duration-normal: 0ms;
+  --md-duration-medium: 0ms;
+  --md-duration-slow: 0ms;
+}
+
+:root[style*="--md-enable-animations:0"] *,
+:root[style*="--md-enable-animations:0"] *::before,
+:root[style*="--md-enable-animations:0"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
 @layer base {
   * {
     border-color: var(--md-card-subtle-border);
@@ -412,11 +432,102 @@
   @keyframes mdPageEnter {
     0% {
       opacity: 0;
-      transform: translateX(30px);
+      transform: translateX(20px) scale(0.98);
     }
     100% {
       opacity: 1;
-      transform: translateX(0);
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 📋 交错列表入场动画 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-stagger-item {
+    opacity: 0;
+    animation: mdStaggerIn var(--md-duration-medium) var(--md-ease-emphasized) forwards;
+  }
+
+  @keyframes mdStaggerIn {
+    0% {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 🔴 状态点脉冲动画 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-status-pulse {
+    animation: mdStatusPulse 2s var(--md-ease-standard) infinite;
+  }
+
+  @keyframes mdStatusPulse {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 currentColor;
+    }
+    50% {
+      opacity: 0.7;
+      box-shadow: 0 0 0 4px transparent;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* ✨ 骨架屏 Shimmer 动画 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--md-card-hover) 0%,
+      color-mix(in srgb, var(--md-card-hover) 60%, var(--md-card-background)) 50%,
+      var(--md-card-hover) 100%
+    );
+    background-size: 200% 100%;
+    animation: mdShimmer 1.5s linear infinite;
+  }
+
+  @keyframes mdShimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 🪟 弹窗退场动画 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-modal-backdrop-leave {
+    animation: mdFadeOut var(--md-duration-fast) var(--md-ease-standard-accelerate) forwards;
+  }
+
+  .md-modal-leave {
+    animation: mdModalOut var(--md-duration-fast) var(--md-ease-standard-accelerate) forwards;
+  }
+
+  @keyframes mdFadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes mdModalOut {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.95);
     }
   }
 

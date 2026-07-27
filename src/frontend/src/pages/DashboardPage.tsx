@@ -690,13 +690,18 @@ export function DashboardPage(): JSX.Element {
                 </div>
               ) : (
                 runningServers.map((server, idx) => (
-                  <RunningServerItem
+                  <div
                     key={`running-${idx}`}
-                    server={server}
-                    isSelected={selectedServer?.displayName === server.displayName}
-                    onSelect={() => handleSelectServer(server.displayName)}
-                    onStart={handleStart}
-                  />
+                    className="md-stagger-item"
+                    style={{ animationDelay: `${idx * 40}ms` }}
+                  >
+                    <RunningServerItem
+                      server={server}
+                      isSelected={selectedServer?.displayName === server.displayName}
+                      onSelect={() => handleSelectServer(server.displayName)}
+                      onStart={handleStart}
+                    />
+                  </div>
                 ))
               )}
             </ServerGroup>
@@ -715,15 +720,19 @@ export function DashboardPage(): JSX.Element {
                 </div>
               ) : (
                 knownServers.map((server, idx) => (
-                  <KnownServerItem
+                  <div
                     key={`known-${idx}`}
-                    server={server}
-                    isSelected={selectedServer?.isKnown === true && selectedServer.displayName === server.name}
-                    onSelect={() => handleSelectServer(server.name)}
-                    onStart={() =>
-                      bridge
-                        .invoke('server:startKnown', server.name)
-                        .then(fetchServerList)
+                    className="md-stagger-item"
+                    style={{ animationDelay: `${idx * 40}ms` }}
+                  >
+                    <KnownServerItem
+                      server={server}
+                      isSelected={selectedServer?.isKnown === true && selectedServer.displayName === server.name}
+                      onSelect={() => handleSelectServer(server.name)}
+                      onStart={() =>
+                        bridge
+                          .invoke('server:startKnown', server.name)
+                          .then(fetchServerList)
                         .catch(console.error)
                     }
                     onDelete={() =>
@@ -732,7 +741,8 @@ export function DashboardPage(): JSX.Element {
                         .then(fetchServerList)
                         .catch(console.error)
                     }
-                  />
+                    />
+                  </div>
                 ))
               )}
             </ServerGroup>

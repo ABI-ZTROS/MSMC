@@ -97,7 +97,14 @@ export function applySettingsToCss(settings: SettingsData): void {
   style.setProperty('--md-radius', `${settings.cornerRadius}px`)
   style.setProperty('--md-radius-small', `${Math.max(4, settings.cornerRadius - 4)}px`)
   style.setProperty('--md-radius-large', `${settings.cornerRadius + 4}px`)
-  style.setProperty('--md-duration-normal', `${settings.animationDuration}ms`)
+
+  // 动画时长级联：以用户设置的 normal 为基准，按比例缩放所有时长
+  const baseDuration = settings.animationDuration
+  const ratio = baseDuration / 200 // 200ms 为默认 normal 值
+  style.setProperty('--md-duration-fast', `${Math.round(150 * ratio)}ms`)
+  style.setProperty('--md-duration-normal', `${baseDuration}ms`)
+  style.setProperty('--md-duration-medium', `${Math.round(300 * ratio)}ms`)
+  style.setProperty('--md-duration-slow', `${Math.round(350 * ratio)}ms`)
   style.setProperty('--md-enable-animations', settings.enableAnimations ? '1' : '0')
 }
 

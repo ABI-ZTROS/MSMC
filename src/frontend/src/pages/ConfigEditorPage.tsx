@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   FaFolderOpen,
   FaFolder,
@@ -283,6 +283,9 @@ export function ConfigEditorPage(): JSX.Element {
     }
   }, [])
 
+  // 防抖定时器引用，用于配置项值变更
+  const debounceTimerRef = useRef<Record<string, number>>({})
+
   // 初始化：拉取服务器列表 + 文件树
   useEffect(() => {
     const init = async (): Promise<void> => {
@@ -363,9 +366,6 @@ export function ConfigEditorPage(): JSX.Element {
       return next
     })
   }
-
-  // 防抖定时器引用，用于配置项值变更
-  const debounceTimerRef = useRef<Record<string, number>>({})
 
   const handleValueChange = (entry: ConfigEntry, value: string): void => {
     // 本地立即更新（避免输入丢失焦点）
