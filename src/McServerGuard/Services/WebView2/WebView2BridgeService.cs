@@ -281,11 +281,11 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                 CoreWebView2WebResourceContext.All);
         }
 
-        _webView.CoreWebView2.WebResourceRequested += (sender, args) =>
+        _webView.CoreWebView2.WebResourceRequested += async (sender, args) =>
         {
             try
             {
-                HandleWebResourceRequested(args, provider, hostName);
+                await HandleWebResourceRequestedAsync(args, provider, hostName);
             }
             catch (Exception ex)
             {
@@ -299,7 +299,8 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     /// <summary>
     /// 处理 WebResourceRequested 事件
     /// </summary>
-    private void HandleWebResourceRequested(
+    /// <remarks>P1 修复：从同步方法改为异步方法，消除 GetAwaiter().GetResult() 死锁风险</remarks>
+    private async Task HandleWebResourceRequestedAsync(
         CoreWebView2WebResourceRequestedEventArgs args,
         IFrontendResourceProvider provider,
         string hostName)
@@ -327,8 +328,8 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
         try
         {
-            // 获取资源流
-            using var resourceStream = provider.GetResourceAsync(relativePath).GetAwaiter().GetResult();
+            // 获取资源流（P1 修复：使用 await 替代 GetAwaiter().GetResult()，消除同步阻塞死锁风险）
+            using var resourceStream = await provider.GetResourceAsync(relativePath);
             if (resourceStream == null)
             {
                 Log.Warning("❌ 资源未找到: {Path}", relativePath);
@@ -720,8 +721,10 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
         _pendingRequests[requestId] = tcs;
 
-        // 设置超时
+        // 设置超时（P2 修复：在超时回调中 Dispose CTS，防止内核对象泄漏）
         var cts = new CancellationTokenSource(timeoutMs);
+        var ctsRef = cts; // 捕获用于 ContinueWith 清理
+
         cts.Token.Register(() =>
         {
             if (_pendingRequests.TryRemove(requestId, out _))
@@ -729,6 +732,9 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                 tcs.TrySetException(new TimeoutException($"请求超时: {action}"));
             }
         });
+
+        // 请求完成（成功或失败）后释放 CTS，防止未超时的请求泄漏内核对象
+        _ = tcs.Task.ContinueWith(_ => ctsRef.Dispose(), TaskContinuationOptions.None);
 
         var message = new BridgeMessage
         {

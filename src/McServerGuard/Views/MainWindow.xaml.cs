@@ -54,38 +54,65 @@ public partial class MainWindow : Window
         Log.Information("✅ MainWindow (WebView2) 初始化完成");
     }
 
-    // 窗口 Loaded 事件处理：初始化 WebView2 和桥接服务
-    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    // 窗口 Loaded 事件处理：延迟初始化 WebView2 和桥接服务
+    // 使用 ApplicationIdle 优先级，确保窗口框架先完成渲染再启动重量级 WebView2 初始化，
+    // 避免用户看到"白屏冻结"——窗口先显示，然后内容逐步加载
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        Log.Information("[UI-1] 🌐 MainWindow_Loaded 触发，开始初始化 WebView2...");
+        Log.Information("[UI-1] 🌐 MainWindow_Loaded 触发，延迟初始化 WebView2（等待窗口渲染完成）...");
 
-        try
+        Dispatcher.BeginInvoke(async () =>
         {
             Log.Information("[UI-2] 🔧 初始化 WebView2 桥接服务...");
-            await _bridgeService.InitializeAsync(MainWebView);
-            Log.Information("[UI-3] ✅ WebView2 桥接服务初始化完成");
-
-            Log.Information("[UI-4] 📡 注册桥接 API 处理程序...");
-            RegisterBridgeApis();
-            Log.Information("[UI-5] ✅ 桥接 API 注册完成");
-
-            // 按优先级尝试加载前端：B模式(嵌入zip拦截) -> C模式(zip解压虚拟主机) -> 测试页面
-            const string virtualHost = "msmc.local";
-            Log.Information("[UI-6] 🔍 开始加载前端，目标主机: {Host}", virtualHost);
-            var loaded = await TryLoadFrontendWithFallbackAsync(virtualHost);
-            if (!loaded)
+            try
             {
-                Log.Warning("[UI-7] ⚠️ 所有前端加载方式都失败，加载内置测试页面");
-                LoadTestPage();
+                await _bridgeService.InitializeAsync(MainWebView);
+                Log.Information("[UI-3] ✅ WebView2 桥接服务初始化完成");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[UI-ERR] ❌ WebView2 桥接服务初始化失败");
+                MessageBox.Show($"WebView2 初始化失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
 
-            Log.Information("[UI-8] ✅ WebView2 初始化全部完成");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[UI-ERR] ❌ WebView2 初始化失败");
-            MessageBox.Show($"WebView2 初始化失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+            // P1 修复：将 RegisterBridgeApis / TryLoadFrontendWithFallbackAsync 也包裹在 try-catch 中
+            // 原 async void lambda 中这两段缺乏异常保护，未处理异常会在 Dispatcher 上导致进程不稳定
+            try
+            {
+                Log.Information("[UI-4] 📡 注册桥接 API 处理程序...");
+                RegisterBridgeApis();
+                Log.Information("[UI-5] ✅ 桥接 API 注册完成");
+
+                const string virtualHost = "msmc.local";
+                Log.Information("[UI-6] 🔍 开始加载前端，目标主机: {Host}", virtualHost);
+                var loaded = await TryLoadFrontendWithFallbackAsync(virtualHost);
+                if (!loaded)
+                {
+                    Log.Warning("[UI-7] ⚠️ 所有前端加载方式都失败，加载内置测试页面");
+                    LoadTestPage();
+                }
+
+                Log.Information("[UI-8] ✅ WebView2 初始化全部完成");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[UI-ERR] ❌ 前端加载或 API 注册失败");
+            }
+
+            // WebView2 就绪后，延迟启动后台服务（避免与前端加载竞争 CPU）
+            Dispatcher.BeginInvoke(() =>
+            {
+                try
+                {
+                    _vm?.DetectionPage.DeferStart();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "[UI-ERR] ❌ 延迟启动后台服务失败");
+                }
+            }, DispatcherPriority.ApplicationIdle);
+        }, DispatcherPriority.ApplicationIdle);
     }
 
     /// <summary>
@@ -2099,10 +2126,12 @@ public partial class MainWindow : Window
         // 当状态消息变化时，通过桥接推送到前端
         if (e.PropertyName == nameof(MainViewModel.StatusMessage) && _bridgeService.IsInitialized)
         {
+            // P2 修复：fire-and-forget Task 添加异常处理，避免 unobserved Task exception
             _ = _bridgeService.SendEventAsync("status:update", new
             {
                 message = _vm?.StatusMessage ?? string.Empty
-            });
+            }).ContinueWith(t => Log.Warning(t.Exception, "推送状态消息失败"),
+                TaskContinuationOptions.OnlyOnFaulted);
         }
     }
 
@@ -2161,24 +2190,8 @@ public partial class MainWindow : Window
         if (_isClosing)
             return;
 
-        // 清理事件订阅
-        if (_vm is not null)
-        {
-            _vm.PropertyChanged -= Vm_PropertyChanged;
-            _vm = null;
-        }
-
-        // 关闭桥接服务
-        try
-        {
-            _bridgeService.Shutdown();
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "关闭桥接服务时发生异常");
-        }
-
-        // 关闭确认
+        // ⚠️ P0 修复：先检查服务器运行状态再做关闭确认，之后才清理 _vm 引用
+        // 原代码先置空 _vm 再访问 _vm?.AnyServerRunning，导致关闭确认永远不触发
         if (_vm?.AnyServerRunning == true)
         {
             var result = MessageBox.Show(
@@ -2194,8 +2207,35 @@ public partial class MainWindow : Window
             }
         }
 
+        // 清理事件订阅和桥接服务（在关闭确认通过后）
+        if (_vm is not null)
+        {
+            _vm.PropertyChanged -= Vm_PropertyChanged;
+            _vm = null;
+        }
+
+        // 取消窗口自身事件订阅（P2 修复：防止动画关闭场景下重复触发）
+        Loaded -= MainWindow_Loaded;
+        DataContextChanged -= MainWindow_DataContextChanged;
+        Closing -= MainWindow_Closing;
+        StateChanged -= MainWindow_StateChanged;
+
+        // 关闭桥接服务
+        try
+        {
+            _bridgeService.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "关闭桥接服务时发生异常");
+        }
+
         if (!_themeService.EnableAnimations)
+        {
+            // P1 修复：无动画时显式释放 WebView2 控件，防止 Chromium 子进程残留
+            try { MainWebView.Dispose(); } catch (Exception ex) { Log.Debug(ex, "WebView2 Dispose 异常（可忽略）"); }
             return;
+        }
 
         e.Cancel = true;
         _isClosing = true;
@@ -2213,6 +2253,8 @@ public partial class MainWindow : Window
         {
             Opacity = 0;
             BeginAnimation(OpacityProperty, null);
+            // P1 修复：动画关闭后释放 WebView2 控件，防止 Chromium 子进程残留
+            try { MainWebView.Dispose(); } catch (Exception ex) { Log.Debug(ex, "WebView2 Dispose 异常（可忽略）"); }
             Close();
         };
         BeginAnimation(OpacityProperty, fadeOut, System.Windows.Media.Animation.HandoffBehavior.SnapshotAndReplace);

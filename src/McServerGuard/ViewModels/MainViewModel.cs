@@ -109,19 +109,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _clockTimer.Tick += OnClockTimerTick;
         _clockTimer.Start();
 
-        Log.Information("🚀 启动时自动检测服务器...");
-        _ = System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(async () =>
-        {
-            try
-            {
-                await Task.Delay(500);
-                await DetectServersAsync();
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "自动检测失败: {Message}", ex.Message);
-            }
-        }));
+        // ⚠️ 移除构造函数中的 fire-and-get 首次检测：
+        // 1. ServerDetectionVM 的自动检测循环已覆盖首次检测
+        // 2. 两个并行 DetectAllAsync 会双倍消耗 WMI/进程枚举 CPU 资源
+        // 3. 自动检测延迟到窗口渲染后启动（DeferStart），避免与 WebView2 竞争
+        // 首次检测将由 ServerDetectionViewModel.DeferStart() 统一触发
     }
 
     /// <summary>
@@ -333,7 +325,19 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         Log.Debug("🔄 SelectedTabIndex 变更为 {TabIndex}", value);
 
+        // P2 修复：页面切走时停止网络监控（节省 CPU，避免 netsh 每5秒轮询）
+        if (SelectedTabIndex == 3)
+        {
+            NetworkPage.StopMonitoring();
+        }
+
         OnPropertyChanged(nameof(CurrentPage));
+
+        // 新页面可见时启动对应监控
+        if (value == 3)
+        {
+            NetworkPage.StartMonitoring();
+        }
 
         StatusMessage = value switch
         {

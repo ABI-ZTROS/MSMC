@@ -99,9 +99,9 @@ public class NetworkService
                 {
                     map[p.Id] = p.ProcessName;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // 进程可能已退出
+                    Log.Debug("进程 PID={Pid} 枚举失败（可能已退出）: {Message}", p.Id, ex.Message);
                 }
                 finally
                 {

@@ -28,6 +28,8 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
     private readonly NetworkTrafficService _trafficService;
     private readonly DispatcherTimer _refreshTimer;
     private int _portRefreshCounter;
+    /// <summary>P1 修复：防止 OnRefreshTick 并发执行（async void + await 期间 Timer 可再次触发）</summary>
+    private volatile bool _isRefreshRunning;
     private double _peakSpeedBytesPerSec = 1048576.0;
 
     // 24 小时上传/下载吞吐量底层集合（被 LiveCharts2 Series 直接绑定，索引赋值自动触发刷新）
@@ -354,11 +356,15 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
             Interval = TimeSpan.FromSeconds(1)
         };
         _refreshTimer.Tick += OnRefreshTick;
-        _refreshTimer.Start();
+        // ⚠️ 不在构造函数中 Start()！
+        // 改为页面可见时 Start()，不可见时 Stop()，减少后台 CPU 浪费（netsh 每5秒调用）
     }
 
     private async void OnRefreshTick(object? sender, EventArgs e)
     {
+        // P1 修复：防止并发执行 —— async void 在 await 处让出控制权时 Timer 可再次触发 Tick
+        if (_isRefreshRunning) return;
+        _isRefreshRunning = true;
         try
         {
             // 端口列表每 5 秒刷新一次（netsh 较慢且端口变化缓慢），流量每秒采样
@@ -371,6 +377,10 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         {
             Log.Error(ex, "网络监控刷新失败");
             IsRefreshing = false;
+        }
+        finally
+        {
+            _isRefreshRunning = false;
         }
     }
 
@@ -550,56 +560,84 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
             target.Add(item);
     }
 
+    // P1 修复：以下三个方法由 RelayCommand(async () => ...) 调用，
+    // async lambda 编译为 async void，未捕获异常会导致应用崩溃。
+    // 添加顶层 try-catch 保护。
+
     private async Task KillSelectedProcess()
     {
-        if (SelectedPort?.ProcessId == null)
-            return;
+        try
+        {
+            if (SelectedPort?.ProcessId == null)
+                return;
 
-        var success = await Task.Run(() => _networkService.KillProcessByPort(SelectedPort.Port));
-        StatusMessage = success
-            ? $"已结束进程 {SelectedPort.ProcessName} (PID={SelectedPort.ProcessId})"
-            : "结束进程失败";
+            var success = await Task.Run(() => _networkService.KillProcessByPort(SelectedPort.Port));
+            StatusMessage = success
+                ? $"已结束进程 {SelectedPort.ProcessName} (PID={SelectedPort.ProcessId})"
+                : "结束进程失败";
 
-        await RefreshPorts();
+            await RefreshPorts();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "结束进程失败");
+            StatusMessage = $"结束进程失败: {ex.Message}";
+        }
     }
 
     private async Task AddBridge()
     {
-        var rule = new PortBridgeRule
+        try
         {
-            ListenAddress = BridgeListenAddress,
-            ListenPort = BridgeListenPort,
-            ConnectAddress = BridgeConnectAddress,
-            ConnectPort = BridgeConnectPort
-        };
+            var rule = new PortBridgeRule
+            {
+                ListenAddress = BridgeListenAddress,
+                ListenPort = BridgeListenPort,
+                ConnectAddress = BridgeConnectAddress,
+                ConnectPort = BridgeConnectPort
+            };
 
-        var success = await Task.Run(() => _portBridgeService.AddBridgeRule(rule));
+            var success = await Task.Run(() => _portBridgeService.AddBridgeRule(rule));
 
-        if (success && BridgeAddFirewall)
-            _portBridgeService.EnableFirewallRule(BridgeListenPort);
+            if (success && BridgeAddFirewall)
+                _portBridgeService.EnableFirewallRule(BridgeListenPort);
 
-        StatusMessage = success
-            ? $"桥接成功: {rule.ListenAddress}:{rule.ListenPort} -> {rule.ConnectAddress}:{rule.ConnectPort}"
-            : $"桥接失败: {_portBridgeService.LastError}";
+            StatusMessage = success
+                ? $"桥接成功: {rule.ListenAddress}:{rule.ListenPort} -> {rule.ConnectAddress}:{rule.ConnectPort}"
+                : $"桥接失败: {_portBridgeService.LastError}";
 
-        await RefreshPorts();
+            await RefreshPorts();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "添加桥接规则失败");
+            StatusMessage = $"桥接失败: {ex.Message}";
+        }
     }
 
     private async Task RemoveBridge(PortBridgeRule? rule)
     {
-        if (rule == null)
-            return;
+        try
+        {
+            if (rule == null)
+                return;
 
-        var success = await Task.Run(() => _portBridgeService.RemoveBridgeRule(rule.ListenAddress, rule.ListenPort, rule.Protocol));
+            var success = await Task.Run(() => _portBridgeService.RemoveBridgeRule(rule.ListenAddress, rule.ListenPort, rule.Protocol));
 
-        if (success)
-            _portBridgeService.DisableFirewallRule(rule.ListenPort);
+            if (success)
+                _portBridgeService.DisableFirewallRule(rule.ListenPort);
 
-        StatusMessage = success
-            ? $"已删除桥接规则: {rule.ListenAddress}:{rule.ListenPort}"
-            : "删除失败";
+            StatusMessage = success
+                ? $"已删除桥接规则: {rule.ListenAddress}:{rule.ListenPort}"
+                : "删除失败";
 
-        await RefreshPorts();
+            await RefreshPorts();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "删除桥接规则失败");
+            StatusMessage = $"删除失败: {ex.Message}";
+        }
     }
 
     private void LoadCommonPorts()
@@ -620,7 +658,15 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
     public void Dispose()
     {
+        // P1 修复：取消 Timer 事件订阅，防止 DispatcherTimer 持有 ViewModel 引用导致内存泄漏
+        _refreshTimer.Tick -= OnRefreshTick;
         _refreshTimer.Stop();
         _trafficService.Save();
     }
+
+    /// <summary>页面变为可见时启动定时器</summary>
+    public void StartMonitoring() => _refreshTimer.Start();
+
+    /// <summary>页面切走时停止定时器，节省后台 CPU（避免 netsh 每5秒轮询）</summary>
+    public void StopMonitoring() => _refreshTimer.Stop();
 }

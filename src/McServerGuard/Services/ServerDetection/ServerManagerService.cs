@@ -506,7 +506,7 @@ public class ServerManagerService : IServerManagerService
                         {
                             // 返回新的 Process 对象，避免 using 块释放
                             try { return Process.GetProcessById(process.Id); }
-                            catch { return null; }
+                            catch (Exception ex) { Log.Debug(ex, "获取进程 PID={Pid} 失败（可能已退出）", process.Id); return null; }
                         }
                     }
                     catch

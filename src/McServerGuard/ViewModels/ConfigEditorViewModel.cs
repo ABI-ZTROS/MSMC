@@ -667,10 +667,18 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     /// </summary>
     private async System.Threading.Tasks.Task HandleServerChangedAsync(ServerInstance? value)
     {
-        ConfigEntries.Clear();
-        SelectedConfigFile = null;
-        _currentFilePath = string.Empty;
-        HasUnsavedChanges = false;
+        try
+        {
+            // P2 修复：设置 SelectedServerName 前检查当前值，避免触发 OnSelectedServerNameChanged → Server = ... → OnServerChanged 循环通知
+            if (!string.IsNullOrEmpty(value?.DisplayName) && SelectedServerName != value.DisplayName)
+            {
+                SelectedServerName = value.DisplayName;
+            }
+
+            ConfigEntries.Clear();
+            SelectedConfigFile = null;
+            _currentFilePath = string.Empty;
+            HasUnsavedChanges = false;
         _modifiedCount = 0;
         _undoStack.Clear();
         UndoCommand.NotifyCanExecuteChanged();
@@ -685,7 +693,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         }
 
         ServerWorkingDirectory = value.WorkingDirectory;
-        SelectedServerName = value.DisplayName;
+        // SelectedServerName 已在方法开头赋值，此处不再重复（P2 循环通知修复）
 
         if (!string.IsNullOrEmpty(value.WorkingDirectory) && Directory.Exists(value.WorkingDirectory))
         {
@@ -701,6 +709,11 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
         OnPropertyChanged(nameof(ConfigFileCountText));
         OnPropertyChanged(nameof(HasServerDirectory));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "服务器切换处理失败");
+        }
     }
 
     /// <summary>
@@ -819,8 +832,9 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                 flatList.Add(relativePath);
             }
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
+            Log.Debug("无权限访问目录: {Path}", currentPath);
         }
         catch (Exception ex)
         {
@@ -1055,6 +1069,14 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         _disposed = true;
 
         Log.Information("🧹 ConfigEditorViewModel 释放资源中...");
+
+        // P2 修复：取消每个 ConfigEntry 的个体事件订阅，防止循环引用导致 ViewModel 无法被 GC 回收
+        foreach (var entry in ConfigEntries)
+        {
+            entry.PropertyChanging -= OnConfigEntryChanging;
+            entry.PropertyChanged -= OnConfigEntryChanged;
+        }
+        ConfigEntries.Clear();
 
         ConfigEntries.CollectionChanged -= OnConfigEntriesChanged;
 

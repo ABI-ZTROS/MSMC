@@ -133,8 +133,9 @@ public partial class SettingsViewModel : ObservableObject
                 var color = (Color)ColorConverter.ConvertFromString(value);
                 PrimaryColor = color;
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Debug(ex, "颜色解析失败（PrimaryColorHex）: {Value}", value);
                 StatusMessage = "无效的颜色值";
             }
         }
@@ -153,8 +154,9 @@ public partial class SettingsViewModel : ObservableObject
                 var color = (Color)ColorConverter.ConvertFromString(value);
                 AccentColor = color;
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Debug(ex, "颜色解析失败（AccentColorHex）: {Value}", value);
                 StatusMessage = "无效的颜色值";
             }
         }
@@ -173,8 +175,9 @@ public partial class SettingsViewModel : ObservableObject
                 var color = (Color)ColorConverter.ConvertFromString(value);
                 BackgroundColor = color;
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Debug(ex, "颜色解析失败（BackgroundColorHex）: {Value}", value);
                 StatusMessage = "无效的颜色值";
             }
         }
@@ -193,8 +196,9 @@ public partial class SettingsViewModel : ObservableObject
                 var color = (Color)ColorConverter.ConvertFromString(value);
                 CardColor = color;
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Debug(ex, "颜色解析失败（CardColorHex）: {Value}", value);
                 StatusMessage = "无效的颜色值";
             }
         }
@@ -213,8 +217,9 @@ public partial class SettingsViewModel : ObservableObject
                 var color = (Color)ColorConverter.ConvertFromString(value);
                 TextColor = color;
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Debug(ex, "颜色解析失败（TextColorHex）: {Value}", value);
                 StatusMessage = "无效的颜色值";
             }
         }
@@ -233,8 +238,9 @@ public partial class SettingsViewModel : ObservableObject
                 var color = (Color)ColorConverter.ConvertFromString(value);
                 BorderColor = color;
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Debug(ex, "颜色解析失败（BorderColorHex）: {Value}", value);
                 StatusMessage = "无效的颜色值";
             }
         }

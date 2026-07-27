@@ -89,6 +89,18 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
 
         _serverDetector.DetectionCompleted += OnAutoDetectCompleted;
 
+        // ⚠️ 不在构造函数中启动自动检测！
+        // 延迟到窗口渲染完成后由 MainViewModel 或 MainWindow 统一调度，
+        // 避免在 DI 容器构建阶段就启动 WMI 扫描，与 WebView2 初始化竞争 CPU。
+        // 使用 DeferStart() 在窗口 Loaded 后启动。
+    }
+
+    /// <summary>
+    /// 延迟启动自动检测 —— 在窗口渲染完成后调用
+    /// </summary>
+    public void DeferStart()
+    {
+        Log.Information("📡 ServerDetectionViewModel 延迟启动自动检测");
         StartAutoDetect();
     }
 
@@ -1016,8 +1028,9 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
                 CurrentServerStatus = ServerStatus.Stopped;
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Log.Warning(ex, "检查服务器运行状态失败");
             CurrentServerStatus = ServerStatus.Unknown;
         }
 

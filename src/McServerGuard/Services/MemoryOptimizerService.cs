@@ -89,7 +89,7 @@ public class MemoryOptimizerService : IDisposable
 
         // 系统内存不足事件
         GC.RegisterForFullGCNotification(10, 10);
-        _ = Task.Run(MonitorFullGCNotification);
+        _ = Task.Run(() => MonitorFullGCNotificationAsync());
 
         // 应用程序关闭时清理
         Application.Current.Exit += OnApplicationExit;
@@ -257,9 +257,9 @@ public class MemoryOptimizerService : IDisposable
                 TrimWorkingSet();
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // 忽略监控错误
+            Log.Debug(ex, "内存监控采样异常");
         }
     }
 
@@ -267,7 +267,8 @@ public class MemoryOptimizerService : IDisposable
     /// 监控完整 GC 通知（后台线程）
     /// 监听系统即将触发完整 GC 的事件，提前执行工作集整理
     /// </summary>
-    private async void MonitorFullGCNotification()
+    /// <remarks>P1 修复：从 async void 改为 async Task，未捕获异常不再导致进程崩溃</remarks>
+    private async Task MonitorFullGCNotificationAsync()
     {
         try
         {

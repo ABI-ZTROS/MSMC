@@ -148,8 +148,9 @@ public sealed class NetshPortBridgeService : IPortBridgeService
             var principal = new WindowsPrincipal(identity);
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
-        catch
+        catch (Exception ex)
         {
+            Log.Debug(ex, "管理员权限检测失败");
             return false;
         }
     }

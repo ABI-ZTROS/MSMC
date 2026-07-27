@@ -158,8 +158,9 @@ public class AdminPrivilegeService
             var version = Environment.OSVersion.Version;
             return version.Major >= 10 && version.Build >= 22000;
         }
-        catch
+        catch (Exception ex)
         {
+            Log.Debug(ex, "Windows 11 版本检测失败");
             return false;
         }
     }

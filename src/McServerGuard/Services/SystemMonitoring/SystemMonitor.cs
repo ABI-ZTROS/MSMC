@@ -204,14 +204,18 @@ public class SystemMonitor : ISystemMonitor
         // 启动监控入口
         Log.Information("▶️ 开始监控，间隔 {Interval} 秒", interval.TotalSeconds);
 
-        if (_isMonitoring)
+        // P2 修复：使用 lock 保护 _isMonitoring 的读-检查-写操作，防止多线程并发 Start 导致 Timer/CTS 泄漏
+        lock (_monitorLock)
         {
-            Log.Warning("监控已经在运行中，不要重复启动哦");
-            throw new InvalidOperationException("监控已经在运行中了，先 StopMonitoring 再重新启动");
-        }
+            if (_isMonitoring)
+            {
+                Log.Warning("监控已经在运行中，不要重复启动哦");
+                throw new InvalidOperationException("监控已经在运行中了，先 StopMonitoring 再重新启动");
+            }
 
-        _isMonitoring = true;
-        _monitoringCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _isMonitoring = true;
+            _monitoringCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        }
 
         Log.Information("系统监控已启动，采样间隔: {Interval}", interval);
 
@@ -471,7 +475,8 @@ public class SystemMonitor : ISystemMonitor
     private MemorySystemInfo? _cachedMemoryInfo;
     private readonly object _hardwareCacheLock = new();
 
-    private bool _isCollecting;
+    /// <summary>P2 修复：volatile 修饰确保多线程可见性（Timer 回调线程池 vs ContinueWith 线程池）</summary>
+    private volatile bool _isCollecting;
 
     // ═════════════════════════════════════════════════════════════════════
     // CPU 采集链路降级控制

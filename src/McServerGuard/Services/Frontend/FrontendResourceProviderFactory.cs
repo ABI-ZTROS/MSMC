@@ -93,10 +93,18 @@ public static class FrontendResourceProviderFactory
     private static string? FindSolutionDir()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null)
+        var maxDepth = 10;
+        while (dir != null && maxDepth-- > 0)
         {
-            if (Directory.GetFiles(dir.FullName, "*.sln").Length > 0)
-                return dir.FullName;
+            try
+            {
+                if (Directory.GetFiles(dir.FullName, "*.sln").Length > 0)
+                    return dir.FullName;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                break;
+            }
             dir = dir.Parent;
         }
         return null;
