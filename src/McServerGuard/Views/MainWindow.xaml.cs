@@ -1250,17 +1250,29 @@ public partial class MainWindow : Window
                 var port = root.TryGetProperty("port", out var pe) ? pe.GetInt32() : 0;
                 var protocol = root.TryGetProperty("protocol", out var pr) ? pr.GetString() ?? "TCP" : "TCP";
 
+                if (port <= 0)
+                    return Task.FromResult<object?>(new { success = false, error = "无效端口" });
+
                 if (net != null && net.ListeningPorts != null)
                 {
                     var portInfo = net.ListeningPorts.FirstOrDefault(p => p.Port == port && p.Protocol == protocol);
                     if (portInfo != null)
                     {
-                        net.SelectedPort = portInfo;
-                        net.KillProcessCommand.Execute(null);
+                        var networkService = App.Services.GetRequiredService<Services.Network.NetworkService>();
+                        var success = networkService.KillProcessByPort(port);
+                        if (success)
+                            return Task.FromResult<object?>(new { success });
+
+                        return Task.FromResult<object?>(new { success = false, error = "结束进程失败，可能是权限不足或进程已退出" });
                     }
                 }
 
-                return Task.FromResult<object?>(new { success = true });
+                return Task.FromResult<object?>(new { success = false, error = "未找到占用该端口的进程" });
+            }
+            catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 5)
+            {
+                Log.Error(ex, "结束进程失败：权限不足");
+                return Task.FromResult<object?>(new { success = false, error = "权限不足，请以管理员身份运行程序" });
             }
             catch (Exception ex)
             {

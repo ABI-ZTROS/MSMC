@@ -317,11 +317,16 @@ export function NetworkMonitorPage(): JSX.Element {
     const processName = selectedPort.processName || `PID ${selectedPort.processId}`
     if (!window.confirm(`确定要结束占用端口 ${selectedPort.port} 的进程 ${processName} 吗？`)) return
     try {
-      await killProcess({ port: selectedPort.port, protocol: selectedPort.protocol })
-      setSelectedPort(null)
-      setTimeout(loadData, 1000)
+      const result = await killProcess({ port: selectedPort.port, protocol: selectedPort.protocol })
+      if (result.success) {
+        setSelectedPort(null)
+        setTimeout(loadData, 1000)
+      } else {
+        window.alert(`结束进程失败: ${result.error || '未知错误'}`)
+      }
     } catch (err) {
       console.error('结束进程失败:', err)
+      window.alert('结束进程失败: 网络请求错误')
     }
   }
 

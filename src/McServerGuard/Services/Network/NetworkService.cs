@@ -142,8 +142,6 @@ public class NetworkService
 
             using var process = Process.GetProcessById(portInfo.ProcessId.Value);
 
-            // 先优雅停止：CloseMainWindow 在 Windows 下相当于发送 WM_CLOSE，
-            // Java 服务器收到后能触发 shutdown hook 完成 save-all
             try
             {
                 if (process.CloseMainWindow())
@@ -165,11 +163,15 @@ public class NetworkService
                 Log.Warning(ex, "CloseMainWindow 失败，降级到强杀");
             }
 
-            // 优雅停止失败或不可用，强杀兜底
             process.Kill();
             Log.Information("已强杀占用端口 {Port} 的进程 {Name} (PID={Pid})",
                 port, portInfo.ProcessName, portInfo.ProcessId);
             return true;
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 5)
+        {
+            Log.Error(ex, "结束端口 {Port} 的进程失败：权限不足，请以管理员身份运行程序", port);
+            return false;
         }
         catch (Exception ex)
         {
