@@ -1,0 +1,175 @@
+<Window x:Class="McServerGuard.Views.StartupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+        Title="MSMC 启动中"
+        Width="640" Height="480"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        FontFamily="{DynamicResource AppFontFamily}">
+
+    <Border x:Name="WindowBorder"
+            Background="{DynamicResource AppBackgroundBrush}"
+            BorderBrush="{DynamicResource AppSubtleBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="{DynamicResource AppCornerRadiusLarge}"
+            MouseLeftButtonDown="WindowBorder_MouseLeftButtonDown">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- 顶部 Logo 和标题 -->
+            <Grid Grid.Row="0" Margin="0,36,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Grid Grid.Column="0" Margin="36,0,20,0" Width="64" Height="64" HorizontalAlignment="Center">
+                    <Ellipse x:Name="LogoGlow"
+                             Width="64" Height="64"
+                             Fill="{DynamicResource PrimaryBrush}"
+                             Opacity="0.3">
+                        <Ellipse.Effect>
+                            <BlurEffect Radius="15" />
+                        </Ellipse.Effect>
+                    </Ellipse>
+                    <Grid Width="64" Height="64">
+                        <Ellipse Fill="{DynamicResource PrimaryBrush}" />
+                        <iconPacks:PackIconFontAwesome6 Kind="ShieldHalvedSolid"
+                                                        Width="32" Height="32"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Foreground="White" />
+                    </Grid>
+                </Grid>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,4,32,0">
+                    <TextBlock Text="MSMC"
+                               FontSize="24"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource AppTextBrush}" />
+                    <TextBlock Text="Minecraft 服务器管理控制台"
+                               FontSize="13"
+                               Foreground="{DynamicResource AppTextDimBrush}"
+                               Margin="0,4,0,0" />
+                    <TextBlock x:Name="VersionText"
+                               Text="v1.0.0"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppTextFaintBrush}"
+                               Margin="0,8,0,0" />
+                </StackPanel>
+            </Grid>
+
+            <!-- 日志输出区 -->
+            <Border Grid.Row="1"
+                    Margin="32,0,32,16"
+                    Background="{DynamicResource AppCardBrush}"
+                    BorderBrush="{DynamicResource AppSubtleBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource AppCornerRadius}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0"
+                          Background="{DynamicResource AppPanelBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <iconPacks:PackIconFontAwesome6 Kind="TerminalSolid"
+                                                        Width="14" Height="14"
+                                                        VerticalAlignment="Center"
+                                                        Margin="12,0,8,0"
+                                                        Foreground="{DynamicResource PrimaryBrush}" />
+                        <TextBlock Grid.Column="1"
+                                   Text="启动日志"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppTextBrush}"
+                                   VerticalAlignment="Center"
+                                   Padding="0,8,0,8" />
+                        <Ellipse Grid.Column="2"
+                                 x:Name="StatusDot"
+                                 Width="8" Height="8"
+                                 HorizontalAlignment="Right"
+                                 Margin="0,0,12,0"
+                                 Fill="{DynamicResource SuccessBrush}">
+                            <Ellipse.Effect>
+                                <BlurEffect Radius="3" />
+                            </Ellipse.Effect>
+                        </Ellipse>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1"
+                                  x:Name="LogScrollViewer"
+                                  Padding="12,8"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Background="Transparent">
+                        <ItemsControl x:Name="LogItemsControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Message}"
+                                               FontFamily="Consolas, monospace"
+                                               FontSize="12"
+                                               Foreground="{Binding ColorBrush}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,1,0,1" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- 底部进度 -->
+            <Grid Grid.Row="2" Margin="32,0,32,28">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock x:Name="StatusText"
+                               Text="正在初始化..."
+                               FontSize="12"
+                               Foreground="{DynamicResource AppTextBrush}" />
+                    <ProgressBar x:Name="ProgressBar"
+                                 Height="4"
+                                 Margin="0,10,0,0"
+                                 IsIndeterminate="True"
+                                 Foreground="{DynamicResource PrimaryBrush}"
+                                 Background="{DynamicResource AppPanelBrush}"
+                                 BorderThickness="0" />
+                </StackPanel>
+
+                <Grid Grid.Column="1" Width="100" Height="36" HorizontalAlignment="Right">
+                    <Button x:Name="CloseButton"
+                            Width="100" Height="36"
+                            Content="退出"
+                            Visibility="Collapsed"
+                            Click="CloseButton_Click"
+                            Background="{DynamicResource ErrorBrush}"
+                            Foreground="White"
+                            BorderThickness="0"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            Padding="12,0,12,0" />
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

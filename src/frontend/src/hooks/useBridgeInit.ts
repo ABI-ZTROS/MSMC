@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useAppStore } from '@/stores/appStore'
-import { bridge, onStatusUpdate, getSettings } from '@/utils/bridge'
+import { bridge, onStatusUpdate, getSettings, onThemeChanged } from '@/utils/bridge'
 import type { AppReadyEvent } from '@/types/bridge'
 import { applySettingsToCss } from '@/utils/theme'
 
@@ -107,11 +107,17 @@ export function useBridgeInit(): void {
       setStatusMessage(data.message)
     })
 
+    const offTheme = onThemeChanged((settings) => {
+      log(`收到主题变更`)
+      applySettingsToCss(settings)
+    })
+
     return () => {
       log('useEffect 清理')
       cancelled = true
       if (retryTimer) clearTimeout(retryTimer)
       offStatus()
+      offTheme()
     }
   }, [setReady, setVersion, setAdmin, setTheme, setStatusMessage])
 }

@@ -46,6 +46,8 @@ public partial class MainWindow : Window
         _themeService = App.Services.GetRequiredService<IThemeService>();
         _bridgeService = App.Services.GetRequiredService<IWebView2BridgeService>();
 
+        _themeService.ThemeChanged += OnThemeChanged;
+
         Loaded += MainWindow_Loaded;
         DataContextChanged += MainWindow_DataContextChanged;
         Closing += MainWindow_Closing;
@@ -2119,6 +2121,28 @@ public partial class MainWindow : Window
             _vm.PropertyChanged += Vm_PropertyChanged;
     }
 
+    // 主题变更事件处理：转发到前端
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        if (!_bridgeService.IsInitialized) return;
+
+        _ = _bridgeService.SendEventAsync("theme:changed", new
+        {
+            primaryColor = ColorToHex(_themeService.PrimaryColor),
+            accentColor = ColorToHex(_themeService.AccentColor),
+            backgroundColor = ColorToHex(_themeService.BackgroundColor),
+            cardColor = ColorToHex(_themeService.CardColor),
+            textColor = ColorToHex(_themeService.TextColor),
+            borderColor = ColorToHex(_themeService.BorderColor),
+            cornerRadius = _themeService.CornerRadius,
+            animationDuration = _themeService.AnimationDuration,
+            enableAnimations = _themeService.EnableAnimations,
+        }).ContinueWith(t => Log.Warning(t.Exception, "推送主题变更事件失败"),
+            TaskContinuationOptions.OnlyOnFaulted);
+    }
+
+    private static string ColorToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
+
     // ViewModel 属性变更事件处理
     private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -2212,6 +2236,9 @@ public partial class MainWindow : Window
             _vm.PropertyChanged -= Vm_PropertyChanged;
             _vm = null;
         }
+
+        // 取消主题事件订阅
+        _themeService.ThemeChanged -= OnThemeChanged;
 
         // 取消窗口自身事件订阅（P2 修复：防止动画关闭场景下重复触发）
         Loaded -= MainWindow_Loaded;

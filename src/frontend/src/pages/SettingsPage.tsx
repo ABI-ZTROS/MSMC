@@ -39,7 +39,13 @@ import type {
   PresetInfo,
   TeamInfoResponse,
 } from '@/types/bridge'
-import { applySettingsToCss } from '@/utils/theme'
+import {
+  applySettingsToCss,
+  applyPrimaryColor,
+  applyAccentColor,
+  applyCornerRadius,
+  applyAnimationSettings,
+} from '@/utils/theme'
 import { ColorPicker } from '@/components/ui/ColorPicker'
 import abiAvatar from '@/assets/avatars/ABI-ZTROS.png'
 import yanlanxiangAvatar from '@/assets/avatars/yanlanxiang.jpg'
@@ -158,6 +164,14 @@ export function SettingsPage(): JSX.Element {
   }, [loadSettings, loadJavaList, loadSwatchesAndPresets, loadTeamInfo])
 
   // ─── 颜色设置 ───
+  const handlePrimaryPreview = (hex: string): void => {
+    applyPrimaryColor(hex)
+  }
+
+  const handleAccentPreview = (hex: string): void => {
+    applyAccentColor(hex)
+  }
+
   const handleSetPrimary = async (hex: string): Promise<void> => {
     try {
       await setPrimaryColor(hex)
@@ -309,12 +323,14 @@ export function SettingsPage(): JSX.Element {
           <ColorPicker
             label="主色调"
             value={primaryColorHex}
+            onChange={handlePrimaryPreview}
             onChangeEnd={handleSetPrimary}
             presets={primarySwatches.map((s) => s.color)}
           />
           <ColorPicker
             label="强调色"
             value={accentColorHex}
+            onChange={handleAccentPreview}
             onChangeEnd={handleSetAccent}
             presets={accentSwatches.map((s) => s.color)}
           />
@@ -434,6 +450,7 @@ export function SettingsPage(): JSX.Element {
             onChange={(e) => {
               const val = Number(e.target.value)
               setCornerRadius(val)
+              applyCornerRadius(val)
               localStorage.setItem('msmc_cornerRadius', String(val))
             }}
             style={{ width: 400, margin: '8px 0' }}
@@ -582,6 +599,7 @@ export function SettingsPage(): JSX.Element {
             onChange={(e) => {
               const val = Number(e.target.value)
               setAnimationDuration(val)
+              applyAnimationSettings(val, enableAnimations)
               localStorage.setItem('msmc_animationDuration', String(val))
             }}
             disabled={!enableAnimations}

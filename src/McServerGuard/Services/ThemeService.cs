@@ -71,6 +71,11 @@ public interface IThemeService
     bool IsDarkMode { get; }
 
     /// <summary>
+    /// 主题变更事件
+    /// </summary>
+    event EventHandler? ThemeChanged;
+
+    /// <summary>
     /// 应用当前主题配置到界面
     /// </summary>
     void ApplyTheme();
@@ -188,6 +193,11 @@ public class ThemeService : IThemeService
     private bool _enableAnimations = true;
 
     /// <summary>
+    /// 主题变更事件
+    /// </summary>
+    public event EventHandler? ThemeChanged;
+
+    /// <summary>
     /// 批量更新模式标记
     /// </summary>
     private bool _isBatchUpdating;
@@ -281,14 +291,22 @@ public class ThemeService : IThemeService
     public int AnimationDuration
     {
         get => _animationDuration;
-        set => _animationDuration = Math.Clamp(value, 0, 2000);
+        set
+        {
+            _animationDuration = Math.Clamp(value, 0, 2000);
+            if (!_isBatchUpdating) ApplyTheme();
+        }
     }
 
     /// <inheritdoc />
     public bool EnableAnimations
     {
         get => _enableAnimations;
-        set => _enableAnimations = value;
+        set
+        {
+            _enableAnimations = value;
+            if (!_isBatchUpdating) ApplyTheme();
+        }
     }
 
     /// <inheritdoc />
@@ -333,6 +351,8 @@ public class ThemeService : IThemeService
 
             Log.Information("🎨 主题已更新: 主色={Primary}, 强调色={Accent}, 圆角={Radius}",
                 _primaryColor, _accentColor, _cornerRadius);
+
+            ThemeChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {

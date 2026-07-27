@@ -336,6 +336,10 @@ export function onStatusUpdate(handler: (data: { message: string }) => void): ()
   return bridge.on('status:update', (payload) => handler(payload as { message: string }))
 }
 
+export function onThemeChanged(handler: (data: SettingsData) => void): () => void {
+  return bridge.on('theme:changed', (payload) => handler(payload as SettingsData))
+}
+
 // ═════════════════════════════════════════════════════════════════════
 // 系统监控 API
 // ═════════════════════════════════════════════════════════════════════

@@ -102,175 +102,229 @@ public partial class App : Application
             base.OnStartup(e);
             Log.Information("🚀 McServerGuard 正在启动...");
 
-            // 构建 DI 容器并注册服务
-            Log.Information("🏗️ 开始搭建 DI 容器...");
-            var services = new ServiceCollection();
+            // ─────────────────────────────────────────────────────
+            // 阶段 0：提前初始化主题服务（用于启动窗口主题）
+            // ─────────────────────────────────────────────────────
+            var earlyThemeService = new ThemeService();
+            try { earlyThemeService.LoadSettings(); }
+            catch { /* 忽略加载失败，使用默认主题 */ }
+            earlyThemeService.ApplyTheme();
 
-        // 服务器检测服务组
-        Log.Information("🎯 注册服务器检测服务组...");
-        services.AddSingleton<IServerDetector, ServerDetector>();
-        services.AddSingleton<IServerImporterService, ServerImporterService>();
-        services.AddSingleton<IServerManagerService, ServerManagerService>();
-        services.AddSingleton<ProcessScanner>();
-        services.AddSingleton<WorkingDirectoryResolver>();
-        services.AddSingleton<ConfigFileScanner>();
-        // 网络套件 —— 端口探测 + PID 反查 + 配置端口解析
-        services.AddSingleton<PortScanner>();
-        services.AddSingleton<PortToProcessMapper>();
-        services.AddSingleton<ServerPortResolver>();
-        services.AddSingleton<NetworkService>();
-        // 桥接系统：默认 TcpForwarder 用户态转发 + netsh 兜底，由 CompositePortBridgeService 外观统一调度
-        services.AddSingleton<ITcpForwarder, TcpForwarderService>();
-        services.AddSingleton<NetshPortBridgeService>();
-        services.AddSingleton<IPortBridgeService, CompositePortBridgeService>();
-        services.AddSingleton<NetworkTrafficService>();
-        // JAR Manifest 核心识别器 —— 第三级兜底（解包 JAR 读取 MANIFEST.MF）
-        services.AddSingleton<JarCoreIdentifier>();
+            // ─────────────────────────────────────────────────────
+            // 阶段 1：显示启动窗口
+            // ─────────────────────────────────────────────────────
+            Log.Information("🪟 显示启动窗口...");
+            var startupWindow = new StartupWindow(earlyThemeService);
+            startupWindow.Show();
 
-        // 管理员权限服务
-        Log.Information("🔐 注册管理员权限服务...");
-        services.AddSingleton<AdminPrivilegeService>();
+            // 将启动窗口设为 MainWindow 以便消息循环正常工作
+            MainWindow = startupWindow;
 
-        // 配置管理服务组
-        Log.Information("📋 注册配置管理服务组...");
-        services.AddSingleton<IConfigManager, ConfigManager>();
-        services.AddSingleton<ConfigDescriptorRegistry>();
+            startupWindow.AppendLog("🚀 McServerGuard 启动中...");
+            startupWindow.AppendLog("📋 正在初始化核心服务...");
 
-        // 系统监控服务组
-        Log.Information("📊 注册系统监控服务组...");
-        services.AddSingleton<ISystemMonitor, SystemMonitor>();
-        services.AddSingleton<DiskSpaceMonitor>();
-        services.AddSingleton<MemoryMonitor>();
-        services.AddSingleton<ThreadAnalyzer>();
-        services.AddSingleton<Services.HardwareInfo.CpuIdentifier>();
-        services.AddSingleton<IMetricsPersistenceService, MetricsPersistenceService>();
-
-        // 主题服务
-        Log.Information("🎨 注册主题服务...");
-        services.AddSingleton<IThemeService, ThemeService>();
-
-        // 用户协议服务
-        Log.Information("📜 注册用户协议服务...");
-        services.AddSingleton<IUserAgreementService, UserAgreementService>();
-
-        // 全局配置服务
-        Log.Information("📁 注册全局配置服务...");
-        services.AddSingleton<IAppConfigService, AppConfigService>();
-
-        // Java 查找服务
-        Log.Information("☕ 注册 Java 查找服务...");
-        services.AddSingleton<IJavaFinderService, JavaFinderService>();
-
-        // 通知服务
-        Log.Information("🔔 注册通知服务...");
-        services.AddSingleton<IToastNotificationService, ToastNotificationService>();
-
-        // 权限服务
-        Log.Information("🔐 注册权限服务...");
-        services.AddSingleton<IPrivilegeService, PrivilegeService>();
-
-        // 内存优化服务
-        Log.Information("🧹 注册内存优化服务...");
-        services.AddSingleton<MemoryOptimizerService>();
-
-        // WebView2 桥接服务
-        Log.Information("🌉 注册 WebView2 桥接服务...");
-        services.AddSingleton<IWebView2BridgeService, WebView2BridgeService>();
-
-        // 子页面 ViewModel —— 走 DI 注入，避免 MainViewModel 手动 new 导致的 God Object
-        Log.Information("🧩 注册子页面 ViewModel...");
-        services.AddSingleton<ViewModels.ServerDetectionViewModel>();
-        services.AddSingleton<ViewModels.ConfigEditorViewModel>();
-        services.AddSingleton<ViewModels.SystemMonitorViewModel>();
-        services.AddSingleton<ViewModels.NetworkMonitorViewModel>();
-        services.AddSingleton<ViewModels.SettingsViewModel>();
-
-        // MainViewModel
-        // 之前曾遗忘注册，导致将 DI 容器本身作为 DataContext，绑定全部失效
-        Log.Information("🧠 注册 MainViewModel...");
-        services.AddSingleton<MainViewModel>();
-
-        _serviceProvider = services.BuildServiceProvider();
-
-        // 配置 WPF 渲染管线优化
-        ConfigureRenderOptimizations();
-
-        // 检查管理员权限
-        Log.Information("🔐 检查管理员权限...");
-        var privilegeService = _serviceProvider.GetRequiredService<IPrivilegeService>();
-        if (!privilegeService.IsRunningAsAdmin && privilegeService.IsWindows)
-        {
-            Log.Warning("⚠️ 当前不是管理员权限，部分功能可能受限");
-            var result = System.Windows.MessageBox.Show(
-                "MSMC 检测到当前未以管理员身份运行。\n\n" +
-                "部分功能（如读取其他进程命令行、完整系统监控）可能无法正常工作。\n\n" +
-                "是否立即以管理员权限重新启动？",
-                "权限提示",
-                System.Windows.MessageBoxButton.YesNo,
-                System.Windows.MessageBoxImage.Warning);
-
-            if (result == System.Windows.MessageBoxResult.Yes)
+            // ─────────────────────────────────────────────────────
+            // 阶段 2：后台线程执行重量级初始化
+            // ─────────────────────────────────────────────────────
+            _ = Task.Run(async () =>
             {
-                if (privilegeService.RequestElevation())
+                try
                 {
-                    Shutdown();
-                    return;
+                    startupWindow.AppendLog("🏗️ 搭建 DI 容器...");
+                    var services = new ServiceCollection();
+
+                    startupWindow.AppendLog("🎯 注册服务器检测服务...");
+                    services.AddSingleton<IServerDetector, ServerDetector>();
+                    services.AddSingleton<IServerImporterService, ServerImporterService>();
+                    services.AddSingleton<IServerManagerService, ServerManagerService>();
+                    services.AddSingleton<ProcessScanner>();
+                    services.AddSingleton<WorkingDirectoryResolver>();
+                    services.AddSingleton<ConfigFileScanner>();
+                    services.AddSingleton<PortScanner>();
+                    services.AddSingleton<PortToProcessMapper>();
+                    services.AddSingleton<ServerPortResolver>();
+                    services.AddSingleton<NetworkService>();
+                    services.AddSingleton<ITcpForwarder, TcpForwarderService>();
+                    services.AddSingleton<NetshPortBridgeService>();
+                    services.AddSingleton<IPortBridgeService, CompositePortBridgeService>();
+                    services.AddSingleton<NetworkTrafficService>();
+                    services.AddSingleton<JarCoreIdentifier>();
+
+                    startupWindow.AppendLog("🔐 注册权限服务...");
+                    services.AddSingleton<AdminPrivilegeService>();
+                    services.AddSingleton<IPrivilegeService, PrivilegeService>();
+
+                    startupWindow.AppendLog("📋 注册配置管理服务...");
+                    services.AddSingleton<IConfigManager, ConfigManager>();
+                    services.AddSingleton<ConfigDescriptorRegistry>();
+
+                    startupWindow.AppendLog("📊 注册系统监控服务...");
+                    services.AddSingleton<ISystemMonitor, SystemMonitor>();
+                    services.AddSingleton<DiskSpaceMonitor>();
+                    services.AddSingleton<MemoryMonitor>();
+                    services.AddSingleton<ThreadAnalyzer>();
+                    services.AddSingleton<Services.HardwareInfo.CpuIdentifier>();
+                    services.AddSingleton<IMetricsPersistenceService, MetricsPersistenceService>();
+
+                    startupWindow.AppendLog("🎨 注册主题服务...");
+                    services.AddSingleton<IThemeService>(_ =>
+                    {
+                        // 复用提前初始化的主题服务实例
+                        return earlyThemeService;
+                    });
+
+                    startupWindow.AppendLog("📜 注册用户协议服务...");
+                    services.AddSingleton<IUserAgreementService, UserAgreementService>();
+
+                    startupWindow.AppendLog("📁 注册全局配置服务...");
+                    services.AddSingleton<IAppConfigService, AppConfigService>();
+
+                    startupWindow.AppendLog("☕ 注册 Java 查找服务...");
+                    services.AddSingleton<IJavaFinderService, JavaFinderService>();
+
+                    startupWindow.AppendLog("🔔 注册通知服务...");
+                    services.AddSingleton<IToastNotificationService, ToastNotificationService>();
+
+                    startupWindow.AppendLog("🧹 注册内存优化服务...");
+                    services.AddSingleton<MemoryOptimizerService>();
+
+                    startupWindow.AppendLog("🌉 注册 WebView2 桥接服务...");
+                    services.AddSingleton<IWebView2BridgeService, WebView2BridgeService>();
+
+                    startupWindow.AppendLog("🧩 注册 ViewModel...");
+                    services.AddSingleton<ViewModels.ServerDetectionViewModel>();
+                    services.AddSingleton<ViewModels.ConfigEditorViewModel>();
+                    services.AddSingleton<ViewModels.SystemMonitorViewModel>();
+                    services.AddSingleton<ViewModels.NetworkMonitorViewModel>();
+                    services.AddSingleton<ViewModels.SettingsViewModel>();
+                    services.AddSingleton<MainViewModel>();
+
+                    startupWindow.AppendLog("📦 构建服务容器...");
+                    _serviceProvider = services.BuildServiceProvider();
+
+                    // 回到 UI 线程执行需要 UI 交互的部分
+                    await startupWindow.Dispatcher.InvokeAsync(() =>
+                    {
+                        ConfigureRenderOptimizations();
+                    });
+
+                    // 检查管理员权限
+                    startupWindow.AppendLog("🔐 检查管理员权限...");
+                    var privilegeService = _serviceProvider.GetRequiredService<IPrivilegeService>();
+                    if (!privilegeService.IsRunningAsAdmin && privilegeService.IsWindows)
+                    {
+                        startupWindow.AppendLog("⚠️ 当前不是管理员权限，部分功能可能受限");
+                        await startupWindow.Dispatcher.InvokeAsync(() =>
+                        {
+                            var result = System.Windows.MessageBox.Show(
+                                "MSMC 检测到当前未以管理员身份运行。\n\n" +
+                                "部分功能（如读取其他进程命令行、完整系统监控）可能无法正常工作。\n\n" +
+                                "是否立即以管理员权限重新启动？",
+                                "权限提示",
+                                System.Windows.MessageBoxButton.YesNo,
+                                System.Windows.MessageBoxImage.Warning);
+
+                            if (result == System.Windows.MessageBoxResult.Yes)
+                            {
+                                if (privilegeService.RequestElevation())
+                                {
+                                    Shutdown();
+                                }
+                            }
+                        });
+                    }
+
+                    // 加载全局配置
+                    startupWindow.AppendLog("📂 加载全局配置...");
+                    _serviceProvider.GetRequiredService<IAppConfigService>().Load();
+
+                    // 主题设置已在启动前加载
+
+                    // 注入主题服务到动画设置
+                    AnimationSettings.ThemeService = _serviceProvider.GetRequiredService<IThemeService>();
+
+                    // 加载用户协议
+                    startupWindow.AppendLog("📜 加载用户协议状态...");
+                    var userAgreementService = _serviceProvider.GetRequiredService<IUserAgreementService>();
+                    userAgreementService.Load();
+
+                    // 首次使用显示用户协议窗口
+                    if (!userAgreementService.IsAgreed)
+                    {
+                        startupWindow.AppendLog("📜 首次使用，等待用户同意协议...");
+                        bool agreed = false;
+                        await startupWindow.Dispatcher.InvokeAsync(() =>
+                        {
+                            var agreementWindow = new UserAgreementWindow
+                            {
+                                Owner = startupWindow,
+                                WindowStartupLocation = WindowStartupLocation.CenterOwner
+                            };
+                            var result = agreementWindow.ShowDialog();
+                            agreed = result == true;
+                        });
+
+                        if (!agreed)
+                        {
+                            startupWindow.AppendLog("❌ 用户未同意协议");
+                            Shutdown();
+                            return;
+                        }
+                        startupWindow.AppendLog("✅ 用户已同意协议");
+                    }
+
+                    // 创建主窗口
+                    startupWindow.AppendLog("🪟 正在创建主窗口...");
+                    MainWindow? mainWindow = null;
+                    await startupWindow.Dispatcher.InvokeAsync(() =>
+                    {
+                        mainWindow = new MainWindow
+                        {
+                            DataContext = _serviceProvider.GetRequiredService<MainViewModel>()
+                        };
+                    });
+
+                    // 启动内存优化服务
+                    startupWindow.AppendLog("🧹 启动内存优化服务...");
+                    _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start();
+
+                    startupWindow.MarkCompleted();
+
+                    // 短暂延迟让用户看到"启动完成"
+                    await Task.Delay(600);
+
+                    // 切换到主窗口
+                    await startupWindow.Dispatcher.InvokeAsync(() =>
+                    {
+                        mainWindow?.Show();
+                        MainWindow = mainWindow;
+                        startupWindow.Close();
+                    });
+
+                    Log.Information("✅ McServerGuard 启动完成，主窗口已就绪！");
                 }
-            }
-        }
+                catch (Exception ex)
+                {
+                    Log.Fatal(ex, "💥 启动过程发生致命异常");
+                    WriteCrashDump(ex);
 
-        // 加载全局配置（已知服务器等）
-        Log.Information("📂 加载全局配置...");
-        _serviceProvider.GetRequiredService<IAppConfigService>().Load();
-
-        // 加载主题设置（颜色、动画等）
-        Log.Information("🎨 加载主题设置...");
-        _serviceProvider.GetRequiredService<IThemeService>().LoadSettings();
-
-        // 注入主题服务到动画设置
-        AnimationSettings.ThemeService = Services.GetRequiredService<IThemeService>();
-
-        // 加载用户协议状态
-        Log.Information("📜 加载用户协议状态...");
-        var userAgreementService = _serviceProvider.GetRequiredService<IUserAgreementService>();
-        userAgreementService.Load();
-
-        // 首次使用显示用户协议窗口
-        if (!userAgreementService.IsAgreed)
-        {
-            Log.Information("📜 首次使用，显示用户协议窗口...");
-            var agreementWindow = new UserAgreementWindow();
-            var result = agreementWindow.ShowDialog();
-
-            if (result != true)
-            {
-                Log.Information("❌ 用户未同意协议，退出程序");
-                Shutdown();
-                return;
-            }
-
-            Log.Information("✅ 用户已同意协议");
-        }
-
-        // 创建主窗口并注入 ViewModel
-        Log.Information("🪟 创建主窗口并注入 DI 服务...");
-        var mainWindow = new MainWindow
-        {
-            DataContext = _serviceProvider.GetRequiredService<MainViewModel>()
-        };
-
-        mainWindow.Show();
-
-        // 启动内存优化服务
-        Log.Information("🧹 启动内存优化服务...");
-        _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start();
-
-        Log.Information("📦 MainViewModel 已创建并注入 DI");
-        Log.Information("✅ McServerGuard 启动完成，主窗口已就绪！");
+                    try
+                    {
+                        startupWindow.MarkFailed($"{ex.Message}");
+                    }
+                    catch
+                    {
+                        // 启动窗口都没了就直接 MessageBox
+                        MessageBox.Show($"启动失败：{ex.Message}\n\n{ex.StackTrace}",
+                            "MSMC 启动失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                        Current.Shutdown();
+                    }
+                }
+            });
         }
         catch (Exception ex)
         {
-            Log.Fatal(ex, "💥 启动过程发生致命异常");
+            Log.Fatal(ex, "💥 启动前期发生致命异常");
             WriteCrashDump(ex);
             MessageBox.Show($"启动失败：{ex.Message}\n\n{ex.StackTrace}",
                 "MSMC 启动失败", MessageBoxButton.OK, MessageBoxImage.Error);

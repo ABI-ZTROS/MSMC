@@ -47,7 +47,7 @@ function applyBorderColor(baseHex: string, style: CSSStyleDeclaration): void {
   style.setProperty('--md-swatch-hover-border', '#FFFFFF')
 }
 
-function applyAccentColor(accentHex: string, style: CSSStyleDeclaration): void {
+function applyAccentColorScale(accentHex: string, style: CSSStyleDeclaration): void {
   const scale = generate9StepScale(accentHex)
   style.setProperty('--md-accent-text', scale[4])
   style.setProperty('--md-accent-subtle-border', rgba(scale[4], 0.2))
@@ -132,6 +132,20 @@ function applyAnimation(baseDuration: number, enableAnimations: boolean, style: 
   style.setProperty('--md-enable-animations', enableAnimations ? '1' : '0')
 }
 
+export function applyCornerRadius(radius: number): void {
+  applyRadius(radius, document.documentElement.style)
+}
+
+export function applyAnimationSettings(duration: number, enabled: boolean): void {
+  applyAnimation(duration, enabled, document.documentElement.style)
+}
+
+export function applyAccentColor(hex: string): void {
+  const style = document.documentElement.style
+  const accent = normalizeHex(hex)
+  applyAccentColorScale(accent, style)
+}
+
 function lightenOklch(hex: string, amount: number): string {
   const { r, g, b } = hexToRgb(hex)
   const oklch = rgbToOklch(r, g, b)
@@ -160,7 +174,7 @@ export function applySettingsToCss(settings: SettingsData): void {
   const border = normalizeHex(settings.borderColorHex)
 
   applyPrimaryScale(primary, '--md-primary', style)
-  applyAccentColor(accent, style)
+  applyAccentColorScale(accent, style)
   applySurfaceScale(bg, style)
   applyTextScale(text, style)
   applyBorderColor(border, style)
