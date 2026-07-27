@@ -172,3 +172,10 @@ export function applySettingsToCss(settings: SettingsData): void {
 }
 
 export { argbToRgb } from '@/utils/color'
+
+export function applyPrimaryColor(hex: string): void {
+  const style = document.documentElement.style
+  const primary = normalizeHex(hex)
+  applyPrimaryScale(primary, '--md-primary', style)
+  applyLegacyAliases(primary, style)
+}

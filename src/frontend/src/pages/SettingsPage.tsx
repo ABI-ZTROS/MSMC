@@ -41,7 +41,6 @@ import type {
 } from '@/types/bridge'
 import { applySettingsToCss } from '@/utils/theme'
 import { ColorPicker } from '@/components/ui/ColorPicker'
-import { normalizeHex } from '@/utils/color'
 import abiAvatar from '@/assets/avatars/ABI-ZTROS.png'
 import yanlanxiangAvatar from '@/assets/avatars/yanlanxiang.jpg'
 import mochaAvatar from '@/assets/avatars/MochaCello92377.png'
