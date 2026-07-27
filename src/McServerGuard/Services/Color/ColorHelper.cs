@@ -18,7 +18,7 @@ namespace McServerGuard.Services.Colors
         public static Color FromRgbHex(string hex)
         {
             if (string.IsNullOrWhiteSpace(hex))
-                return Colors.Blue;
+                return global::System.Windows.Media.Colors.Blue;
 
             var h = hex.Trim().TrimStart('#');
 
@@ -47,7 +47,7 @@ namespace McServerGuard.Services.Colors
                 return Color.FromRgb(r, g, b);
             }
 
-            return Colors.Blue;
+            return global::System.Windows.Media.Colors.Blue;
         }
 
         public static string NormalizeHex(string hex)
