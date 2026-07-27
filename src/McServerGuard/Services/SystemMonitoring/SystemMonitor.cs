@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.Management;
 using System.Runtime.InteropServices;
 using McServerGuard.Models;
+using McServerGuard.Models.Hardware;
 using McServerGuard.Services.Privilege;
 using Serilog;
 
