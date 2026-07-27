@@ -115,7 +115,7 @@ public class MetricsPersistenceService : IMetricsPersistenceService
                 _writeBuffer[15] = (byte)(memBits >> 24);
 
                 _currentStream!.Write(_writeBuffer, 0, RecordSize);
-                _currentStream.Flush(writeToDisk: false); // 写入 OS 缓冲，不强制 fsync
+                _currentStream.Flush(flushToDisk: false); // 写入 OS 缓冲，不强制 fsync
                 _currentRecordCount++;
 
                 // 每 100 条记录更新一次文件头中的记录数

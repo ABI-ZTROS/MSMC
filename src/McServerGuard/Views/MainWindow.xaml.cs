@@ -513,7 +513,7 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 Log.Error(ex, "获取历史数据失败");
-                return Task.FromResult<object?>([]);
+                return Task.FromResult<object?>(Array.Empty<object>());
             }
         });
 
