@@ -144,6 +144,9 @@ public partial class App : Application
                     await Step(5, "正在搭建 DI 容器...", "🏗️ 搭建 DI 容器...");
                     var services = new ServiceCollection();
 
+                    await Step(8, "正在初始化时间服务...", "⏰ 初始化时间服务...");
+                    services.AddSingleton<TimeService>();
+
                     await Step(12, "正在注册服务器检测服务...", "🎯 注册服务器检测服务...");
                     services.AddSingleton<IServerDetector, ServerDetector>();
                     services.AddSingleton<IServerImporterService, ServerImporterService>();
@@ -196,6 +199,36 @@ public partial class App : Application
 
                     await Step(66, "正在构建服务容器...", "📦 构建服务容器...");
                     _serviceProvider = services.BuildServiceProvider();
+
+                    // 后台启动 NTP 时间同步（不阻塞启动流程）
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var timeService = _serviceProvider.GetRequiredService<TimeService>();
+                            await startupWindow.Dispatcher.InvokeAsync(() =>
+                            {
+                                startupWindow.AppendLog("⏰ 正在同步权威授时中心时间...");
+                            });
+                            var success = await timeService.SynchronizeAsync();
+                            await startupWindow.Dispatcher.InvokeAsync(() =>
+                            {
+                                if (success)
+                                {
+                                    var offset = timeService.ClockOffset.TotalMilliseconds;
+                                    startupWindow.AppendLog($"✅ 时间同步完成，偏差 {offset:F0}ms", isSuccess: true);
+                                }
+                                else
+                                {
+                                    startupWindow.AppendLog("⚠️ 时间同步失败，使用本地时间", isError: true);
+                                }
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "NTP 时间同步异常");
+                        }
+                    });
 
                     // 回到 UI 线程执行渲染优化
                     await startupWindow.Dispatcher.InvokeAsync(ConfigureRenderOptimizations);

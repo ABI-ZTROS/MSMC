@@ -15,9 +15,9 @@ interface Point {
   y: number
 }
 
-function formatTime(isoString: string, includeDate = false): string {
+function formatTime(unixMs: number, includeDate = false): string {
   try {
-    const d = new Date(isoString)
+    const d = new Date(unixMs)
     const hh = String(d.getHours()).padStart(2, '0')
     const mm = String(d.getMinutes()).padStart(2, '0')
     const ss = String(d.getSeconds()).padStart(2, '0')
@@ -75,7 +75,7 @@ export function DualLineChart({
   // 计算时间范围，用于按时间戳映射 x 坐标
   const timeRange = useMemo(() => {
     if (data.length < 2) return { min: 0, max: 1 }
-    const timestamps = data.map(d => new Date(d.timestamp).getTime())
+    const timestamps = data.map(d => d.timestamp)
     const min = Math.min(...timestamps)
     const max = Math.max(...timestamps)
     // 避免 max === min 导致除零
@@ -83,9 +83,8 @@ export function DualLineChart({
   }, [data])
 
   // 按时间戳计算 x 坐标，无数据时段会自然留出空白
-  const timeToX = useCallback((timestamp: string): number => {
-    const ts = new Date(timestamp).getTime()
-    const ratio = (ts - timeRange.min) / (timeRange.max - timeRange.min)
+  const timeToX = useCallback((timestamp: number): number => {
+    const ratio = (timestamp - timeRange.min) / (timeRange.max - timeRange.min)
     return padding.left + ratio * chartWidth
   }, [timeRange, padding.left, chartWidth])
 
@@ -112,8 +111,8 @@ export function DualLineChart({
     const parts: string[] = []
     for (let i = 0; i < points.length; i++) {
       const isGap = i > 0 && (() => {
-        const prevTs = new Date(data[i - 1].timestamp).getTime()
-        const currTs = new Date(data[i].timestamp).getTime()
+        const prevTs = data[i - 1].timestamp
+        const currTs = data[i].timestamp
         return (currTs - prevTs) / 1000 > gapThresholdSec
       })()
       const cmd = i === 0 || isGap ? 'M' : 'L'
@@ -127,8 +126,8 @@ export function DualLineChart({
     const segments: { startIdx: number; endIdx: number }[] = []
     let segStart = 0
     for (let i = 1; i < data.length; i++) {
-      const prevTs = new Date(data[i - 1].timestamp).getTime()
-      const currTs = new Date(data[i].timestamp).getTime()
+      const prevTs = data[i - 1].timestamp
+      const currTs = data[i].timestamp
       if ((currTs - prevTs) / 1000 > gapThresholdSec) {
         segments.push({ startIdx: segStart, endIdx: i - 1 })
         segStart = i
@@ -160,7 +159,7 @@ export function DualLineChart({
       const x = padding.left + ratio * chartWidth
       ticks.push({
         x,
-        label: formatTime(new Date(ts).toISOString(), isCrossDay),
+        label: formatTime(ts, isCrossDay),
       })
     }
     return ticks
@@ -187,7 +186,7 @@ export function DualLineChart({
       let nearestIdx = 0
       let nearestDiff = Infinity
       for (let i = 0; i < data.length; i++) {
-        const ts = new Date(data[i].timestamp).getTime()
+        const ts = data[i].timestamp
         const diff = Math.abs(ts - targetTs)
         if (diff < nearestDiff) {
           nearestDiff = diff

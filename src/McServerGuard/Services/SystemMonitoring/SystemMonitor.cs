@@ -14,6 +14,7 @@ using System.Management;
 using System.Runtime.InteropServices;
 using McServerGuard.Models;
 using McServerGuard.Models.Hardware;
+using McServerGuard.Services;
 using McServerGuard.Services.Privilege;
 using Serilog;
 
@@ -38,6 +39,11 @@ public class SystemMonitor : ISystemMonitor
     /// 线程分析器 —— 负责统计系统总线程数
     /// </summary>
     private readonly ThreadAnalyzer _threadAnalyzer;
+
+    /// <summary>
+    /// 时间服务 —— 统一时间来源
+    /// </summary>
+    private readonly TimeService _timeService;
 
     /// <summary>
     /// 监控循环的取消令牌源
@@ -65,13 +71,15 @@ public class SystemMonitor : ISystemMonitor
     public SystemMonitor(
         DiskSpaceMonitor diskMonitor,
         MemoryMonitor memoryMonitor,
-        ThreadAnalyzer threadAnalyzer)
+        ThreadAnalyzer threadAnalyzer,
+        TimeService timeService)
     {
         Log.Information("📊 SystemMonitor 初始化");
         Log.Information("🪟 系统版本: {Version}", AdminPrivilegeService.GetWindowsVersion());
         _diskMonitor = diskMonitor;
         _memoryMonitor = memoryMonitor;
         _threadAnalyzer = threadAnalyzer;
+        _timeService = timeService;
         
         // CPU 性能计数器预热 —— PerformanceCounter 首次采样返回 0，需预热以保证首次有效读数
         try
@@ -126,7 +134,7 @@ public class SystemMonitor : ISystemMonitor
     public SystemMetrics CollectSnapshot()
     {
         Log.Debug("📸 采集系统快照...");
-        var timestamp = DateTime.Now;
+        var timestamp = _timeService.Now;
 
         var cpuUsage = GetCpuUsage();
         var perCoreUsages = GetPerCoreCpuUsage();
@@ -524,7 +532,7 @@ public class SystemMonitor : ISystemMonitor
         // 检查缓存是否有效
         if (_javaProcessCache.HasValue)
         {
-            var elapsed = DateTime.Now - _javaProcessCache.Value.Timestamp;
+            var elapsed = _timeService.Now - _javaProcessCache.Value.Timestamp;
             if (elapsed.TotalMilliseconds < JavaCacheTtlMs)
             {
                 Log.Debug("☕ 使用 Java 进程统计缓存（剩余 {RemainingMs}ms）", JavaCacheTtlMs - (int)elapsed.TotalMilliseconds);
@@ -611,7 +619,7 @@ public class SystemMonitor : ISystemMonitor
         }
 
         // 写入缓存
-        _javaProcessCache = (DateTime.Now, validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);
+        _javaProcessCache = (_timeService.Now, validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);
         Log.Debug("☕ Java 进程统计已缓存: {Count} 个进程", validProcessCount);
 
         return (validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);

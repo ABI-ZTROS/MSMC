@@ -535,11 +535,12 @@ public partial class MainWindow : Window
         _bridgeService.RegisterRequestHandler("systemMonitor:getMetrics", _ =>
         {
             var metrics = _vm?.MonitorPage?.CurrentMetrics;
+            var timeService = App.Services.GetRequiredService<TimeService>();
             if (metrics == null)
             {
                 return Task.FromResult<object?>(new
                 {
-                    timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    timestamp = timeService.NowUnixMilliseconds,
                     cpuUsagePercent = 0.0,
                     memoryUsagePercent = 0.0,
                     diskUsagePercent = 0.0,
@@ -561,7 +562,7 @@ public partial class MainWindow : Window
 
             return Task.FromResult<object?>(new
             {
-                timestamp = metrics.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                timestamp = timeService.ToUnixTimeMilliseconds(metrics.Timestamp),
                 cpuUsagePercent = metrics.CpuUsagePercent,
                 memoryUsagePercent = metrics.MemoryUsagePercent,
                 diskUsagePercent = metrics.DiskUsagePercent,
@@ -587,10 +588,11 @@ public partial class MainWindow : Window
             try
             {
                 var persistence = App.Services.GetRequiredService<Services.SystemMonitoring.IMetricsPersistenceService>();
-                var today = persistence.LoadDay(DateTime.Now);
+                var timeService = App.Services.GetRequiredService<TimeService>();
+                var today = persistence.LoadDay(timeService.Now);
                 var result = today.Select(p => new
                 {
-                    timestamp = p.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                    timestamp = timeService.ToUnixTimeMilliseconds(p.Timestamp),
                     cpuUsagePercent = p.CpuUsagePercent,
                     memoryUsagePercent = p.MemoryUsagePercent,
                 }).ToList();
@@ -617,10 +619,11 @@ public partial class MainWindow : Window
                 days = Math.Clamp(days, 1, 30);
 
                 var persistence = App.Services.GetRequiredService<Services.SystemMonitoring.IMetricsPersistenceService>();
+                var timeService = App.Services.GetRequiredService<TimeService>();
                 var data = persistence.LoadRecentDays(days);
                 var result = data.Select(p => new
                 {
-                    timestamp = p.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                    timestamp = timeService.ToUnixTimeMilliseconds(p.Timestamp),
                     cpuUsagePercent = p.CpuUsagePercent,
                     memoryUsagePercent = p.MemoryUsagePercent,
                 }).ToList();

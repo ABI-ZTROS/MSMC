@@ -12,6 +12,7 @@ using System.IO;
 using System.Text;
 using McServerGuard.Models;
 using Serilog;
+using McServerGuard.Services;
 
 /// <summary>
 /// 系统监控指标持久化服务实现 —— 自定义二进制格式（.msmcd）追加写入
@@ -64,8 +65,16 @@ public class MetricsPersistenceService : IMetricsPersistenceService
     /// <summary>读写锁</summary>
     private readonly object _lock = new();
 
+    /// <summary>时间服务</summary>
+    private readonly TimeService _timeService;
+
     /// <summary>是否已释放</summary>
     private bool _disposed;
+
+    public MetricsPersistenceService(TimeService timeService)
+    {
+        _timeService = timeService;
+    }
 
     /// <summary>
     /// 追加一个监控数据点到当前日期的持久化文件
@@ -88,7 +97,7 @@ public class MetricsPersistenceService : IMetricsPersistenceService
                 }
 
                 // 编码记录：8 字节时间戳 + 4 字节 CPU + 4 字节内存
-                var timestampMs = new DateTimeOffset(timestamp).ToUnixTimeMilliseconds();
+                var timestampMs = _timeService.ToUnixTimeMilliseconds(timestamp);
                 var cpuFloat = (float)Math.Round(cpuUsagePercent, 2);
                 var memFloat = (float)Math.Round(memoryUsagePercent, 2);
 
@@ -159,7 +168,7 @@ public class MetricsPersistenceService : IMetricsPersistenceService
     public List<MetricsHistoryPoint> LoadRecentDays(int days)
     {
         var result = new List<MetricsHistoryPoint>();
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = DateOnly.FromDateTime(_timeService.Now);
 
         for (int i = days - 1; i >= 0; i--)
         {
@@ -181,7 +190,7 @@ public class MetricsPersistenceService : IMetricsPersistenceService
             if (!Directory.Exists(MetricsDir))
                 return;
 
-            var cutoff = DateOnly.FromDateTime(DateTime.Now.AddDays(-retainDays));
+            var cutoff = DateOnly.FromDateTime(_timeService.Now.AddDays(-retainDays));
             var files = Directory.GetFiles(MetricsDir, $"*{FileExtension}");
 
             int deletedCount = 0;
@@ -354,7 +363,6 @@ public class MetricsPersistenceService : IMetricsPersistenceService
         var count = (int)Math.Min(recordCount, maxPhysicalRecords);
 
         var recordBuffer = new byte[RecordSize];
-        var epoch = new DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
         for (int i = 0; i < count; i++)
         {
@@ -367,7 +375,7 @@ public class MetricsPersistenceService : IMetricsPersistenceService
             var cpuBits = (int)(recordBuffer[8] | (recordBuffer[9] << 8) | (recordBuffer[10] << 16) | (recordBuffer[11] << 24));
             var memBits = (int)(recordBuffer[12] | (recordBuffer[13] << 8) | (recordBuffer[14] << 16) | (recordBuffer[15] << 24));
 
-            var timestamp = epoch.AddMilliseconds(timestampMs).ToLocalTime().DateTime;
+            var timestamp = _timeService.FromUnixTimeMilliseconds(timestampMs);
             var cpu = Math.Round(BitConverter.Int32BitsToSingle(cpuBits), 2);
             var mem = Math.Round(BitConverter.Int32BitsToSingle(memBits), 2);
 
