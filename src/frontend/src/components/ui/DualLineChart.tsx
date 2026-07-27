@@ -20,12 +20,13 @@ function formatTime(isoString: string, includeDate = false): string {
     const d = new Date(isoString)
     const hh = String(d.getHours()).padStart(2, '0')
     const mm = String(d.getMinutes()).padStart(2, '0')
+    const ss = String(d.getSeconds()).padStart(2, '0')
     if (includeDate) {
       const mo = String(d.getMonth() + 1).padStart(2, '0')
       const dd = String(d.getDate()).padStart(2, '0')
       return `${mo}-${dd} ${hh}:${mm}`
     }
-    return `${hh}:${mm}`
+    return `${hh}:${mm}:${ss}`
   } catch {
     return ''
   }
@@ -71,23 +72,40 @@ export function DualLineChart({
     return first !== last
   }, [data])
 
+  // 计算时间范围，用于按时间戳映射 x 坐标
+  const timeRange = useMemo(() => {
+    if (data.length < 2) return { min: 0, max: 1 }
+    const timestamps = data.map(d => new Date(d.timestamp).getTime())
+    const min = Math.min(...timestamps)
+    const max = Math.max(...timestamps)
+    // 避免 max === min 导致除零
+    return { min, max: max === min ? min + 1 : max }
+  }, [data])
+
+  // 按时间戳计算 x 坐标，无数据时段会自然留出空白
+  const timeToX = useCallback((timestamp: string): number => {
+    const ts = new Date(timestamp).getTime()
+    const ratio = (ts - timeRange.min) / (timeRange.max - timeRange.min)
+    return padding.left + ratio * chartWidth
+  }, [timeRange, padding.left, chartWidth])
+
   const cpuPoints = useMemo((): Point[] => {
-    return data.map((item, i) => {
+    return data.map((item) => {
       const safeVal = Math.max(0, Math.min(100, item.cpuUsagePercent))
-      const x = padding.left + (data.length > 1 ? (i / (data.length - 1)) * chartWidth : chartWidth / 2)
+      const x = data.length === 1 ? padding.left + chartWidth / 2 : timeToX(item.timestamp)
       const y = padding.top + titleHeight + (1 - safeVal / 100) * chartHeight
       return { x, y }
     })
-  }, [data, chartWidth, chartHeight, padding.left, padding.top, titleHeight])
+  }, [data, timeToX, chartHeight, padding.left, padding.top, titleHeight])
 
   const memPoints = useMemo((): Point[] => {
-    return data.map((item, i) => {
+    return data.map((item) => {
       const safeVal = Math.max(0, Math.min(100, item.memoryUsagePercent))
-      const x = padding.left + (data.length > 1 ? (i / (data.length - 1)) * chartWidth : chartWidth / 2)
+      const x = data.length === 1 ? padding.left + chartWidth / 2 : timeToX(item.timestamp)
       const y = padding.top + titleHeight + (1 - safeVal / 100) * chartHeight
       return { x, y }
     })
-  }, [data, chartWidth, chartHeight, padding.left, padding.top, titleHeight])
+  }, [data, timeToX, chartHeight, padding.left, padding.top, titleHeight])
 
   const buildLinePath = (points: Point[]): string => {
     if (points.length === 0) return ''
@@ -134,39 +152,56 @@ export function DualLineChart({
 
   const xTicks = useMemo(() => {
     if (data.length === 0) return []
-    const tickCount = Math.min(5, Math.max(3, Math.floor(data.length / 60)))
+    const tickCount = Math.min(6, Math.max(3, Math.floor(chartWidth / 80)))
     const ticks: { x: number; label: string }[] = []
     for (let i = 0; i < tickCount; i++) {
       const ratio = i / (tickCount - 1)
-      const idx = Math.round(ratio * (data.length - 1))
+      const ts = timeRange.min + ratio * (timeRange.max - timeRange.min)
       const x = padding.left + ratio * chartWidth
       ticks.push({
         x,
-        label: formatTime(data[idx].timestamp, isCrossDay),
+        label: formatTime(new Date(ts).toISOString(), isCrossDay),
       })
     }
     return ticks
-  }, [data, chartWidth, padding.left, isCrossDay])
+  }, [data, chartWidth, padding.left, timeRange, isCrossDay])
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>): void => {
       if (!svgRef.current || data.length === 0) return
       const rect = svgRef.current.getBoundingClientRect()
-      const scaleX = width / rect.width
-      const mouseX = (e.clientX - rect.left) * scaleX
-      const relativeX = mouseX - padding.left
+      // 鼠标在屏幕坐标系中的位置（相对于 SVG 元素左上角）
+      const screenX = e.clientX - rect.left
+      const screenY = e.clientY - rect.top
 
+      // SVG 用 viewBox + width:100%，可能有缩放，把屏幕 x 换算为 viewBox x 坐标
+      const scaleX = width / rect.width
+      const viewBoxX = screenX * scaleX
+
+      const relativeX = viewBoxX - padding.left
       if (relativeX < 0 || relativeX > chartWidth) {
         setHoverIndex(null)
         return
       }
 
-      const ratio = Math.max(0, Math.min(1, relativeX / chartWidth))
-      const index = Math.round(ratio * (data.length - 1))
-      setHoverIndex(index)
-      setTooltipPos({ x: mouseX, y: (e.clientY - rect.top) * (height / rect.height) })
+      // 按时间戳反查最近的数据点
+      const ratio = relativeX / chartWidth
+      const targetTs = timeRange.min + ratio * (timeRange.max - timeRange.min)
+      let nearestIdx = 0
+      let nearestDiff = Infinity
+      for (let i = 0; i < data.length; i++) {
+        const ts = new Date(data[i].timestamp).getTime()
+        const diff = Math.abs(ts - targetTs)
+        if (diff < nearestDiff) {
+          nearestDiff = diff
+          nearestIdx = i
+        }
+      }
+      setHoverIndex(nearestIdx)
+      // tooltip 用屏幕坐标，避免 viewBox 缩放导致位置偏移
+      setTooltipPos({ x: screenX, y: screenY })
     },
-    [data, chartWidth, padding.left, width, height],
+    [data, chartWidth, padding.left, width, height, timeRange],
   )
 
   const handleMouseLeave = useCallback((): void => {
@@ -370,7 +405,7 @@ export function DualLineChart({
         )}
       </svg>
 
-      {/* Tooltip */}
+      {/* Tooltip —— 用屏幕坐标定位，避免 viewBox 缩放导致位置偏移 */}
       {hoverIndex !== null && hoverData && (
         <div
           style={{

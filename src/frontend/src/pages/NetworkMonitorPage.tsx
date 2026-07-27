@@ -260,6 +260,8 @@ export function NetworkMonitorPage(): JSX.Element {
 
   const loadData = useCallback(async () => {
     try {
+      // 先触发后端刷新（后端定时器可能未启动，只读快照会拿到旧数据）
+      await refreshNetwork()
       const [s, p, b, c, h] = await Promise.all([
         getNetworkStatus(),
         getPorts(),

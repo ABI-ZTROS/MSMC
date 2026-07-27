@@ -1478,10 +1478,9 @@ public partial class MainWindow : Window
             {
                 if (net != null)
                 {
-                    if (net.RefreshCommand is CommunityToolkit.Mvvm.Input.IAsyncRelayCommand asyncCmd)
-                        await asyncCmd.ExecuteAsync(null);
-                    else
-                        net.RefreshCommand.Execute(null);
+                    // 直接调用 RefreshPorts 并 await，确保刷新完成后再返回
+                    // （RefreshCommand 声明为 ICommand，is IAsyncRelayCommand 永不命中，走 Execute 是 fire-and-forget）
+                    await net.RefreshPorts();
                 }
                 return new { success = true };
             }
