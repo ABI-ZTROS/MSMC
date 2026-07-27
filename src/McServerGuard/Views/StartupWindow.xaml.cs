@@ -106,11 +106,13 @@ public partial class StartupWindow : Window
             return;
         }
 
-        var brush = isError
-            ? (Brush)FindResource("ErrorBrush") ?? Brushes.OrangeRed
-            : isSuccess
-                ? (Brush)FindResource("SuccessBrush") ?? Brushes.LightGreen
-                : (Brush)FindResource("AppTextBrush") ?? Brushes.LightGray;
+        Brush brush;
+        if (isError)
+            brush = TryFindResource("DangerBrush") as Brush ?? Brushes.OrangeRed;
+        else if (isSuccess)
+            brush = TryFindResource("GaugeGreenBrush") as Brush ?? Brushes.LightGreen;
+        else
+            brush = TryFindResource("MaterialDesignBody") as Brush ?? Brushes.LightGray;
 
         LogEntries.Add(new StartupLogEntry
         {
@@ -151,7 +153,7 @@ public partial class StartupWindow : Window
         ProgressBar.IsIndeterminate = false;
         ProgressBar.Value = 100;
 
-        if (FindResource("ErrorBrush") is Brush errorBrush)
+        if (TryFindResource("DangerBrush") is Brush errorBrush)
         {
             ProgressBar.Foreground = errorBrush;
             StatusDot.Fill = errorBrush;

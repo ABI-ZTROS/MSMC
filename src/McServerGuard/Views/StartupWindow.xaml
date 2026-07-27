@@ -12,8 +12,8 @@
         FontFamily="{DynamicResource AppFontFamily}">
 
     <Border x:Name="WindowBorder"
-            Background="{DynamicResource AppBackgroundBrush}"
-            BorderBrush="{DynamicResource AppSubtleBorderBrush}"
+            Background="{DynamicResource DeepBackgroundBrush}"
+            BorderBrush="{DynamicResource SubtleBorderBrush}"
             BorderThickness="1"
             CornerRadius="{DynamicResource AppCornerRadiusLarge}"
             MouseLeftButtonDown="WindowBorder_MouseLeftButtonDown">
@@ -34,14 +34,14 @@
                 <Grid Grid.Column="0" Margin="36,0,20,0" Width="64" Height="64" HorizontalAlignment="Center">
                     <Ellipse x:Name="LogoGlow"
                              Width="64" Height="64"
-                             Fill="{DynamicResource PrimaryBrush}"
+                             Fill="{DynamicResource NavItemSelectedBrush}"
                              Opacity="0.3">
                         <Ellipse.Effect>
                             <BlurEffect Radius="15" />
                         </Ellipse.Effect>
                     </Ellipse>
                     <Grid Width="64" Height="64">
-                        <Ellipse Fill="{DynamicResource PrimaryBrush}" />
+                        <Ellipse Fill="{DynamicResource NavItemSelectedBrush}" />
                         <iconPacks:PackIconFontAwesome6 Kind="ShieldHalvedSolid"
                                                         Width="32" Height="32"
                                                         HorizontalAlignment="Center"
@@ -54,15 +54,15 @@
                     <TextBlock Text="MSMC"
                                FontSize="24"
                                FontWeight="Bold"
-                               Foreground="{DynamicResource AppTextBrush}" />
+                               Foreground="{DynamicResource MaterialDesignBody}" />
                     <TextBlock Text="Minecraft 服务器管理控制台"
                                FontSize="13"
-                               Foreground="{DynamicResource AppTextDimBrush}"
+                               Foreground="{DynamicResource MaterialDesignBodyLight}"
                                Margin="0,4,0,0" />
                     <TextBlock x:Name="VersionText"
                                Text="v1.0.0"
                                FontSize="11"
-                               Foreground="{DynamicResource AppTextFaintBrush}"
+                               Foreground="{DynamicResource MaterialDesignCaptionTextBlock}"
                                Margin="0,8,0,0" />
                 </StackPanel>
             </Grid>
@@ -70,8 +70,8 @@
             <!-- 日志输出区 -->
             <Border Grid.Row="1"
                     Margin="32,0,32,16"
-                    Background="{DynamicResource AppCardBrush}"
-                    BorderBrush="{DynamicResource AppSubtleBorderBrush}"
+                    Background="{DynamicResource CardBackgroundBrush}"
+                    BorderBrush="{DynamicResource SubtleBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="{DynamicResource AppCornerRadius}">
                 <Grid>
@@ -80,37 +80,38 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <Grid Grid.Row="0"
-                          Background="{DynamicResource AppPanelBrush}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                    <Border Grid.Row="0"
+                            Background="{DynamicResource DeepBackgroundBrush}"
+                            Padding="12,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                        <iconPacks:PackIconFontAwesome6 Kind="TerminalSolid"
-                                                        Width="14" Height="14"
-                                                        VerticalAlignment="Center"
-                                                        Margin="12,0,8,0"
-                                                        Foreground="{DynamicResource PrimaryBrush}" />
-                        <TextBlock Grid.Column="1"
-                                   Text="启动日志"
-                                   FontSize="11"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AppTextBrush}"
-                                   VerticalAlignment="Center"
-                                   Padding="0,8,0,8" />
-                        <Ellipse Grid.Column="2"
-                                 x:Name="StatusDot"
-                                 Width="8" Height="8"
-                                 HorizontalAlignment="Right"
-                                 Margin="0,0,12,0"
-                                 Fill="{DynamicResource SuccessBrush}">
-                            <Ellipse.Effect>
-                                <BlurEffect Radius="3" />
-                            </Ellipse.Effect>
-                        </Ellipse>
-                    </Grid>
+                            <iconPacks:PackIconFontAwesome6 Kind="TerminalSolid"
+                                                            Width="14" Height="14"
+                                                            VerticalAlignment="Center"
+                                                            Margin="0,0,8,0"
+                                                            Foreground="{DynamicResource NavItemSelectedBrush}" />
+                            <TextBlock Grid.Column="1"
+                                       Text="启动日志"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource MaterialDesignBody}"
+                                       VerticalAlignment="Center" />
+                            <Ellipse Grid.Column="2"
+                                     x:Name="StatusDot"
+                                     Width="8" Height="8"
+                                     HorizontalAlignment="Right"
+                                     Fill="{DynamicResource GaugeGreenBrush}">
+                                <Ellipse.Effect>
+                                    <BlurEffect Radius="3" />
+                                </Ellipse.Effect>
+                            </Ellipse>
+                        </Grid>
+                    </Border>
 
                     <ScrollViewer Grid.Row="1"
                                   x:Name="LogScrollViewer"
@@ -145,30 +146,29 @@
                     <TextBlock x:Name="StatusText"
                                Text="正在初始化..."
                                FontSize="12"
-                               Foreground="{DynamicResource AppTextBrush}" />
+                               Foreground="{DynamicResource MaterialDesignBody}" />
                     <ProgressBar x:Name="ProgressBar"
                                  Height="4"
                                  Margin="0,10,0,0"
                                  IsIndeterminate="True"
-                                 Foreground="{DynamicResource PrimaryBrush}"
-                                 Background="{DynamicResource AppPanelBrush}"
+                                 Foreground="{DynamicResource NavItemSelectedBrush}"
+                                 Background="{DynamicResource DeepBackgroundBrush}"
                                  BorderThickness="0" />
                 </StackPanel>
 
-                <Grid Grid.Column="1" Width="100" Height="36" HorizontalAlignment="Right">
-                    <Button x:Name="CloseButton"
-                            Width="100" Height="36"
-                            Content="退出"
-                            Visibility="Collapsed"
-                            Click="CloseButton_Click"
-                            Background="{DynamicResource ErrorBrush}"
-                            Foreground="White"
-                            BorderThickness="0"
-                            FontSize="12"
-                            FontWeight="SemiBold"
-                            Cursor="Hand"
-                            Padding="12,0,12,0" />
-                </Grid>
+                <Button Grid.Column="1"
+                        x:Name="CloseButton"
+                        Width="100" Height="36"
+                        Content="退出"
+                        Visibility="Collapsed"
+                        Click="CloseButton_Click"
+                        Background="{DynamicResource DangerBrush}"
+                        Foreground="White"
+                        BorderThickness="0"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Cursor="Hand"
+                        Padding="12,0,12,0" />
             </Grid>
         </Grid>
     </Border>
