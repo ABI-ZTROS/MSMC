@@ -134,8 +134,15 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             // 注册消息接收事件
             _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
-            // 注册导航完成事件，用于页面加载后注入桥接初始化脚本
+            // 注册导航完成事件（用于诊断日志）
             _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
+
+            // 关键：使用 AddScriptToExecuteOnDocumentCreatedAsync 注入桥接脚本
+            // 这样脚本会在每次新文档创建时、页面任何脚本之前执行
+            // 确保诊断脚本和前端代码执行时 window.__msmc_bridge__ 已就绪
+            var initScript = GenerateBridgeInitScript();
+            await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(initScript);
+            Log.Information("🔌 桥接脚本已通过 AddScriptToExecuteOnDocumentCreatedAsync 注册（将在页面脚本之前执行）");
 
             IsInitialized = true;
             Log.Information("✅ WebView2 桥接服务初始化完成");
@@ -202,16 +209,16 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             // 注册一次性导航完成事件
             void OnNav(object? sender, CoreWebView2NavigationCompletedEventArgs e)
             {
-                Log.Information("[WV2-LOAD] 📨 NavigationCompleted 触发: IsSuccess={Success}, WebErrorStatus={Status}",
-                    e.IsSuccess, e.WebErrorStatus);
-                if (!e.IsSuccess)
+                if (e.IsSuccess)
                 {
-                    tcs.TrySetResult(false);
+                    Log.Information("[WV2-LOAD] 📨 NavigationCompleted: 成功");
                 }
                 else
                 {
-                    tcs.TrySetResult(true);
+                    // 导航失败用 Error 级别，确保用户在日志中能搜到 ERR
+                    Log.Error("[WV2-LOAD] ❌ NavigationCompleted 失败: WebErrorStatus={Status}", e.WebErrorStatus);
                 }
+                tcs.TrySetResult(e.IsSuccess);
                 _webView!.CoreWebView2.NavigationCompleted -= OnNav;
             }
 
@@ -236,7 +243,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             Log.Information("[WV2-LOAD] 🎯 导航完成，结果: {Result}", success ? "成功" : "失败");
             if (!success)
             {
-                Log.Warning("[WV2-LOAD] ⚠️ 前端页面加载失败，模式: {Mode}", provider.ModeName);
+                Log.Error("[WV2-LOAD] ❌ 前端页面加载失败，模式: {Mode}", provider.ModeName);
             }
 
             return success;
@@ -359,17 +366,22 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     }
 
     /// <summary>
-    /// 页面导航完成时触发，注入桥接初始化脚本
+    /// 页面导航完成时触发，记录导航结果（桥接脚本已由 AddScriptToExecuteOnDocumentCreatedAsync 自动注入）
     /// </summary>
     private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
     {
         if (_webView?.CoreWebView2 == null) return;
 
-        Log.Information("📄 页面加载完成，注入桥接脚本...");
-
-        // 注入 JS 端桥接对象
-        var initScript = GenerateBridgeInitScript();
-        _ = _webView.CoreWebView2.ExecuteScriptAsync(initScript);
+        if (e.IsSuccess)
+        {
+            Log.Information("📄 页面导航完成（成功），桥接脚本已由 AddScript 自动注入");
+        }
+        else
+        {
+            // 导航失败用 Error 级别，确保在日志中可见
+            Log.Error("[WV2-NAV] ❌ 页面导航失败: IsSuccess={Success}, WebErrorStatus={Status}",
+                e.IsSuccess, e.WebErrorStatus);
+        }
     }
 
     /// <summary>
