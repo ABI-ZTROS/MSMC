@@ -367,7 +367,7 @@ public class MetricsPersistenceService : IMetricsPersistenceService
             var cpuBits = (int)(recordBuffer[8] | (recordBuffer[9] << 8) | (recordBuffer[10] << 16) | (recordBuffer[11] << 24));
             var memBits = (int)(recordBuffer[12] | (recordBuffer[13] << 8) | (recordBuffer[14] << 16) | (recordBuffer[15] << 24));
 
-            var timestamp = epoch.AddMilliseconds(timestampMs).DateTime;
+            var timestamp = epoch.AddMilliseconds(timestampMs).ToLocalTime().DateTime;
             var cpu = Math.Round(BitConverter.Int32BitsToSingle(cpuBits), 2);
             var mem = Math.Round(BitConverter.Int32BitsToSingle(memBits), 2);
 
