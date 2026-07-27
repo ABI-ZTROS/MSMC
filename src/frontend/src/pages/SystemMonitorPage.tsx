@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { GaugeRing } from '@/components/ui'
+import { DualLineChart } from '@/components/ui/DualLineChart'
 import { bridge, getSystemMetrics, getSystemHistory, getSystemHistoryRange, getCpuInfo } from '@/utils/bridge'
 import type { SystemMetrics, HistoryPoint, CpuInfo } from '@/types/bridge'
 
@@ -279,6 +280,7 @@ interface CpuTopologyProps {
 }
 
 function CpuTopology({ cpuInfo, perCoreUsages }: CpuTopologyProps): JSX.Element {
+  const [collapsed, setCollapsed] = useState(false)
   const coreCount = cpuInfo?.logicalCores ?? perCoreUsages.length ?? 0
   const columns = Math.min(8, Math.max(4, Math.ceil(Math.sqrt(coreCount))))
 
@@ -287,6 +289,8 @@ function CpuTopology({ cpuInfo, perCoreUsages }: CpuTopologyProps): JSX.Element 
     if (usage < 80) return 'var(--md-gauge-yellow)'
     return 'var(--md-gauge-red)'
   }
+
+  const toggleCollapse = (): void => setCollapsed(c => !c)
 
   if (coreCount === 0) {
     return (
@@ -305,102 +309,134 @@ function CpuTopology({ cpuInfo, perCoreUsages }: CpuTopologyProps): JSX.Element 
   }
 
   return (
-    <div className="md-card" style={{ padding: 16 }}>
-      <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+    <div className="md-card" style={{ padding: 16, overflow: 'hidden' }}>
+      <div
+        className="flex items-center justify-between"
+        style={{ marginBottom: collapsed ? 0 : 12, cursor: 'pointer', userSelect: 'none' }}
+        onClick={toggleCollapse}
+      >
         <div className="flex items-center" style={{ gap: 8 }}>
+          <span
+            style={{
+              fontSize: 12,
+              color: 'var(--md-body-light)',
+              transition: 'transform 0.25s ease',
+              transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+              display: 'inline-block',
+              width: 12,
+            }}
+          >
+            ▼
+          </span>
           <span style={{ fontSize: 18 }}>🖥️</span>
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--md-body)' }}>
             CPU 物理拓扑
           </span>
+          {collapsed && (
+            <span style={{ fontSize: 12, color: 'var(--md-body-light)', opacity: 0.8, marginLeft: 8 }}>
+              {cpuInfo?.physicalCores} 物理核 / {cpuInfo?.logicalCores} 逻辑核
+            </span>
+          )}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--md-body-light)', opacity: 0.8 }}>
-          {cpuInfo?.physicalCores} 物理核 / {cpuInfo?.logicalCores} 逻辑核
-          {cpuInfo?.isHyperThreadingEnabled && ' · 超线程开启'}
-        </div>
+        {!collapsed && (
+          <div style={{ fontSize: 12, color: 'var(--md-body-light)', opacity: 0.8 }}>
+            {cpuInfo?.physicalCores} 物理核 / {cpuInfo?.logicalCores} 逻辑核
+            {cpuInfo?.isHyperThreadingEnabled && ' · 超线程开启'}
+          </div>
+        )}
       </div>
 
-      {cpuInfo?.modelName && (
-        <div style={{ fontSize: 12, color: 'var(--md-body-light)', marginBottom: 12, opacity: 0.7 }}>
-          {cpuInfo.modelName}
-        </div>
-      )}
-
       <div
-        className="grid"
         style={{
-          gridTemplateColumns: `repeat(${columns}, 1fr)`,
-          gap: 8,
+          maxHeight: collapsed ? 0 : 2000,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease, opacity 0.2s ease',
+          opacity: collapsed ? 0 : 1,
         }}
       >
-        {Array.from({ length: coreCount }).map((_, i) => {
-          const usage = perCoreUsages[i] ?? 0
-          const physicalCore = cpuInfo?.logicalToPhysicalCoreMap?.[i]
-          const color = getCoreColor(usage)
+        {cpuInfo?.modelName && (
+          <div style={{ fontSize: 12, color: 'var(--md-body-light)', marginBottom: 12, opacity: 0.7 }}>
+            {cpuInfo.modelName}
+          </div>
+        )}
 
-          return (
-            <div
-              key={i}
-              className="md-card"
-              title={`逻辑核 ${i}${physicalCore !== undefined ? ` · 物理核 ${physicalCore}` : ''}\n${usage.toFixed(2)}%`}
-              style={{
-                padding: 10,
-                textAlign: 'center',
-                cursor: 'default',
-                borderLeft: `3px solid ${color}`,
-                transition: 'transform 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: `repeat(${columns}, 1fr)`,
+            gap: 8,
+          }}
+        >
+          {Array.from({ length: coreCount }).map((_, i) => {
+            const usage = perCoreUsages[i] ?? 0
+            const physicalCore = cpuInfo?.logicalToPhysicalCoreMap?.[i]
+            const color = getCoreColor(usage)
+
+            return (
               <div
+                key={i}
+                className="md-card"
+                title={`逻辑核 ${i}${physicalCore !== undefined ? ` · 物理核 ${physicalCore}` : ''}\n${usage.toFixed(2)}%`}
                 style={{
-                  fontSize: 11,
-                  color: 'var(--md-body-light)',
-                  marginBottom: 4,
-                  opacity: 0.7,
+                  padding: 10,
+                  textAlign: 'center',
+                  cursor: 'default',
+                  borderLeft: `3px solid ${color}`,
+                  transition: 'transform 0.15s ease',
                 }}
-              >
-                Core {i}
-                {physicalCore !== undefined && (
-                  <span style={{ opacity: 0.5 }}> · P{physicalCore}</span>
-                )}
-              </div>
-              <div
-                style={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color,
-                  fontVariantNumeric: 'tabular-nums',
-                  lineHeight: 1.2,
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)'
                 }}
-              >
-                {usage.toFixed(1)}%
-              </div>
-              <div
-                style={{
-                  marginTop: 6,
-                  height: 4,
-                  borderRadius: 2,
-                  background: 'var(--md-subtle-border)',
-                  overflow: 'hidden',
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
                 }}
               >
                 <div
                   style={{
-                    width: `${Math.min(100, usage)}%`,
-                    height: '100%',
-                    background: color,
-                    transition: 'width 0.3s ease',
+                    fontSize: 11,
+                    color: 'var(--md-body-light)',
+                    marginBottom: 4,
+                    opacity: 0.7,
                   }}
-                />
+                >
+                  Core {i}
+                  {physicalCore !== undefined && (
+                    <span style={{ opacity: 0.5 }}> · P{physicalCore}</span>
+                  )}
+                </div>
+                <div
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color,
+                    fontVariantNumeric: 'tabular-nums',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {usage.toFixed(1)}%
+                </div>
+                <div
+                  style={{
+                    marginTop: 6,
+                    height: 4,
+                    borderRadius: 2,
+                    background: 'var(--md-subtle-border)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${Math.min(100, usage)}%`,
+                      height: '100%',
+                      background: color,
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
     </div>
   )
@@ -507,13 +543,6 @@ export function SystemMonitorPage(): JSX.Element {
   }, [historyDays])
 
   // 将历史数据转换为图表所需格式
-  const cpuChartData = useMemo(() =>
-    history.map(h => ({ timestamp: h.timestamp, value: h.cpuUsagePercent })),
-    [history])
-  const memChartData = useMemo(() =>
-    history.map(h => ({ timestamp: h.timestamp, value: h.memoryUsagePercent })),
-    [history])
-
   const cpu = metrics?.cpuUsagePercent ?? 0
   const mem = metrics?.memoryUsagePercent ?? 0
   const disk = metrics?.diskUsagePercent ?? 0
@@ -655,14 +684,6 @@ export function SystemMonitorPage(): JSX.Element {
         </div>
       </div>
 
-      {/* ═══ CPU 物理拓扑 ═══ */}
-      <div style={{ marginBottom: 12 }}>
-        <CpuTopology
-          cpuInfo={cpuInfo}
-          perCoreUsages={metrics?.perCoreCpuUsages ?? []}
-        />
-      </div>
-
       {/* ═══ 历史范围选择 ═══ */}
       <div className="flex items-center" style={{ gap: 6, marginBottom: 8 }}>
         <span style={{ fontSize: 12, color: 'var(--md-body-light)', opacity: 0.7, marginRight: 4 }}>📅</span>
@@ -687,26 +708,22 @@ export function SystemMonitorPage(): JSX.Element {
         ))}
       </div>
 
-      {/* ═══ 折线图区域：左右两栏 ═══ */}
-      <div className="grid grid-cols-2" style={{ gap: 12 }}>
-        <div className="md-card" style={{ padding: 16 }}>
-          <SimpleLineChart
-            data={cpuChartData}
-            color="var(--md-gauge-green)"
-            height={228}
-            label="CPU 使用率趋势"
-            gapThresholdSec={30}
-          />
-        </div>
-        <div className="md-card" style={{ padding: 16 }}>
-          <SimpleLineChart
-            data={memChartData}
-            color="var(--md-primary-hue-mid)"
-            height={228}
-            label="内存使用率趋势"
-            gapThresholdSec={30}
-          />
-        </div>
+      {/* ═══ 合并折线图：CPU + 内存 ═══ */}
+      <div className="md-card" style={{ padding: 16, marginBottom: 12 }}>
+        <DualLineChart
+          data={history}
+          height={280}
+          label="使用率趋势"
+          gapThresholdSec={30}
+        />
+      </div>
+
+      {/* ═══ CPU 物理拓扑 ═══ */}
+      <div style={{ marginBottom: 12 }}>
+        <CpuTopology
+          cpuInfo={cpuInfo}
+          perCoreUsages={metrics?.perCoreCpuUsages ?? []}
+        />
       </div>
 
       {/* ═══ 空状态：完全无数据时显示 ═══ */}
