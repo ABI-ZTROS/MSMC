@@ -150,7 +150,8 @@
                     <ProgressBar x:Name="ProgressBar"
                                  Height="4"
                                  Margin="0,10,0,0"
-                                 IsIndeterminate="True"
+                                 IsIndeterminate="False"
+                                 Minimum="0" Maximum="100" Value="0"
                                  Foreground="{DynamicResource NavItemSelectedBrush}"
                                  Background="{DynamicResource DeepBackgroundBrush}"
                                  BorderThickness="0" />

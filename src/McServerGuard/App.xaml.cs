@@ -130,10 +130,18 @@ public partial class App : Application
             {
                 try
                 {
-                    startupWindow.AppendLog("🏗️ 搭建 DI 容器...");
+                    // 辅助：更新进度并追加日志，每步之间留 80ms 让 UI 渲染
+                    async Task Step(int percent, string status, string log)
+                    {
+                        startupWindow.SetProgress(percent, status);
+                        startupWindow.AppendLog(log);
+                        await Task.Delay(80);
+                    }
+
+                    await Step(5, "正在搭建 DI 容器...", "🏗️ 搭建 DI 容器...");
                     var services = new ServiceCollection();
 
-                    startupWindow.AppendLog("🎯 注册服务器检测服务...");
+                    await Step(12, "正在注册服务器检测服务...", "🎯 注册服务器检测服务...");
                     services.AddSingleton<IServerDetector, ServerDetector>();
                     services.AddSingleton<IServerImporterService, ServerImporterService>();
                     services.AddSingleton<IServerManagerService, ServerManagerService>();
@@ -150,15 +158,15 @@ public partial class App : Application
                     services.AddSingleton<NetworkTrafficService>();
                     services.AddSingleton<JarCoreIdentifier>();
 
-                    startupWindow.AppendLog("🔐 注册权限服务...");
+                    await Step(22, "正在注册权限服务...", "🔐 注册权限服务...");
                     services.AddSingleton<AdminPrivilegeService>();
                     services.AddSingleton<IPrivilegeService, PrivilegeService>();
 
-                    startupWindow.AppendLog("📋 注册配置管理服务...");
+                    await Step(30, "正在注册配置管理服务...", "📋 注册配置管理服务...");
                     services.AddSingleton<IConfigManager, ConfigManager>();
                     services.AddSingleton<ConfigDescriptorRegistry>();
 
-                    startupWindow.AppendLog("📊 注册系统监控服务...");
+                    await Step(38, "正在注册系统监控服务...", "📊 注册系统监控服务...");
                     services.AddSingleton<ISystemMonitor, SystemMonitor>();
                     services.AddSingleton<DiskSpaceMonitor>();
                     services.AddSingleton<MemoryMonitor>();
@@ -166,32 +174,16 @@ public partial class App : Application
                     services.AddSingleton<Services.HardwareInfo.CpuIdentifier>();
                     services.AddSingleton<IMetricsPersistenceService, MetricsPersistenceService>();
 
-                    startupWindow.AppendLog("🎨 注册主题服务...");
-                    services.AddSingleton<IThemeService>(_ =>
-                    {
-                        // 复用提前初始化的主题服务实例
-                        return earlyThemeService;
-                    });
-
-                    startupWindow.AppendLog("📜 注册用户协议服务...");
+                    await Step(46, "正在注册主题与基础服务...", "🎨 注册主题服务...");
+                    services.AddSingleton<IThemeService>(_ => earlyThemeService);
                     services.AddSingleton<IUserAgreementService, UserAgreementService>();
-
-                    startupWindow.AppendLog("📁 注册全局配置服务...");
                     services.AddSingleton<IAppConfigService, AppConfigService>();
-
-                    startupWindow.AppendLog("☕ 注册 Java 查找服务...");
                     services.AddSingleton<IJavaFinderService, JavaFinderService>();
-
-                    startupWindow.AppendLog("🔔 注册通知服务...");
                     services.AddSingleton<IToastNotificationService, ToastNotificationService>();
-
-                    startupWindow.AppendLog("🧹 注册内存优化服务...");
                     services.AddSingleton<MemoryOptimizerService>();
-
-                    startupWindow.AppendLog("🌉 注册 WebView2 桥接服务...");
                     services.AddSingleton<IWebView2BridgeService, WebView2BridgeService>();
 
-                    startupWindow.AppendLog("🧩 注册 ViewModel...");
+                    await Step(56, "正在注册 ViewModel...", "🧩 注册 ViewModel...");
                     services.AddSingleton<ViewModels.ServerDetectionViewModel>();
                     services.AddSingleton<ViewModels.ConfigEditorViewModel>();
                     services.AddSingleton<ViewModels.SystemMonitorViewModel>();
@@ -199,21 +191,18 @@ public partial class App : Application
                     services.AddSingleton<ViewModels.SettingsViewModel>();
                     services.AddSingleton<MainViewModel>();
 
-                    startupWindow.AppendLog("📦 构建服务容器...");
+                    await Step(66, "正在构建服务容器...", "📦 构建服务容器...");
                     _serviceProvider = services.BuildServiceProvider();
 
-                    // 回到 UI 线程执行需要 UI 交互的部分
-                    await startupWindow.Dispatcher.InvokeAsync(() =>
-                    {
-                        ConfigureRenderOptimizations();
-                    });
+                    // 回到 UI 线程执行渲染优化
+                    await startupWindow.Dispatcher.InvokeAsync(ConfigureRenderOptimizations);
 
                     // 检查管理员权限
-                    startupWindow.AppendLog("🔐 检查管理员权限...");
+                    await Step(72, "正在检查管理员权限...", "🔐 检查管理员权限...");
                     var privilegeService = _serviceProvider.GetRequiredService<IPrivilegeService>();
                     if (!privilegeService.IsRunningAsAdmin && privilegeService.IsWindows)
                     {
-                        startupWindow.AppendLog("⚠️ 当前不是管理员权限，部分功能可能受限");
+                        startupWindow.AppendLog("⚠️ 当前不是管理员权限，部分功能可能受限", isError: true);
                         await startupWindow.Dispatcher.InvokeAsync(() =>
                         {
                             var result = System.Windows.MessageBox.Show(
@@ -235,22 +224,18 @@ public partial class App : Application
                     }
 
                     // 加载全局配置
-                    startupWindow.AppendLog("📂 加载全局配置...");
+                    await Step(80, "正在加载全局配置...", "📂 加载全局配置...");
                     _serviceProvider.GetRequiredService<IAppConfigService>().Load();
-
-                    // 主题设置已在启动前加载
-
-                    // 注入主题服务到动画设置
                     AnimationSettings.ThemeService = _serviceProvider.GetRequiredService<IThemeService>();
 
                     // 加载用户协议
-                    startupWindow.AppendLog("📜 加载用户协议状态...");
+                    await Step(86, "正在加载用户协议...", "📜 加载用户协议状态...");
                     var userAgreementService = _serviceProvider.GetRequiredService<IUserAgreementService>();
                     userAgreementService.Load();
 
-                    // 首次使用显示用户协议窗口
                     if (!userAgreementService.IsAgreed)
                     {
+                        startupWindow.SetProgress(88, "等待用户同意协议...");
                         startupWindow.AppendLog("📜 首次使用，等待用户同意协议...");
                         bool agreed = false;
                         await startupWindow.Dispatcher.InvokeAsync(() =>
@@ -270,11 +255,11 @@ public partial class App : Application
                             Shutdown();
                             return;
                         }
-                        startupWindow.AppendLog("✅ 用户已同意协议");
+                        startupWindow.AppendLog("✅ 用户已同意协议", isSuccess: true);
                     }
 
                     // 创建主窗口
-                    startupWindow.AppendLog("🪟 正在创建主窗口...");
+                    await Step(92, "正在创建主窗口...", "🪟 正在创建主窗口...");
                     MainWindow? mainWindow = null;
                     await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
@@ -284,8 +269,8 @@ public partial class App : Application
                         };
                     });
 
-                    // 启动内存优化服务（必须在 UI 线程上解析，构造函数访问了 Application.Current）
-                    startupWindow.AppendLog("🧹 启动内存优化服务...");
+                    // 启动内存优化服务
+                    await Step(96, "正在启动内存优化服务...", "🧹 启动内存优化服务...");
                     await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
                         _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start();

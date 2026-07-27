@@ -125,6 +125,29 @@ public partial class StartupWindow : Window
     }
 
     /// <summary>
+    /// 设置进度（带丝滑动画）
+    /// </summary>
+    public void SetProgress(int percent, string status)
+    {
+        if (!_dispatcher.CheckAccess())
+        {
+            _dispatcher.InvokeAsync(() => SetProgress(percent, status));
+            return;
+        }
+
+        // 用动画平滑过渡到目标值
+        var animation = new DoubleAnimation
+        {
+            To = Math.Clamp(percent, 0, 100),
+            Duration = TimeSpan.FromMilliseconds(400),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+
+        ProgressBar.BeginAnimation(ProgressBar.ValueProperty, animation);
+        StatusText.Text = status;
+    }
+
+    /// <summary>
     /// 更新状态文本
     /// </summary>
     public void UpdateStatus(string status)
@@ -150,8 +173,15 @@ public partial class StartupWindow : Window
         }
 
         IsFailed = true;
-        ProgressBar.IsIndeterminate = false;
-        ProgressBar.Value = 100;
+
+        // 平滑动画到 100%
+        var anim = new DoubleAnimation
+        {
+            To = 100,
+            Duration = TimeSpan.FromMilliseconds(300),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        ProgressBar.BeginAnimation(ProgressBar.ValueProperty, anim);
 
         if (TryFindResource("DangerBrush") is Brush errorBrush)
         {
@@ -175,8 +205,14 @@ public partial class StartupWindow : Window
             return;
         }
 
-        ProgressBar.IsIndeterminate = false;
-        ProgressBar.Value = 100;
+        // 平滑动画到 100%
+        var anim = new DoubleAnimation
+        {
+            To = 100,
+            Duration = TimeSpan.FromMilliseconds(400),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        ProgressBar.BeginAnimation(ProgressBar.ValueProperty, anim);
         StatusText.Text = "启动完成";
         AppendLog("✅ 初始化完成，正在启动主界面...", isSuccess: true);
     }
