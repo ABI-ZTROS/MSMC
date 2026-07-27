@@ -4,6 +4,7 @@ import type {
   AppReadyEvent,
   SystemMetrics,
   HistoryPoint,
+  HistoryRangeResult,
   CpuInfo,
   ServerListResponse,
   ServerInfo,
@@ -345,6 +346,10 @@ export function getSystemMetrics(): Promise<SystemMetrics> {
 
 export function getSystemHistory(): Promise<HistoryPoint[]> {
   return bridge.invoke<HistoryPoint[]>('systemMonitor:getHistory')
+}
+
+export function getSystemHistoryRange(days: number): Promise<HistoryRangeResult> {
+  return bridge.invoke<HistoryRangeResult>('systemMonitor:getHistoryRange', { days })
 }
 
 export function getCpuInfo(): Promise<CpuInfo> {

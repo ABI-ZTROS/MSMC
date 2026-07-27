@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { GaugeRing } from '@/components/ui'
-import { bridge, getSystemMetrics, getSystemHistory, getCpuInfo } from '@/utils/bridge'
+import { bridge, getSystemMetrics, getSystemHistory, getSystemHistoryRange, getCpuInfo } from '@/utils/bridge'
 import type { SystemMetrics, HistoryPoint, CpuInfo } from '@/types/bridge'
 
 // 字节数转 GB
@@ -18,11 +18,12 @@ function formatCapacityInfo(usedBytes: number, totalBytes: number): string {
 }
 
 interface LineChartProps {
-  data: number[]
-  timestamps?: string[]
+  data: { timestamp: string; value: number }[]
   color: string
   height?: number
   label: string
+  /** 间隙阈值（秒），相邻点时间差超过此值则断开连线 */
+  gapThresholdSec?: number
 }
 
 // 格式化时间戳为 HH:MM:SS
@@ -38,8 +39,8 @@ function formatTime(isoString: string): string {
   }
 }
 
-// 简单 SVG 折线图：网格 + 面积 + 曲线 + 交互式 Tooltip
-function SimpleLineChart({ data, timestamps = [], color, height = 200, label }: LineChartProps): JSX.Element {
+// 简单 SVG 折线图：网格 + 面积 + 曲线（支持间隙断开）+ 交互式 Tooltip
+function SimpleLineChart({ data, color, height = 200, label, gapThresholdSec = 30 }: LineChartProps): JSX.Element {
   const width = 600
   const titleHeight = 28
   const padding = { top: 12, right: 12, bottom: 24, left: 36 }
@@ -52,25 +53,53 @@ function SimpleLineChart({ data, timestamps = [], color, height = 200, label }: 
   const svgRef = useRef<SVGSVGElement>(null)
 
   const points = useMemo(() => {
-    return data.map((val, i) => {
-      const safeVal = Math.max(0, Math.min(100, val))
+    return data.map((item, i) => {
+      const safeVal = Math.max(0, Math.min(100, item.value))
       const x = padding.left + (data.length > 1 ? (i / (data.length - 1)) * chartWidth : chartWidth / 2)
       const y = padding.top + (1 - safeVal / 100) * chartHeight
       return { x, y }
     })
   }, [data, chartWidth, chartHeight, padding.left, padding.top])
 
+  // 支持间隙的 path：相邻点时间差 > gapThresholdSec 时断开（MoveTo 而非 LineTo）
   const pathD = useMemo(() => {
-    return points.length > 0
-      ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-      : ''
-  }, [points])
+    if (points.length === 0) return ''
+    const parts: string[] = []
+    for (let i = 0; i < points.length; i++) {
+      const isGap = i > 0 && (() => {
+        const prevTs = new Date(data[i - 1].timestamp).getTime()
+        const currTs = new Date(data[i].timestamp).getTime()
+        return (currTs - prevTs) / 1000 > gapThresholdSec
+      })()
+      const cmd = i === 0 || isGap ? 'M' : 'L'
+      parts.push(`${cmd} ${points[i].x.toFixed(1)} ${points[i].y.toFixed(1)}`)
+    }
+    return parts.join(' ')
+  }, [points, data, gapThresholdSec])
 
-  const areaD = useMemo(() => {
-    return points.length > 0
-      ? `${pathD} L ${points[points.length - 1].x.toFixed(1)} ${padding.top + chartHeight} L ${points[0].x.toFixed(1)} ${padding.top + chartHeight} Z`
-      : ''
-  }, [points, pathD, padding.top, chartHeight])
+  // 面积路径：对于间隙，分别绘制每段面积
+  const areaSegments = useMemo(() => {
+    if (data.length === 0) return []
+    // 按间隙分段
+    const segments: { startIdx: number; endIdx: number }[] = []
+    let segStart = 0
+    for (let i = 1; i < data.length; i++) {
+      const prevTs = new Date(data[i - 1].timestamp).getTime()
+      const currTs = new Date(data[i].timestamp).getTime()
+      if ((currTs - prevTs) / 1000 > gapThresholdSec) {
+        segments.push({ startIdx: segStart, endIdx: i - 1 })
+        segStart = i
+      }
+    }
+    segments.push({ startIdx: segStart, endIdx: data.length - 1 })
+
+    return segments.map(seg => {
+      const segPoints = points.slice(seg.startIdx, seg.endIdx + 1)
+      if (segPoints.length < 2) return ''
+      const linePath = segPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+      return `${linePath} L ${segPoints[segPoints.length - 1].x.toFixed(1)} ${padding.top + chartHeight} L ${segPoints[0].x.toFixed(1)} ${padding.top + chartHeight} Z`
+    })
+  }, [points, data, gapThresholdSec, padding.top, chartHeight])
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
@@ -98,8 +127,8 @@ function SimpleLineChart({ data, timestamps = [], color, height = 200, label }: 
   }, [])
 
   const hoverPoint = hoverIndex !== null ? points[hoverIndex] : null
-  const hoverValue = hoverIndex !== null ? data[hoverIndex] : 0
-  const hoverTime = hoverIndex !== null && timestamps[hoverIndex] ? formatTime(timestamps[hoverIndex]) : ''
+  const hoverValue = hoverIndex !== null ? data[hoverIndex].value : 0
+  const hoverTime = hoverIndex !== null ? formatTime(data[hoverIndex].timestamp) : ''
 
   return (
     <div className="w-full h-full flex flex-col" style={{ position: 'relative' }}>
@@ -155,10 +184,10 @@ function SimpleLineChart({ data, timestamps = [], color, height = 200, label }: 
                 )
               })}
 
-              {/* 面积填充 */}
-              {areaD && <path d={areaD} fill={color} opacity="0.15" />}
+              {/* 面积填充（分段绘制，间隙处不填充） */}
+              {areaSegments.map((d, i) => d && <path key={i} d={d} fill={color} opacity="0.15" />)}
 
-              {/* 折线 */}
+              {/* 折线（间隙处自动断开） */}
               {pathD && (
                 <path
                   d={pathD}
@@ -377,42 +406,44 @@ function CpuTopology({ cpuInfo, perCoreUsages }: CpuTopologyProps): JSX.Element 
   )
 }
 
+// 历史范围选项
+const HISTORY_RANGE_OPTIONS = [
+  { label: '今天', days: 1 },
+  { label: '近 3 天', days: 3 },
+  { label: '近 7 天', days: 7 },
+  { label: '近 30 天', days: 30 },
+] as const
+
 export function SystemMonitorPage(): JSX.Element {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
   const [history, setHistory] = useState<HistoryPoint[]>([])
   const [cpuInfo, setCpuInfo] = useState<CpuInfo | null>(null)
   const [loadError, setLoadError] = useState(false)
+  const [historyDays, setHistoryDays] = useState(1)
   const intervalRef = useRef<number | null>(null)
 
-  // 拉取系统指标（同时追加到历史数组）
+  // 拉取系统指标（仅更新当前快照，不追加到历史数组——历史由持久化数据驱动）
   const fetchMetrics = async () => {
     try {
       const data = await getSystemMetrics()
       setMetrics(data)
       setLoadError(false)
-
-      setHistory(prev => {
-        const next = [...prev, {
-          cpuUsagePercent: data.cpuUsagePercent,
-          memoryUsagePercent: data.memoryUsagePercent,
-          timestamp: data.timestamp,
-        }]
-        if (next.length > 120) {
-          return next.slice(next.length - 120)
-        }
-        return next
-      })
     } catch (e) {
       console.error('获取系统指标失败:', e)
       setLoadError(true)
     }
   }
 
-  // 拉取历史数据（用于折线图）— 初始化或状态切换时使用
-  const fetchHistory = async () => {
+  // 拉取历史数据（从持久化文件加载）
+  const fetchHistory = async (days: number = historyDays) => {
     try {
-      const data = await getSystemHistory()
-      setHistory(data)
+      if (days <= 1) {
+        const data = await getSystemHistory()
+        setHistory(data)
+      } else {
+        const result = await getSystemHistoryRange(days)
+        setHistory(result.points)
+      }
     } catch (e) {
       console.error('获取历史数据失败:', e)
     }
@@ -448,15 +479,24 @@ export function SystemMonitorPage(): JSX.Element {
     }
   }
 
+  const handleRangeChange = (days: number) => {
+    setHistoryDays(days)
+    fetchHistory(days)
+  }
+
   useEffect(() => {
     // 初始拉取
     fetchMetrics()
     fetchHistory()
     fetchCpuInfo()
 
-    // 每 2 秒自动刷新指标（只拉最新快照，历史数据前端自行追加）
+    // 每 2 秒自动刷新指标，同时刷新当天历史
     intervalRef.current = window.setInterval(() => {
       fetchMetrics()
+      // 仅在"今天"模式下实时追加历史数据
+      if (historyDays <= 1) {
+        fetchHistory(1)
+      }
     }, 2000)
 
     return () => {
@@ -464,12 +504,15 @@ export function SystemMonitorPage(): JSX.Element {
         clearInterval(intervalRef.current)
       }
     }
-  }, [])
+  }, [historyDays])
 
-  // 从历史数据提取 CPU 和内存曲线
-  const cpuHistory = history.map(h => h.cpuUsagePercent)
-  const memHistory = history.map(h => h.memoryUsagePercent)
-  const historyTimestamps = history.map(h => h.timestamp)
+  // 将历史数据转换为图表所需格式
+  const cpuChartData = useMemo(() =>
+    history.map(h => ({ timestamp: h.timestamp, value: h.cpuUsagePercent })),
+    [history])
+  const memChartData = useMemo(() =>
+    history.map(h => ({ timestamp: h.timestamp, value: h.memoryUsagePercent })),
+    [history])
 
   const cpu = metrics?.cpuUsagePercent ?? 0
   const mem = metrics?.memoryUsagePercent ?? 0
@@ -620,24 +663,48 @@ export function SystemMonitorPage(): JSX.Element {
         />
       </div>
 
+      {/* ═══ 历史范围选择 ═══ */}
+      <div className="flex items-center" style={{ gap: 6, marginBottom: 8 }}>
+        <span style={{ fontSize: 12, color: 'var(--md-body-light)', opacity: 0.7, marginRight: 4 }}>📅</span>
+        {HISTORY_RANGE_OPTIONS.map(opt => (
+          <button
+            key={opt.days}
+            onClick={() => handleRangeChange(opt.days)}
+            className="md-btn"
+            style={{
+              minHeight: 28,
+              padding: '4px 12px',
+              fontSize: 12,
+              background: historyDays === opt.days ? 'var(--md-primary-hue-mid)' : 'var(--md-subtle-border)',
+              color: historyDays === opt.days ? '#fff' : 'var(--md-body)',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {/* ═══ 折线图区域：左右两栏 ═══ */}
       <div className="grid grid-cols-2" style={{ gap: 12 }}>
         <div className="md-card" style={{ padding: 16 }}>
           <SimpleLineChart
-            data={cpuHistory}
-            timestamps={historyTimestamps}
+            data={cpuChartData}
             color="var(--md-gauge-green)"
             height={228}
             label="CPU 使用率趋势"
+            gapThresholdSec={30}
           />
         </div>
         <div className="md-card" style={{ padding: 16 }}>
           <SimpleLineChart
-            data={memHistory}
-            timestamps={historyTimestamps}
+            data={memChartData}
             color="var(--md-primary-hue-mid)"
             height={228}
             label="内存使用率趋势"
+            gapThresholdSec={30}
           />
         </div>
       </div>

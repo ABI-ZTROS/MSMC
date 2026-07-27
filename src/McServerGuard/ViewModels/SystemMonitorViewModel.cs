@@ -35,6 +35,9 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
     /// <summary>系统监控服务</summary>
     private readonly ISystemMonitor _systemMonitor;
 
+    /// <summary>指标持久化服务</summary>
+    private readonly IMetricsPersistenceService _persistence;
+
     /// <summary>采样间隔（2 秒）</summary>
     private static readonly TimeSpan MonitorInterval = TimeSpan.FromSeconds(2);
 
@@ -71,11 +74,13 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
     /// 初始化系统监控视图模型的新实例
     /// </summary>
     /// <param name="systemMonitor">系统监控服务</param>
+    /// <param name="persistence">指标持久化服务</param>
     /// <remarks>构造完成后自动延迟启动常驻监控任务，确保进入页面时已有数据呈现。</remarks>
-    public SystemMonitorViewModel(ISystemMonitor systemMonitor)
+    public SystemMonitorViewModel(ISystemMonitor systemMonitor, IMetricsPersistenceService persistence)
     {
         Log.Information("📊 SystemMonitorViewModel 初始化");
         _systemMonitor = systemMonitor;
+        _persistence = persistence;
 
         // 初始化 LiveCharts2 折线图：CPU 绿色、内存蓝色，均带半透明面积填充与最新点光晕
         CpuSeries = new ISeries[]
@@ -225,6 +230,9 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
         MetricsHistory = [];
         _cpuValues.Clear();
         _memoryValues.Clear();
+
+        // 启动时清理过期数据文件
+        _persistence.CleanupOldFiles();
     }
 
     /// <summary>
@@ -282,6 +290,13 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
     {
         Log.Debug("📈 采集到系统指标: CPU={Cpu}% 内存={Mem}%", metrics.CpuUsagePercent, metrics.MemoryUsagePercent);
         CurrentMetrics = metrics;
+
+        // 持久化到磁盘（异步避免阻塞 UI）
+        _ = Task.Run(() =>
+        {
+            try { _persistence.Append(metrics.Timestamp, metrics.CpuUsagePercent, metrics.MemoryUsagePercent); }
+            catch (Exception ex) { Log.Error(ex, "持久化监控数据失败"); }
+        });
 
         // 写入环形缓冲区槽位并推进 tail 指针（O(1)，无数组复制）
         _ringBuffer[_ringTail] = metrics;

@@ -82,6 +82,11 @@ export interface HistoryPoint {
   memoryUsagePercent: number
 }
 
+export interface HistoryRangeResult {
+  points: HistoryPoint[]
+  days: number
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // 服务器类型
 // ─────────────────────────────────────────────────────────────────────

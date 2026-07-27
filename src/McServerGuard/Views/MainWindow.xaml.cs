@@ -494,18 +494,57 @@ public partial class MainWindow : Window
             });
         });
 
-        // 获取历史数据（用于图表）
+        // 获取历史数据（用于图表）— 当天持久化数据
         _bridgeService.RegisterRequestHandler("systemMonitor:getHistory", _ =>
         {
-            var history = _vm?.MonitorPage?.MetricsHistory ?? [];
-            var result = history.Select(m => new
+            try
             {
-                timestamp = m.Timestamp,
-                cpuUsagePercent = m.CpuUsagePercent,
-                memoryUsagePercent = m.MemoryUsagePercent,
-            }).ToList();
+                var persistence = App.Services.GetRequiredService<Services.SystemMonitoring.IMetricsPersistenceService>();
+                var today = persistence.LoadDay(DateTime.Now);
+                var result = today.Select(p => new
+                {
+                    timestamp = p.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                    cpuUsagePercent = p.CpuUsagePercent,
+                    memoryUsagePercent = p.MemoryUsagePercent,
+                }).ToList();
 
-            return Task.FromResult<object?>(result);
+                return Task.FromResult<object?>(result);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "获取历史数据失败");
+                return Task.FromResult<object?>([]);
+            }
+        });
+
+        // 获取多天历史数据（用于跨天趋势图表）
+        _bridgeService.RegisterRequestHandler("systemMonitor:getHistoryRange", payload =>
+        {
+            try
+            {
+                var days = 1;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    days = el.TryGetProperty("days", out var d) ? d.GetInt32() : 1;
+                }
+                days = Math.Clamp(days, 1, 30);
+
+                var persistence = App.Services.GetRequiredService<Services.SystemMonitoring.IMetricsPersistenceService>();
+                var data = persistence.LoadRecentDays(days);
+                var result = data.Select(p => new
+                {
+                    timestamp = p.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                    cpuUsagePercent = p.CpuUsagePercent,
+                    memoryUsagePercent = p.MemoryUsagePercent,
+                }).ToList();
+
+                return Task.FromResult<object?>(new { points = result, days });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "获取多天历史数据失败");
+                return Task.FromResult<object?>(new { points = Array.Empty<object>(), days = 0, error = ex.Message });
+            }
         });
 
         // 启动监控
