@@ -135,7 +135,7 @@
                                Text="正在初始化..."
                                FontSize="12"
                                Foreground="{DynamicResource MaterialDesignBody}" />
-                    <ProgressBar x:Name="ProgressBar"
+                    <ProgressBar x:Name="StartupProgressBar"
                                  Height="4"
                                  Margin="0,10,0,0"
                                  IsIndeterminate="False"

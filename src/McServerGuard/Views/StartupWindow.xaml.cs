@@ -135,7 +135,7 @@ public partial class StartupWindow : Window
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
         };
 
-        ProgressBar.BeginAnimation(ProgressBar.ValueProperty, animation);
+        StartupProgressBar.BeginAnimation(System.Windows.Controls.System.Windows.Controls.ProgressBar.ValueProperty, animation);
         StatusText.Text = status;
     }
 
@@ -173,11 +173,11 @@ public partial class StartupWindow : Window
             Duration = TimeSpan.FromMilliseconds(300),
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
         };
-        ProgressBar.BeginAnimation(ProgressBar.ValueProperty, anim);
+        StartupProgressBar.BeginAnimation(System.Windows.Controls.ProgressBar.ValueProperty, anim);
 
         if (TryFindResource("DangerBrush") is Brush errorBrush)
         {
-            ProgressBar.Foreground = errorBrush;
+            StartupProgressBar.Foreground = errorBrush;
             StatusDot.Fill = errorBrush;
         }
 
@@ -204,7 +204,7 @@ public partial class StartupWindow : Window
             Duration = TimeSpan.FromMilliseconds(400),
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
         };
-        ProgressBar.BeginAnimation(ProgressBar.ValueProperty, anim);
+        StartupProgressBar.BeginAnimation(System.Windows.Controls.ProgressBar.ValueProperty, anim);
         StatusText.Text = "启动完成";
         AppendLog("✅ 初始化完成，正在启动主界面...", isSuccess: true);
     }
