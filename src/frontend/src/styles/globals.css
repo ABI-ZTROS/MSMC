@@ -27,6 +27,10 @@
 @layer base {
   * {
     border-color: var(--md-card-subtle-border);
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
   }
 
   html,
@@ -42,6 +46,23 @@
     background-color: var(--md-paper);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input,
+  textarea,
+  select,
+  [contenteditable],
+  .md-terminal,
+  .md-input,
+  .md-textarea,
+  .md-select {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
   }
 
   ::selection {
