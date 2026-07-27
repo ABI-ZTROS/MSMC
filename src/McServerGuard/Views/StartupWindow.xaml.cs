@@ -135,7 +135,7 @@ public partial class StartupWindow : Window
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
         };
 
-        StartupProgressBar.BeginAnimation(System.Windows.Controls.System.Windows.Controls.ProgressBar.ValueProperty, animation);
+        StartupProgressBar.BeginAnimation(System.Windows.Controls.ProgressBar.ValueProperty, animation);
         StatusText.Text = status;
     }
 
