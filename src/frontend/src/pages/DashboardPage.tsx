@@ -363,10 +363,15 @@ export function DashboardPage(): JSX.Element {
     setIsBusy(true)
     setBusyReason('正在导入服务器...')
     try {
-      await bridge.invoke('server:import')
-      await fetchServerList()
+      const result = await bridge.invoke<{ success: boolean; message?: string; error?: string }>('server:import')
+      if (result.success) {
+        await fetchServerList()
+      } else {
+        window.alert(`导入失败: ${result.error || result.message || '未知错误'}`)
+      }
     } catch (e) {
       console.error('导入失败:', e)
+      window.alert('导入失败')
     } finally {
       setIsBusy(false)
       setBusyReason('')
@@ -735,12 +740,18 @@ export function DashboardPage(): JSX.Element {
                           .then(fetchServerList)
                         .catch(console.error)
                     }
-                    onDelete={() =>
-                      bridge
-                        .invoke('server:removeKnown', server.name)
-                        .then(fetchServerList)
-                        .catch(console.error)
-                    }
+                    onDelete={async () => {
+                      try {
+                        const result = await bridge.invoke<{ success: boolean; message?: string; error?: string }>('server:removeKnown', server.name)
+                        if (result.success) {
+                          await fetchServerList()
+                        } else {
+                          window.alert(`删除失败: ${result.error || result.message || '未知错误'}`)
+                        }
+                      } catch (e) {
+                        console.error('删除失败:', e)
+                      }
+                    }}
                     />
                   </div>
                 ))
@@ -815,12 +826,18 @@ export function DashboardPage(): JSX.Element {
                           <span style={{ fontWeight: 600 }}>停止服务器</span>
                         </button>
                         <button
-                          onClick={() =>
-                            bridge
-                              .invoke('server:saveAsKnown')
-                              .then(fetchServerList)
-                              .catch(console.error)
-                          }
+                          onClick={async () => {
+                            try {
+                              const result = await bridge.invoke<{ success: boolean; message?: string; error?: string }>('server:saveAsKnown')
+                              if (result.success) {
+                                await fetchServerList()
+                              } else {
+                                window.alert(`保存失败: ${result.error || result.message || '未知错误'}`)
+                              }
+                            } catch (e) {
+                              console.error('保存到已知失败:', e)
+                            }
+                          }}
                           className="md-btn md-btn-outlined"
                           style={{ minHeight: 36, padding: '8px 16px' }}
                         >

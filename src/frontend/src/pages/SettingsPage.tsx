@@ -277,10 +277,15 @@ export function SettingsPage(): JSX.Element {
 
   const handleSetPreset = async (preset: ThemePreset): Promise<void> => {
     try {
-      await setPreset(preset)
-      await loadSettings()
+      const result = await setPreset(preset)
+      if (result.success) {
+        await loadSettings()
+      } else {
+        setStatusMessage('应用预设失败')
+      }
     } catch (e) {
       console.error('应用预设失败:', e)
+      setStatusMessage('应用预设失败')
     }
   }
 
@@ -300,10 +305,15 @@ export function SettingsPage(): JSX.Element {
   const handleRescanJava = async (): Promise<void> => {
     try {
       setIsScanningJava(true)
-      await rescanJava()
-      await loadJavaList()
+      const result = await rescanJava()
+      if (result.success) {
+        await loadJavaList()
+      } else {
+        setStatusMessage('重新扫描 Java 失败')
+      }
     } catch (e) {
       console.error('重新扫描 Java 失败:', e)
+      setStatusMessage('重新扫描 Java 失败')
     } finally {
       setIsScanningJava(false)
     }
@@ -312,9 +322,13 @@ export function SettingsPage(): JSX.Element {
   // ─── 通知测试 ───
   const handleTestNotification = async (): Promise<void> => {
     try {
-      await testNotification()
+      const result = await testNotification()
+      if (!result.success) {
+        setStatusMessage('发送测试通知失败')
+      }
     } catch (e) {
       console.error('发送测试通知失败:', e)
+      setStatusMessage('发送测试通知失败')
     }
   }
 

@@ -511,15 +511,31 @@ public partial class MainWindow : Window
         // 启动监控
         _bridgeService.RegisterRequestHandler("systemMonitor:start", _ =>
         {
-            _vm?.MonitorPage?.StartMonitoringCommand.Execute(null);
-            return Task.FromResult<object?>(new { success = true });
+            try
+            {
+                _vm?.MonitorPage?.StartMonitoringCommand.Execute(null);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "启动监控失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 停止监控
         _bridgeService.RegisterRequestHandler("systemMonitor:stop", _ =>
         {
-            _vm?.MonitorPage?.StopMonitoringCommand.Execute(null);
-            return Task.FromResult<object?>(new { success = true });
+            try
+            {
+                _vm?.MonitorPage?.StopMonitoringCommand.Execute(null);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "停止监控失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 获取 CPU 拓扑信息
@@ -609,13 +625,24 @@ public partial class MainWindow : Window
         });
 
         // 刷新服务器列表
-        _bridgeService.RegisterRequestHandler("server:refresh", _ =>
+        _bridgeService.RegisterRequestHandler("server:refresh", async _ =>
         {
-            if (_vm?.DetectionPage != null)
+            try
             {
-                _vm.DetectionPage.DetectCommand.Execute(null);
+                if (_vm?.DetectionPage != null)
+                {
+                    if (_vm.DetectionPage.DetectCommand is CommunityToolkit.Mvvm.Input.IAsyncRelayCommand asyncCmd)
+                        await asyncCmd.ExecuteAsync(null);
+                    else
+                        _vm.DetectionPage.DetectCommand.Execute(null);
+                }
+                return new { success = true };
             }
-            return Task.FromResult<object?>(new { success = true });
+            catch (Exception ex)
+            {
+                Log.Error(ex, "刷新服务器列表失败");
+                return new { success = false, error = ex.Message };
+            }
         });
 
         // 获取选中的服务器详情
@@ -778,8 +805,11 @@ public partial class MainWindow : Window
                 if (_vm?.DetectionPage != null)
                 {
                     _vm.DetectionPage.BrowseAndImportServerCommand.Execute(null);
+                    var msg = _vm.DetectionPage.OperationMessage;
+                    var isSuccess = !msg?.StartsWith("❌") ?? true;
+                    return Task.FromResult<object?>(new { success = isSuccess, message = msg });
                 }
-                return Task.FromResult<object?>(new { success = true });
+                return Task.FromResult<object?>(new { success = false, error = "未选择服务器" });
             }
             catch (Exception ex)
             {
@@ -822,9 +852,13 @@ public partial class MainWindow : Window
                     if (known != null)
                     {
                         await _vm.DetectionPage.StartKnownServerCommand.ExecuteAsync(known);
+                        var msg = _vm.DetectionPage.OperationMessage;
+                        var isSuccess = !msg?.StartsWith("❌") ?? true;
+                        return new { success = isSuccess, message = msg };
                     }
+                    return new { success = false, error = "未找到指定的服务器" };
                 }
-                return new { success = true };
+                return new { success = false, error = "未选择服务器" };
             }
             catch (Exception ex)
             {
@@ -845,9 +879,13 @@ public partial class MainWindow : Window
                     if (known != null)
                     {
                         _vm.DetectionPage.RemoveKnownServerCommand.Execute(known);
+                        var msg = _vm.DetectionPage.OperationMessage;
+                        var isSuccess = !msg?.StartsWith("❌") ?? true;
+                        return Task.FromResult<object?>(new { success = isSuccess, message = msg });
                     }
+                    return Task.FromResult<object?>(new { success = false, error = "未找到指定的服务器" });
                 }
-                return Task.FromResult<object?>(new { success = true });
+                return Task.FromResult<object?>(new { success = false, error = "未选择服务器" });
             }
             catch (Exception ex)
             {
@@ -864,8 +902,11 @@ public partial class MainWindow : Window
                 if (_vm?.DetectionPage != null)
                 {
                     _vm.DetectionPage.SaveAsKnownServerCommand.Execute(null);
+                    var msg = _vm.DetectionPage.OperationMessage;
+                    var isSuccess = !msg?.StartsWith("❌") ?? true;
+                    return Task.FromResult<object?>(new { success = isSuccess, message = msg });
                 }
-                return Task.FromResult<object?>(new { success = true });
+                return Task.FromResult<object?>(new { success = false, error = "未选择服务器" });
             }
             catch (Exception ex)
             {
@@ -1188,17 +1229,26 @@ public partial class MainWindow : Window
                 var connectPort = root.TryGetProperty("connectPort", out var cp) ? cp.GetInt32() : 0;
                 var addFirewall = root.TryGetProperty("addFirewall", out var af) && af.GetBoolean();
 
-                if (net != null)
-                {
-                    net.BridgeListenAddress = listenAddress;
-                    net.BridgeListenPort = listenPort;
-                    net.BridgeConnectAddress = connectAddress;
-                    net.BridgeConnectPort = connectPort;
-                    net.BridgeAddFirewall = addFirewall;
-                    net.AddBridgeCommand.Execute(null);
-                }
+                if (listenPort <= 0 || connectPort <= 0)
+                    return Task.FromResult<object?>(new { success = false, error = "端口必须大于 0" });
 
-                return Task.FromResult<object?>(new { success = true });
+                var bridgeService = App.Services.GetRequiredService<Services.Network.IPortBridgeService>();
+                var rule = new Models.PortBridgeRule
+                {
+                    ListenAddress = listenAddress,
+                    ListenPort = listenPort,
+                    ConnectAddress = connectAddress,
+                    ConnectPort = connectPort,
+                };
+
+                var success = bridgeService.AddBridgeRule(rule);
+                if (success && addFirewall)
+                    bridgeService.EnableFirewallRule(listenPort);
+
+                if (success)
+                    return Task.FromResult<object?>(new { success });
+
+                return Task.FromResult<object?>(new { success = false, error = bridgeService.LastError ?? "添加桥接规则失败" });
             }
             catch (Exception ex)
             {
@@ -1220,17 +1270,16 @@ public partial class MainWindow : Window
                 var listenPort = root.TryGetProperty("listenPort", out var lp) ? lp.GetInt32() : 0;
                 var protocol = root.TryGetProperty("protocol", out var p) ? p.GetString() ?? "v4tov4" : "v4tov4";
 
-                if (net != null)
-                {
-                    var rule = net.BridgeRules.FirstOrDefault(r =>
-                        r.ListenAddress == listenAddress && r.ListenPort == listenPort && r.Protocol == protocol);
-                    if (rule != null)
-                    {
-                        net.RemoveBridgeCommand.Execute(rule);
-                    }
-                }
+                if (listenPort <= 0)
+                    return Task.FromResult<object?>(new { success = false, error = "端口必须大于 0" });
 
-                return Task.FromResult<object?>(new { success = true });
+                var bridgeService = App.Services.GetRequiredService<Services.Network.IPortBridgeService>();
+                var success = bridgeService.RemoveBridgeRule(listenAddress, listenPort, protocol);
+
+                if (success)
+                    return Task.FromResult<object?>(new { success });
+
+                return Task.FromResult<object?>(new { success = false, error = bridgeService.LastError ?? "删除桥接规则失败" });
             }
             catch (Exception ex)
             {
@@ -1297,13 +1346,24 @@ public partial class MainWindow : Window
         });
 
         // 刷新网络数据
-        _bridgeService.RegisterRequestHandler("network:refresh", _ =>
+        _bridgeService.RegisterRequestHandler("network:refresh", async _ =>
         {
-            if (net != null)
+            try
             {
-                net.RefreshCommand.Execute(null);
+                if (net != null)
+                {
+                    if (net.RefreshCommand is CommunityToolkit.Mvvm.Input.IAsyncRelayCommand asyncCmd)
+                        await asyncCmd.ExecuteAsync(null);
+                    else
+                        net.RefreshCommand.Execute(null);
+                }
+                return new { success = true };
             }
-            return Task.FromResult<object?>(new { success = true });
+            catch (Exception ex)
+            {
+                Log.Error(ex, "刷新网络数据失败");
+                return new { success = false, error = ex.Message };
+            }
         });
 
         // 获取24小时历史流量数据
@@ -1480,47 +1540,74 @@ public partial class MainWindow : Window
         });
 
         // 保存配置
-        _bridgeService.RegisterRequestHandler("config:save", _ =>
+        _bridgeService.RegisterRequestHandler("config:save", async _ =>
         {
-            if (cfg != null)
+            try
             {
-                cfg.SaveConfigCommand.Execute(null);
+                if (cfg != null)
+                {
+                    if (cfg.SaveConfigCommand is CommunityToolkit.Mvvm.Input.IAsyncRelayCommand asyncCmd)
+                        await asyncCmd.ExecuteAsync(null);
+                    else
+                        cfg.SaveConfigCommand.Execute(null);
+                }
+
+                var isSuccess = !cfg?.IsSaveError ?? false;
+                var requiresRestart = cfg?.ConfigEntries.Any(e => e.IsModified && e.RequiresRestart) ?? false;
+
+                string? errorType = null;
+                string? errorDetail = null;
+
+                if (!isSuccess)
+                {
+                    errorType = cfg?.SaveErrorType ?? "Unknown";
+                    errorDetail = cfg?.SaveStatusMessage;
+                }
+
+                return new
+                {
+                    success = isSuccess,
+                    message = cfg?.SaveStatusMessage,
+                    errorType = errorType,
+                    errorDetail = errorDetail,
+                    requiresRestart = requiresRestart,
+                };
             }
-
-            var isSuccess = !cfg?.IsSaveError ?? false;
-            var requiresRestart = cfg?.ConfigEntries.Any(e => e.IsModified && e.RequiresRestart) ?? false;
-
-            string? errorType = null;
-            string? errorDetail = null;
-
-            if (!isSuccess)
+            catch (Exception ex)
             {
-                errorType = cfg?.SaveErrorType ?? "Unknown";
-                errorDetail = cfg?.SaveStatusMessage;
+                Log.Error(ex, "保存配置失败");
+                return new { success = false, error = ex.Message };
             }
-
-            return Task.FromResult<object?>(new
-            {
-                success = isSuccess,
-                message = cfg?.SaveStatusMessage,
-                errorType = errorType,
-                errorDetail = errorDetail,
-                requiresRestart = requiresRestart,
-            });
         });
 
         // 重置变更
         _bridgeService.RegisterRequestHandler("config:reset", _ =>
         {
-            cfg?.ResetChangesCommand.Execute(null);
-            return Task.FromResult<object?>(new { success = true });
+            try
+            {
+                cfg?.ResetChangesCommand.Execute(null);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "重置配置变更失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 撤销
         _bridgeService.RegisterRequestHandler("config:undo", _ =>
         {
-            cfg?.UndoCommand.Execute(null);
-            return Task.FromResult<object?>(new { success = true });
+            try
+            {
+                cfg?.UndoCommand.Execute(null);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "撤销配置变更失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 选择服务器
@@ -1542,10 +1629,21 @@ public partial class MainWindow : Window
         });
 
         // 重新扫描配置文件
-        _bridgeService.RegisterRequestHandler("config:rescan", _ =>
+        _bridgeService.RegisterRequestHandler("config:rescan", async _ =>
         {
-            cfg?.RescanConfigFilesCommand.Execute(null);
-            return Task.FromResult<object?>(new { success = true });
+            try
+            {
+                if (cfg?.RescanConfigFilesCommand is CommunityToolkit.Mvvm.Input.IAsyncRelayCommand asyncCmd)
+                    await asyncCmd.ExecuteAsync(null);
+                else
+                    cfg?.RescanConfigFilesCommand.Execute(null);
+                return new { success = true };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "重新扫描配置文件失败");
+                return new { success = false, error = ex.Message };
+            }
         });
 
         Log.Information("✅ 配置编辑 API 注册完成");
@@ -1624,67 +1722,115 @@ public partial class MainWindow : Window
         // 应用主题
         _bridgeService.RegisterRequestHandler("settings:applyTheme", _ =>
         {
-            settings?.ApplyThemeCommand.Execute(null);
-            return Task.FromResult<object?>(new
+            try
             {
-                success = true,
-                primaryColorHex = settings?.PrimaryColorHex,
-                isDarkMode = _themeService.IsDarkMode,
-            });
+                settings?.ApplyThemeCommand.Execute(null);
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    primaryColorHex = settings?.PrimaryColorHex,
+                    isDarkMode = _themeService.IsDarkMode,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "应用主题失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 保存设置
         _bridgeService.RegisterRequestHandler("settings:save", _ =>
         {
-            settings?.SaveSettingsCommand.Execute(null);
-            return Task.FromResult<object?>(new { success = true });
+            try
+            {
+                settings?.SaveSettingsCommand.Execute(null);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "保存设置失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 应用预设
         _bridgeService.RegisterRequestHandler("settings:setPreset", payload =>
         {
-            var preset = ExtractStringPayload(payload);
-            if (string.IsNullOrEmpty(preset)) preset = "SkyBlue";
-            settings?.SetPresetCommand.Execute(preset);
-            return Task.FromResult<object?>(new
+            try
             {
-                success = true,
-                primaryColorHex = settings?.PrimaryColorHex,
-                accentColorHex = settings?.AccentColorHex,
-            });
+                var preset = ExtractStringPayload(payload);
+                if (string.IsNullOrEmpty(preset)) preset = "SkyBlue";
+                settings?.SetPresetCommand.Execute(preset);
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    primaryColorHex = settings?.PrimaryColorHex,
+                    accentColorHex = settings?.AccentColorHex,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "应用预设失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 重置为默认
         _bridgeService.RegisterRequestHandler("settings:reset", _ =>
         {
-            settings?.ResetToDefaultCommand.Execute(null);
-            return Task.FromResult<object?>(new
+            try
             {
-                success = true,
-                primaryColorHex = settings?.PrimaryColorHex,
-                accentColorHex = settings?.AccentColorHex,
-            });
+                settings?.ResetToDefaultCommand.Execute(null);
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    primaryColorHex = settings?.PrimaryColorHex,
+                    accentColorHex = settings?.AccentColorHex,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "重置设置失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 切换动画开关
         _bridgeService.RegisterRequestHandler("settings:toggleAnimations", _ =>
         {
-            if (settings != null)
+            try
             {
-                settings.EnableAnimations = !settings.EnableAnimations;
+                if (settings != null)
+                {
+                    settings.EnableAnimations = !settings.EnableAnimations;
+                }
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    enableAnimations = settings?.EnableAnimations ?? true,
+                });
             }
-            return Task.FromResult<object?>(new
+            catch (Exception ex)
             {
-                success = true,
-                enableAnimations = settings?.EnableAnimations ?? true,
-            });
+                Log.Error(ex, "切换动画开关失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 测试通知
         _bridgeService.RegisterRequestHandler("settings:testNotification", _ =>
         {
-            settings?.TestNotificationCommand.Execute(null);
-            return Task.FromResult<object?>(new { success = true });
+            try
+            {
+                settings?.TestNotificationCommand.Execute(null);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "测试通知失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
         });
 
         // 获取 Java 列表
@@ -1710,10 +1856,21 @@ public partial class MainWindow : Window
         });
 
         // 重新扫描 Java
-        _bridgeService.RegisterRequestHandler("settings:rescanJava", _ =>
+        _bridgeService.RegisterRequestHandler("settings:rescanJava", async _ =>
         {
-            settings?.RescanJavaCommand.Execute(null);
-            return Task.FromResult<object?>(new { success = true });
+            try
+            {
+                if (settings?.RescanJavaCommand is CommunityToolkit.Mvvm.Input.IAsyncRelayCommand asyncCmd)
+                    await asyncCmd.ExecuteAsync(null);
+                else
+                    settings?.RescanJavaCommand.Execute(null);
+                return new { success = true };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "重新扫描 Java 失败");
+                return new { success = false, error = ex.Message };
+            }
         });
 
         // 获取预设主题列表

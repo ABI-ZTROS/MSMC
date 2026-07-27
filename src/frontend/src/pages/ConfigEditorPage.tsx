@@ -326,10 +326,15 @@ export function ConfigEditorPage(): JSX.Element {
 
   const handleRescan = async (): Promise<void> => {
     try {
-      await rescanConfigFiles()
-      await loadFileTree()
+      const result = await rescanConfigFiles()
+      if (result.success) {
+        await loadFileTree()
+      } else {
+        showToast('重新扫描失败', 'error')
+      }
     } catch (e) {
       console.error('重新扫描失败:', e)
+      showToast('重新扫描失败', 'error')
     }
   }
 
@@ -423,21 +428,31 @@ export function ConfigEditorPage(): JSX.Element {
 
   const handleReset = async (): Promise<void> => {
     try {
-      await resetConfig()
-      setPendingValues({})
-      await loadEntries()
+      const result = await resetConfig()
+      if (result.success) {
+        setPendingValues({})
+        await loadEntries()
+      } else {
+        showToast('重置修改失败', 'error')
+      }
     } catch (e) {
       console.error('重置修改失败:', e)
+      showToast('重置修改失败', 'error')
     }
   }
 
   const handleUndo = async (): Promise<void> => {
     try {
-      await undoConfig()
-      setPendingValues({})
-      await loadEntries()
+      const result = await undoConfig()
+      if (result.success) {
+        setPendingValues({})
+        await loadEntries()
+      } else {
+        showToast('撤销失败', 'error')
+      }
     } catch (e) {
       console.error('撤销失败:', e)
+      showToast('撤销失败', 'error')
     }
   }
 
