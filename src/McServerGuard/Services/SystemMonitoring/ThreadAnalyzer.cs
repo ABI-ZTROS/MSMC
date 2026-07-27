@@ -82,8 +82,7 @@ public class ThreadAnalyzer : IDisposable
     {
         Log.Debug("ThreadAnalyzer: GetTotalThreadCount");
 
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(ThreadAnalyzer));
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         try
         {
