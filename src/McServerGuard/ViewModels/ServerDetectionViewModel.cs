@@ -1045,7 +1045,11 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             CheckFileExists = true
         };
 
-        if (openFileDialog.ShowDialog() != true) return;
+        // 显式传入父窗口，避免从 WebView2 桥接调用时 IFileDialog 获取无效父句柄导致 SEHException
+        var owner = System.Windows.Application.Current.Windows.OfType<System.Windows.Window>()
+            .FirstOrDefault(w => w.IsActive) ?? System.Windows.Application.Current.MainWindow;
+
+        if (openFileDialog.ShowDialog(owner) != true) return;
 
         var jarPath = openFileDialog.FileName;
 

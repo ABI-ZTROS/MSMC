@@ -805,7 +805,11 @@ public partial class SettingsViewModel : ObservableObject
             Multiselect = false
         };
 
-        if (dialog.ShowDialog() == true)
+        // 显式传入父窗口，避免从 WebView2 桥接调用时 IFileDialog 获取无效父句柄导致 SEHException
+        var owner = System.Windows.Application.Current.Windows.OfType<System.Windows.Window>()
+            .FirstOrDefault(w => w.IsActive) ?? System.Windows.Application.Current.MainWindow;
+
+        if (dialog.ShowDialog(owner) == true)
         {
             NewJavaPath = dialog.FolderName;
         }
