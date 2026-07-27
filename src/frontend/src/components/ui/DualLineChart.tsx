@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useCallback } from 'react'
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import type { HistoryPoint } from '@/types/bridge'
 
 export interface DualLineChartProps {
@@ -39,7 +39,20 @@ export function DualLineChart({
   cpuColor = 'var(--md-gauge-green)',
   memoryColor = 'var(--md-primary-500)',
 }: DualLineChartProps): JSX.Element {
-  const width = 600
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(600)
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setWidth(containerRef.current.offsetWidth || 600)
+      }
+    }
+    updateWidth()
+    window.addEventListener('resize', updateWidth)
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [])
+
   const titleHeight = 32
   const padding = { top: 12, right: 16, bottom: 36, left: 40 }
   const chartHeight = height - titleHeight - padding.top - padding.bottom
@@ -173,7 +186,7 @@ export function DualLineChart({
   )
 
   return (
-    <div style={{ width: '100%', position: 'relative' }}>
+    <div ref={containerRef} style={{ width: '100%', position: 'relative' }}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
