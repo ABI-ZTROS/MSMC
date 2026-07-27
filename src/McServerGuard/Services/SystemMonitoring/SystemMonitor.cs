@@ -301,6 +301,11 @@ public class SystemMonitor : ISystemMonitor
             _isMonitoring = false;
         }
 
+        // 重置降级状态，下次启动时重新评估主链路可用性
+        _cpuFallbackMode = false;
+        _cpuPrimaryFailureCount = 0;
+        Log.Debug("CPU 采集链路降级状态已重置");
+
         // 在锁外异步释放 Timer —— DisposeAsync 会等待当前正在执行的回调完成，
         // 避免回调中访问已 Dispose 的 CTS 而抛 ObjectDisposedException。
         // 用 Task.Run 包裹 await 避免 CA2012（ValueTask 未使用警告），
@@ -325,25 +330,46 @@ public class SystemMonitor : ISystemMonitor
     /// </remarks>
     private double GetCpuUsage()
     {
-        // 主链路：PerformanceCounter
-        try
+        // 若已降级，跳过主链路直接走 WMI
+        if (!_cpuFallbackMode)
         {
-            if (_cpuCounter == null)
+            // 主链路：PerformanceCounter
+            try
             {
-                _cpuCounter = new PerformanceCounter(
-                    "Processor", "% Processor Time", "_Total", true);
-                _cpuCounter.NextValue();
+                if (_cpuCounter == null)
+                {
+                    _cpuCounter = new PerformanceCounter(
+                        "Processor", "% Processor Time", "_Total", true);
+                    _cpuCounter.NextValue();
+                }
+                var value = _cpuCounter.NextValue();
+                if (value >= 0 && value <= 100)
+                {
+                    // 成功后重置失败计数
+                    _cpuPrimaryFailureCount = 0;
+                    return Math.Round(value, 2);
+                }
             }
-            var value = _cpuCounter.NextValue();
-            if (value >= 0 && value <= 100)
-                return Math.Round(value, 2);
+            catch (Exception ex)
+            {
+                _cpuPrimaryFailureCount++;
+                Log.Debug("PerformanceCounter 获取 CPU 失败 ({Count}/{Threshold}): {Msg}",
+                    _cpuPrimaryFailureCount, CpuFallbackThreshold, ex.Message);
+
+                // 连续失败达到阈值，触发降级
+                if (_cpuPrimaryFailureCount >= CpuFallbackThreshold)
+                {
+                    _cpuFallbackMode = true;
+                    Log.Warning("CPU 主链路连续失败 {Threshold} 次，已降级至 WMI 备用链路", CpuFallbackThreshold);
+                }
+            }
         }
-        catch (Exception ex)
+        else
         {
-            Log.Debug("PerformanceCounter 获取 CPU 失败: {Msg}", ex.Message);
+            Log.Debug("CPU 采集处于降级模式，跳过 PerformanceCounter");
         }
 
-        // 备用链路：WMI
+        // 备用链路：WMI（降级后直接使用此链路）
         if (IsWindows)
         {
             try
@@ -446,6 +472,39 @@ public class SystemMonitor : ISystemMonitor
 
     private bool _isCollecting;
 
+    // ═════════════════════════════════════════════════════════════════════
+    // CPU 采集链路降级控制
+    // ═════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// CPU 采集是否处于降级模式（主链路持续失败后切换到 WMI 备用链路）
+    /// </summary>
+    private bool _cpuFallbackMode;
+
+    /// <summary>
+    /// CPU 主链路连续失败计数器，达到阈值后触发降级
+    /// </summary>
+    private int _cpuPrimaryFailureCount;
+
+    /// <summary>
+    /// 触发降级的连续失败阈值
+    /// </summary>
+    private const int CpuFallbackThreshold = 3;
+
+    // ═════════════════════════════════════════════════════════════════════
+    // Java 进程统计缓存
+    // ═════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Java 进程统计缓存，避免每次采集都枚举系统进程
+    /// </summary>
+    private (DateTime Timestamp, int ProcessCount, long WorkingSetBytes, long PrivateBytes, int ThreadCount)? _javaProcessCache;
+
+    /// <summary>
+    /// Java 进程统计缓存 TTL（毫秒）
+    /// </summary>
+    private const int JavaCacheTtlMs = 5000;
+
     /// <summary>
     /// 获取 Java 进程统计信息
     /// </summary>
@@ -454,8 +513,22 @@ public class SystemMonitor : ISystemMonitor
     /// 处理进程退出的竞态条件——枚举过程中进程可能随时退出。
     /// 采用防御式编程，单个进程读取失败不影响整体统计结果。
     /// </remarks>
-    private static (int ProcessCount, long WorkingSetBytes, long PrivateBytes, int ThreadCount) GetJavaProcessStats()
+    private (int ProcessCount, long WorkingSetBytes, long PrivateBytes, int ThreadCount) GetJavaProcessStats()
     {
+        // 检查缓存是否有效
+        if (_javaProcessCache.HasValue)
+        {
+            var elapsed = DateTime.Now - _javaProcessCache.Value.Timestamp;
+            if (elapsed.TotalMilliseconds < JavaCacheTtlMs)
+            {
+                Log.Debug("☕ 使用 Java 进程统计缓存（剩余 {RemainingMs}ms）", JavaCacheTtlMs - (int)elapsed.TotalMilliseconds);
+                return (_javaProcessCache.Value.ProcessCount,
+                        _javaProcessCache.Value.WorkingSetBytes,
+                        _javaProcessCache.Value.PrivateBytes,
+                        _javaProcessCache.Value.ThreadCount);
+            }
+        }
+
         var javaProcesses = new List<Process>();
         try
         {
@@ -530,6 +603,10 @@ public class SystemMonitor : ISystemMonitor
                 proc.Dispose();
             }
         }
+
+        // 写入缓存
+        _javaProcessCache = (DateTime.Now, validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);
+        Log.Debug("☕ Java 进程统计已缓存: {Count} 个进程", validProcessCount);
 
         return (validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);
     }

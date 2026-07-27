@@ -255,6 +255,9 @@ export function NetworkMonitorPage(): JSX.Element {
     addFirewall: true,
   })
 
+  // 常见端口搜索
+  const [commonPortSearch, setCommonPortSearch] = useState('')
+
   const loadData = useCallback(async () => {
     try {
       const [s, p, b, c, h] = await Promise.all([
@@ -311,8 +314,11 @@ export function NetworkMonitorPage(): JSX.Element {
 
   const handleKillProcess = async () => {
     if (!selectedPort) return
+    const processName = selectedPort.processName || `PID ${selectedPort.processId}`
+    if (!window.confirm(`确定要结束占用端口 ${selectedPort.port} 的进程 ${processName} 吗？`)) return
     try {
       await killProcess({ port: selectedPort.port, protocol: selectedPort.protocol })
+      setSelectedPort(null)
       setTimeout(loadData, 1000)
     } catch (err) {
       console.error('结束进程失败:', err)
@@ -528,29 +534,78 @@ export function NetworkMonitorPage(): JSX.Element {
 
             {/* ── 常见端口 Tab ── */}
             {activeTab === 'common' && (
-              <div className="overflow-auto" style={{ height: '100%' }}>
-                <table className="md-data-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 60 }}>端口</th>
-                      <th style={{ width: 100 }}>名称</th>
-                      <th>描述</th>
-                      <th style={{ width: 80 }}>类别</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {commonPorts.map((p, i) => (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 600 }}>{p.port}</td>
-                        <td>{p.name}</td>
-                        <td style={{ fontSize: 12, color: 'var(--md-body-light)' }}>{p.description}</td>
-                        <td>
-                          <span className="md-chip md-chip-neutral">{p.category}</span>
-                        </td>
+              <div className="flex flex-col h-full">
+                {/* 搜索框 */}
+                <div className="flex items-center p-2" style={{ gap: 6, borderBottom: '1px solid var(--md-card-subtle-border)' }}>
+                  <span style={{ fontSize: 12, opacity: 0.6 }}>🔍</span>
+                  <input
+                    type="text"
+                    value={commonPortSearch}
+                    onChange={(e) => setCommonPortSearch(e.target.value)}
+                    placeholder="搜索端口、名称或描述..."
+                    className="flex-1 bg-transparent outline-none"
+                    style={{ fontSize: 12, padding: '4px 0', color: 'var(--md-body)' }}
+                  />
+                  {commonPortSearch && (
+                    <button onClick={() => setCommonPortSearch('')} className="md-btn md-btn-flat md-btn-icon" title="清空搜索">
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <div className="flex-1 overflow-auto">
+                  <table className="md-data-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 60 }}>端口</th>
+                        <th style={{ width: 100 }}>名称</th>
+                        <th>描述</th>
+                        <th style={{ width: 80 }}>类别</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {commonPorts
+                        .filter((p) => {
+                          const kw = commonPortSearch.toLowerCase()
+                          if (!kw) return true
+                          return (
+                            String(p.port).includes(kw) ||
+                            p.name.toLowerCase().includes(kw) ||
+                            p.description.toLowerCase().includes(kw) ||
+                            p.category.toLowerCase().includes(kw)
+                          )
+                        })
+                        .map((p, i) => (
+                          <tr key={i}>
+                            <td style={{ fontWeight: 600 }}>{p.port}</td>
+                            <td>{p.name}</td>
+                            <td style={{ fontSize: 12, color: 'var(--md-body-light)' }}>{p.description}</td>
+                            <td>
+                              <span className="md-chip md-chip-neutral">{p.category}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      {commonPorts.length > 0 &&
+                        commonPorts.filter((p) => {
+                          const kw = commonPortSearch.toLowerCase()
+                          if (!kw) return true
+                          return (
+                            String(p.port).includes(kw) ||
+                            p.name.toLowerCase().includes(kw) ||
+                            p.description.toLowerCase().includes(kw) ||
+                            p.category.toLowerCase().includes(kw)
+                          )
+                        }).length === 0 && (
+                        <tr>
+                          <td colSpan={4}>
+                            <div className="md-empty-state">
+                              <div className="md-empty-state-text">没有匹配的端口</div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 

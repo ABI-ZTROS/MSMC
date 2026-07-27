@@ -324,6 +324,7 @@ export function DashboardPage(): JSX.Element {
   }
 
   const handleStart = async () => {
+    if (!window.confirm('确定要启动服务器吗？')) return
     setIsBusy(true)
     setBusyReason('正在启动服务器...')
     setOperationMessage('')
@@ -341,6 +342,7 @@ export function DashboardPage(): JSX.Element {
   }
 
   const handleStop = async () => {
+    if (!window.confirm('确定要停止服务器吗？正在运行的玩家将被断开连接。')) return
     setIsBusy(true)
     setBusyReason('正在停止服务器...')
     setOperationMessage('')

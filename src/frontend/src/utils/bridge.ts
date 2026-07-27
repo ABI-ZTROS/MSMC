@@ -81,10 +81,35 @@ class Bridge implements MsmcBridge {
   private requestIdCounter = 0
   private initialized = false
   private initPromise: Promise<void> | null = null
+  private cleanupTimer: number | null = null
 
   constructor() {
     rawLog('Bridge 构造函数执行')
     this.init()
+    // 启动周期性清理，防止超时后残留请求对象导致内存泄漏
+    this.cleanupTimer = window.setInterval(() => this.cleanupExpiredRequests(), 30000)
+  }
+
+  /// <summary>
+  /// 清理已过期但尚未被移除的 pending 请求（兜底防护）
+  /// </summary>
+  private cleanupExpiredRequests(): void {
+    const now = Date.now()
+    let cleaned = 0
+    for (const [id, req] of this.pendingRequests) {
+      // 解析请求 ID 中的时间戳（格式：js_req_{counter}_{timestamp}）
+      const parts = id.split('_')
+      const timestamp = parts.length >= 3 ? parseInt(parts[parts.length - 1], 10) : 0
+      if (timestamp > 0 && now - timestamp > 30000) {
+        clearTimeout(req.timeout)
+        req.reject(new Error('Request expired by cleanup'))
+        this.pendingRequests.delete(id)
+        cleaned++
+      }
+    }
+    if (cleaned > 0) {
+      rawLog(`🧹 清理了 ${cleaned} 个过期 pending 请求`)
+    }
   }
 
   private generateId(): string {

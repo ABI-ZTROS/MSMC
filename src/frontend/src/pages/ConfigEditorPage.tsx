@@ -295,6 +295,12 @@ export function ConfigEditorPage(): JSX.Element {
       }
     }
     init()
+
+    return () => {
+      // 组件卸载时清理所有防抖定时器
+      Object.values(debounceTimerRef.current).forEach((timer) => window.clearTimeout(timer))
+      debounceTimerRef.current = {}
+    }
   }, [loadFileTree])
 
   const handleSelectServer = async (name: string): Promise<void> => {
@@ -358,12 +364,28 @@ export function ConfigEditorPage(): JSX.Element {
     })
   }
 
+  // 防抖定时器引用，用于配置项值变更
+  const debounceTimerRef = useRef<Record<string, number>>({})
+
   const handleValueChange = (entry: ConfigEntry, value: string): void => {
-    // 本地立即更新（避免输入丢失焦点），同时调用桥接 API
+    // 本地立即更新（避免输入丢失焦点）
     setPendingValues((prev) => ({ ...prev, [entry.key]: value }))
-    updateConfigValue({ key: entry.key, value }).catch((e) =>
-      console.error('更新配置值失败:', e)
-    )
+
+    // 清除该配置项之前的防抖定时器
+    const existingTimer = debounceTimerRef.current[entry.key]
+    if (existingTimer) {
+      window.clearTimeout(existingTimer)
+    }
+
+    // 数值和文本类型添加 300ms 防抖，布尔和枚举立即提交
+    const delay = entry.isBoolType || entry.isEnumType ? 0 : 300
+
+    debounceTimerRef.current[entry.key] = window.setTimeout(() => {
+      updateConfigValue({ key: entry.key, value }).catch((e) =>
+        console.error('更新配置值失败:', e)
+      )
+      delete debounceTimerRef.current[entry.key]
+    }, delay)
   }
 
   const handleSave = async (): Promise<void> => {

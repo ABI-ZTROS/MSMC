@@ -103,10 +103,23 @@ export function SettingsPage(): JSX.Element {
   const [accentHexError, setAccentHexError] = useState('')
 
   // 以下设置项桥接 API 暂未提供独立 setter，使用本地状态承载（初始值来自 getSettings）
-  const [cornerRadius, setCornerRadius] = useState(0)
-  const [animationDuration, setAnimationDuration] = useState(200)
-  const [enableWindowsNotifications, setEnableWindowsNotifications] = useState(false)
-  const [preferJavaw, setPreferJavaw] = useState(false)
+  // 同时使用 localStorage 做持久化，避免页面刷新后丢失
+  const [cornerRadius, setCornerRadius] = useState(() => {
+    const saved = localStorage.getItem('msmc_cornerRadius')
+    return saved ? Number(saved) : 0
+  })
+  const [animationDuration, setAnimationDuration] = useState(() => {
+    const saved = localStorage.getItem('msmc_animationDuration')
+    return saved ? Number(saved) : 200
+  })
+  const [enableWindowsNotifications, setEnableWindowsNotifications] = useState(() => {
+    const saved = localStorage.getItem('msmc_enableWindowsNotifications')
+    return saved ? saved === 'true' : false
+  })
+  const [preferJavaw, setPreferJavaw] = useState(() => {
+    const saved = localStorage.getItem('msmc_preferJavaw')
+    return saved ? saved === 'true' : false
+  })
 
   const loadSettings = useCallback(async (): Promise<void> => {
     try {
@@ -691,7 +704,11 @@ export function SettingsPage(): JSX.Element {
             max={24}
             step={2}
             value={cornerRadius}
-            onChange={(e) => setCornerRadius(Number(e.target.value))}
+            onChange={(e) => {
+              const val = Number(e.target.value)
+              setCornerRadius(val)
+              localStorage.setItem('msmc_cornerRadius', String(val))
+            }}
             style={{ width: 400, margin: '8px 0' }}
           />
           <div
@@ -835,7 +852,11 @@ export function SettingsPage(): JSX.Element {
             max={1000}
             step={50}
             value={animationDuration}
-            onChange={(e) => setAnimationDuration(Number(e.target.value))}
+            onChange={(e) => {
+              const val = Number(e.target.value)
+              setAnimationDuration(val)
+              localStorage.setItem('msmc_animationDuration', String(val))
+            }}
             disabled={!enableAnimations}
             style={{ width: 400, margin: '8px 0' }}
           />
@@ -876,7 +897,11 @@ export function SettingsPage(): JSX.Element {
             <input
               type="checkbox"
               checked={enableWindowsNotifications}
-              onChange={(e) => setEnableWindowsNotifications(e.target.checked)}
+              onChange={(e) => {
+                const val = e.target.checked
+                setEnableWindowsNotifications(val)
+                localStorage.setItem('msmc_enableWindowsNotifications', String(val))
+              }}
             />
             <span className="md-toggle-slider" />
           </label>
@@ -906,7 +931,11 @@ export function SettingsPage(): JSX.Element {
             <input
               type="checkbox"
               checked={preferJavaw}
-              onChange={(e) => setPreferJavaw(e.target.checked)}
+              onChange={(e) => {
+                const val = e.target.checked
+                setPreferJavaw(val)
+                localStorage.setItem('msmc_preferJavaw', String(val))
+              }}
             />
             <span className="md-toggle-slider" />
           </label>
