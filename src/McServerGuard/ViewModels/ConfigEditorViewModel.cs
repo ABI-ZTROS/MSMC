@@ -832,7 +832,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                 flatList.Add(relativePath);
             }
         }
-        catch (UnauthorizedAccessException ex)
+        catch (UnauthorizedAccessException)
         {
             Log.Debug("无权限访问目录: {Path}", currentPath);
         }

@@ -101,7 +101,7 @@ public partial class MainWindow : Window
             }
 
             // WebView2 就绪后，延迟启动后台服务（避免与前端加载竞争 CPU）
-            Dispatcher.BeginInvoke(() =>
+            _ = Dispatcher.BeginInvoke(() =>
             {
                 try
                 {
