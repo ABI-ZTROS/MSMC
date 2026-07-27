@@ -170,15 +170,12 @@ export function DualLineChart({
     (e: React.MouseEvent<SVGSVGElement>): void => {
       if (!svgRef.current || data.length === 0) return
       const rect = svgRef.current.getBoundingClientRect()
-      // 鼠标在屏幕坐标系中的位置（相对于 SVG 元素左上角）
-      const screenX = e.clientX - rect.left
-      const screenY = e.clientY - rect.top
+      // 鼠标在 SVG 坐标系中的位置（offsetX/offsetY 已相对于目标元素）
+      // 但为了兼容起见，用 getBoundingClientRect 计算
+      const mouseX = e.clientX - rect.left
+      const mouseY = e.clientY - rect.top
 
-      // SVG 用 viewBox + width:100%，可能有缩放，把屏幕 x 换算为 viewBox x 坐标
-      const scaleX = width / rect.width
-      const viewBoxX = screenX * scaleX
-
-      const relativeX = viewBoxX - padding.left
+      const relativeX = mouseX - padding.left
       if (relativeX < 0 || relativeX > chartWidth) {
         setHoverIndex(null)
         return
@@ -198,10 +195,10 @@ export function DualLineChart({
         }
       }
       setHoverIndex(nearestIdx)
-      // tooltip 用屏幕坐标，避免 viewBox 缩放导致位置偏移
-      setTooltipPos({ x: screenX, y: screenY })
+      // tooltip 用相对 SVG 的坐标，定位容器也是相对于外层 div
+      setTooltipPos({ x: mouseX, y: mouseY })
     },
-    [data, chartWidth, padding.left, width, height, timeRange],
+    [data, chartWidth, padding.left, timeRange],
   )
 
   const handleMouseLeave = useCallback((): void => {
@@ -224,8 +221,9 @@ export function DualLineChart({
     <div ref={containerRef} style={{ width: '100%', position: 'relative' }}>
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${width} ${height}`}
-        style={{ width: '100%', height, display: 'block' }}
+        width={width}
+        height={height}
+        style={{ display: 'block', flexShrink: 0 }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
