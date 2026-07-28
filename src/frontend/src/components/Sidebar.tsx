@@ -33,7 +33,7 @@ export function Sidebar() {
     <aside
       className={clsx(
         'h-full flex flex-col bg-[var(--md-card-background)] border-r border-[var(--md-card-subtle-border)] relative',
-        'transition-[width] duration-300 ease-[var(--md-ease-standard)]'
+        'md-sidebar-transition'
       )}
       style={{
         width: expanded ? 'var(--sidebar-width-expanded)' : 'var(--sidebar-width-collapsed)',
@@ -41,21 +41,26 @@ export function Sidebar() {
       onMouseEnter={() => setExpanded(true)}
       onMouseLeave={() => setExpanded(false)}
     >
+      {/* 顶部品牌区 */}
       <div className="p-3">
-        <div className="flex items-center gap-3">
+        <div
+          className={clsx('flex items-center gap-3', expanded ? '' : 'justify-center')}
+        >
           <div
-            className="w-8 h-8 flex items-center justify-center flex-shrink-0 rounded-md"
+            className="w-8 h-8 flex items-center justify-center flex-shrink-0 rounded-md md-brand-pulse"
             style={{ backgroundColor: 'var(--md-primary-subtle-background)' }}
           >
             <FaShield size={16} style={{ color: 'var(--md-nav-item-selected)' }} />
           </div>
           <div
             className={clsx(
-              'flex-1 min-w-0 transition-all duration-200 overflow-hidden',
+              'flex-1 min-w-0 md-sidebar-text-transition overflow-hidden',
               expanded ? 'opacity-100 w-auto' : 'opacity-0 w-0'
             )}
           >
-            <div className="text-sm font-bold text-[var(--md-body)] whitespace-nowrap">MSMC</div>
+            <div className="text-sm font-bold text-[var(--md-body)] whitespace-nowrap">
+              MSMC
+            </div>
             <div
               className="text-[10px] whitespace-nowrap"
               style={{ color: 'var(--md-body-light)', opacity: 0.7 }}
@@ -70,9 +75,10 @@ export function Sidebar() {
         <div className="h-px bg-[var(--md-subtle-border)] opacity-30" />
       </div>
 
+      {/* 导航列表 */}
       <nav className="flex-1 px-1 py-2 overflow-y-auto">
         <div className="space-y-0">
-          {navItems.map((item) => {
+          {navItems.map((item, index) => {
             const isActive =
               item.path === '/'
                 ? location.pathname === '/'
@@ -85,12 +91,30 @@ export function Sidebar() {
                 end={item.path === '/'}
                 className={clsx('md-nav-item', isActive && 'md-nav-item-active')}
                 title={item.label}
-                style={!expanded ? { justifyContent: 'center', paddingLeft: 0, paddingRight: 0 } : {}}
+                style={
+                  !expanded
+                    ? {
+                        justifyContent: 'center',
+                        paddingLeft: 0,
+                        paddingRight: 0,
+                        marginLeft: 'auto',
+                        marginRight: 'auto',
+                        width: 'calc(100% - 4px)',
+                      }
+                    : {}
+                }
               >
-                <span className="flex-shrink-0">{item.icon}</span>
+                <span
+                  className={clsx('flex-shrink-0 md-nav-icon', isActive && 'md-nav-icon-active')}
+                  style={{
+                    transitionDelay: `${index * 20}ms`,
+                  }}
+                >
+                  {item.icon}
+                </span>
                 <span
                   className={clsx(
-                    'whitespace-nowrap transition-all duration-200 overflow-hidden',
+                    'whitespace-nowrap md-sidebar-text-transition overflow-hidden',
                     expanded ? 'opacity-100 w-auto' : 'opacity-0 w-0'
                   )}
                 >
@@ -99,7 +123,7 @@ export function Sidebar() {
                 {expanded && isActive && (
                   <FaChevronRight
                     size={10}
-                    className="ml-auto"
+                    className="ml-auto md-nav-chevron"
                     style={{ color: 'var(--md-nav-item-selected)' }}
                   />
                 )}
@@ -109,22 +133,23 @@ export function Sidebar() {
         </div>
       </nav>
 
+      {/* 底部信息卡 */}
       <div className="p-3 border-t border-[var(--md-card-subtle-border)]">
         <div
           className={clsx(
-            'flex items-center gap-2 px-2 py-2 rounded-md',
+            'flex items-center gap-2 px-2 py-2 rounded-md md-sidebar-footer',
             expanded ? '' : 'justify-center px-1'
           )}
           style={{ backgroundColor: 'var(--md-primary-subtle-background)' }}
         >
           <FaShield
             size={14}
-            className="flex-shrink-0"
+            className="flex-shrink-0 md-breathe"
             style={{ color: 'var(--md-nav-item-selected)' }}
           />
           <div
             className={clsx(
-              'transition-all duration-200 overflow-hidden',
+              'md-sidebar-text-transition overflow-hidden',
               expanded ? 'opacity-100 w-auto' : 'opacity-0 w-0'
             )}
           >

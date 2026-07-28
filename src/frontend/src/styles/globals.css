@@ -13,6 +13,7 @@
   --md-duration-normal: 0ms;
   --md-duration-medium: 0ms;
   --md-duration-slow: 0ms;
+  --md-duration-elastic: 0ms;
 }
 
 :root[style*="--md-enable-animations:0"] *,
@@ -134,7 +135,7 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════ */
-  /* 🔘 Material Design 按钮 */
+  /* 🔘 ColorOS 风格按钮 —— 物理阻尼 + 橡皮筋按压 */
   /* ═══════════════════════════════════════════════════════════════ */
   .md-btn {
     display: inline-flex;
@@ -151,15 +152,49 @@
     border: none;
     outline: none;
     user-select: none;
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
     transition: background-color var(--md-duration-fast) var(--md-ease-standard),
       color var(--md-duration-fast) var(--md-ease-standard),
       border-color var(--md-duration-fast) var(--md-ease-standard),
-      transform var(--md-duration-fast) var(--md-ease-standard),
-      box-shadow var(--md-duration-fast) var(--md-ease-standard);
+      transform var(--md-duration-fast) var(--md-ease-spring-soft),
+      box-shadow var(--md-duration-fast) var(--md-ease-standard),
+      filter var(--md-duration-fast) var(--md-ease-standard);
   }
 
-  .md-btn:active {
-    transform: scale(0.96);
+  /* ColorOS 风格涟漪：从点击位置扩散 */
+  .md-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%),
+      currentColor 0%, transparent 65%);
+    opacity: 0;
+    transform: scale(0.4);
+    transition: opacity 0.5s var(--md-ease-standard), transform 0.5s var(--md-ease-standard);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .md-btn:active::after {
+    opacity: 0.22;
+    transform: scale(2);
+    transition: opacity 0s, transform 0s;
+  }
+
+  .md-btn > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .md-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  .md-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.96);
+    transition-duration: 80ms;
   }
 
   .md-btn:disabled {
@@ -168,25 +203,43 @@
     transform: none;
   }
 
-  /* 实心按钮（Raised） */
+  /* 实心按钮（Raised）—— ColorOS 悬浮阴影 */
   .md-btn-primary {
     background-color: var(--md-primary-hue-mid);
     color: var(--md-white);
+    box-shadow: 0 2px 6px -2px var(--md-primary-hue-mid),
+      0 4px 12px -4px color-mix(in srgb, var(--md-primary-hue-mid) 40%, transparent);
   }
 
   .md-btn-primary:hover:not(:disabled) {
     background-color: var(--md-primary-hue-dark);
+    box-shadow: 0 4px 10px -2px var(--md-primary-hue-mid),
+      0 8px 20px -6px color-mix(in srgb, var(--md-primary-hue-mid) 50%, transparent);
+  }
+
+  .md-btn-primary:active:not(:disabled) {
+    box-shadow: 0 1px 3px -1px var(--md-primary-hue-mid),
+      0 2px 6px -2px color-mix(in srgb, var(--md-primary-hue-mid) 30%, transparent);
   }
 
   /* 危险按钮 */
   .md-btn-danger {
     background-color: var(--md-danger);
     color: var(--md-white);
+    box-shadow: 0 2px 6px -2px var(--md-danger),
+      0 4px 12px -4px color-mix(in srgb, var(--md-danger) 40%, transparent);
   }
 
   .md-btn-danger:hover:not(:disabled) {
-    background-color: var(--md-danger);
-    filter: brightness(0.85);
+    filter: brightness(1.08);
+    box-shadow: 0 4px 10px -2px var(--md-danger),
+      0 8px 20px -6px color-mix(in srgb, var(--md-danger) 50%, transparent);
+  }
+
+  .md-btn-danger:active:not(:disabled) {
+    filter: brightness(0.92);
+    box-shadow: 0 1px 3px -1px var(--md-danger),
+      0 2px 6px -2px color-mix(in srgb, var(--md-danger) 30%, transparent);
   }
 
   /* 描边按钮（Outlined） */
@@ -353,8 +406,25 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════ */
-  /* 🧭 导航项（侧边栏） */
+  /* 🧭 导航项（侧边栏）—— ColorOS 风格物理阻尼动效 */
   /* ═══════════════════════════════════════════════════════════════ */
+  .md-sidebar-transition {
+    transition: width var(--md-duration-medium) var(--md-ease-emphasized);
+  }
+
+  .md-sidebar-text-transition {
+    transition: opacity var(--md-duration-normal) var(--md-ease-standard),
+      width var(--md-duration-medium) var(--md-ease-emphasized);
+  }
+
+  .md-sidebar-footer {
+    transition: transform var(--md-duration-normal) var(--md-ease-spring-soft);
+  }
+
+  .md-sidebar-footer:hover {
+    transform: translateY(-1px);
+  }
+
   .md-nav-item {
     position: relative;
     display: flex;
@@ -369,25 +439,56 @@
     cursor: pointer;
     user-select: none;
     transition: background-color var(--md-duration-fast) var(--md-ease-standard),
-      transform var(--md-duration-fast) var(--md-ease-standard);
+      transform var(--md-duration-fast) var(--md-ease-spring-soft),
+      box-shadow var(--md-duration-fast) var(--md-ease-standard);
+  }
+
+  .md-nav-icon {
+    transition: transform var(--md-duration-normal) var(--md-ease-spring),
+      color var(--md-duration-fast) var(--md-ease-standard);
+  }
+
+  .md-nav-item:hover .md-nav-icon {
+    transform: scale(1.15);
+  }
+
+  .md-nav-icon-active {
+    color: var(--md-nav-item-selected);
+  }
+
+  .md-nav-chevron {
+    animation: mdNavChevronSlide var(--md-duration-normal) var(--md-ease-spring-soft);
+  }
+
+  @keyframes mdNavChevronSlide {
+    0% {
+      opacity: 0;
+      transform: translateX(-8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 
   .md-nav-item::before {
     content: '';
     position: absolute;
     left: -2px;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    border-radius: var(--md-radius-small);
+    top: 50%;
+    transform: translateY(-50%) scaleY(0);
+    width: 3px;
+    border-radius: 2px;
     background-color: var(--md-nav-item-selected-indicator);
     opacity: 0;
-    transition: opacity var(--md-duration-medium) var(--md-ease-standard);
+    transition: opacity var(--md-duration-normal) var(--md-ease-standard),
+      transform var(--md-duration-normal) var(--md-ease-spring-soft);
+    transform-origin: center;
   }
 
   .md-nav-item:hover {
     background-color: var(--md-nav-item-hover);
-    transform: scale(1.02);
+    transform: translateX(2px);
   }
 
   .md-nav-item-active {
@@ -396,10 +497,12 @@
 
   .md-nav-item-active::before {
     opacity: 1;
+    transform: translateY(-50%) scaleY(1);
   }
 
   .md-nav-item-active:hover {
     background-color: var(--md-primary-subtle-background);
+    transform: translateX(2px);
   }
 
   /* ═══════════════════════════════════════════════════════════════ */
@@ -1196,13 +1299,13 @@
 
 @layer components {
   /* ═══════════════════════════════════════════════════════════════ */
-  /* 🎯 增强卡片（带微交互 + 玻璃态选项）                            */
+  /* 🎯 ColorOS 风格增强卡片 —— 物理悬浮 + 光影层次 */
   /* ═══════════════════════════════════════════════════════════════ */
   .md-card-elevated {
     background-color: var(--md-card-background);
     border: 1px solid var(--md-card-subtle-border);
     border-radius: var(--md-radius);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3),
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25),
       0 0 0 1px rgba(255, 255, 255, 0.02) inset;
     transition: transform var(--md-duration-normal) var(--md-ease-spring-soft),
       border-color var(--md-duration-normal) var(--md-ease-standard),
@@ -1211,64 +1314,92 @@
   }
 
   .md-card-elevated:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     border-color: var(--md-primary-subtle-border);
-    box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.6),
+    box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.7),
+      0 4px 12px -4px rgba(0, 0, 0, 0.3),
       0 0 0 1px var(--md-primary-subtle-border);
   }
 
-  /* 增强按钮：默认带涟漪 + 弹簧按下 */
-  .md-btn {
-    position: relative;
-    overflow: hidden;
-    transition: background-color var(--md-duration-fast) var(--md-ease-standard),
-      color var(--md-duration-fast) var(--md-ease-standard),
-      border-color var(--md-duration-fast) var(--md-ease-standard),
-      transform var(--md-duration-fast) var(--md-ease-spring),
-      box-shadow var(--md-duration-fast) var(--md-ease-standard);
-  }
-
-  .md-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-  }
-
-  .md-btn:active:not(:disabled) {
-    transform: translateY(0) scale(0.96);
-  }
-
-  .md-btn-primary:hover:not(:disabled) {
-    box-shadow: 0 6px 16px -8px var(--md-primary-hue-mid);
-  }
-
-  /* 导航项增强：指示器滑动入场 */
-  .md-nav-item-active::before {
-    transition: opacity var(--md-duration-medium) var(--md-ease-spring),
-      transform var(--md-duration-medium) var(--md-ease-spring);
-    transform: scaleY(0.6);
-  }
-
-  .md-nav-item-active::before {
-    transform: scaleY(1);
-  }
-
-  /* 页面入场：更精致的弹簧曲线 + 轻微模糊 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* ✨ ColorOS 页面入场 —— 阻尼曲线 + 模糊消散 + 轻微缩放 */
+  /* ═══════════════════════════════════════════════════════════════ */
   .md-page-enter {
-    animation: mdPageEnter var(--md-duration-slow) var(--md-ease-spring-soft);
+    animation: mdPageEnter var(--md-duration-elastic) var(--md-ease-emphasized) both;
   }
 
   @keyframes mdPageEnter {
     0% {
       opacity: 0;
-      transform: translateX(20px) scale(0.98);
-      filter: blur(4px);
-    }
-    60% {
-      filter: blur(0);
+      transform: translateY(16px) scale(0.985);
+      filter: blur(6px);
     }
     100% {
       opacity: 1;
-      transform: translateX(0) scale(1);
+      transform: translateY(0) scale(1);
       filter: blur(0);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 📋 交错列表入场 —— ColorOS 弹性时间轴 */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-stagger-item {
+    opacity: 0;
+    animation: mdStaggerIn var(--md-duration-medium) var(--md-ease-spring-soft) forwards;
+  }
+
+  @keyframes mdStaggerIn {
+    0% {
+      opacity: 0;
+      transform: translateY(12px) scale(0.97);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* 🔄 轨道旋转动画（加载指示器） */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .md-orbit {
+    animation: mdOrbit 1.4s linear infinite;
+  }
+
+  .md-orbit-reverse {
+    animation: mdOrbitReverse 1.8s linear infinite;
+  }
+
+  @keyframes mdOrbit {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes mdOrbitReverse {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
+  }
+
+  /* 流光进度条 */
+  .md-flow {
+    animation: mdFlow 1.6s var(--md-ease-standard) infinite;
+  }
+
+  @keyframes mdFlow {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(350%);
     }
   }
 }

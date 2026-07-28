@@ -127,8 +127,9 @@ function applyAnimation(baseDuration: number, enableAnimations: boolean, style: 
   const ratio = baseDuration / 200
   style.setProperty('--md-duration-fast', `${Math.round(150 * ratio)}ms`)
   style.setProperty('--md-duration-normal', `${baseDuration}ms`)
-  style.setProperty('--md-duration-medium', `${Math.round(300 * ratio)}ms`)
+  style.setProperty('--md-duration-medium', `${Math.round(280 * ratio)}ms`)
   style.setProperty('--md-duration-slow', `${Math.round(350 * ratio)}ms`)
+  style.setProperty('--md-duration-elastic', `${Math.round(420 * ratio)}ms`)
   style.setProperty('--md-enable-animations', enableAnimations ? '1' : '0')
 }
 
