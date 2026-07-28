@@ -138,10 +138,82 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
 
         DetectionResult = result;
 
-        if (SelectedServer == null ||
-            !result.Servers.Any(s => s.ServerJarPath == SelectedServer.ServerJarPath))
+        // Pattern3 修复：刷新后 SelectedServer / SelectedKnownServer 的联动重选。
+        // 之前的实现只靠 ServerJarPath 精确相等，且命中时不把 SelectedServer 替换成新对象
+        // → 导致：
+        //   ① 重启后 PID 变了，但 SelectedServer 仍指向旧实例（旧 PID/旧堆内存/旧 GCType）
+        //   ② 若用户只选中了 KnownServer（未运行），刷新后会被强行切到 result.Servers[0]
+        //      （运行中第一台），KnownServer 的选中状态被无声抢走。
+
+        var servers = result.Servers;
+
+        // ① 如果用户之前选中了 KnownServer，先看这次检测里是否有对应运行实例：
+        //    若能通过 KnownServerId / ServerJarPath 匹配到 → 自动联动为运行中实例（保持上下文），
+        //    但不要覆盖 SelectedKnownServer（保持编辑区 JVM 参数同步）。
+        if (SelectedServer == null && SelectedKnownServer != null)
         {
-            SelectedServer = result.Servers.Count > 0 ? result.Servers[0] : null;
+            var matched = servers.FirstOrDefault(s =>
+                !string.IsNullOrEmpty(s.KnownServerId) && s.KnownServerId == SelectedKnownServer.KnownServerId)
+                ?? servers.FirstOrDefault(s =>
+                       !string.IsNullOrEmpty(s.ServerJarPath)
+                       && string.Equals(s.ServerJarPath, SelectedKnownServer.ServerJarPath, StringComparison.OrdinalIgnoreCase)
+                       && (string.IsNullOrEmpty(s.WorkingDirectory)
+                           || string.IsNullOrEmpty(SelectedKnownServer.WorkingDirectory)
+                           || string.Equals(s.WorkingDirectory, SelectedKnownServer.WorkingDirectory, StringComparison.OrdinalIgnoreCase)));
+            if (matched != null)
+            {
+                SelectedServer = matched;
+            }
+            return;
+        }
+
+        // ② 如果之前选中了运行实例：按匹配规则重定位到这次刷新后的新实例（可能 PID 已变）。
+        //    匹配优先级（高→低）：
+        //      a) KnownServerId 相等（稳定主键，跨重启/重扫不变）
+        //      b) ServerJarPath 相等 + WorkingDirectory 相等（目录/核心没变，只是 PID 变）
+        //      c) ServerJarPath 相等（用户可能把服务器拷到同目录不同子目录后运行）
+        if (SelectedServer != null)
+        {
+            ServerInstance? updated = null;
+
+            if (!string.IsNullOrEmpty(SelectedServer.KnownServerId))
+            {
+                updated = servers.FirstOrDefault(s =>
+                    s.KnownServerId == SelectedServer.KnownServerId);
+            }
+
+            if (updated == null && !string.IsNullOrEmpty(SelectedServer.ServerJarPath))
+            {
+                updated = servers.FirstOrDefault(s =>
+                    string.Equals(s.ServerJarPath, SelectedServer.ServerJarPath, StringComparison.OrdinalIgnoreCase)
+                    && (string.IsNullOrEmpty(s.WorkingDirectory)
+                        || string.IsNullOrEmpty(SelectedServer.WorkingDirectory)
+                        || string.Equals(s.WorkingDirectory, SelectedServer.WorkingDirectory, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            if (updated == null && !string.IsNullOrEmpty(SelectedServer.ServerJarPath))
+            {
+                updated = servers.FirstOrDefault(s =>
+                    string.Equals(s.ServerJarPath, SelectedServer.ServerJarPath, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (updated != null)
+            {
+                SelectedServer = updated;
+                return;
+            }
+
+            // 没匹配到：该实例确实不再运行。此时若当前仍强制指向旧的，会误导 UI。
+            // 但不要跳到第一台服务器（可能完全不是用户想看的）。仅当完全没选过 KnownServer 时才 fallback。
+            if (SelectedKnownServer == null)
+                SelectedServer = null;
+            return;
+        }
+
+        // ③ 什么都没选：选第一台运行中服务器（如果有），否则保持空。
+        if (SelectedKnownServer == null)
+        {
+            SelectedServer = servers.Count > 0 ? servers[0] : null;
         }
     }
 
@@ -1234,19 +1306,28 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         StopCurrentServerCommand.NotifyCanExecuteChanged();
         RefreshCurrentStatus();
 
-        if (value != null)
+        // Pattern6 修复：同 OnSelectedKnownServerChanged，切换运行实例（或清空）时，
+        // 必须完全同步内存/参数，不能依赖「上一台状态」。
+        if (value == null)
         {
-            if (value.InitialHeapMemoryBytes > 0)
-                InitialMemory = FormatMemory(value.InitialHeapMemoryBytes);
-            if (value.MaxHeapMemoryBytes > 0)
-                MaxMemory = FormatMemory(value.MaxHeapMemoryBytes);
-            if (value.JvmArguments.Count > 0)
-            {
-                SelectedArguments.Clear();
-                foreach (var arg in value.JvmArguments)
-                    if (!arg.StartsWith("-Xms") && !arg.StartsWith("-Xmx"))
-                        SelectedArguments.Add(arg);
-            }
+            InitialMemory = string.Empty;
+            MaxMemory = string.Empty;
+            SelectedArguments.Clear();
+            return;
+        }
+
+        InitialMemory = value.InitialHeapMemoryBytes > 0
+            ? FormatMemory(value.InitialHeapMemoryBytes)
+            : string.Empty;
+        MaxMemory = value.MaxHeapMemoryBytes > 0
+            ? FormatMemory(value.MaxHeapMemoryBytes)
+            : string.Empty;
+
+        SelectedArguments.Clear();
+        foreach (var arg in value.JvmArguments)
+        {
+            if (arg.StartsWith("-Xms") || arg.StartsWith("-Xmx")) continue;
+            SelectedArguments.Add(arg);
         }
     }
 
@@ -1269,7 +1350,21 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         try
         {
             var jvmArgs = BuildCurrentJvmArguments();
-            var existing = _appConfigService.FindByJarPath(SelectedServer.ServerJarPath);
+
+            // Pattern4 修复：匹配「已存在已知服务器」用优先级：
+            //   1) 若 SelectedServer 已带 KnownServerId → 精确按 KnownServerId 查
+            //      （避免同目录多 JAR 时 FindByJarPath 查错行）
+            //   2) 再按 ServerJarPath 查（兼容 JarPath 迁移场景后回查）
+            KnownServer? existing = null;
+            if (!string.IsNullOrEmpty(SelectedServer.KnownServerId))
+            {
+                existing = _appConfigService.GetAllKnownServers()
+                    .FirstOrDefault(k => k.KnownServerId == SelectedServer.KnownServerId);
+            }
+            if (existing == null && !string.IsNullOrEmpty(SelectedServer.ServerJarPath))
+            {
+                existing = _appConfigService.FindByJarPath(SelectedServer.ServerJarPath);
+            }
 
             if (existing != null)
             {
@@ -1278,6 +1373,11 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
                 existing.Name = string.IsNullOrEmpty(existing.Name)
                     ? $"{SelectedServer.ServerType} @ {System.IO.Path.GetFileName(SelectedServer.WorkingDirectory)}"
                     : existing.Name;
+
+                // Pattern4 修复：除了目录/端口/内存/JVMArgs，**也同步 ServerJarPath**。
+                // 否则用户把 JAR 换了路径（如 paper-1.20.4.jar → paper-1.21.1.jar）
+                // 保存后 FindByJarPath(新路径) 会查不到，导致「保存过的参数重启又没了」。
+                existing.ServerJarPath = SelectedServer.ServerJarPath;
                 existing.WorkingDirectory = SelectedServer.WorkingDirectory;
                 existing.JavaPath = SelectedServer.JavaPath;
                 existing.InitialHeapMemoryBytes = ParseMemorySize(InitialMemory);
@@ -1305,9 +1405,19 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
                     LastSeenAt = DateTime.Now
                 };
                 _appConfigService.AddKnownServer(known);
+                existing = known;
             }
 
+            // Pattern3 修复：保存完成后立刻把 KnownServer 关联回运行中实例与编辑上下文。
+            // 没做这步之前：
+            //   - SelectedServer.KnownServerId 仍为 null → server:getSelected 返回 isKnown=false
+            //     → 前端刷新又显示「保存为已知」按钮
+            //   - SelectedKnownServer 为 null → jvm:getState 返回 hasServer=false
+            //     → 启动参数又变成未知
             LoadKnownServers();
+            SelectedServer.KnownServerId = existing.KnownServerId;
+            SelectedKnownServer = existing;
+
             OperationMessage = $"💾 已保存到已知服务器: {SelectedServer.DisplayName}";
             Log.Information("💾 服务器已保存为已知服务器: {Name}", SelectedServer.DisplayName);
         }
@@ -1368,8 +1478,24 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         {
             _appConfigService.RemoveKnownServer(server.Id);
             LoadKnownServers();
-            if (SelectedKnownServer == server)
+
+            // Pattern3 修复：删除已知服务器后，清理 SelectedKnownServer 与 SelectedServer 的关联。
+            // 之前只把 SelectedKnownServer（如果指向同一个实例）置空，但：
+            //   ① 如果 SelectedServer.KnownServerId == 被删的 server.Id，
+            //      前端仍会通过 server:getSelected 看到 isKnown=true，但这条记录实际已删除
+            //      → 进入「保存/配置」页会按 KnownServerId 查，得到 null，报异常或空数据
+            //   ② 如果 CurrentSelection 是因为 SelectedServer 带 KnownServerId 而联动到
+            //      SelectedKnownServer 的，这次删除后也必须联动清掉。
+            if (SelectedKnownServer == server || SelectedKnownServer?.KnownServerId == server.KnownServerId)
                 SelectedKnownServer = null;
+
+            if (!string.IsNullOrEmpty(SelectedServer?.KnownServerId)
+                && SelectedServer.KnownServerId == server.KnownServerId)
+            {
+                // ServerInstance.KnownServerId 已是 [ObservableProperty]，setter 自动发 PropertyChanged 通知
+                SelectedServer.KnownServerId = null;
+            }
+
             OperationMessage = $"🗑️ 已移除: {server.Name}";
         }
         catch (Exception ex)
@@ -1505,19 +1631,35 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         StopCurrentServerCommand.NotifyCanExecuteChanged();
         RefreshCurrentStatus();
 
-        if (value != null)
+        // Pattern6 修复：切换 KnownServer（或清空）时，JVM 参数/内存必须**完全同步**。
+        // 之前两个严重漏洞：
+        //   ① 当 value.JvmArguments.Count == 0（服务器没存参数）时，不执行 SelectedArguments.Clear
+        //      → 上一台服务器保存的 Aikar/G1/ZGC 参数残留到这台上，保存时把旧参数串进来
+        //   ② 当 value == null（KnownServer 被删除、或切换到纯运行实例）时，整个 if 块都不进
+        //      → SelectedArguments / InitialMemory / MaxMemory 还是旧 KnownServer 的值，
+        //        启动新服务器时把旧参数也拼到启动命令里了
+        if (value == null)
         {
-            if (value.InitialHeapMemoryBytes > 0)
-                InitialMemory = FormatMemory(value.InitialHeapMemoryBytes);
-            if (value.MaxHeapMemoryBytes > 0)
-                MaxMemory = FormatMemory(value.MaxHeapMemoryBytes);
-            if (value.JvmArguments.Count > 0)
-            {
-                SelectedArguments.Clear();
-                foreach (var arg in value.JvmArguments)
-                    if (!arg.StartsWith("-Xms") && !arg.StartsWith("-Xmx"))
-                        SelectedArguments.Add(arg);
-            }
+            InitialMemory = string.Empty;
+            MaxMemory = string.Empty;
+            SelectedArguments.Clear();
+            return;
+        }
+
+        InitialMemory = value.InitialHeapMemoryBytes > 0
+            ? FormatMemory(value.InitialHeapMemoryBytes)
+            : string.Empty;
+        MaxMemory = value.MaxHeapMemoryBytes > 0
+            ? FormatMemory(value.MaxHeapMemoryBytes)
+            : string.Empty;
+
+        SelectedArguments.Clear();
+        foreach (var arg in value.JvmArguments)
+        {
+            // -Xms/-Xmx 由 InitialMemory/MaxMemory 两个独立字段管理，
+            // 再放进 SelectedArguments 会导致 BuildCurrentJvmArguments 重复/冲突。
+            if (arg.StartsWith("-Xms") || arg.StartsWith("-Xmx")) continue;
+            SelectedArguments.Add(arg);
         }
     }
 
@@ -1650,6 +1792,16 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// 构建当前完整的 JVM 参数列表
     /// </summary>
     /// <returns>JVM 参数列表</returns>
+    /// <summary>
+    /// 构建当前完整的 JVM 参数列表。
+    /// </summary>
+    /// <remarks>
+    /// 内存参数 (-Xms/-Xmx) 永远放在最前面，来源是 <see cref="InitialMemory"/> / <see cref="MaxMemory"/>
+    /// 这两个独立编辑字段，**不**来自 SelectedArguments，避免重复/二义覆盖。
+    /// SelectedArguments 中若存在 -Xms/-Xmx 残留（用户手动加或导入启动脚本时带来）会被安全跳过；
+    /// 其他参数按「参数基名」去重，防止同一个 key 出现多次导致 JVM 警告。
+    /// </remarks>
+    /// <returns>JVM 参数列表</returns>
     private List<string> BuildCurrentJvmArguments()
     {
         var args = new List<string>
@@ -1657,9 +1809,21 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             $"-Xms{InitialMemory}",
             $"-Xmx{MaxMemory}"
         };
+
+        // 基名去重：避免同一个参数（如 -XX:MaxGCPauseMillis=）在列表里出现多次。
+        // 保留第一次出现的实例（最靠近 UI 里用户选的顺序）。
+        var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var arg in SelectedArguments)
         {
-            if (!arg.StartsWith("-Xms") && !arg.StartsWith("-Xmx"))
+            if (string.IsNullOrWhiteSpace(arg)) continue;
+
+            // Pattern6 修复：SelectedArguments 中若意外混入 -Xms/-Xmx，跳过，避免与前两行冲突
+            // （JVM 对重复参数的规则是「最后一个生效」，会导致 InitialMemory/MaxMemory 被 SelectedArguments 覆盖，产生不可预期行为）
+            if (arg.StartsWith("-Xms") || arg.StartsWith("-Xmx"))
+                continue;
+
+            var baseName = GetArgumentBaseName(arg);
+            if (seen.Add(baseName))
                 args.Add(arg);
         }
         return args;

@@ -119,11 +119,21 @@ export interface ServerInfo {
 }
 
 export interface KnownServerInfo {
+  // 原始字段 id 做兼容；统一推荐使用 knownServerId，与 ServerInfo 命名一致
+  id?: string
+  knownServerId: string
   name: string
   serverJarPath: string
   workingDirectory: string
+  javaPath?: string
   port: number
+  initialHeapMemoryBytes?: number
+  maxHeapMemoryBytes?: number
+  group?: string
+  isFavorite?: boolean
+  addedAt?: string
   lastSeenAt: string
+  status?: string
 }
 
 export interface ServerListResponse {

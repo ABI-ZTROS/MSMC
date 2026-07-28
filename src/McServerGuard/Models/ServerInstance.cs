@@ -120,12 +120,12 @@ public partial class ServerInstance : ObservableObject
     public DateTime DetectedAt { get; init; } = DateTime.Now;
 
     /// <summary>
-    /// 关联的已知服务器 ID（KnownServer.Id）。
+    /// 关联的已知服务器 ID（KnownServer.KnownServerId）。
     /// 当此运行中实例能够被关联到 KnownServers 列表中的某台服务器时，此字段非空。
     /// 用于桥接层正确标记 isKnown=true，以及 UI 层显示「已知」标签。
     /// 未关联时为 null。
     /// </summary>
-    public string? KnownServerId { get; set; }
+    [ObservableProperty] private string? _knownServerId;
 
     /// <summary>
     /// 用于 UI 展示的格式化显示名称。

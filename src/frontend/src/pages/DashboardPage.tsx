@@ -753,7 +753,12 @@ export function DashboardPage(): JSX.Element {
                       onSelect={() => handleSelectServer(server.name)}
                       onStart={async () => {
                         try {
-                          const result = await bridge.invoke<{ success: boolean; error?: string; message?: string }>('server:startKnown', server.name)
+                          // Pattern5 修复：优先传 knownServerId，其次 name，避免同名冲突
+                          const result = await bridge.invoke<{ success: boolean; error?: string; message?: string }>('server:startKnown', {
+                            knownServerId: server.knownServerId,
+                            id: server.id,
+                            name: server.name,
+                          })
                           if (!result?.success) {
                             setOperationMessage(`启动失败: ${result?.error || '未知错误'}`)
                           }
@@ -763,19 +768,24 @@ export function DashboardPage(): JSX.Element {
                           setOperationMessage(`启动失败: ${e instanceof Error ? e.message : String(e)}`)
                         }
                       }}
-                    onDelete={async () => {
-                      try {
-                        const result = await bridge.invoke<{ success: boolean; message?: string; error?: string }>('server:removeKnown', server.name)
-                        if (result.success) {
-                          await fetchServerList()
-                        } else {
-                          setOperationMessage(`删除失败: ${result.error || result.message || '未知错误'}`)
+                      onDelete={async () => {
+                        try {
+                          // Pattern5 修复：优先传 knownServerId
+                          const result = await bridge.invoke<{ success: boolean; message?: string; error?: string }>('server:removeKnown', {
+                            knownServerId: server.knownServerId,
+                            id: server.id,
+                            name: server.name,
+                          })
+                          if (result.success) {
+                            await fetchServerList()
+                          } else {
+                            setOperationMessage(`删除失败: ${result.error || result.message || '未知错误'}`)
+                          }
+                        } catch (e) {
+                          console.error('删除失败:', e)
+                          setOperationMessage(`删除失败: ${e instanceof Error ? e.message : String(e)}`)
                         }
-                      } catch (e) {
-                        console.error('删除失败:', e)
-                        setOperationMessage(`删除失败: ${e instanceof Error ? e.message : String(e)}`)
-                      }
-                    }}
+                      }}
                     />
                   </div>
                 ))

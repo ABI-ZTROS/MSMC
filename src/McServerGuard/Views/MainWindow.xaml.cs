@@ -835,10 +835,17 @@ public partial class MainWindow : Window
                     networkStatusText = s.NetworkStatusText,
                     formattedMaxMemory = s.FormattedMaxMemory,
                     isKnown = !string.IsNullOrEmpty(s.KnownServerId),
+                    // Pattern2 修复：运行中实例补 knownServerId 精确关联字段。
+                    // 没补之前，前端列表里只能拿到 isKnown 布尔，拿不到精确 ID，
+                    // 进入 ConfigEditor / Jvm 参数页时只能靠 displayName 回查，匹配非常脆弱。
+                    knownServerId = s.KnownServerId,
                 }).ToList(),
                 known = known.Select(k => new
                 {
                     id = k.Id,
+                    // Pattern2 修复：返回统一 knownServerId 命名，ServerInfo 上同名对应。
+                    // 旧字段 id 保留做兼容。
+                    knownServerId = k.KnownServerId,
                     name = k.Name,
                     workingDirectory = k.WorkingDirectory,
                     serverJarPath = k.ServerJarPath,
@@ -1119,12 +1126,37 @@ public partial class MainWindow : Window
                 if (_vm?.DetectionPage == null)
                     return new { success = false, error = "服务器视图模型未初始化" };
 
-                var name = ExtractStringPayload(payload);
-                if (string.IsNullOrEmpty(name))
-                    return new { success = false, error = "未指定服务器名称" };
+                // Pattern5 修复：支持以对象形式（knownServerId/id/name）定位已知服务器。
+                // 之前只支持 payload == name（业务显示名，可重复、可改）
+                // → 用户给两台服务器起一样的名时，永远只能启动第一个；改名字后也查不到。
+                string? knownServerId = null;
+                string? name = null;
+
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    if (el.TryGetProperty("knownServerId", out var idProp) && idProp.ValueKind == JsonValueKind.String)
+                        knownServerId = idProp.GetString();
+                    if (string.IsNullOrEmpty(knownServerId)
+                        && el.TryGetProperty("id", out var idProp2) && idProp2.ValueKind == JsonValueKind.String)
+                        knownServerId = idProp2.GetString();
+                    if (el.TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String)
+                        name = nameProp.GetString();
+                }
+                else
+                {
+                    // 兼容旧版直接字符串参数
+                    name = ExtractStringPayload(payload);
+                }
+
+                if (string.IsNullOrEmpty(knownServerId) && string.IsNullOrEmpty(name))
+                    return new { success = false, error = "未指定服务器标识（knownServerId/id/name 至少一个）" };
 
                 var vm = _vm.DetectionPage;
-                var known = vm.KnownServers.FirstOrDefault(k => k.Name == name);
+                var known = vm.KnownServers.FirstOrDefault(k =>
+                    !string.IsNullOrEmpty(knownServerId) && k.KnownServerId == knownServerId)
+                    ?? vm.KnownServers.FirstOrDefault(k =>
+                           !string.IsNullOrEmpty(name) && k.Name == name);
+
                 if (known == null)
                     return new { success = false, error = "未找到指定的服务器" };
 
@@ -1150,20 +1182,45 @@ public partial class MainWindow : Window
         {
             try
             {
-                var name = ExtractStringPayload(payload);
-                if (_vm?.DetectionPage != null && !string.IsNullOrEmpty(name))
+                // Pattern5 修复：同 startKnown，支持对象 { knownServerId/id/name } + 字符串兼容两种传参。
+                string? knownServerId = null;
+                string? name = null;
+
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
                 {
-                    var known = _vm.DetectionPage.KnownServers.FirstOrDefault(k => k.Name == name);
-                    if (known != null)
-                    {
-                        _vm.DetectionPage.RemoveKnownServerCommand.Execute(known);
-                        var msg = _vm.DetectionPage.OperationMessage;
-                        var isSuccess = !msg?.StartsWith("❌") ?? true;
-                        return Task.FromResult<object?>(new { success = isSuccess, message = msg });
-                    }
-                    return Task.FromResult<object?>(new { success = false, error = "未找到指定的服务器" });
+                    if (el.TryGetProperty("knownServerId", out var idProp) && idProp.ValueKind == JsonValueKind.String)
+                        knownServerId = idProp.GetString();
+                    if (string.IsNullOrEmpty(knownServerId)
+                        && el.TryGetProperty("id", out var idProp2) && idProp2.ValueKind == JsonValueKind.String)
+                        knownServerId = idProp2.GetString();
+                    if (el.TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String)
+                        name = nameProp.GetString();
                 }
-                return Task.FromResult<object?>(new { success = false, error = "未选择服务器" });
+                else
+                {
+                    name = ExtractStringPayload(payload);
+                }
+
+                if (_vm?.DetectionPage == null)
+                    return Task.FromResult<object?>(new { success = false, error = "服务器视图模型未初始化" });
+
+                if (string.IsNullOrEmpty(knownServerId) && string.IsNullOrEmpty(name))
+                    return Task.FromResult<object?>(new { success = false, error = "未指定服务器标识（knownServerId/id/name 至少一个）" });
+
+                var vm = _vm.DetectionPage;
+                var known = vm.KnownServers.FirstOrDefault(k =>
+                    !string.IsNullOrEmpty(knownServerId) && k.KnownServerId == knownServerId)
+                    ?? vm.KnownServers.FirstOrDefault(k =>
+                           !string.IsNullOrEmpty(name) && k.Name == name);
+
+                if (known != null)
+                {
+                    vm.RemoveKnownServerCommand.Execute(known);
+                    var msg = vm.OperationMessage;
+                    var isSuccess = !msg?.StartsWith("❌") ?? true;
+                    return Task.FromResult<object?>(new { success = isSuccess, message = msg });
+                }
+                return Task.FromResult<object?>(new { success = false, error = "未找到指定的服务器" });
             }
             catch (Exception ex)
             {
