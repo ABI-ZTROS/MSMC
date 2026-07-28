@@ -20,6 +20,20 @@ public class KnownServer
     public string Id { get; set; } = Guid.NewGuid().ToString();
 
     /// <summary>
+    /// 统一命名的已知服务器 ID，与 <see cref="ServerInstance.KnownServerId"/> 对应。
+    /// 本质是 <see cref="Id"/> 的别名（get/set 直接代理），用于桥接层统一命名，
+    /// 避免一处用 Id、另一处用 KnownServerId 导致命名混乱。
+    /// 序列化时仍以 <see cref="Id"/> 为准（此属性不参与 JSON 序列化）。
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    [System.Xml.Serialization.XmlIgnore]
+    public string KnownServerId
+    {
+        get => Id;
+        set => Id = value;
+    }
+
+    /// <summary>
     /// 用户自定义的服务器显示名称。
     /// </summary>
     public string Name { get; set; } = string.Empty;
