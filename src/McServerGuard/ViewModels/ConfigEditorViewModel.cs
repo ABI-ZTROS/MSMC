@@ -504,7 +504,19 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     #region Server 切换与扫描（含并发保护 + 目录过滤重写）
 
     /// <summary>
-    /// Server 属性变更回调 —— 同步重置状态，异步仅在「桥接层没扫过」时才触发扫目录
+    /// Server 属性变更回调 —— 同步重置状态，异步仅在「桥接层没扫过」时才触发扫目录。
+    /// 
+    /// ⚠️ 并发保护关键：
+    ///   之前的实现 L547-584 存在竞态死锁：
+    ///     ① 如果已有扫描在跑（_scanning=true），本回调先清空 ConfigFiles/Tree；
+    ///     ② 然后因 _scanning=true 不启动新扫描；
+    ///     ③ 若旧扫描版本号被更新的 scanVersion 丢弃 → 它的 finally 不清 _scanning；
+    ///     → 结果：ConfigFiles 永远空 + _scanning 永远 true = 「已知服务器文件列表永远出不来」。
+    ///   修复思路：
+    ///     · 清空仅在「确定会启动新扫描 or 已有结果」时做；
+    ///     · 如果 _scanning=true → 先看当前最新扫描是否就是本目录的（若是则保留旧结果等待它完成）；
+    ///     · ScanDirectoryForConfigFilesAsync 的 finally 无条件清 _scanning（版本号保护只决定是否应用结果，
+    ///       不决定是否释放锁——否则被丢弃的扫描会占着锁永远阻塞）。
     /// </summary>
     partial void OnServerChanged(ServerInstance? value)
     {
@@ -543,11 +555,45 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         }
 
         ServerWorkingDirectory = value.WorkingDirectory;
+        bool dirExists = !string.IsNullOrEmpty(value.WorkingDirectory) && Directory.Exists(value.WorkingDirectory);
 
-        if (!string.IsNullOrEmpty(value.WorkingDirectory) && Directory.Exists(value.WorkingDirectory))
+        if (dirExists)
         {
-            ConfigFiles = [];
-            ConfigFileTree = [];
+            // 目录存在分支：
+            // 竞态防护—— 如果现在正在扫，且正在扫的就是这个 WorkingDirectory → 保留旧的 ConfigFiles（空也没关系），
+            // 等它完成；如果正在扫别的目录 → 旧扫描结果一定对不上，先清空，然后强制以本目录为根启动一次新扫描。
+            // （另一条链路如 config:selectServer / config:selectDefaultServer 已经同步 await 扫过，
+            //   进来时 _scanning=false + ConfigFiles 有值，就不会重复触发异步扫描。）
+            bool needsScan;
+            if (_scanning)
+            {
+                // 正在扫描时：先把 ConfigFiles/Tree 暂时置空（避免展示旧服务器的文件，误导点击后找不到路径），
+                // 然后把需要再扫的 flag 设 true—— ScanDirectoryForConfigFilesAsync finally 无论版本号都清 _scanning，
+                // 这样即使旧扫描被丢弃，锁也能释放；我们等下启动的新扫描会 bump version，旧扫描会自然被丢弃。
+                ConfigFiles = [];
+                ConfigFileTree = [];
+                needsScan = true;
+            }
+            else if (ConfigFiles.Count == 0)
+            {
+                // 没在扫描 + 无结果：必须扫
+                ConfigFiles = [];
+                ConfigFileTree = [];
+                needsScan = true;
+            }
+            else
+            {
+                // 已有结果（来自桥接层同步赋值）：保留
+                needsScan = false;
+            }
+
+            OnPropertyChanged(nameof(ConfigFileCountText));
+            OnPropertyChanged(nameof(HasServerDirectory));
+
+            if (needsScan)
+            {
+                _ = ScanDirectoryAfterServerChangedAsync(value);
+            }
         }
         else
         {
@@ -570,17 +616,8 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                     .ToList();
             }
             ConfigFileTree = BuildFlatFileTree(ConfigFiles);
-        }
-
-        OnPropertyChanged(nameof(ConfigFileCountText));
-        OnPropertyChanged(nameof(HasServerDirectory));
-
-        // ── 异步扫目录 —— 加「已经在扫 or 已经有结果」的保护，避免重复扫两次
-        if (!_scanning && ConfigFiles.Count == 0
-            && !string.IsNullOrEmpty(value.WorkingDirectory)
-            && Directory.Exists(value.WorkingDirectory))
-        {
-            _ = ScanDirectoryAfterServerChangedAsync(value);
+            OnPropertyChanged(nameof(ConfigFileCountText));
+            OnPropertyChanged(nameof(HasServerDirectory));
         }
     }
 
@@ -659,9 +696,16 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            // 仅当自己仍是最新扫描时才清除 _scanning（否则新版会清）
-            if (localVersion == System.Threading.Volatile.Read(ref _scanVersion))
-                _scanning = false;
+            // ⚠️ 修复前：仅当自己是最新扫描才清 _scanning → 如果被丢弃则占着锁 → 后续所有 OnServerChanged
+            //     进来都因 _scanning=true + ConfigFiles 被清空 → 永远拿不到新结果。
+            // 修复后：无条件释放 _scanning 锁；版本号校验只管「是否应用结果」，不管「是否释放锁」。
+            var curVer = System.Threading.Volatile.Read(ref _scanVersion);
+            if (localVersion != curVer)
+            {
+                Log.Debug("扫描结果被更新版本覆盖（释放锁但丢弃结果）: local={Local}, current={Current}",
+                    localVersion, curVer);
+            }
+            _scanning = false;
         }
     }
 
@@ -782,6 +826,11 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         if (_groupUpdateTimer != null) { _groupUpdateTimer.Stop(); }
         UpdateGroupedEntries();
 
+        // ⚠️ 进入新文件前先把 IsLoading=false，防止上一次加载（哪怕被 cancel 了但 finally 没跑完）
+        // 的 IsLoading=true 残留导致无限转圈。真正的加载开始后会再设 true。
+        IsLoading = false;
+        LoadProgress = 0;
+
         if (Server is null || string.IsNullOrEmpty(value))
             return;
 
@@ -798,19 +847,43 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         _lastLoadTask = LoadConfigAsync(fullPath, value, _loadCts.Token);
     }
 
+    /// <summary>加载任务的默认超时（毫秒）——防止解析器死循环导致 UI 永远转圈</summary>
+    private const int LoadTimeoutMs = 15000;
+
     /// <summary>
-    /// 异步加载配置文件 —— 修复：分组最后一次性刷新、catch 注入 __ERROR__ 条目。
+    /// 异步加载配置文件 —— 修复：分组最后一次性刷新、catch 注入 __ERROR__ 条目、超时保护。
     /// </summary>
     private async Task LoadConfigAsync(string fullPath, string fileName, CancellationToken cancellationToken = default)
     {
         Log.Information("📂 加载配置文件: {Path}", fullPath);
 
+        // ⚠️ 双重保险：再设一次 false→true，避免任何竞态下的 IsLoading 残留
+        IsLoading = false;
         IsLoading = true;
         LoadProgress = 0;
 
+        // ── 超时 CTS：15 秒没完成强制取消，避免解析器/磁盘死循环
+        using var timeoutCts = new CancellationTokenSource(LoadTimeoutMs);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, timeoutCts.Token);
+        var effectiveToken = linkedCts.Token;
+
         try
         {
-            var config = await _configManager.ReadConfigAsync(fullPath);
+            Dictionary<string, string> config;
+            try
+            {
+                // 外层再包一层 Task.Run + 超时 Token，确保即便内部阻塞也能被取消
+                config = await Task.Run(
+                    () => _configManager.ReadConfigAsync(fullPath),
+                    effectiveToken).Unwrap().ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+            {
+                throw new TimeoutException(
+                    $"加载配置文件超时（>{LoadTimeoutMs / 1000}s）：{fileName}。"
+                    + "建议检查文件是否损坏或被其他进程以独占模式锁定。");
+            }
 
             if (cancellationToken.IsCancellationRequested)
             {
@@ -838,7 +911,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                                   _configManager.ValidateValue(kvp.Key, fileName, kvp.Value)
                     };
                 }).ToList();
-            }, cancellationToken);
+            }, effectiveToken);
 
             if (cancellationToken.IsCancellationRequested)
             {
@@ -864,6 +937,16 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             const int batchSize = 15;  // 增大到 15，减少调度次数
             int total = processedEntries.Count;
             int processed = 0;
+
+            // ⚠️ 空条目特殊处理：total==0 时 for 循环不跑，LoadProgress 永远 0。
+            // 直接先把进度设满，防止用户永远看到 "加载中 0%"
+            if (total == 0)
+            {
+                LoadProgress = 100;
+                UpdateGroupedEntries();
+                Log.Information("✅ 配置加载完成（空文件）: {File}", fileName);
+                return;
+            }
 
             for (int i = 0; i < total; i += batchSize)
             {
@@ -898,7 +981,9 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             ConfigEntries.Clear();
             var userMsg = ex is ConfigParseException cpe
                 ? $"{cpe.Message}\n扩展名: {cpe.FileExtension}, 内容长度: {cpe.ContentLength}"
-                : ex.Message;
+                : ex is TimeoutException te
+                    ? te.Message
+                    : ex.Message;
             PushErrorEntry(userMsg, hintFormat: (ex as ConfigParseException)?.HintTryFormat);
         }
         finally
