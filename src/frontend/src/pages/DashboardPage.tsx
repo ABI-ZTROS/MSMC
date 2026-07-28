@@ -863,8 +863,10 @@ export function DashboardPage(): JSX.Element {
                               setOperationMessage(`保存失败: ${e instanceof Error ? e.message : String(e)}`)
                             }
                           }}
+                          // Q1 修复：如果已经是已知服务器（isKnown=true），则不需要再显示「保存到已知」按钮
+                          style={{ minHeight: 36, padding: '8px 16px', display: selectedServer && selectedServer.isKnown ? 'none' : undefined }}
                           className="md-btn md-btn-outlined"
-                          style={{ minHeight: 36, padding: '8px 16px' }}
+                          disabled={isBusy}
                         >
                           <span>💾</span>
                           <span>保存到已知</span>

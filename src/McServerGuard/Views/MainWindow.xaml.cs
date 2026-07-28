@@ -910,6 +910,8 @@ public partial class MainWindow : Window
                     networkStatusText = s.NetworkStatusText,
                     formattedMaxMemory = s.FormattedMaxMemory,
                     isKnown = !string.IsNullOrEmpty(s.KnownServerId),
+                    // Q3: 供 config:selectDefaultServer 联动时优先用 KnownServerId 做精确匹配
+                    knownServerId = s.KnownServerId,
                 });
             }
 
@@ -953,6 +955,8 @@ public partial class MainWindow : Window
                         _ => $"{known.MaxHeapMemoryBytes} B"
                     },
                     isKnown = true,
+                    // Q3: 供 config:selectDefaultServer 联动使用
+                    knownServerId = known.KnownServerId,
                 });
             }
 
@@ -967,21 +971,38 @@ public partial class MainWindow : Window
                 var displayName = ExtractStringPayload(payload);
                 if (_vm?.DetectionPage != null && !string.IsNullOrEmpty(displayName))
                 {
-                    var server = _vm.DetectionPage.DetectionResult?.Servers
+                    var vm = _vm.DetectionPage;
+                    var server = vm.DetectionResult?.Servers
                         .FirstOrDefault(s => s.DisplayName == displayName);
                     if (server != null)
                     {
-                        _vm.DetectionPage.SelectedServer = server;
-                        _vm.DetectionPage.SelectedKnownServer = null;
+                        vm.SelectedServer = server;
+
+                        // Q2 修复：
+                        // 如果运行中实例已经成功关联到 KnownServerId（ServerDetector 的 JarLock / PID 缓存命中），
+                        // 则**同时**把对应 KnownServer 回填到 SelectedKnownServer。
+                        // 只有这样，jvm:getState 才能从持久化的 KnownServer 读取：
+                        //   JvmArguments（预设参数）、InitialMemory / MaxMemory（启动时内存）、SelectedArguments
+                        // 否则 jvm:getState 返回 hasServer=false、isKnownServer=false，前端显示「启动参数未知」。
+                        if (!string.IsNullOrEmpty(server.KnownServerId))
+                        {
+                            var matched = vm.KnownServers
+                                .FirstOrDefault(k => k.KnownServerId == server.KnownServerId);
+                            vm.SelectedKnownServer = matched;
+                        }
+                        else
+                        {
+                            vm.SelectedKnownServer = null;
+                        }
                     }
                     else
                     {
-                        var known = _vm.DetectionPage.KnownServers
+                        var known = vm.KnownServers
                             .FirstOrDefault(k => k.Name == displayName);
                         if (known != null)
                         {
-                            _vm.DetectionPage.SelectedKnownServer = known;
-                            _vm.DetectionPage.SelectedServer = null;
+                            vm.SelectedKnownServer = known;
+                            vm.SelectedServer = null;
                         }
                     }
                 }
@@ -1203,15 +1224,61 @@ public partial class MainWindow : Window
                 return Task.FromResult<object?>(new { hasServer = false });
 
             var known = vm.SelectedKnownServer;
+            var selected = vm.SelectedServer;
+
+            // Q2 修复：
+            // 选中逻辑（server:select）已经保证：
+            //   - 如果是运行中实例且带 KnownServerId → SelectedKnownServer 会同步匹配；
+            //   - 如果是运行中实例但 KnownServerId 为空（真正的未知服务器，或 JarLock/PID 缓存未命中）
+            //     → SelectedKnownServer 为空。
+            // 后者下，用户依然能看到「启动参数」，但需要从进程命令行解析的值**回退填充**，
+            // 而不是返回 hasServer=false 让前端认为「启动参数未知」。
+            var hasAnyServer = known != null || selected != null;
+
+            // 初始内存 / 最大内存：
+            //   ① 优先 vm.InitialMemory / vm.MaxMemory（ViewModel 状态，若用户刚才改了还没保存）
+            //   ② 其次 SelectedKnownServer.InitialHeapMemoryBytes（保存的预设）
+            //   ③ 其次 SelectedServer（运行时命令行解析出的 Initial/Max HeapMemoryBytes）
+            string FormatMemoryBytes(long bytes)
+            {
+                if (bytes >= 1L << 30) return $"{bytes >> 30}G";
+                if (bytes >= 1L << 20) return $"{bytes >> 20}M";
+                if (bytes >= 1L << 10) return $"{bytes >> 10}K";
+                return $"{bytes}";
+            }
+
+            var initialMemory = vm.InitialMemory;
+            var maxMemory = vm.MaxMemory;
+            if (string.IsNullOrWhiteSpace(initialMemory) || initialMemory == "0")
+            {
+                if (known != null && known.InitialHeapMemoryBytes > 0)
+                    initialMemory = FormatMemoryBytes(known.InitialHeapMemoryBytes);
+                else if (selected != null && selected.InitialHeapMemoryBytes > 0)
+                    initialMemory = FormatMemoryBytes(selected.InitialHeapMemoryBytes);
+            }
+            if (string.IsNullOrWhiteSpace(maxMemory) || maxMemory == "0")
+            {
+                if (known != null && known.MaxHeapMemoryBytes > 0)
+                    maxMemory = FormatMemoryBytes(known.MaxHeapMemoryBytes);
+                else if (selected != null && selected.MaxHeapMemoryBytes > 0)
+                    maxMemory = FormatMemoryBytes(selected.MaxHeapMemoryBytes);
+            }
+
+            // JVM 参数列表：
+            //   - 如果 vm.SelectedArguments 有内容（用户改后还没保存，或从 known 成功回填）→ 直接用
+            //   - 否则如果 selected 有（进程命令行解析出的 JvmArguments）→ 回退用它
+            var selectedArguments = vm.SelectedArguments.ToList();
+            if (selectedArguments.Count == 0 && selected != null && selected.JvmArguments.Count > 0)
+                selectedArguments = selected.JvmArguments.ToList();
 
             return Task.FromResult<object?>(new
             {
-                hasServer = known != null,
+                hasServer = hasAnyServer,
                 isKnownServer = known != null,
-                isRunning = vm.SelectedServer != null,
-                initialMemory = vm.InitialMemory,
-                maxMemory = vm.MaxMemory,
-                selectedArguments = vm.SelectedArguments.ToList(),
+                isRunning = selected != null,
+                initialMemory,
+                maxMemory,
+                selectedArguments,
             });
         });
 
@@ -1945,6 +2012,43 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // Q3 新增：按 Dashboard 选中的服务器上下文自动联动选择 ConfigEditor 的默认服务器。
+        // 比起 config:selectServer 只靠 displayName 精确相等，这里通过 KnownServerId / WorkingDirectory /
+        // ServerJarPath 五级匹配，稳定得多，进入配置文件页后不必手动再选一遍。
+        _bridgeService.RegisterRequestHandler("config:selectDefaultServer", payload =>
+        {
+            try
+            {
+                if (cfg == null)
+                    return Task.FromResult<object?>(new { success = false, error = "配置编辑器视图模型未初始化" });
+
+                string? displayName = null;
+                string? workingDirectory = null;
+                string? serverJarPath = null;
+                string? knownServerId = null;
+
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    if (el.TryGetProperty("displayName", out var dnProp))
+                        displayName = dnProp.GetString();
+                    if (el.TryGetProperty("workingDirectory", out var wdProp))
+                        workingDirectory = wdProp.GetString();
+                    if (el.TryGetProperty("serverJarPath", out var spProp))
+                        serverJarPath = spProp.GetString();
+                    if (el.TryGetProperty("knownServerId", out var kidProp))
+                        knownServerId = kidProp.GetString();
+                }
+
+                var matched = cfg.SelectServerByContext(displayName, workingDirectory, serverJarPath, knownServerId);
+                return Task.FromResult<object?>(new { success = matched, selected = matched });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "联动选择默认服务器失败");
                 return Task.FromResult<object?>(new { success = false, error = ex.Message });
             }
         });

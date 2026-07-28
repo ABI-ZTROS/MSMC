@@ -1326,7 +1326,12 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// 确定保存为已知服务器命令是否可执行
     /// </summary>
     /// <returns>可保存则返回 <c>true</c>，否则返回 <c>false</c></returns>
-    private bool CanSaveAsKnown() => !IsBusy && SelectedServer != null;
+    private bool CanSaveAsKnown()
+        => !IsBusy
+        && SelectedServer != null
+        // Q1 修复：如果服务器已经带 KnownServerId，说明它本来就是从「已知服务器」启动/被关联过的，
+        // 不需要再走「保存到已知」逻辑（避免重复 Add / Update 带来的 Name 覆盖问题）。
+        && string.IsNullOrEmpty(SelectedServer.KnownServerId);
 
     /// <summary>
     /// 删除已知服务器命令

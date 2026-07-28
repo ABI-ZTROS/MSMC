@@ -457,6 +457,17 @@ export function selectConfigServer(name: string): Promise<{ success: boolean; er
   return bridge.invoke<{ success: boolean; error?: string }>('config:selectServer', name)
 }
 
+// Q3: 按 Dashboard 当前选中服务器的上下文（displayName / workingDirectory / serverJarPath / knownServerId）
+// 自动联动选择 ConfigEditor 的默认服务器。比 displayName 字符串精确相等匹配稳得多。
+export function selectDefaultConfigServer(ctx: {
+  displayName?: string
+  workingDirectory?: string
+  serverJarPath?: string
+  knownServerId?: string
+}): Promise<{ success: boolean; selected?: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; selected?: boolean; error?: string }>('config:selectDefaultServer', ctx)
+}
+
 export function rescanConfigFiles(): Promise<{ success: boolean }> {
   return bridge.invoke<{ success: boolean }>('config:rescan')
 }

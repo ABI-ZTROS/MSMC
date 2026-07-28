@@ -26,6 +26,9 @@ import {
   undoConfig,
   selectConfigServer,
   rescanConfigFiles,
+  // Q3: 联动 Dashboard 当前选中服务器
+  getSelectedServer,
+  selectDefaultConfigServer,
 } from '@/utils/bridge'
 import { Reveal } from '@/components/ui/Reveal'
 import { useToastStore } from '@/stores/toastStore'
@@ -287,13 +290,41 @@ export function ConfigEditorPage(): JSX.Element {
   // 防抖定时器引用，用于配置项值变更
   const debounceTimerRef = useRef<Record<string, number>>({})
 
-  // 初始化：拉取服务器列表 + 文件树
+  // 初始化：拉取服务器列表，联动 Dashboard 当前选中服务器 → 加载文件树
   useEffect(() => {
     const init = async (): Promise<void> => {
       try {
         const resp = await getAvailableServers()
         setAvailableServers(resp.servers)
+
+        // Q3 修复：自动联动 Dashboard 侧当前选中的服务器。
+        // 流程：先读 server:getSelected → 得到 displayName/workingDirectory/serverJarPath/knownServerId
+        // → 再调 config:selectDefaultServer 做五级强匹配 → 成功后直接 loadFileTree 带出配置文件。
+        // 避免 ConfigEditor 独立初始化时列表与 Dashboard 不同步，页面显示「请先选择服务器」。
+        let defaultApplied = false
+        try {
+          const sel = await getSelectedServer()
+          if (sel) {
+            const applyResult = await selectDefaultConfigServer({
+              displayName: sel.displayName,
+              workingDirectory: sel.workingDirectory,
+              serverJarPath: sel.serverJarPath,
+              knownServerId: sel.knownServerId,
+            })
+            if (applyResult?.success) defaultApplied = true
+          }
+        } catch (e) {
+          console.warn('联动 Dashboard 选中服务器失败，回退到原有默认逻辑：', e)
+        }
+
+        // 如果联动没成功（例如没有选中、或后端匹配不上），保持旧行为：直接读当前配置页面状态。
+        // 联动成功时也仍要 loadFileTree，因为 SelectServerByContext 切换了 Server，需要前端刷新文件树。
         await loadFileTree()
+
+        if (defaultApplied) {
+          // 联动成功后，顺手加载默认选中的配置条目（如果后端已自动选了一个配置文件）
+          await loadEntries()
+        }
       } catch (e) {
         console.error('初始化配置编辑器失败:', e)
       }
@@ -305,7 +336,7 @@ export function ConfigEditorPage(): JSX.Element {
       Object.values(debounceTimerRef.current).forEach((timer) => window.clearTimeout(timer))
       debounceTimerRef.current = {}
     }
-  }, [loadFileTree])
+  }, [loadFileTree, loadEntries])
 
   const handleSelectServer = async (name: string): Promise<void> => {
     if (name === selectedServerName) return

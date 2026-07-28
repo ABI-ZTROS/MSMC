@@ -260,13 +260,41 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                 {
                     if (!servers.Any(s => string.Equals(s.WorkingDirectory, ks.WorkingDirectory, StringComparison.OrdinalIgnoreCase)))
                     {
+                        // Q3 修复：合成「未运行已知服务器」时，ServerJarName 必须是 JAR 文件名而非业务显示名。
+                        // ServerInstance.DisplayName 是从 ServerJarName/ServerType/WorkingDirectory 派生的，
+                        // 把 ks.Name（用户给的业务别名，如「我的 1.21 生存服」）塞到 ServerJarName，
+                        // 会导致 DisplayName 变成「Unknown @ 目录」这种无法与 Dashboard 匹配的怪异值。
+                        var jarName = string.IsNullOrWhiteSpace(ks.ServerJarPath)
+                            ? ks.Name
+                            : Path.GetFileName(ks.ServerJarPath);
+
+                        // 从 JAR 名推断服务器类型（兜底：Unknown 会被 DisplayName 友好化为 "Minecraft Server"）
+                        var inferredType = ServerType.Unknown;
+                        var jarLower = jarName.ToLowerInvariant();
+                        if (jarLower.Contains("paper")) inferredType = ServerType.Paper;
+                        else if (jarLower.Contains("purpur")) inferredType = ServerType.Purpur;
+                        else if (jarLower.Contains("spigot")) inferredType = ServerType.Spigot;
+                        else if (jarLower.Contains("bukkit")) inferredType = ServerType.Bukkit;
+                        else if (jarLower.Contains("fabric")) inferredType = ServerType.Fabric;
+                        else if (jarLower.Contains("forge")) inferredType = ServerType.Forge;
+                        else if (jarLower.Contains("neoforge")) inferredType = ServerType.NeoForge;
+                        else if (jarLower.Contains("quilt")) inferredType = ServerType.Quilt;
+                        else if (jarLower.Contains("velocity")) inferredType = ServerType.Velocity;
+                        else if (jarLower.Contains("bungee") || jarLower.Contains("waterfall")) inferredType = ServerType.BungeeCord;
+                        else if (jarLower.Contains("mohist")) inferredType = ServerType.Mohist;
+                        else if (jarLower.Contains("arclight")) inferredType = ServerType.Arclight;
+                        else if (jarLower.Contains("folia")) inferredType = ServerType.Folia;
+
                         servers.Add(new ServerInstance
                         {
-                            ServerJarName = ks.Name,
+                            ServerJarName = jarName,
                             WorkingDirectory = ks.WorkingDirectory,
                             ServerJarPath = ks.ServerJarPath,
                             ServerPort = ks.Port,
-                            ServerType = ServerType.Unknown
+                            ServerType = inferredType,
+                            // 关键：把 KnownServerId 带上，这样后续从 Dashboard 传过来的名称/路径匹配
+                            // 失败时，仍可通过 KnownServerId 辅助匹配或去重。
+                            KnownServerId = ks.KnownServerId,
                         });
                     }
                 }
@@ -281,7 +309,12 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     /// 选中服务器名称变更回调 —— 由源生成器在属性变更时调用
     /// </summary>
     /// <param name="value">新的服务器名称</param>
-    /// <remarks>根据名称从可用服务器列表中匹配并设置 <see cref="Server"/>。</remarks>
+    /// <remarks>
+    /// 匹配优先级（避免 Dashboard 与 ConfigEditor 两处 DisplayName 格式差异导致匹配失败）：
+    ///   1. 精确匹配 DisplayName / ServerJarName
+    ///   2. WorkingDirectory 末尾路径段（目录名）匹配（如 "survival-server"）
+    ///   3. ServerJarPath 文件名匹配
+    /// </remarks>
     partial void OnSelectedServerNameChanged(string? value)
     {
         if (string.IsNullOrEmpty(value)) return;
@@ -289,10 +322,99 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         var server = AvailableServers.FirstOrDefault(s =>
             s.DisplayName == value || s.ServerJarName == value);
 
+        if (server == null)
+        {
+            // Q3 修复：兜底匹配：按目录名（WorkingDirectory 尾段）和 JAR 文件名。
+            // Dashboard 里运行中实例的 DisplayName 形如 "Paper @ myserver (PID: 1234)"，
+            // ConfigEditor 里对应「未运行已知服务器」可能是 "Paper @ myserver" ——
+            // 靠 displayName 精确相等可能匹配不上。
+            var valueAsDir = value.Trim();
+            server = AvailableServers.FirstOrDefault(s =>
+                !string.IsNullOrEmpty(s.WorkingDirectory)
+                && string.Equals(Path.GetFileName(s.WorkingDirectory.TrimEnd(Path.DirectorySeparatorChar)),
+                                 valueAsDir, StringComparison.OrdinalIgnoreCase));
+        }
+
         if (server != null)
         {
             Server = server;
         }
+    }
+
+    /// <summary>
+    /// 根据 Dashboard 侧传过来的服务器上下文（名称 / 工作目录 / JAR 路径 / KnownServerId）
+    /// 选中最合适的 AvailableServers → 自动加载配置文件。
+    /// </summary>
+    /// <remarks>
+    /// 用于从 Dashboard 进入 ConfigEditor 时的联动。比纯靠 <see cref="SelectedServerName"/> 更稳，
+    /// 因为 DisplayName 字符串匹配受 PID 后缀、ServerType 推断差异影响，不可靠。
+    /// </remarks>
+    public bool SelectServerByContext(
+        string? displayName,
+        string? workingDirectory,
+        string? serverJarPath,
+        string? knownServerId)
+    {
+        var candidates = AvailableServers;
+        ServerInstance? best = null;
+
+        // Priority 1: KnownServerId
+        if (!string.IsNullOrEmpty(knownServerId))
+        {
+            best = candidates.FirstOrDefault(s => s.KnownServerId == knownServerId);
+        }
+
+        // Priority 2: WorkingDirectory 精确
+        if (best == null && !string.IsNullOrEmpty(workingDirectory))
+        {
+            best = candidates.FirstOrDefault(s =>
+                string.Equals(s.WorkingDirectory, workingDirectory, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Priority 3: ServerJarPath 精确
+        if (best == null && !string.IsNullOrEmpty(serverJarPath))
+        {
+            best = candidates.FirstOrDefault(s =>
+                !string.IsNullOrEmpty(s.ServerJarPath)
+                && string.Equals(s.ServerJarPath, serverJarPath, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Priority 4: WorkingDirectory 尾段 + ServerJarPath 文件名
+        if (best == null && !string.IsNullOrEmpty(workingDirectory))
+        {
+            var dirName = Path.GetFileName(workingDirectory.TrimEnd(Path.DirectorySeparatorChar));
+            var jarName = string.IsNullOrEmpty(serverJarPath) ? null : Path.GetFileName(serverJarPath);
+            best = candidates.FirstOrDefault(s =>
+                !string.IsNullOrEmpty(s.WorkingDirectory)
+                && string.Equals(Path.GetFileName(s.WorkingDirectory.TrimEnd(Path.DirectorySeparatorChar)),
+                                 dirName, StringComparison.OrdinalIgnoreCase)
+                && (jarName == null
+                    || string.IsNullOrEmpty(s.ServerJarName)
+                    || string.Equals(s.ServerJarName, jarName, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        // Priority 5: DisplayName 包含（把 PID、前后缀差异忽略）
+        if (best == null && !string.IsNullOrEmpty(displayName))
+        {
+            best = candidates.FirstOrDefault(s =>
+                s.DisplayName == displayName
+                || s.DisplayName.StartsWith(displayName, StringComparison.OrdinalIgnoreCase)
+                || displayName.StartsWith(s.DisplayName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (best == null)
+        {
+            Log.Warning(
+                "🔧 ConfigEditor 自动选择失败: DisplayName={DisplayName} WorkDir={WorkDir} Jar={Jar} KnownId={KnownId}",
+                displayName, workingDirectory, serverJarPath, knownServerId);
+            return false;
+        }
+
+        Log.Information(
+            "🔧 ConfigEditor 自动选择服务器: {DisplayName} (Dir={Dir}, Jar={Jar})",
+            best.DisplayName, best.WorkingDirectory, best.ServerJarName);
+        Server = best;
+        return true;
     }
 
     /// <summary>

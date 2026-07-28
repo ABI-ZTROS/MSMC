@@ -113,6 +113,9 @@ export interface ServerInfo {
   formattedMaxMemory: string
   lastSeenAt?: string
   isKnown?: boolean
+  // Q3: 选中服务器的关联「已知服务器」ID。可空。
+  // 仅当服务器在后端被成功关联到 KnownServers 列表时才填充，未关联时不传。
+  knownServerId?: string
 }
 
 export interface KnownServerInfo {
