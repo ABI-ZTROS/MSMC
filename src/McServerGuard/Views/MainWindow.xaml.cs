@@ -708,13 +708,13 @@ public partial class MainWindow : Window
 
         // === 进程管理相关 API ===
 
-        // 获取所有 Java 进程的 CPU 亲和性信息
+        // 获取所有进程的 CPU 亲和性信息（按 CPU 占用降序，最多 200 个）
         _bridgeService.RegisterRequestHandler("processManager:getAffinities", _ =>
         {
             try
             {
                 var processManager = App.Services.GetRequiredService<Services.SystemMonitoring.IProcessManagerService>();
-                var affinities = processManager.GetJavaProcessAffinities();
+                var affinities = processManager.GetAllProcessAffinities();
                 return Task.FromResult<object?>(affinities);
             }
             catch (Exception ex)

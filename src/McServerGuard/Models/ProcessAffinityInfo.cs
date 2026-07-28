@@ -13,11 +13,17 @@ public record ProcessAffinityInfo
     /// <summary>进程 PID</summary>
     public int ProcessId { get; init; }
 
-    /// <summary>进程名（如 java、javaw）</summary>
+    /// <summary>进程名（如 java、javaw、chrome 等）</summary>
     public string ProcessName { get; init; } = string.Empty;
 
     /// <summary>是否为 Minecraft 服务器进程（由 ProcessScanner 识别）</summary>
     public bool IsMinecraftServer { get; init; }
+
+    /// <summary>是否为 Java 进程（java/javaw）</summary>
+    public bool IsJavaProcess { get; init; }
+
+    /// <summary>是否为系统进程（PID ≤ 4 或位于 System Idle / Registry / Session Window 等关键系统进程名）</summary>
+    public bool IsSystemProcess { get; init; }
 
     /// <summary>服务器显示名（仅 Minecraft 进程有值）</summary>
     public string DisplayName { get; init; } = string.Empty;

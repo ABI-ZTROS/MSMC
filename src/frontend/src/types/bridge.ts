@@ -452,6 +452,8 @@ export interface ProcessAffinityInfo {
   processId: number
   processName: string
   isMinecraftServer: boolean
+  isJavaProcess: boolean
+  isSystemProcess: boolean
   displayName: string
   affinityMask: number
   allowedCoreIndices: number[]

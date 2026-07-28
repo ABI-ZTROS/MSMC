@@ -9,6 +9,7 @@ namespace McServerGuard.Services.SystemMonitoring;
 
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
 using McServerGuard.Models;
 using McServerGuard.Services;
 using McServerGuard.Services.ServerDetection;
@@ -29,13 +30,25 @@ public class ProcessManagerService : IProcessManagerService
     private readonly TimeService _timeService;
 
     /// <summary>上次采样的进程 CPU 时间，用于差分计算 CPU 使用率</summary>
-    private readonly Dictionary<int, (DateTime Time, TimeSpan TotalProcessorTime)> _lastCpuSample = new();
+    private readonly Dictionary<int, (long TickMs, TimeSpan TotalProcessorTime)> _lastCpuSample = new();
 
-    /// <summary>进程列表缓存</summary>
-    private (DateTime Timestamp, List<ProcessAffinityInfo> Data)? _affinityCache;
+    /// <summary>进程列表缓存（使用单调时钟隔离 NTP 污染）</summary>
+    private (long TickMs, List<ProcessAffinityInfo> Data)? _affinityCache;
 
     /// <summary>缓存 TTL（毫秒）</summary>
     private const int CacheTtlMs = 2000;
+
+    /// <summary>单次返回的最大进程数（避免前端渲染过载）</summary>
+    private const int MaxProcessCount = 200;
+
+    /// <summary>系统关键进程名集合（这些进程不允许杀/改亲和性）</summary>
+    private static readonly HashSet<string> SystemProcessNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "System Idle Process", "System", "Registry", "smss", "csrss", "wininit",
+        "services", "lsass", "svchost", "fontdrvhost", "dwm", "explorer",
+        "Taskmgr", "spoolsv", "winlogon", "MsMpEng", "SearchIndexer",
+        "sihost", "taskhostw", "ctfmon", "conhost", "RuntimeBroker"
+    };
 
     public ProcessManagerService(
         ProcessScanner processScanner,
@@ -48,15 +61,12 @@ public class ProcessManagerService : IProcessManagerService
     }
 
     /// <inheritdoc/>
-    public List<ProcessAffinityInfo> GetJavaProcessAffinities()
+    public List<ProcessAffinityInfo> GetAllProcessAffinities()
     {
-        // 检查缓存
-        if (_affinityCache.HasValue)
-        {
-            var elapsed = _timeService.Now - _affinityCache.Value.Timestamp;
-            if (elapsed.TotalMilliseconds < CacheTtlMs)
-                return _affinityCache.Value.Data;
-        }
+        // 检查缓存（使用单调时钟，隔离 NTP 时间偏移污染）
+        var nowTick = Environment.TickCount64;
+        if (_affinityCache.HasValue && (nowTick - _affinityCache.Value.TickMs) < CacheTtlMs)
+            return _affinityCache.Value.Data;
 
         // 获取 Minecraft 服务器 PID 集合（用于标记 IsMinecraftServer）
         var minecraftPids = new HashSet<int>();
@@ -73,21 +83,19 @@ public class ProcessManagerService : IProcessManagerService
 
         var result = new List<ProcessAffinityInfo>();
 
-        // 枚举所有 java/javaw 进程
-        var javaProcesses = new List<Process>();
+        // 枚举所有进程（不再只枚举 java/javaw）
+        Process[] allProcesses;
         try
         {
-            javaProcesses.AddRange(Process.GetProcessesByName("java"));
-            javaProcesses.AddRange(Process.GetProcessesByName("javaw"));
+            allProcesses = Process.GetProcesses();
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "获取 Java 进程列表失败");
+            Log.Warning(ex, "获取系统进程列表失败");
+            return result;
         }
 
-        var now = _timeService.Now;
-
-        foreach (var proc in javaProcesses)
+        foreach (var proc in allProcesses)
         {
             try
             {
@@ -95,7 +103,11 @@ public class ProcessManagerService : IProcessManagerService
                     continue;
 
                 var pid = proc.Id;
+                var processName = proc.ProcessName;
                 var isMinecraft = minecraftPids.Contains(pid);
+                var isJava = processName.Equals("java", StringComparison.OrdinalIgnoreCase)
+                          || processName.Equals("javaw", StringComparison.OrdinalIgnoreCase);
+                var isSystem = pid <= 4 || SystemProcessNames.Contains(processName);
 
                 // 获取 CPU 亲和性掩码
                 long affinityMask = 0;
@@ -106,7 +118,6 @@ public class ProcessManagerService : IProcessManagerService
                 catch (Win32Exception ex) when (ex.NativeErrorCode == 5)
                 {
                     // 权限不足，无法读取其他用户进程的亲和性
-                    Log.Debug("读取进程 {Pid} 亲和性失败（权限不足）", pid);
                 }
                 catch (Exception)
                 {
@@ -116,25 +127,25 @@ public class ProcessManagerService : IProcessManagerService
                 // 亲和性掩码转核心索引列表
                 var allowedCores = AffinityMaskToCoreIndices(affinityMask);
 
-                // 获取 CPU 使用率（差分计算）
+                // 获取 CPU 使用率（差分计算，使用单调时钟）
                 double cpuUsage = 0;
                 try
                 {
                     var currentCpuTime = proc.TotalProcessorTime;
                     if (_lastCpuSample.TryGetValue(pid, out var lastSample))
                     {
-                        var timeDiff = now - lastSample.Time;
-                        if (timeDiff.TotalSeconds > 0)
+                        var tickDiff = nowTick - lastSample.TickMs;
+                        if (tickDiff > 0)
                         {
                             var cpuTimeDiff = currentCpuTime - lastSample.TotalProcessorTime;
                             // CPU% = 进程CPU时间增量 / (经过时间 × 核心数) × 100
                             cpuUsage = Math.Round(
-                                cpuTimeDiff.TotalMilliseconds / (timeDiff.TotalMilliseconds * Environment.ProcessorCount) * 100,
+                                cpuTimeDiff.TotalMilliseconds / (tickDiff * Environment.ProcessorCount) * 100,
                                 2);
                             cpuUsage = Math.Max(0, Math.Min(100, cpuUsage));
                         }
                     }
-                    _lastCpuSample[pid] = (now, currentCpuTime);
+                    _lastCpuSample[pid] = (nowTick, currentCpuTime);
                 }
                 catch (Exception)
                 {
@@ -161,12 +172,19 @@ public class ProcessManagerService : IProcessManagerService
                 try { commandLine = Truncate(proc.MainModule?.FileName ?? string.Empty, 200); }
                 catch { }
 
+                // 显示名：Minecraft 优先，否则用进程名
+                string displayName = isMinecraft
+                    ? $"Minecraft Server (PID:{pid})"
+                    : processName;
+
                 result.Add(new ProcessAffinityInfo
                 {
                     ProcessId = pid,
-                    ProcessName = proc.ProcessName,
+                    ProcessName = processName,
                     IsMinecraftServer = isMinecraft,
-                    DisplayName = isMinecraft ? $"Minecraft Server (PID:{pid})" : proc.ProcessName,
+                    IsJavaProcess = isJava,
+                    IsSystemProcess = isSystem,
+                    DisplayName = displayName,
                     AffinityMask = affinityMask,
                     AllowedCoreIndices = allowedCores,
                     CpuUsagePercent = cpuUsage,
@@ -190,14 +208,32 @@ public class ProcessManagerService : IProcessManagerService
             }
         }
 
+        // 按 CPU 使用率降序排序，取前 MaxProcessCount 个（避免前端渲染过载）
+        result.Sort((a, b) => b.CpuUsagePercent.CompareTo(a.CpuUsagePercent));
+        if (result.Count > MaxProcessCount)
+            result = result.Take(MaxProcessCount).ToList();
+
         // 清理已退出进程的 CPU 采样缓存
         CleanupStaleCpuSamples(result.Select(p => p.ProcessId).ToHashSet());
 
-        _affinityCache = (now, result);
-        Log.Debug("📊 获取到 {Count} 个 Java 进程亲和性信息（其中 {McCount} 个 Minecraft 服务器）",
-            result.Count, result.Count(p => p.IsMinecraftServer));
+        _affinityCache = (nowTick, result);
+        Log.Debug("📊 获取到 {Count} 个进程亲和性信息（其中 Java={Java}, Minecraft={Mc}, System={Sys}）",
+            result.Count,
+            result.Count(p => p.IsJavaProcess),
+            result.Count(p => p.IsMinecraftServer),
+            result.Count(p => p.IsSystemProcess));
 
         return result;
+    }
+
+    /// <inheritdoc/>
+    [Obsolete("请使用 GetAllProcessAffinities")]
+    public List<ProcessAffinityInfo> GetJavaProcessAffinities()
+    {
+        // 旧接口实现：仅返回 Java 进程，委托新接口过滤
+        return GetAllProcessAffinities()
+            .Where(p => p.IsJavaProcess)
+            .ToList();
     }
 
     /// <inheritdoc/>
@@ -236,6 +272,9 @@ public class ProcessManagerService : IProcessManagerService
                 ProcessId = pid,
                 ProcessName = proc.ProcessName,
                 IsMinecraftServer = isMinecraft,
+                IsJavaProcess = proc.ProcessName.Equals("java", StringComparison.OrdinalIgnoreCase)
+                             || proc.ProcessName.Equals("javaw", StringComparison.OrdinalIgnoreCase),
+                IsSystemProcess = pid <= 4 || SystemProcessNames.Contains(proc.ProcessName),
                 DisplayName = isMinecraft ? $"Minecraft Server (PID:{pid})" : proc.ProcessName,
                 AffinityMask = affinityMask,
                 AllowedCoreIndices = AffinityMaskToCoreIndices(affinityMask),

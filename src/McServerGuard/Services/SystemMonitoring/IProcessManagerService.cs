@@ -13,8 +13,14 @@ using McServerGuard.Models;
 public interface IProcessManagerService
 {
     /// <summary>
-    /// 获取所有 Java 进程的亲和性信息
+    /// 获取所有进程的亲和性信息（按 CPU 占用降序，最多返回 200 个）
     /// </summary>
+    List<ProcessAffinityInfo> GetAllProcessAffinities();
+
+    /// <summary>
+    /// 获取所有 Java 进程的亲和性信息（保留向后兼容）
+    /// </summary>
+    [Obsolete("请使用 GetAllProcessAffinities，该方法返回所有进程而不仅是 Java 进程")]
     List<ProcessAffinityInfo> GetJavaProcessAffinities();
 
     /// <summary>
