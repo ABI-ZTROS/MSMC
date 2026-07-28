@@ -2026,6 +2026,9 @@ public partial class MainWindow : Window
         {
             try
             {
+                // 先应用（同步 ViewModel 值到 themeService），再保存
+                // 否则 update 更新的 ViewModel 属性不会被持久化
+                settings?.ApplyThemeCommand.Execute(null);
                 settings?.SaveSettingsCommand.Execute(null);
                 return Task.FromResult<object?>(new { success = true });
             }

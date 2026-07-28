@@ -251,6 +251,18 @@ export function SettingsPage(): JSX.Element {
   // ─── 底部操作栏 ───
   const handleApplyTheme = async (): Promise<void> => {
     try {
+      const updateResult = await updateSettings({
+        cornerRadius,
+        animationDuration,
+        enableAnimations: settings?.enableAnimations ?? true,
+        enableWindowsNotifications,
+        preferJavaw,
+      })
+      if (!updateResult?.success) {
+        setStatusMessage(`应用设置失败: ${updateResult?.error || '未知错误'}`)
+        return
+      }
+
       const result = await applyTheme()
       setStatusMessage(result.success ? '主题已应用' : '主题应用失败')
       await loadSettings()
