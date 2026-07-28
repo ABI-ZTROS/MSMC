@@ -32,6 +32,12 @@ public class ProcessScanner
     /// </summary>
     private static readonly string[] ShellProcessNames = ["cmd", "powershell", "pwsh"];
 
+    /// <summary>
+    /// 启动器进程名称集合 —— MSMC 自身及常见服务器管理工具
+    /// 这些进程启动的 Java 进程也应被视为服务器候选（与 Shell 同等对待）
+    /// </summary>
+    private static readonly string[] LauncherProcessNames = ["McServerGuard", "MSMC"];
+
     /// <summary>父进程链最大追溯深度，防止无限递归</summary>
     private const int MaxParentChainDepth = 5;
 
@@ -123,12 +129,27 @@ public class ProcessScanner
                 }
 
                 bool isServerJar = IsServerJar(commandLine);
+                bool hasServerMarker = HasServerProcessMarker(commandLine);
                 bool isLaunchedByShell = IsProcessLaunchedByShellInMemory(pid, processInfoMap, shellProcessIds);
+                bool isJarProcess = IsJarProcess(commandLine);
 
+                // 判定优先级：
+                // 1. JAR 文件名包含服务器关键字 → 明确是服务器
+                // 2. 命令行包含 nogui 等服务器标记 → 明确是服务器
+                // 3. 由 Shell/启动器（含 MSMC 自身）启动 → 很可能是服务器
+                // 4. 命令行含 -jar 且非客户端 → 兜底判定为服务器
                 if (isServerJar)
                 {
                     Log.Information(
-                        "发现疑似服务器进程 PID={Pid}: {JarHint}",
+                        "发现疑似服务器进程 PID={Pid}（JAR关键字匹配）: {JarHint}",
+                        pid,
+                        GetJarNameHint(commandLine));
+                    results.Add((pid, commandLine));
+                }
+                else if (hasServerMarker)
+                {
+                    Log.Information(
+                        "发现疑似服务器进程 PID={Pid}（nogui标记）: {JarHint}",
                         pid,
                         GetJarNameHint(commandLine));
                     results.Add((pid, commandLine));
@@ -136,7 +157,15 @@ public class ProcessScanner
                 else if (isLaunchedByShell)
                 {
                     Log.Information(
-                        "发现 Shell 启动的 Java 进程 PID={Pid}（可能是交互式启动的服务器）: {JarHint}",
+                        "发现 Shell/启动器启动的 Java 进程 PID={Pid}: {JarHint}",
+                        pid,
+                        GetJarNameHint(commandLine));
+                    results.Add((pid, commandLine));
+                }
+                else if (isJarProcess)
+                {
+                    Log.Information(
+                        "发现 Java JAR 进程 PID={Pid}（-jar 兜底判定）: {JarHint}",
                         pid,
                         GetJarNameHint(commandLine));
                     results.Add((pid, commandLine));
@@ -144,7 +173,7 @@ public class ProcessScanner
                 else
                 {
                     Log.Debug(
-                        "进程 PID={Pid} 的命令行中没有服务器 JAR 关键字，跳过", pid);
+                        "进程 PID={Pid} 的命令行中没有服务器特征，跳过", pid);
                 }
             }
             catch (InvalidOperationException)
@@ -272,13 +301,15 @@ public class ProcessScanner
     }
 
     /// <summary>
-    /// 从批量缓存中构建 Shell 进程 ID 集合（内存过滤，无需额外进程枚举）
+    /// 从批量缓存中构建 Shell + 启动器进程 ID 集合（内存过滤，无需额外进程枚举）
     /// </summary>
     /// <param name="processInfoMap">批量 WMI 查询结果</param>
-    /// <returns>Shell 进程 ID 的哈希集合</returns>
+    /// <returns>Shell/启动器进程 ID 的哈希集合</returns>
     private HashSet<int> BuildShellProcessIds(Dictionary<int, ProcessInfo> processInfoMap)
     {
         var ids = new HashSet<int>();
+        // 合并 Shell 和启动器进程名，统一匹配
+        var allLauncherNames = ShellProcessNames.Concat(LauncherProcessNames).ToArray();
         foreach (var kv in processInfoMap)
         {
             var name = kv.Value.Name;
@@ -288,16 +319,16 @@ public class ProcessScanner
                 ? name[..^4]
                 : name;
 
-            foreach (var shell in ShellProcessNames)
+            foreach (var launcher in allLauncherNames)
             {
-                if (baseName.Equals(shell, StringComparison.OrdinalIgnoreCase))
+                if (baseName.Equals(launcher, StringComparison.OrdinalIgnoreCase))
                 {
                     ids.Add(kv.Key);
                     break;
                 }
             }
         }
-        Log.Debug("📊 发现 {Count} 个 Shell 进程（内存过滤）", ids.Count);
+        Log.Debug("📊 发现 {Count} 个 Shell/启动器进程（内存过滤）", ids.Count);
         return ids;
     }
 
@@ -389,6 +420,34 @@ public class ProcessScanner
                 return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// 检查命令行是否包含服务器进程标记（如 nogui）
+    /// </summary>
+    /// <param name="commandLine">进程完整命令行</param>
+    /// <returns>若包含服务器标记则返回<c>true</c></returns>
+    private bool HasServerProcessMarker(string commandLine)
+    {
+        var cmdLower = commandLine.ToLowerInvariant();
+        foreach (var marker in ServerConstants.ServerProcessMarkers)
+        {
+            if (cmdLower.Contains(marker.ToLowerInvariant()))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 兜底判定：命令行是否包含 -jar 参数且后跟 .jar 文件
+    /// 在客户端已被排除的前提下，java -jar xxx.jar 大概率是服务器进程
+    /// </summary>
+    /// <param name="commandLine">进程完整命令行</param>
+    /// <returns>若包含 -jar 且后跟 .jar 文件则返回<c>true</c></returns>
+    private static bool IsJarProcess(string commandLine)
+    {
+        var cmdLower = commandLine.ToLowerInvariant();
+        return cmdLower.Contains("-jar") && cmdLower.Contains(".jar");
     }
 
     /// <summary>

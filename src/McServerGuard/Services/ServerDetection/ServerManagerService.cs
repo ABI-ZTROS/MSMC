@@ -609,6 +609,10 @@ public class ServerManagerService : IServerManagerService
             jarPath = $"\"{jarPath}\"";
         args.Add(jarPath);
 
+        // 添加 nogui 参数：Minecraft 服务器的标准参数，表示不启动图形界面
+        // 同时作为服务器进程的标识特征，供 ProcessScanner 识别
+        args.Add("nogui");
+
         return string.Join(" ", args);
     }
 
