@@ -41,19 +41,14 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     private readonly IAppConfigService _appConfigService;
     private readonly IServerManagerService _serverManager;
     private readonly IServerImporterService _serverImporter;
-    /// <summary>运行中服务器内部集合（作为 CollectionView 的 Source）</summary>
-    private readonly ObservableCollection<ServerInstance> _runningServersInternal;
+    /// <summary>运行中服务器内部集合（作为 CollectionView 的 Source）。
+    /// 注意：不是 readonly，因为 RefreshFilteredRunningServers 会整体替换这个引用（指向新实例）
+    /// 来避免 WPF ListCollectionView.PrepareLocalArray 的半初始化 NRE</summary>
+    private ObservableCollection<ServerInstance> _runningServersInternal = [];
 
     /// <summary>指示当前实例是否已释放，防止重复 Dispose 导致资源二次释放</summary>
     private bool _disposed;
 
-    /// <summary>
-    /// 初始化服务器检测视图模型的新实例
-    /// </summary>
-    /// <remarks>
-    /// 完成 JVM 参数初始化、服务器列表 CollectionView 构建、已知服务器加载、
-    /// 自动检测事件订阅以及自动检测循环启动。
-    /// </remarks>
     /// <summary>
     /// 运行中服务器的「源集合」容器（不直接 ObservableProperty，因为 WPF CollectionView 替换 Source 会炸）。
     /// 我们通过 CollectionViewSource.Source 属性替换底层 ObservableCollection 实例，
@@ -62,8 +57,6 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     private readonly CollectionViewSource _runningCvs = new();
     /// <summary>已知服务器的「源集合」容器。同上替换策略。</summary>
     private readonly CollectionViewSource _knownCvs = new();
-    /// <summary>运行中服务器内部集合引用（构造时给 Filter 用；后续替换 Source 时不再使用）</summary>
-    private ObservableCollection<ServerInstance> _runningServersInternal = [];
 
     public ServerDetectionViewModel(
         IServerDetector serverDetector,
@@ -100,7 +93,6 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         //     2) 一次性给 CollectionViewSource.Source = newCollection
         //   这样 WPF 会抛弃旧 ListCollectionView，用新 Source 从头构建一个全新的 View，
         //   不可能碰到半初始化的内部状态。
-        _runningServersInternal = new ObservableCollection<ServerInstance>(_runningServersInternal);
         _runningCvs.Source = _runningServersInternal;
         _runningCvs.View.Filter = obj => MatchesSearch(obj, true);
         FilteredRunningServers = _runningCvs.View;
@@ -475,7 +467,14 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         : "未选择服务器";
 
     /// <summary>已知服务器集合</summary>
-    public ObservableCollection<KnownServer> KnownServers { get; } = [];
+    /// <remarks>
+    /// 原来写的是 public ObservableCollection<KnownServer> KnownServers { get; } = [] (get-only)。
+    /// 但 LoadKnownServers 需要整体重建集合来绕开 WPF ListCollectionView.PrepareLocalArray NRE，
+    /// 所以改成带 setter 的属性（setter 是 private，防止外部直接赋值）。
+    /// WPF 的 DataBinding 只关心 get；private set 不影响绑定。
+    /// </remarks>
+    [ObservableProperty]
+    private ObservableCollection<KnownServer> _knownServers = [];
 
     /// <summary>获取一个值，指示已知服务器集合是否非空</summary>
     public bool HasKnownServers => KnownServers.Count > 0;
