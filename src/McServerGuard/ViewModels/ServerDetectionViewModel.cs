@@ -878,6 +878,12 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
 
             if (process != null)
             {
+                // 立即注册启动时 PID → 绕过 WMI 索引延迟，确保 PID 立刻被识别并关联
+                _serverDetector.RegisterStartedServerPid(
+                    knownServerId: server.KnownServerId,
+                    jarPath: server.ServerJarPath,
+                    pid: process.Id);
+
                 OperationMessage = $"✅ 服务器启动成功! PID: {process.Id}";
                 Log.Information("🚀 服务器启动成功: PID={Pid}", process.Id);
                 CurrentServerStatus = ServerStatus.Running;
@@ -1432,6 +1438,12 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
 
             if (process != null)
             {
+                // 立即注册启动时 PID → 关联 KnownServerId，保证后续检测直接标记为 isKnown=true
+                _serverDetector.RegisterStartedServerPid(
+                    knownServerId: server.Id,
+                    jarPath: server.ServerJarPath,
+                    pid: process.Id);
+
                 OperationMessage = $"✅ 启动成功！PID: {process.Id}";
                 Log.Information("🚀 已知服务器启动成功: {Name} PID={Pid}", server.Name, process.Id);
                 CurrentServerStatus = ServerStatus.Running;

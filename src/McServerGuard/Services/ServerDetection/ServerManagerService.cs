@@ -617,23 +617,29 @@ public class ServerManagerService : IServerManagerService
     }
 
     /// <summary>
-    /// 检测 JAR 文件是否被进程独占锁定
+    /// 检测 JAR 文件是否被进程独占锁定（公共静态版，供 ServerDetector 等其他组件复用）。
     /// </summary>
-    /// <param name="jarFilePath">JAR 文件路径</param>
-    /// <returns>true 表示文件被锁定（无法以 FileShare.None 打开）</returns>
+    /// <param name="jarFilePath">JAR 文件绝对路径</param>
+    /// <returns>true 表示文件被其他进程以共享冲突方式打开（典型：Java 加载 JAR）</returns>
     /// <remarks>
-    /// 原理：尝试以独占读取方式打开文件，若抛出 IOException 则判定为被锁定。
-    /// 这是判断 Java 进程是否正在加载该 JAR 的快速检测手段。
+    /// 原理：尝试以 FileShare.None 打开文件读取，若抛出 IOException（ERROR_SHARING_VIOLATION）
+    /// 则判定为被锁定。仅作为快速存在性检测，不依赖管理员权限。
+    /// 文件不存在时返回 false（调用方应预先 File.Exists 判断）。
     /// </remarks>
-    private bool IsJarFileLocked(string jarFilePath)
+    public static bool IsJarFileLocked(string jarFilePath)
     {
+        if (string.IsNullOrWhiteSpace(jarFilePath))
+            return false;
         try
         {
             using var stream = new FileStream(jarFilePath, FileMode.Open, FileAccess.Read, FileShare.None);
             return false;
         }
+        catch (FileNotFoundException) { return false; }
+        catch (DirectoryNotFoundException) { return false; }
         catch (IOException)
         {
+            // ERROR_SHARING_VIOLATION (0x80070020)：文件被其他进程占用
             return true;
         }
         catch (Exception ex)
@@ -641,6 +647,134 @@ public class ServerManagerService : IServerManagerService
             Log.Error(ex, "❌ 检查 JAR 文件锁定状态失败: {JarPath}", jarFilePath);
             return false;
         }
+    }
+
+    /// <summary>
+    /// 通过 JAR 文件路径与工作目录，在所有 java/javaw 进程中查找匹配的服务器进程。
+    /// 优先用命令行包含 JAR 文件名匹配，其次用 JAR 完整路径匹配，最后降级为工作目录匹配。
+    /// （公共静态版，供 ServerDetector 等复用）
+    /// </summary>
+    /// <param name="jarFilePath">目标 JAR 绝对路径</param>
+    /// <param name="workingDirectory">预期工作目录（可空）</param>
+    /// <returns>匹配到的 Process 对象（调用方负责 Dispose）；未找到返回 null</returns>
+    /// <remarks>
+    /// 枚举进程与命令行读取失败均静默跳过，不会向上抛出异常。
+    /// </remarks>
+    public static Process? FindJavaProcessByJarPath(string jarFilePath, string? workingDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(jarFilePath))
+            return null;
+
+        var jarName = Path.GetFileName(jarFilePath).ToLowerInvariant();
+        var jarFullLower = jarFilePath.ToLowerInvariant();
+        var workDirLower = string.IsNullOrWhiteSpace(workingDirectory)
+            ? null
+            : workingDirectory.TrimEnd('\\', '/').ToLowerInvariant();
+
+        // 同时枚举 java.exe 与 javaw.exe（MSMC 启动时可配置 preferJavaw）
+        var processNames = new[] { "java", "javaw" };
+
+        Process? bestMatch = null;
+        int bestScore = 0;
+
+        foreach (var procName in processNames)
+        {
+            Process[] procs;
+            try { procs = Process.GetProcessesByName(procName); }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "枚举 {ProcName} 进程失败", procName);
+                continue;
+            }
+
+            foreach (var proc in procs)
+            {
+                try
+                {
+                    if (proc.HasExited)
+                    {
+                        proc.Dispose();
+                        continue;
+                    }
+
+                    int score = 0;
+
+                    // 策略 1：命令行包含 JAR 文件名（最强信号）
+                    var cmdLine = GetProcessCommandLineStatic(proc.Id);
+                    if (!string.IsNullOrEmpty(cmdLine))
+                    {
+                        var cmdLower = cmdLine.ToLowerInvariant();
+                        if (cmdLower.Contains(jarName))
+                            score += 100;
+                        if (cmdLower.Contains(jarFullLower))
+                            score += 200; // 完整路径匹配，优先级最高
+                    }
+
+                    // 策略 2：进程工作目录匹配（降级信号）
+                    if (workDirLower != null && score == 0)
+                    {
+                        try
+                        {
+                            var procWorkDir = proc.StartInfo.WorkingDirectory;
+                            if (!string.IsNullOrWhiteSpace(procWorkDir)
+                                && procWorkDir.TrimEnd('\\', '/').ToLowerInvariant() == workDirLower)
+                            {
+                                score += 50;
+                            }
+                        }
+                        catch { /* StartInfo.WorkingDirectory 可能拿不到，忽略 */ }
+                    }
+
+                    if (score > bestScore)
+                    {
+                        bestMatch?.Dispose();
+                        bestMatch = proc;
+                        bestScore = score;
+                    }
+                    else
+                    {
+                        proc.Dispose();
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // 进程在检查期间退出
+                    proc.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "检查进程 PID={Pid} 时出错", proc.Id);
+                    proc.Dispose();
+                }
+            }
+        }
+
+        return bestScore > 0 ? bestMatch : null;
+    }
+
+    /// <summary>
+    /// 获取指定进程的完整命令行（WMI Win32_Process 静态版，供 FindJavaProcessByJarPath 复用）。
+    /// </summary>
+    private static string? GetProcessCommandLineStatic(int processId)
+    {
+        try
+        {
+            // 复用 Windows 专用的 WMI 查询方式（与 ProcessScanner 逻辑一致）
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {processId}");
+            using var results = searcher.Get();
+            foreach (var mo in results)
+            {
+                var cmd = mo["CommandLine"]?.ToString();
+                if (!string.IsNullOrEmpty(cmd))
+                    return cmd;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "读取进程 PID={Pid} 命令行失败", processId);
+        }
+        return null;
     }
 
     /// <summary>

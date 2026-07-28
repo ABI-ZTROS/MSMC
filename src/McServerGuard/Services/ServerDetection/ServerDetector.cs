@@ -15,6 +15,7 @@ using System.Diagnostics;
 using System.IO;
 using McServerGuard.Constants;
 using McServerGuard.Models;
+using McServerGuard.Services;
 using Serilog;
 
 /// <summary>
@@ -23,7 +24,8 @@ using Serilog;
 /// </summary>
 /// <remarks>
 /// 采用缓存-aside 模式实现 PID 生命周期缓存，降低重复扫描开销；
-/// 通过 DetectionCompleted 事件实现观察者模式，支持检测结果的异步推送。
+/// 通过 DetectionCompleted 事件实现观察者模式，支持检测结果的异步推送；
+/// 新增「KnownServer JAR 锁定检测」阶段，利用先验 JAR 路径反向关联已知服务器。
 /// </remarks>
 public class ServerDetector : IServerDetector
 {
@@ -63,6 +65,22 @@ public class ServerDetector : IServerDetector
     private readonly JarCoreIdentifier _jarCoreIdentifier;
 
     /// <summary>
+    /// 应用配置服务 —— 提供 KnownServers 持久化列表，支持 JAR 锁定阶段交叉核对
+    /// </summary>
+    private readonly IAppConfigService _appConfigService;
+
+    /// <summary>
+    /// 启动时 PID 短期缓存（MSMC 内部启动的服务器直接写入，不等 WMI 索引）
+    /// Key = KnownServer.Id 或 JAR 绝对路径（大小写不敏感的字符串 key）
+    /// Value = (Pid, ExpireTickMs)
+    /// TTL = 30 秒，用于处理 MSMC 启动后 1.5~3 秒的 WMI 索引竞态窗口
+    /// </summary>
+    private readonly ConcurrentDictionary<string, (int Pid, long ExpireTick)> _startSessionPidCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>启动时 PID 缓存 TTL（毫秒）—— 远大于 WMI 索引延迟（1.5s）</summary>
+    private const long StartSessionCacheTtlMs = 30_000;
+
+    /// <summary>
     /// 检测完成事件 —— 当一轮自动检测完成时触发，携带本次检测的完整结果
     /// </summary>
     public event EventHandler<DetectionResult>? DetectionCompleted;
@@ -77,6 +95,7 @@ public class ServerDetector : IServerDetector
     /// <param name="portToProcessMapper">端口→PID 反向绑定器实例</param>
     /// <param name="portResolver">服务器配置端口解析器实例</param>
     /// <param name="jarCoreIdentifier">JAR Manifest 核心识别器实例（第三级兜底）</param>
+    /// <param name="appConfigService">应用配置服务（KnownServers 列表来源）</param>
     public ServerDetector(
         ProcessScanner processScanner,
         WorkingDirectoryResolver workingDirResolver,
@@ -84,7 +103,8 @@ public class ServerDetector : IServerDetector
         PortScanner portScanner,
         PortToProcessMapper portToProcessMapper,
         ServerPortResolver portResolver,
-        JarCoreIdentifier jarCoreIdentifier)
+        JarCoreIdentifier jarCoreIdentifier,
+        IAppConfigService appConfigService)
     {
         _processScanner = processScanner;
         _workingDirResolver = workingDirResolver;
@@ -93,10 +113,45 @@ public class ServerDetector : IServerDetector
         _portToProcessMapper = portToProcessMapper;
         _portResolver = portResolver;
         _jarCoreIdentifier = jarCoreIdentifier;
-        Log.Information("🕵️ ServerDetector 初始化完毕，准备出击（含网络套件 + JAR Manifest 兜底）");
+        _appConfigService = appConfigService;
+        Log.Information("🕵️ ServerDetector 初始化完毕（含 KnownServer JAR 锁定检测 + 网络套件 + JAR Manifest 兜底）");
 
         // 启动缓存定期清理计时器 —— 每 30 秒扫描并移除过期条目，防止缓存无限增长
         _cacheCleanupTimer = new Timer(CleanupExpiredCacheEntries, null, CacheCleanupInterval, CacheCleanupInterval);
+    }
+
+    /// <summary>
+    /// 注册 MSMC 内部启动的服务器 PID 到短期缓存。
+    /// 在 StartServer 成功后立即调用，无需等待 WMI 索引到新进程。
+    /// </summary>
+    /// <param name="knownServerId">已知服务器 ID（如果启动的是 KnownServer）；可空</param>
+    /// <param name="jarPath">JAR 文件绝对路径（必填，作为 second key）</param>
+    /// <param name="pid">启动成功后立即拿到的进程 ID</param>
+    public void RegisterStartedServerPid(string? knownServerId, string jarPath, int pid)
+    {
+        if (pid <= 0 || string.IsNullOrWhiteSpace(jarPath))
+            return;
+
+        var nowTick = Environment.TickCount64;
+        var expire = nowTick + StartSessionCacheTtlMs;
+
+        // 以 JAR 路径为 key 注册一份（所有启动场景都会有）
+        _startSessionPidCache.AddOrUpdate(
+            key: jarPath,
+            addValueFactory: _ => (pid, expire),
+            updateValueFactory: (_, _) => (pid, expire));
+
+        // 以 KnownServerId 为 key 再注册一份（仅已知服务器启动场景有）
+        if (!string.IsNullOrWhiteSpace(knownServerId))
+        {
+            _startSessionPidCache.AddOrUpdate(
+                key: knownServerId,
+                addValueFactory: _ => (pid, expire),
+                updateValueFactory: (_, _) => (pid, expire));
+        }
+
+        Log.Information("🔗 已注册启动时 PID 缓存: PID={Pid}, JAR={Jar}, KnownId={Id}",
+            pid, Path.GetFileName(jarPath), knownServerId ?? "(null)");
     }
 
     /// <inheritdoc />
@@ -110,10 +165,11 @@ public class ServerDetector : IServerDetector
     /// </summary>
     /// <returns>检测结果，包含已识别的服务器实例列表、耗时及日志信息</returns>
     /// <remarks>
-    /// 检测管道分为三个阶段：
-    /// 阶段一：进程枚举 —— 扫描系统中所有 Java 进程并提取命令行参数
-    /// 阶段二：缓存命中判定 —— 基于 PID 生命周期缓存复用已检测结果
-    /// 阶段三：深度检测 —— 解析工作目录、扫描配置文件、推断服务器类型
+    /// 检测管道：
+    /// 阶段一：ProcessScanner 进程枚举 —— 基于 WMI 扫 java/javaw 进程
+    /// 阶段二A：启动时 PID 缓存 + KnownServer JAR 锁定交叉检测（新增）
+    /// 阶段二B：逐进程深度检测（PID 缓存-aside 模式）
+    /// 阶段三：主动端口扫描兜底 —— 发现前序漏掉的实例
     /// </remarks>
     public async Task<DetectionResult> DetectAllAsync()
     {
@@ -121,31 +177,30 @@ public class ServerDetector : IServerDetector
         var logMessages = new List<string>();
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        Log.Information("🔍 DetectAllAsync: 开始扫描所有 Java 进程...");
+        Log.Information("🔍 DetectAllAsync: 开始完整检测管道...");
 
-        // 阶段一：进程枚举阶段（异步执行 WMI 批量查询，避免阻塞线程池）
+        // ── 阶段一：ProcessScanner 进程枚举 ──────────────────────────────────
         var processResults = await _processScanner.ScanServerProcessesAsync();
+        Log.Debug("📊 阶段一: ProcessScanner 返回 {Count} 个候选进程", processResults.Count);
 
-        if (processResults.Count == 0)
+        // ── 阶段二A：启动时 PID 缓存 + KnownServer JAR 锁定交叉检测 ─────────
+        // ① 启动时 PID 缓存优先（MSMC 内部启动后 30s 内有效，完全绕过 WMI 延迟）
+        var fromStartCache = ApplyStartSessionPidCache(processResults, servers);
+        Log.Debug("🔗 阶段二A(启动缓存): 补入 {Count} 个服务器", fromStartCache);
+
+        // ② KnownServer JAR 锁定交叉检测（对所有已知服务器查 JAR 是否被锁，反查 pid）
+        var fromJarLock = await DetectKnownServersByJarLockAsync(processResults, servers);
+        Log.Debug("🔗 阶段二A(JAR锁定): 补入 {Count} 个服务器", fromJarLock);
+
+        // ── 关键 early return 调整：不再以 processResults.Count==0 为唯一依据 ──
+        // 如果 ProcessScanner 为空，但阶段二A 已经通过启动缓存/JAR 锁定发现了服务器，
+        // 则正常进入后续阶段（端口扫描兜底仍然会跑，用于发现第三方进程）。
+        if (processResults.Count == 0 && servers.Count == 0)
         {
-            Log.Information("没有检测到任何 Minecraft 服务器进程，尝试通过端口扫描兜底...");
-            // 不再直接返回 —— 进程枚举为空可能是因为：
-            // 1. Java 进程刚启动但 WMI 尚未索引到
-            // 2. 跨用户/权限问题导致 WMI 无法获取命令行
-            // 3. 非 Java 启动器启动的服务器
-            // 降级走主动端口扫描，扫描 25565-25590 等常见 Minecraft 端口
+            Log.Information("ProcessScanner + JAR锁定 + 启动缓存均未发现服务器，端口扫描兜底...");
             await DiscoverServersByPortScanAsync(processResults, servers);
 
             stopwatch.Stop();
-            if (servers.Count > 0)
-            {
-                Log.Information("✅ 端口扫描兜底发现 {Count} 个服务器", servers.Count);
-            }
-            else
-            {
-                Log.Information("端口扫描也未发现服务器");
-            }
-
             return new DetectionResult
             {
                 IsDetected = servers.Count > 0,
@@ -156,28 +211,29 @@ public class ServerDetector : IServerDetector
             };
         }
 
-        // 阶段二：逐进程深度检测（采用 PID 生命周期缓存策略，避免高频全量扫描）
+        // ── 阶段二B：逐进程深度检测（ProcessScanner 命中的进程 + PID 缓存） ──
         int i = 0;
         foreach (var (processId, commandLine) in processResults)
         {
             i++;
-            Log.Debug("🔄 正在检查第 {Index} 个 Java 进程: PID={Pid}", i, processId);
             try
             {
-                // 缓存命中判定：TTL 内已检测进程直接复用结果
+                // 避免与阶段二A已补入的 PID 重复（PID 是强一致去重键）
+                if (servers.Any(s => s.ProcessId == processId))
+                    continue;
+
+                // PID 生命周期缓存命中直接复用
                 if (TryGetCachedServer(processId, out var cachedServer))
                 {
                     servers.Add(cachedServer!);
                     continue;
                 }
 
-                // 缓存未命中，执行完整深度检测管道
                 var server = await BuildServerInstanceAsync(processId, commandLine);
                 if (server is not null)
                 {
                     Log.Debug("✅ 识别到服务器: {Type} @ {Dir}", server.ServerType, server.WorkingDirectory);
                     servers.Add(server);
-                    // 写入缓存，采用缓存-aside 模式
                     _detectionCache[processId] = (server, Environment.TickCount64);
                 }
             }
@@ -189,12 +245,11 @@ public class ServerDetector : IServerDetector
             }
         }
 
-        // === 阶段四：主动端口扫描 —— 发现 ProcessScanner 漏掉的实例 ===
-        // 典型场景：BungeeCord/Velocity 代理、非 Java 启动器启动的服务器
+        // ── 阶段三：主动端口扫描兜底 ────────────────────────────────────────
         await DiscoverServersByPortScanAsync(processResults, servers);
 
         stopwatch.Stop();
-        Log.Information("✅ 检测完成，共发现 {Count} 个服务器", servers.Count);
+        Log.Information("✅ 检测完成，共发现 {Count} 个服务器（耗时 {Ms}ms）", servers.Count, stopwatch.ElapsedMilliseconds);
 
         return new DetectionResult
         {
@@ -204,6 +259,309 @@ public class ServerDetector : IServerDetector
             ElapsedMs = stopwatch.ElapsedMilliseconds,
             ErrorMessage = logMessages.Count > 0 ? string.Join("\n", logMessages) : null,
             LogMessages = logMessages
+        };
+    }
+
+    /// <summary>
+    /// 应用启动时 PID 短期缓存：MSMC 内部启动后直接写入的 (jarPath→pid, knownId→pid) 映射。
+    /// 在 WMI 索引新进程之前就能把 PID 补入 servers 列表，消除启动后 1.5~3 秒的竞态窗口。
+    /// </summary>
+    /// <param name="processResults">ProcessScanner 结果（用于去重）</param>
+    /// <param name="servers">要追加到的服务器列表</param>
+    /// <returns>本方法新增补入的条目数</returns>
+    private int ApplyStartSessionPidCache(
+        List<(int ProcessId, string CommandLine)> processResults,
+        List<ServerInstance> servers)
+    {
+        int added = 0;
+        var scannerPids = processResults.Select(p => p.ProcessId).ToHashSet();
+        var nowTick = Environment.TickCount64;
+
+        // 1. 收集所有有效的 (pid, key)，按 PID 去重（一个 pid 可能被 jarPath 和 knownId 各注册一次）
+        var validPids = new Dictionary<int, string?>(); // pid → knownServerId（可空）
+
+        foreach (var kvp in _startSessionPidCache)
+        {
+            if (nowTick >= kvp.Value.ExpireTick)
+            {
+                // 过期条目惰性清理
+                _startSessionPidCache.TryRemove(kvp.Key, out _);
+                continue;
+            }
+            var pid = kvp.Value.Pid;
+            if (scannerPids.Contains(pid))
+                continue; // ProcessScanner 已识别到，跳过
+            if (servers.Any(s => s.ProcessId == pid))
+                continue; // 已补入，跳过
+
+            // knownServerId 形式：GUID（不包含 '\'、':'、盘符）；JAR 路径含 ':' 或 '\'
+            string? knownId = kvp.Key.Contains(':') || kvp.Key.Contains('\\') || kvp.Key.Contains('/')
+                ? null
+                : kvp.Key;
+
+            validPids.TryAdd(pid, knownId);
+        }
+
+        // 2. 对每个有效 PID：确认进程存活 → 补建 ServerInstance
+        foreach (var (pid, knownId) in validPids)
+        {
+            Process? process = null;
+            try
+            {
+                process = Process.GetProcessById(pid);
+                if (process.HasExited)
+                {
+                    process.Dispose();
+                    continue;
+                }
+            }
+            catch (ArgumentException)
+            {
+                continue; // 进程不存在
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "启动缓存: 检查 PID={Pid} 存活失败", pid);
+                process?.Dispose();
+                continue;
+            }
+
+            KnownServer? known = null;
+            if (knownId != null)
+            {
+                known = _appConfigService.GetAllKnownServers()
+                    .FirstOrDefault(k => k.Id == knownId);
+            }
+
+            // 如果 JAR 路径未知，尝试从 cache 反查（查找所有 jarPath 形式的 key 对应的 pid）
+            var jarPath = known?.ServerJarPath;
+            if (string.IsNullOrEmpty(jarPath))
+            {
+                foreach (var kvp in _startSessionPidCache)
+                {
+                    if (kvp.Value.Pid == pid
+                        && (kvp.Key.Contains(':') || kvp.Key.Contains('\\') || kvp.Key.Contains('/')))
+                    {
+                        jarPath = kvp.Key;
+                        break;
+                    }
+                }
+            }
+
+            ServerInstance instance;
+            if (known != null)
+            {
+                // 从 KnownServer 完整重建元数据
+                instance = BuildInstanceFromKnownServer(known, pid);
+            }
+            else if (!string.IsNullOrEmpty(jarPath) && File.Exists(jarPath))
+            {
+                // 仅有 JAR 路径的场景（非 KnownServer）：部分元数据可用
+                instance = BuildInstanceFromJarPathOnly(jarPath, pid);
+            }
+            else
+            {
+                // JAR 路径也未知：最小化实例（PID 仅占位），后续端口扫描仍可能补全
+                process.Dispose();
+                continue;
+            }
+
+            servers.Add(instance);
+            _detectionCache[pid] = (instance, nowTick); // 写入生命周期缓存，TTL 内复用
+            Log.Information("🔗 启动缓存补入服务器: PID={Pid}, DisplayName={Name}", pid, instance.DisplayName);
+            added++;
+            process.Dispose();
+        }
+
+        return added;
+    }
+
+    /// <summary>
+    /// KnownServer JAR 锁定交叉检测阶段：
+    /// 对 AppConfigService.GetAllKnownServers() 中的每台服务器，
+    /// 用 IsJarFileLocked 快速判断 JAR 是否被占用；若锁定则反查对应 Java 进程，
+    /// 若 ProcessScanner 未识别到该 PID，则从 KnownServer 元数据直接重建 ServerInstance 补入。
+    /// </summary>
+    /// <param name="processResults">ProcessScanner 结果（用于 PID 去重）</param>
+    /// <param name="servers">要追加到的服务器列表</param>
+    /// <returns>本方法新增补入的条目数</returns>
+    private async Task<int> DetectKnownServersByJarLockAsync(
+        List<(int ProcessId, string CommandLine)> processResults,
+        List<ServerInstance> servers)
+    {
+        int added = 0;
+        var scannerPids = processResults.Select(p => p.ProcessId).ToHashSet();
+        var existingPids = servers.Select(s => s.ProcessId).ToHashSet();
+        var existingJarPaths = servers
+            .Select(s => s.ServerJarPath)
+            .Where(p => !string.IsNullOrEmpty(p))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var nowTick = Environment.TickCount64;
+
+        List<KnownServer> knownServers;
+        try
+        {
+            knownServers = _appConfigService.GetAllKnownServers();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "读取 KnownServers 失败，跳过 JAR 锁定阶段");
+            return 0;
+        }
+
+        foreach (var known in knownServers)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(known.ServerJarPath) || !File.Exists(known.ServerJarPath))
+                    continue;
+
+                // ProcessScanner 或启动缓存已经补入过该 JAR 路径 → 跳过
+                if (existingJarPaths.Contains(known.ServerJarPath))
+                    continue;
+
+                // JAR 未锁定 → 进程未使用该 JAR，跳过
+                if (!ServerManagerService.IsJarFileLocked(known.ServerJarPath))
+                    continue;
+
+                // 反查锁定该 JAR 的 Java 进程 PID
+                using var matchedProc = ServerManagerService.FindJavaProcessByJarPath(
+                    known.ServerJarPath, known.WorkingDirectory);
+
+                if (matchedProc == null || matchedProc.HasExited)
+                {
+                    Log.Debug("🔒 JAR 被锁定但未找到匹配 Java 进程: {Jar}", known.ServerJarPath);
+                    continue;
+                }
+
+                var pid = matchedProc.Id;
+
+                // PID 去重：ProcessScanner 或启动缓存已识别 → 跳过（但仍然为它补个 KnownServerId 关联）
+                if (scannerPids.Contains(pid) || existingPids.Contains(pid))
+                {
+                    var existing = servers.FirstOrDefault(s => s.ProcessId == pid);
+                    if (existing != null && string.IsNullOrEmpty(existing.KnownServerId))
+                    {
+                        existing.KnownServerId = known.Id;
+                    }
+                    continue;
+                }
+
+                // 从 KnownServer 元数据重建 ServerInstance（JAR 路径/工作目录/端口/JVM参数 全保真）
+                var instance = BuildInstanceFromKnownServer(known, pid);
+
+                // 可选增强：重新用已知工作目录扫一遍配置文件（不阻塞主流程，失败可忽略）
+                try
+                {
+                    instance.ConfigFiles = await _configScanner.ScanAllAsync(known.WorkingDirectory);
+                    var (configuredPort, isPortOpen, listeningPid) =
+                        await ValidatePortBindingAsync(pid, known.WorkingDirectory);
+                    instance.ServerPort = configuredPort;
+                    instance.IsPortOpen = isPortOpen;
+                    instance.ActualListeningPid = listeningPid;
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "JAR锁定阶段: 配置/端口验证失败（PID={Pid}），继续使用 KnownServer 默认值", pid);
+                    instance.ServerPort = known.Port;
+                }
+
+                servers.Add(instance);
+                _detectionCache[pid] = (instance, nowTick);
+                Log.Information("🔒 JAR锁定补入服务器: PID={Pid}, DisplayName={Name}", pid, instance.DisplayName);
+                added++;
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "处理 KnownServer={Name} JAR 锁定检测时异常", known.Name);
+            }
+        }
+
+        return added;
+    }
+
+    /// <summary>
+    /// 从 KnownServer 元数据 + 已知 PID 重建 ServerInstance。
+    /// 用于「启动时PID缓存」和「JAR锁定交叉检测」两个阶段，保证从已知服务器补入的实例
+    /// 元数据完整（工作目录、JAR 路径、JVM 参数、端口全部来自持久化配置）。
+    /// </summary>
+    private ServerInstance BuildInstanceFromKnownServer(KnownServer known, int pid)
+    {
+        var jarName = Path.GetFileName(known.ServerJarPath);
+        var inferredType = ServerTypeClassifier.ClassifyByJarNameAndConfigFiles(
+            jarName, known.WorkingDirectory);
+
+        // 模糊类型：用 JAR Manifest 兜底（同步阻塞 1 次可接受；缓存 TTL 内复用）
+        if (IsAmbiguousServerType(inferredType)
+            && !string.IsNullOrEmpty(known.ServerJarPath)
+            && File.Exists(known.ServerJarPath))
+        {
+            try
+            {
+                var manifestType = _jarCoreIdentifier.IdentifyAsync(known.ServerJarPath)
+                    .ConfigureAwait(false).GetAwaiter().GetResult();
+                if (manifestType != ServerType.Unknown && manifestType != inferredType)
+                {
+                    inferredType = manifestType;
+                }
+            }
+            catch { /* Manifest 识别失败不阻塞 */ }
+        }
+
+        // Unknown → 兜底 Vanilla（KnownServer 持久化过的服务器，类型不可能"完全未知"）
+        if (inferredType == ServerType.Unknown)
+            inferredType = ServerType.Vanilla;
+
+        return new ServerInstance
+        {
+            ProcessId = pid,
+            ServerType = inferredType,
+            WorkingDirectory = known.WorkingDirectory ?? string.Empty,
+            JavaPath = known.JavaPath ?? string.Empty,
+            ServerJarPath = known.ServerJarPath ?? string.Empty,
+            ServerJarName = jarName ?? string.Empty,
+            FullCommandLine = string.Empty, // JAR 锁定/启动缓存阶段不强制读命令行
+            JvmArguments = known.JvmArguments?.ToList() ?? [],
+            InitialHeapMemoryBytes = known.InitialHeapMemoryBytes,
+            MaxHeapMemoryBytes = known.MaxHeapMemoryBytes,
+            ConfigFiles = [],
+            ServerPort = known.Port,
+            IsPortOpen = false, // 等端口探测阶段更新
+            ActualListeningPid = null,
+            DetectedAt = DateTime.Now,
+            KnownServerId = known.Id,
+        };
+    }
+
+    /// <summary>
+    /// 仅 JAR 路径+PID 可用时的最小化 ServerInstance（非 KnownServer 启动场景）。
+    /// </summary>
+    private ServerInstance BuildInstanceFromJarPathOnly(string jarPath, int pid)
+    {
+        var jarName = Path.GetFileName(jarPath);
+        var workDir = Path.GetDirectoryName(jarPath) ?? string.Empty;
+        var inferredType = ServerTypeClassifier.ClassifyByJarNameAndConfigFiles(jarName, workDir);
+        if (inferredType == ServerType.Unknown)
+            inferredType = ServerType.Vanilla;
+
+        return new ServerInstance
+        {
+            ProcessId = pid,
+            ServerType = inferredType,
+            WorkingDirectory = workDir,
+            JavaPath = string.Empty,
+            ServerJarPath = jarPath,
+            ServerJarName = jarName,
+            FullCommandLine = string.Empty,
+            JvmArguments = [],
+            InitialHeapMemoryBytes = 0,
+            MaxHeapMemoryBytes = 0,
+            ConfigFiles = [],
+            ServerPort = ServerConstants.DefaultServerPort,
+            IsPortOpen = false,
+            ActualListeningPid = null,
+            DetectedAt = DateTime.Now,
+            KnownServerId = null,
         };
     }
 

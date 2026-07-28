@@ -76,4 +76,14 @@ public interface IServerDetector : IDisposable
     /// 最近一次跳过进程的原因
     /// </summary>
     string? LastSkipReason { get; }
+
+    /// <summary>
+    /// 注册 MSMC 内部启动的服务器 PID 到短期缓存（TTL 30s）。
+    /// 配合 DetectAllAsync 的「阶段二A」使用，绕过 WMI 索引延迟，
+    /// 并将 KnownServer 与该 PID 直接关联，确保「从 MSMC 内部启动的服务器是已知服务器」。
+    /// </summary>
+    /// <param name="knownServerId">已知服务器 ID（KnownServer.Id），可空（非 KnownServer 启动场景）</param>
+    /// <param name="jarPath">JAR 文件绝对路径（必填）</param>
+    /// <param name="pid">启动成功后立即拿到的进程 ID</param>
+    void RegisterStartedServerPid(string? knownServerId, string jarPath, int pid);
 }

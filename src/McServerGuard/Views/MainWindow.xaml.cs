@@ -827,7 +827,7 @@ public partial class MainWindow : Window
                     configFiles = s.ConfigFiles,
                     networkStatusText = s.NetworkStatusText,
                     formattedMaxMemory = s.FormattedMaxMemory,
-                    isKnown = false,
+                    isKnown = !string.IsNullOrEmpty(s.KnownServerId),
                 }).ToList(),
                 known = known.Select(k => new
                 {
@@ -902,7 +902,7 @@ public partial class MainWindow : Window
                     configFiles = s.ConfigFiles,
                     networkStatusText = s.NetworkStatusText,
                     formattedMaxMemory = s.FormattedMaxMemory,
-                    isKnown = false,
+                    isKnown = !string.IsNullOrEmpty(s.KnownServerId),
                 });
             }
 
