@@ -106,10 +106,10 @@ interface RunningItemProps {
   server: ServerInfo
   isSelected: boolean
   onSelect: () => void
-  onStart: () => void
+  onStop: () => void
 }
 
-function RunningServerItem({ server, isSelected, onSelect, onStart }: RunningItemProps): JSX.Element {
+function RunningServerItem({ server, isSelected, onSelect, onStop }: RunningItemProps): JSX.Element {
   return (
     <div
       onClick={onSelect}
@@ -144,12 +144,12 @@ function RunningServerItem({ server, isSelected, onSelect, onStart }: RunningIte
         <button
           onClick={(e) => {
             e.stopPropagation()
-            onStart()
+            onStop()
           }}
           className="md-btn md-btn-flat md-btn-icon"
-          title="启动"
+          title="停止"
         >
-          ▶
+          ⏹
         </button>
       </div>
     </div>
@@ -329,8 +329,12 @@ export function DashboardPage(): JSX.Element {
     setBusyReason('正在启动服务器...')
     setOperationMessage('')
     try {
-      await bridge.invoke('server:start')
-      setOperationMessage('启动命令已发送')
+      const result = await bridge.invoke<{ success: boolean; error?: string; message?: string }>('server:start')
+      if (result?.success) {
+        setOperationMessage(result.message || '启动成功')
+      } else {
+        setOperationMessage(`启动失败: ${result?.error || '未知错误'}`)
+      }
       await fetchServerList()
       await fetchSelectedServer()
     } catch (e) {
@@ -347,8 +351,12 @@ export function DashboardPage(): JSX.Element {
     setBusyReason('正在停止服务器...')
     setOperationMessage('')
     try {
-      await bridge.invoke('server:stop')
-      setOperationMessage('停止命令已发送')
+      const result = await bridge.invoke<{ success: boolean; error?: string; message?: string }>('server:stop')
+      if (result?.success) {
+        setOperationMessage(result.message || '停止成功')
+      } else {
+        setOperationMessage(`停止失败: ${result?.error || '未知错误'}`)
+      }
       await fetchServerList()
       await fetchSelectedServer()
     } catch (e) {
@@ -704,7 +712,7 @@ export function DashboardPage(): JSX.Element {
                       server={server}
                       isSelected={selectedServer?.displayName === server.displayName}
                       onSelect={() => handleSelectServer(server.displayName)}
-                      onStart={handleStart}
+                      onStop={handleStop}
                     />
                   </div>
                 ))
@@ -734,12 +742,18 @@ export function DashboardPage(): JSX.Element {
                       server={server}
                       isSelected={selectedServer?.isKnown === true && selectedServer.displayName === server.name}
                       onSelect={() => handleSelectServer(server.name)}
-                      onStart={() =>
-                        bridge
-                          .invoke('server:startKnown', server.name)
-                          .then(fetchServerList)
-                        .catch(console.error)
-                    }
+                      onStart={async () => {
+                        try {
+                          const result = await bridge.invoke<{ success: boolean; error?: string; message?: string }>('server:startKnown', server.name)
+                          if (!result?.success) {
+                            setOperationMessage(`启动失败: ${result?.error || '未知错误'}`)
+                          }
+                          await fetchServerList()
+                          await fetchSelectedServer()
+                        } catch (e) {
+                          setOperationMessage(`启动失败: ${e instanceof Error ? e.message : String(e)}`)
+                        }
+                      }}
                     onDelete={async () => {
                       try {
                         const result = await bridge.invoke<{ success: boolean; message?: string; error?: string }>('server:removeKnown', server.name)

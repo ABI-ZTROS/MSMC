@@ -985,11 +985,18 @@ public partial class MainWindow : Window
         {
             try
             {
-                if (_vm?.DetectionPage != null)
-                {
-                    await _vm.DetectionPage.StartCurrentServerCommand.ExecuteAsync(null);
-                }
-                return new { success = true };
+                if (_vm?.DetectionPage == null)
+                    return new { success = false, error = "服务器视图模型未初始化" };
+
+                var vm = _vm.DetectionPage;
+                if (!vm.StartCurrentServerCommand.CanExecute(null))
+                    return new { success = false, error = vm.IsBusy ? "当前有操作正在进行，请稍候" : "无法启动服务器（无选中服务器或已在运行）" };
+
+                await vm.StartCurrentServerCommand.ExecuteAsync(null);
+
+                var started = vm.CurrentServerStatus == ServerStatus.Running;
+                var msg = vm.OperationMessage;
+                return new { success = started, message = msg, error = started ? null : msg };
             }
             catch (Exception ex)
             {
@@ -1003,11 +1010,18 @@ public partial class MainWindow : Window
         {
             try
             {
-                if (_vm?.DetectionPage != null)
-                {
-                    await _vm.DetectionPage.StopCurrentServerCommand.ExecuteAsync(null);
-                }
-                return new { success = true };
+                if (_vm?.DetectionPage == null)
+                    return new { success = false, error = "服务器视图模型未初始化" };
+
+                var vm = _vm.DetectionPage;
+                if (!vm.StopCurrentServerCommand.CanExecute(null))
+                    return new { success = false, error = "无法停止服务器（无选中服务器或未在运行）" };
+
+                await vm.StopCurrentServerCommand.ExecuteAsync(null);
+
+                var stopped = vm.CurrentServerStatus == ServerStatus.Stopped;
+                var msg = vm.OperationMessage;
+                return new { success = stopped, message = msg, error = stopped ? null : msg };
             }
             catch (Exception ex)
             {
@@ -1064,20 +1078,26 @@ public partial class MainWindow : Window
         {
             try
             {
+                if (_vm?.DetectionPage == null)
+                    return new { success = false, error = "服务器视图模型未初始化" };
+
                 var name = ExtractStringPayload(payload);
-                if (_vm?.DetectionPage != null && !string.IsNullOrEmpty(name))
-                {
-                    var known = _vm.DetectionPage.KnownServers.FirstOrDefault(k => k.Name == name);
-                    if (known != null)
-                    {
-                        await _vm.DetectionPage.StartKnownServerCommand.ExecuteAsync(known);
-                        var msg = _vm.DetectionPage.OperationMessage;
-                        var isSuccess = !msg?.StartsWith("❌") ?? true;
-                        return new { success = isSuccess, message = msg };
-                    }
+                if (string.IsNullOrEmpty(name))
+                    return new { success = false, error = "未指定服务器名称" };
+
+                var vm = _vm.DetectionPage;
+                var known = vm.KnownServers.FirstOrDefault(k => k.Name == name);
+                if (known == null)
                     return new { success = false, error = "未找到指定的服务器" };
-                }
-                return new { success = false, error = "未选择服务器" };
+
+                if (!vm.StartKnownServerCommand.CanExecute(known))
+                    return new { success = false, error = "无法启动服务器（已在运行或有操作正在进行）" };
+
+                await vm.StartKnownServerCommand.ExecuteAsync(known);
+
+                var started = vm.CurrentServerStatus == ServerStatus.Running;
+                var msg = vm.OperationMessage;
+                return new { success = started, message = msg, error = started ? null : msg };
             }
             catch (Exception ex)
             {
