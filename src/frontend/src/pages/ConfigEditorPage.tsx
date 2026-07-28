@@ -247,28 +247,44 @@ export function ConfigEditorPage(): JSX.Element {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [pendingValues, setPendingValues] = useState<Record<string, string>>({})
 
+  // 配置文件扁平列表（预留补偿用，未使用时避免 lint 报错）
+  const [, setConfigFilesState] = useState<string[]>([])
+
   const [showSaveErrorModal, setShowSaveErrorModal] = useState(false)
   const [saveErrorInfo, setSaveErrorInfo] = useState<{ type: string; detail: string } | null>(null)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
 
+  // ── 修复：loadFileTree 拆成"获取数据"和"可选地同步 selectedServerName"两步，
+  //    后端返回的 selectedServerName 只作为兜底，绝不覆盖本地已设值（除非本地是空）。
+  const fetchFileTree = useCallback(async (): Promise<ConfigFileTreeResponse> => {
+    const resp = await getConfigFileTree()
+    return resp
+  }, [])
+
   const loadFileTree = useCallback(async (): Promise<void> => {
     try {
-      const resp: ConfigFileTreeResponse = await getConfigFileTree()
+      const resp: ConfigFileTreeResponse = await fetchFileTree()
       setConfigFileTree(resp.tree)
       setConfigFileCountText(resp.configFileCountText)
       setServerWorkingDirectory(resp.serverWorkingDirectory)
       setHasServerDirectory(resp.hasServerDirectory)
-      setSelectedServerName(resp.selectedServerName)
-      selectedServerNameRef.current = resp.selectedServerName ?? null
+      // ── 关键：不覆盖本地已有的 selectedServerName ──
+      // 之前：无条件 setSelectedServerName(resp.selectedServerName) → 刚 set 完就被后端旧快照的 null 覆盖
+      setSelectedServerName((prev) => {
+        if (prev != null) return prev           // 本地已有值：保留
+        selectedServerNameRef.current = resp.selectedServerName ?? null
+        return resp.selectedServerName ?? null
+      })
     } catch (e) {
       console.error('获取配置文件树失败:', e)
     }
-  }, [])
+  }, [fetchFileTree])
 
   const loadEntries = useCallback(async (): Promise<ConfigEntriesResponse | null> => {
     setIsFetchingEntries(true)
     try {
       const resp = await getConfigEntries()
+      // ── 修复：loading 时不覆盖旧 configGroups。resp 到达时才替换，避免"先闪空列表"
       setConfigGroups(resp.groups)
       setHasUnsavedChanges(resp.hasUnsavedChanges)
       setSaveStatusMessage(resp.saveStatusMessage)
@@ -344,16 +360,18 @@ export function ConfigEditorPage(): JSX.Element {
   const handleSelectServer = async (name: string): Promise<void> => {
     if (name === selectedServerName) return
     try {
-      await selectConfigServer(name)
+      // ── 先本地确定，避免后续 loadFileTree 的回滚覆盖
       setSelectedServerName(name)
+      selectedServerNameRef.current = name
       setPendingValues({})
       setSelectedConfigFile(null)
       setSelectedConfigFileName(null)
-      setConfigGroups([])
+      // 不 setConfigGroups([])——保留上一次内容直到 loading 遮罩 + 新内容到达，避免闪空白
       setExpandedDirs(new Set())
       setExpandedGroups(new Set())
       setSaveStatusMessage(null)
-      selectedServerNameRef.current = name
+
+      await selectConfigServer(name)
       await loadFileTree()
 
       // 兜底：后端的 ScanDirectoryForConfigFilesAsync 是异步（fire-and-forget）的。
@@ -365,12 +383,19 @@ export function ConfigEditorPage(): JSX.Element {
         try {
           // 用户中途可能换了服务器，只在仍是同一个时才应用
           if (selectedServerNameRef.current !== expectedName) return
-          const recheck = await getFileTree()
-          if (recheck.configFileTree?.length > 0) {
-            setConfigFileTree(recheck.configFileTree)
-            setConfigFiles(recheck.configFiles ?? [])
-            setHasServerDirectory(recheck.hasServerDirectory ?? false)
+          const recheck = await getConfigFileTree()
+          if (recheck.tree && recheck.tree.length > 0) {
+            setConfigFileTree(recheck.tree)
+            setConfigFilesState(recheck.count ? [] : [])  // 补偿：tree 有数据就用，扁平列表只是兜底
+            if (recheck.hasServerDirectory != null) setHasServerDirectory(recheck.hasServerDirectory)
             if (recheck.configFileCountText) setConfigFileCountText(recheck.configFileCountText)
+            if (recheck.serverWorkingDirectory) setServerWorkingDirectory(recheck.serverWorkingDirectory)
+            // selectedServerName 补偿：只在当前本地还是 null 时应用
+            setSelectedServerName((prev) => {
+              if (prev != null) return prev
+              selectedServerNameRef.current = recheck.selectedServerName ?? null
+              return recheck.selectedServerName ?? null
+            })
           }
         } catch {}
       }, 120)
@@ -847,9 +872,64 @@ export function ConfigEditorPage(): JSX.Element {
           )}
 
           {/* 配置项分组列表（按分类分组的 Expander） */}
-          {selectedConfigFile && !showLoading && (
+          {/* 修复：loading 时不移除旧条目 DOM，让遮罩盖住即可；避免闪空白/旧条目先消失再出现 */}
+          {selectedConfigFile && (
             <div className="h-full overflow-y-auto pr-1">
-              {configGroups.length === 0 ? (
+              {/* ── 顶部：解析失败 Alert（__ERROR__ 条目） ── */}
+              {(() => {
+                const errEntries: ConfigEntry[] = []
+                for (const g of configGroups) {
+                  for (const e of g.items) if (e.key === '__ERROR__') errEntries.push(e)
+                }
+                if (errEntries.length === 0) return null
+                return (
+                  <div className="mb-2 space-y-1.5">
+                    {errEntries.map((err, idx) => (
+                      <div
+                        key={`__error_${idx}`}
+                        className="flex items-start gap-2 rounded-lg p-3 border"
+                        style={{
+                          borderColor: 'var(--md-warning-subtle-border)',
+                          backgroundColor: 'var(--md-warning-subtle-background)',
+                        }}
+                      >
+                        <FaCircleExclamation
+                          size={18}
+                          style={{ color: 'var(--md-error-text)', marginTop: 2, flexShrink: 0 }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: 'var(--md-error-text)',
+                              marginBottom: 4,
+                            }}
+                          >
+                            {err.displayName || '⚠️ 配置文件解析失败'}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: 'var(--md-body)',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                              maxHeight: 200,
+                              overflowY: 'auto',
+                              fontFamily: 'var(--md-font-mono)',
+                            }}
+                          >
+                            {err.errorMessage || err.value || '未知错误'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+
+              {configGroups.length === 0 ||
+               configGroups.every((g) => g.items.every((e) => e.key === '__ERROR__')) ? (
                 <div
                   className="text-center py-8"
                   style={{ color: 'var(--md-body-lighter)' }}
@@ -858,47 +938,52 @@ export function ConfigEditorPage(): JSX.Element {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {configGroups.map((group) => {
-                    const isGroupExpanded = expandedGroups.has(group.key)
-                    return (
-                      <div key={group.key} className="md-expander">
-                        {/* 分组标题 */}
-                        <div
-                          className="md-expander-header"
-                          onClick={() => handleToggleGroup(group.key)}
-                        >
-                          <FaChevronRight
-                            size={12}
-                            className="md-expander-icon"
-                            style={{
-                              transform: isGroupExpanded
-                                ? 'rotate(90deg)'
-                                : 'none',
-                            }}
-                          />
-                          <FaFolder
-                            size={18}
-                            style={{ color: 'var(--md-primary-hue-mid)' }}
-                          />
-                          <span
-                            style={{
-                              fontSize: 'var(--md-font-size-md)',
-                              fontWeight: 700,
-                              color: 'var(--md-primary-hue-mid)',
-                            }}
+                  {configGroups
+                    .filter((g) => g.key !== '__ERROR__')
+                    .map((group) => {
+                      // 过滤掉本组内的 __ERROR__ 条目（已经在顶部 Alert 渲染）
+                      const items = group.items.filter((e) => e.key !== '__ERROR__')
+                      if (items.length === 0) return null
+                      const isGroupExpanded = expandedGroups.has(group.key)
+                      return (
+                        <div key={group.key} className="md-expander">
+                          {/* 分组标题 */}
+                          <div
+                            className="md-expander-header"
+                            onClick={() => handleToggleGroup(group.key)}
                           >
-                            {group.key}
-                          </span>
-                          <span className="md-badge" style={{ marginLeft: 10 }}>
-                            {group.items.length}
-                          </span>
-                        </div>
-                        {/* 分组内容：配置项卡片列表 */}
-                        {isGroupExpanded && (
-                          <div className="px-2 py-2 space-y-1.5">
-                            {group.items.map((entry) => {
-                              const modified = isModifiedLocal(entry)
-                              const displayValue = getDisplayValue(entry)
+                            <FaChevronRight
+                              size={12}
+                              className="md-expander-icon"
+                              style={{
+                                transform: isGroupExpanded
+                                  ? 'rotate(90deg)'
+                                  : 'none',
+                              }}
+                            />
+                            <FaFolder
+                              size={18}
+                              style={{ color: 'var(--md-primary-hue-mid)' }}
+                            />
+                            <span
+                              style={{
+                                fontSize: 'var(--md-font-size-md)',
+                                fontWeight: 700,
+                                color: 'var(--md-primary-hue-mid)',
+                              }}
+                            >
+                              {group.key}
+                            </span>
+                            <span className="md-badge" style={{ marginLeft: 10 }}>
+                              {items.length}
+                            </span>
+                          </div>
+                          {/* 分组内容：配置项卡片列表 */}
+                          {isGroupExpanded && (
+                            <div className="px-2 py-2 space-y-1.5">
+                              {items.map((entry) => {
+                                const modified = isModifiedLocal(entry)
+                                const displayValue = getDisplayValue(entry)
                               return (
                                 <div
                                   key={entry.key}

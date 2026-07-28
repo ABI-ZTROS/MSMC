@@ -8,9 +8,33 @@
 namespace McServerGuard.Services.ConfigManagement;
 
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Serilog;
+
+#region 诊断异常
+
+/// <summary>
+/// 配置解析诊断异常：聚合多种格式尝试后均失败时抛出，携带诊断信息便于 UX 提示。
+/// </summary>
+public sealed class ConfigParseException : Exception
+{
+    public string? HintTryFormat { get; }
+    public string FileExtension { get; }
+    public int ContentLength { get; }
+
+    public ConfigParseException(string message, string fileExtension, int contentLength, Exception? innerException = null, string? hintTryFormat = null)
+        : base(message, innerException)
+    {
+        FileExtension = fileExtension;
+        ContentLength = contentLength;
+        HintTryFormat = hintTryFormat;
+    }
+}
+
+#endregion
 
 /// <summary>
 /// 配置管理器 —— 多格式配置文件的统一读写与验证编排器
@@ -44,13 +68,13 @@ public sealed class ConfigManager : IConfigManager
     }
 
     /// <summary>
-    /// 读取配置文件，根据扩展名与内容检测自动选择解析器，返回扁平化键值对字典
+    /// 读取配置文件，根据扩展名与内容检测自动选择解析器，返回扁平化键值对字典。
+    /// 多格式回退链：检测格式 → Properties → YAML → JSON → 全失败抛 ConfigParseException。
     /// </summary>
     /// <param name="filePath">配置文件路径</param>
-    /// <returns>扁平化的键值对字典</returns>
+    /// <returns>扁平化键值对字典</returns>
     /// <exception cref="ArgumentNullException">filePath为<c>null</c>时抛出</exception>
     /// <exception cref="FileNotFoundException">配置文件不存在时抛出</exception>
-    /// <exception cref="NotSupportedException">不支持的文件格式时抛出</exception>
     public async Task<Dictionary<string, string>> ReadConfigAsync(string filePath)
     {
         ArgumentNullException.ThrowIfNull(filePath);
@@ -72,66 +96,266 @@ public sealed class ConfigManager : IConfigManager
         }
 
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
-        var format = ConfigFormatDetector.Resolve(content, extension);
+        var primaryFormat = ConfigFormatDetector.Resolve(content, extension);
 
-        // CPU 密集型解析放到线程池执行，避免阻塞 UI 线程
-        var result = await Task.Run(() => format switch
+        // 多格式回退链（去掉重复的 Unknown）
+        var formatsToTry = new[]
         {
-            ConfigFormat.Properties => ParseProperties(content),
-            ConfigFormat.Yaml => FlattenYaml(content),
-            ConfigFormat.Json => FlattenJson(content),
-            _ => throw HandleUnsupportedFormat(extension)
+            primaryFormat,
+            ConfigFormat.Properties,
+            ConfigFormat.Yaml,
+            ConfigFormat.Json
+        }.Distinct().Where(f => f != ConfigFormat.Unknown).ToList();
+
+        Exception? lastEx = null;
+        Dictionary<string, string>? result = null;
+        ConfigFormat? successFormat = null;
+        PropertiesDocument? propertiesDoc = null;
+
+        // CPU 密集型解析放到线程池执行
+        await Task.Run(() =>
+        {
+            foreach (var fmt in formatsToTry)
+            {
+                try
+                {
+                    switch (fmt)
+                    {
+                        case ConfigFormat.Properties:
+                            // Properties 需要同时缓存原始行结构，供 Save 无损回写
+                            propertiesDoc = PropertiesParser.ParseDocument(content);
+                            result = propertiesDoc.EffectiveValues;
+                            successFormat = fmt;
+                            return;
+                        case ConfigFormat.Yaml:
+                            result = FlattenYaml(content);
+                            successFormat = fmt;
+                            return;
+                        case ConfigFormat.Json:
+                            result = FlattenJson(content);
+                            successFormat = fmt;
+                            return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug("ConfigManager.ReadConfigAsync: 按 {Fmt} 解析失败（回退）— {Msg}",
+                        fmt, ex.Message);
+                    lastEx = ex;
+                }
+            }
         }).ConfigureAwait(false);
 
-        Log.Information("✅ 配置解析完成，共 {Count} 个键值对", result.Count);
+        if (result is null || successFormat is null)
+        {
+            Log.Warning("❌ 配置文件解析失败（所有格式回退链已耗尽）: Path={Path} Ext={Ext} Len={Len}",
+                filePath, extension, content.Length);
+            throw new ConfigParseException(
+                $"配置文件解析失败（所有支持的解析器均失败）。路径: {filePath}",
+                extension,
+                content.Length,
+                lastEx,
+                hintTryFormat: primaryFormat.ToString());
+        }
 
+        // 缓存 Properties 文档结构（若是 Properties 格式成功）
+        if (successFormat == ConfigFormat.Properties && propertiesDoc is not null)
+        {
+            PropertiesParser.CacheDocument(filePath, propertiesDoc);
+        }
+
+        Log.Information("✅ 配置解析完成（Format={Format}）：共 {Count} 个键值对",
+            successFormat, result.Count);
         return result;
     }
 
     /// <summary>
-    /// 将配置写回文件，根据扩展名自动选择序列化器
+    /// 将配置写回文件，根据扩展名自动选择序列化器。
+    /// 写前：备份原文件 → 脏检查（外部进程修改）→ 序列化；写后：验证写回内容与期望一致。
     /// </summary>
     /// <param name="filePath">目标文件路径</param>
     /// <param name="config">扁平化键值对配置数据</param>
     /// <returns>异步任务</returns>
     /// <exception cref="ArgumentNullException">参数为<c>null</c>时抛出</exception>
-    /// <exception cref="NotSupportedException">不支持的文件格式时抛出</exception>
     public async Task SaveConfigAsync(string filePath, Dictionary<string, string> config)
     {
         ArgumentNullException.ThrowIfNull(filePath);
         ArgumentNullException.ThrowIfNull(config);
 
-        Log.Information("💾 保存配置到: {Path}", filePath);
+        Log.Information("💾 保存配置到: {Path} ({Count} 键)", filePath, config.Count);
 
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
-        // 保存时优先使用扩展名判断（写文件时内容尚未生成，无法进行内容检测）
-        var format = ConfigFormatDetector.DetectByExtension(extension);
 
-        // CPU 密集型序列化放到线程池执行，避免阻塞 UI 线程
-        var content = await Task.Run(() => format switch
+        // ========== 1) 读取当前磁盘文件用于备份 + 脏检查 + 格式检测 ==========
+        string? originalContent = null;
+        string? originalMd5 = null;
+        if (File.Exists(filePath))
         {
-            ConfigFormat.Properties => PropertiesParser.Serialize(config),
-            ConfigFormat.Yaml => SerializeYaml(config),
-            ConfigFormat.Json => SerializeJson(config),
-            _ => throw new NotSupportedException(
-                $"不支持的配置文件格式: {extension} —— 我不会写这种格式啦 🙅")
+            try
+            {
+                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var sr = new StreamReader(fs);
+                originalContent = await sr.ReadToEndAsync().ConfigureAwait(false);
+                originalMd5 = Md5Hex(originalContent);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "SaveConfigAsync: 读取原文件失败（跳过脏检查）— {Path}", filePath);
+            }
+        }
+
+        // 🔥 格式检测：优先用 Resolve（内容特征 + 扩展名 + 逐解析器探测 三级回退），
+        // 只有原文件读不到时才回退纯扩展名 DetectByExtension。
+        // 之前只用 DetectByExtension：如果 .properties 被用户改名成 .txt，会按 Properties 兜底但内容特征更准确时才好。
+        ConfigFormat format;
+        if (!string.IsNullOrEmpty(originalContent))
+        {
+            format = ConfigFormatDetector.Resolve(originalContent, extension);
+            if (format == ConfigFormat.Unknown)
+                format = ConfigFormatDetector.DetectByExtension(extension);
+        }
+        else
+        {
+            format = ConfigFormatDetector.DetectByExtension(extension);
+        }
+        if (format == ConfigFormat.Unknown)
+        {
+            // 真的未知：按 Properties 兜底（server.properties 是最常见格式）
+            Log.Debug("SaveConfigAsync: 无法判定格式，兜底 Properties —— Path={Path} Ext={Ext}", filePath, extension);
+            format = ConfigFormat.Properties;
+        }
+
+        // ========== 2) 备份（若原文件存在且能读） ==========
+        if (!string.IsNullOrEmpty(originalContent))
+        {
+            try
+            {
+                var bakPath = filePath + ".bak";
+                // 用 FileShare.ReadWrite 写，避免与服务器冲突
+                using var fsBak = new FileStream(bakPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
+                using var swBak = new StreamWriter(fsBak);
+                await swBak.WriteAsync(originalContent).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "SaveConfigAsync: 备份写入失败（仍继续保存）— {Path}.bak", filePath);
+            }
+        }
+
+        // ========== 3) 序列化 ==========
+        var content = await Task.Run(() =>
+        {
+            return format switch
+            {
+                ConfigFormat.Properties => PropertiesParser.Serialize(config, filePath),
+                ConfigFormat.Yaml => SerializeYaml(config),
+                ConfigFormat.Json => SerializeJson(config),
+                _ => PropertiesParser.Serialize(config, filePath) // 未知扩展名兜底按 Properties 尝试
+            };
         }).ConfigureAwait(false);
 
-        // 确保目标目录存在
+        // ========== 4) 脏检查：读取当前磁盘再次比对，若外部修改了则打 Warning 合并 ==========
+        if (originalMd5 is not null && File.Exists(filePath))
+        {
+            try
+            {
+                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var sr = new StreamReader(fs);
+                var currentContent = await sr.ReadToEndAsync().ConfigureAwait(false);
+                var currentMd5 = Md5Hex(currentContent);
+                if (currentMd5 != originalMd5)
+                {
+                    Log.Warning("⚠️ SaveConfigAsync: 保存过程中检测到外部进程修改了文件 {Path}，将直接覆盖写入（可能合并冲突）", filePath);
+                    // 如果是 Properties 且中间新增了行，这里简单策略：直接用我们基于 originalContent 生成的写回即可
+                    // （PropertiesParser.Serialize 已经基于 originalContent + 用户修改合并了）
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "SaveConfigAsync: 脏检查读异常（仍继续写）— {Path}", filePath);
+            }
+        }
+
+        // ========== 5) 确保目标目录存在 + 写入 ==========
         var directory = Path.GetDirectoryName(filePath);
         if (directory is not null && !Directory.Exists(directory))
         {
             Directory.CreateDirectory(directory);
         }
 
-        // 用 FileShare.ReadWrite 写入，避免与服务器进程冲突
-        using (var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-        using (var writer = new StreamWriter(fs))
+        // 临时文件先写到 .tmp，再原子 Rename（保证中途断电不损坏原文件）
+        var tmpPath = filePath + ".tmp_" + Guid.NewGuid().ToString("N")[..8];
+        try
         {
-            await writer.WriteAsync(content).ConfigureAwait(false);
+            using (var fs = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (var writer = new StreamWriter(fs))
+            {
+                await writer.WriteAsync(content).ConfigureAwait(false);
+            }
+
+            // 原子替换（Windows/Linux 都允许覆盖存在的目标）
+            if (File.Exists(filePath))
+            {
+                File.Replace(tmpPath, filePath, destinationBackupFileName: null);
+            }
+            else
+            {
+                File.Move(tmpPath, filePath);
+            }
+        }
+        catch
+        {
+            // 清理临时文件（任何失败都不残留）
+            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { /* 忽略 */ }
+            throw;
         }
 
-        Log.Information("配置文件 {FilePath} 已保存，共 {Count} 个配置项 ✅",
+        // ========== 6) 写后校验：重新读回来比较 EffectiveValues（防止文件损坏） ==========
+        try
+        {
+            using var fsVerify = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var srVerify = new StreamReader(fsVerify);
+            var written = await srVerify.ReadToEndAsync().ConfigureAwait(false);
+            Dictionary<string, string> writtenDict;
+            try
+            {
+                writtenDict = format == ConfigFormat.Properties
+                    ? PropertiesParser.Parse(written)
+                    : format == ConfigFormat.Yaml
+                        ? FlattenYaml(written)
+                        : format == ConfigFormat.Json
+                            ? FlattenJson(written)
+                            : PropertiesParser.Parse(written);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"保存后回读校验失败：无法解析写回的文件。{ex.Message}", ex);
+            }
+
+            // 仅比较 config 里的键（允许 Properties 序列化保留重复键的非最后一条等额外行）
+            foreach (var kvp in config)
+            {
+                if (!writtenDict.TryGetValue(kvp.Key, out var wv) || !string.Equals(wv, kvp.Value, StringComparison.Ordinal))
+                {
+                    Log.Error("❌ SaveConfigAsync: 写回校验失败 Key={Key} Expected={Expected} Actual={Actual}",
+                        kvp.Key, kvp.Value, wv);
+                    // 若有备份则尝试恢复
+                    var bakPath = filePath + ".bak";
+                    if (File.Exists(bakPath))
+                    {
+                        try { File.Copy(bakPath, filePath, overwrite: true); } catch { /* 忽略 */ }
+                    }
+                    throw new InvalidOperationException($"保存后校验失败：键 {kvp.Key} 的写回值与期望值不一致");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "❌ SaveConfigAsync: 写回校验异常 Path={Path}", filePath);
+            throw;
+        }
+
+        Log.Information("✅ 配置文件 {FilePath} 已保存，共 {Count} 个配置项",
             filePath, config.Count);
     }
 
@@ -179,7 +403,7 @@ public sealed class ConfigManager : IConfigManager
         {
             if (!bool.TryParse(value, out _))
             {
-                Log.Debug("布尔值验证失败: {Key}={Value} —— 这看起来不像 true 或 false 🤔",
+                Log.Debug("布尔值验证失败: {Key}={Value} —— 这看起来不像 true 或 false",
                     key, value);
                 return false;
             }
@@ -190,7 +414,7 @@ public sealed class ConfigManager : IConfigManager
         {
             if (!descriptor.AllowedValues.Contains(value, StringComparer.OrdinalIgnoreCase))
             {
-                Log.Debug("枚举值验证失败: {Key}={Value}，允许的值: {Allowed} —— 选错了哦 📋",
+                Log.Debug("枚举值验证失败: {Key}={Value}，允许的值: {Allowed}",
                     key, value, string.Join(", ", descriptor.AllowedValues));
                 return false;
             }
@@ -200,7 +424,7 @@ public sealed class ConfigManager : IConfigManager
         var regex = descriptor.GetCompiledRegex();
         if (regex is not null && !regex.IsMatch(value))
         {
-            Log.Debug("正则验证失败: {Key}={Value}，模式: {Pattern} —— 格式不对 📐",
+            Log.Debug("正则验证失败: {Key}={Value}，模式: {Pattern}",
                 key, value, descriptor.RegexPattern);
             return false;
         }
@@ -210,20 +434,20 @@ public sealed class ConfigManager : IConfigManager
         {
             if (!int.TryParse(value, out var numValue))
             {
-                Log.Debug("数值范围验证失败: {Key}={Value} —— 这不是数字呀 🧮", key, value);
+                Log.Debug("数值范围验证失败: {Key}={Value} —— 这不是数字", key, value);
                 return false;
             }
 
             if (numValue < descriptor.MinValue)
             {
-                Log.Debug("数值太小: {Key}={Value}，最小值: {Min} —— 再小就没了 📉",
+                Log.Debug("数值太小: {Key}={Value}，最小值: {Min}",
                     key, value, descriptor.MinValue);
                 return false;
             }
 
             if (numValue > descriptor.MaxValue)
             {
-                Log.Debug("数值太大: {Key}={Value}，最大值: {Max} —— 太贪心了吧 📈",
+                Log.Debug("数值太大: {Key}={Value}，最大值: {Max}",
                     key, value, descriptor.MaxValue);
                 return false;
             }
@@ -268,19 +492,6 @@ public sealed class ConfigManager : IConfigManager
         => _registry.FindUnmatchedKeys(keys, configFileName);
 
     // ==================== 私有辅助方法 ====================
-
-    /// <summary>
-    /// 处理不支持的配置文件格式 —— 记录警告并抛出异常
-    /// </summary>
-    /// <param name="extension">文件扩展名</param>
-    /// <returns>不支持的格式异常对象</returns>
-    private static NotSupportedException HandleUnsupportedFormat(string extension)
-    {
-        Log.Warning("❌ 无法识别的配置文件格式: 扩展名={Ext}", extension);
-        return new NotSupportedException(
-            $"无法识别的配置文件格式（扩展名: {extension}）。" +
-            "支持的格式: .properties / .yml / .yaml / .json 🙅");
-    }
 
     /// <summary>
     /// 解析.properties格式配置文件
@@ -532,5 +743,19 @@ public sealed class ConfigManager : IConfigManager
         }
 
         return root;
+    }
+
+    // ==================== 工具方法 ====================
+
+    /// <summary>计算字符串 MD5（小写 32 位 hex）</summary>
+    [MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static string Md5Hex(string input)
+    {
+        var bytes = Encoding.UTF8.GetBytes(input);
+        var hash = MD5.HashData(bytes);
+        var sb = new StringBuilder(capacity: 32);
+        foreach (var b in hash)
+            sb.Append(b.ToString("x2"));
+        return sb.ToString();
     }
 }
