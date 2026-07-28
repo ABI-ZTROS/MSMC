@@ -259,6 +259,7 @@ export function ConfigEditorPage(): JSX.Element {
       setServerWorkingDirectory(resp.serverWorkingDirectory)
       setHasServerDirectory(resp.hasServerDirectory)
       setSelectedServerName(resp.selectedServerName)
+      selectedServerNameRef.current = resp.selectedServerName ?? null
     } catch (e) {
       console.error('获取配置文件树失败:', e)
     }
@@ -289,6 +290,8 @@ export function ConfigEditorPage(): JSX.Element {
 
   // 防抖定时器引用，用于配置项值变更
   const debounceTimerRef = useRef<Record<string, number>>({})
+  // 跟踪当前选中的服务器名，供 setTimeout 回调判断（避免 set state 闭包）
+  const selectedServerNameRef = useRef<string | null>(null)
 
   // 初始化：拉取服务器列表，联动 Dashboard 当前选中服务器 → 加载文件树
   useEffect(() => {
@@ -350,7 +353,27 @@ export function ConfigEditorPage(): JSX.Element {
       setExpandedDirs(new Set())
       setExpandedGroups(new Set())
       setSaveStatusMessage(null)
+      selectedServerNameRef.current = name
       await loadFileTree()
+
+      // 兜底：后端的 ScanDirectoryForConfigFilesAsync 是异步（fire-and-forget）的。
+      // 如果第一次 loadFileTree 拿到的是空树但 selectedServerName 已被正确设置，
+      // 说明后端的异步扫目录还没跑完，延迟 120ms 再拉一次，避免用户看到「暂无配置文件」
+      // 但实际上服务器有配置文件（只是还没扫完）。
+      const expectedName = name
+      window.setTimeout(async () => {
+        try {
+          // 用户中途可能换了服务器，只在仍是同一个时才应用
+          if (selectedServerNameRef.current !== expectedName) return
+          const recheck = await getFileTree()
+          if (recheck.configFileTree?.length > 0) {
+            setConfigFileTree(recheck.configFileTree)
+            setConfigFiles(recheck.configFiles ?? [])
+            setHasServerDirectory(recheck.hasServerDirectory ?? false)
+            if (recheck.configFileCountText) setConfigFileCountText(recheck.configFileCountText)
+          }
+        } catch {}
+      }, 120)
     } catch (e) {
       console.error('选择服务器失败:', e)
     }

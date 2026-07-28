@@ -781,26 +781,25 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     /// </remarks>
     partial void OnServerChanged(ServerInstance? value)
     {
-        _ = HandleServerChangedAsync(value);
-    }
+        // ── 同步赋值（必须同步，不能放在异步里！）───────────────────────────────
+        // 修复：原来把 SelectedServerName/ConfigFiles/ConfigFileTree 等全部放在
+        // HandleServerChangedAsync（fire-and-forget）里异步赋值，导致前端链路：
+        //   config:selectServer 返回 → 立刻 config:getFileTree
+        // 时，这些属性仍是旧值 / null → 前端 state 被错误回滚成空 → 用户感觉「选不中」。
+        // 这里把「非文件 IO 的纯内存操作」全部同步完成，等桥接 getFileTree 过来
+        // 查询时一定能拿到最新状态。
 
-    /// <summary>
-    /// 服务器切换的异步处理逻辑 —— 避免 partial 方法无法使用 async 修饰符的限制
-    /// </summary>
-    private async System.Threading.Tasks.Task HandleServerChangedAsync(ServerInstance? value)
-    {
-        try
+        // SelectedServerName 赋值：防循环通知（P2 修复）
+        if (!string.IsNullOrEmpty(value?.DisplayName) && SelectedServerName != value.DisplayName)
         {
-            // P2 修复：设置 SelectedServerName 前检查当前值，避免触发 OnSelectedServerNameChanged → Server = ... → OnServerChanged 循环通知
-            if (!string.IsNullOrEmpty(value?.DisplayName) && SelectedServerName != value.DisplayName)
-            {
-                SelectedServerName = value.DisplayName;
-            }
+            SelectedServerName = value.DisplayName;
+        }
 
-            ConfigEntries.Clear();
-            SelectedConfigFile = null;
-            _currentFilePath = string.Empty;
-            HasUnsavedChanges = false;
+        // 状态全量重置（纯内存操作，必须同步）
+        ConfigEntries.Clear();
+        SelectedConfigFile = null;
+        _currentFilePath = string.Empty;
+        HasUnsavedChanges = false;
         _modifiedCount = 0;
         _undoStack.Clear();
         UndoCommand.NotifyCanExecuteChanged();
@@ -811,15 +810,20 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             ConfigFiles = [];
             ConfigFileTree = [];
             ServerWorkingDirectory = string.Empty;
+            OnPropertyChanged(nameof(ConfigFileCountText));
+            OnPropertyChanged(nameof(HasServerDirectory));
             return;
         }
 
+        // 立即同步工作目录，让 UI 即使文件还在扫也能显示目录路径。
         ServerWorkingDirectory = value.WorkingDirectory;
-        // SelectedServerName 已在方法开头赋值，此处不再重复（P2 循环通知修复）
 
+        // 先兜底把 ConfigFiles 清空（ScanDirectory 会覆盖），避免 getFileTree 读到旧数据。
+        // 如果 WorkingDirectory 不存在，直接用进程返回的 ConfigFiles 列表（如果有）。
         if (!string.IsNullOrEmpty(value.WorkingDirectory) && Directory.Exists(value.WorkingDirectory))
         {
-            await ScanDirectoryForConfigFilesAsync(value.WorkingDirectory);
+            ConfigFiles = [];
+            ConfigFileTree = [];
         }
         else
         {
@@ -827,14 +831,37 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                 .Where(f => !f.EndsWith('/') && !f.EndsWith('\\'))
                 .Select(f => Path.GetRelativePath(value.WorkingDirectory, f))
                 .ToList();
+            ConfigFileTree = [];
         }
 
         OnPropertyChanged(nameof(ConfigFileCountText));
         OnPropertyChanged(nameof(HasServerDirectory));
+
+        // ── 仅把文件 IO（扫目录）留在异步 fire-and-forget ─────────────────────
+        // 因为 ScanDirectoryForConfigFilesAsync 会做 Directory.EnumerateFiles + 读
+        // 每个文件 1KB 前缀，耗时不可忽略，不能阻塞 WPF 调度线程。
+        _ = ScanDirectoryAfterServerChangedAsync(value);
+    }
+
+    /// <summary>
+    /// 服务器切换后异步扫目录（仅 IO 部分，状态同步已在 OnServerChanged 同步完成）。
+    /// 扫完后刷新 ConfigFiles/ConfigFileTree 并触发属性通知。
+    /// </summary>
+    private async System.Threading.Tasks.Task ScanDirectoryAfterServerChangedAsync(ServerInstance? value)
+    {
+        if (value is null) return;
+        if (string.IsNullOrEmpty(value.WorkingDirectory) || !Directory.Exists(value.WorkingDirectory))
+            return;
+
+        try
+        {
+            await ScanDirectoryForConfigFilesAsync(value.WorkingDirectory);
+            OnPropertyChanged(nameof(ConfigFileCountText));
+            OnPropertyChanged(nameof(HasServerDirectory));
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "服务器切换处理失败");
+            Log.Error(ex, "服务器切换后扫描配置文件失败: {Dir}", value.WorkingDirectory);
         }
     }
 
