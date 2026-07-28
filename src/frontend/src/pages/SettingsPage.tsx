@@ -17,6 +17,7 @@ import {
   setAccentColor,
   applyTheme,
   saveSettings,
+  updateSettings,
   setPreset,
   resetSettings,
   toggleAnimations,
@@ -261,6 +262,18 @@ export function SettingsPage(): JSX.Element {
 
   const handleSave = async (): Promise<void> => {
     try {
+      const updateResult = await updateSettings({
+        cornerRadius,
+        animationDuration,
+        enableAnimations: settings?.enableAnimations ?? true,
+        enableWindowsNotifications,
+        preferJavaw,
+      })
+      if (!updateResult?.success) {
+        setStatusMessage(`应用设置失败: ${updateResult?.error || '未知错误'}`)
+        return
+      }
+
       const result = await saveSettings()
       setStatusMessage(result.success ? '设置已保存' : '保存设置失败')
       await loadSettings()

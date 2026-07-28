@@ -485,6 +485,16 @@ export function saveSettings(): Promise<{ success: boolean }> {
   return bridge.invoke<{ success: boolean }>('settings:save')
 }
 
+export function updateSettings(data: {
+  cornerRadius?: number
+  animationDuration?: number
+  enableAnimations?: boolean
+  enableWindowsNotifications?: boolean
+  preferJavaw?: boolean
+}): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('settings:update', data)
+}
+
 export function setPreset(preset: ThemePreset): Promise<ThemeApplyResult> {
   return bridge.invoke<ThemeApplyResult>('settings:setPreset', preset)
 }

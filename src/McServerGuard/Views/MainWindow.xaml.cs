@@ -1980,6 +1980,47 @@ public partial class MainWindow : Window
             }
         });
 
+        // 批量更新设置（前端保存前先应用本地修改）
+        _bridgeService.RegisterRequestHandler("settings:update", payload =>
+        {
+            try
+            {
+                if (settings == null)
+                    return Task.FromResult<object?>(new { success = false, error = "设置视图模型未初始化" });
+
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    if (el.TryGetProperty("cornerRadius", out var cr) && cr.ValueKind == JsonValueKind.Number)
+                        settings.CornerRadius = cr.GetInt32();
+
+                    if (el.TryGetProperty("animationDuration", out var ad) && ad.ValueKind == JsonValueKind.Number)
+                        settings.AnimationDuration = ad.GetInt32();
+
+                    if (el.TryGetProperty("enableAnimations", out var ea) && ea.ValueKind == JsonValueKind.True)
+                        settings.EnableAnimations = true;
+                    else if (el.TryGetProperty("enableAnimations", out var ea2) && ea2.ValueKind == JsonValueKind.False)
+                        settings.EnableAnimations = false;
+
+                    if (el.TryGetProperty("enableWindowsNotifications", out var ewn) && ewn.ValueKind == JsonValueKind.True)
+                        settings.EnableWindowsNotifications = true;
+                    else if (el.TryGetProperty("enableWindowsNotifications", out var ewn2) && ewn2.ValueKind == JsonValueKind.False)
+                        settings.EnableWindowsNotifications = false;
+
+                    if (el.TryGetProperty("preferJavaw", out var pj) && pj.ValueKind == JsonValueKind.True)
+                        settings.PreferJavaw = true;
+                    else if (el.TryGetProperty("preferJavaw", out var pj2) && pj2.ValueKind == JsonValueKind.False)
+                        settings.PreferJavaw = false;
+                }
+
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "更新设置失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
         // 保存设置
         _bridgeService.RegisterRequestHandler("settings:save", _ =>
         {
