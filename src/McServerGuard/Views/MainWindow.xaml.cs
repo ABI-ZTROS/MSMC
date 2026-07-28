@@ -1377,6 +1377,33 @@ public partial class MainWindow : Window
         return payload.ToString() ?? string.Empty;
     }
 
+    /// <summary>
+    /// 从 Java 路径管理相关请求的 payload 中提取路径字符串。
+    /// 兼容三种形式：直接字符串、{ path: "..." }、{ javaPath: "..." }。
+    /// </summary>
+    private static string ExtractJavaPathPayload(object? payload)
+    {
+        if (payload is null) return string.Empty;
+        if (payload is JsonElement el)
+        {
+            if (el.ValueKind == JsonValueKind.String)
+                return el.GetString() ?? string.Empty;
+
+            if (el.ValueKind == JsonValueKind.Object)
+            {
+                if (el.TryGetProperty("path", out var pathVal) && pathVal.ValueKind == JsonValueKind.String)
+                    return pathVal.GetString() ?? string.Empty;
+                if (el.TryGetProperty("javaPath", out var javaPathVal) && javaPathVal.ValueKind == JsonValueKind.String)
+                    return javaPathVal.GetString() ?? string.Empty;
+                if (el.TryGetProperty("javaHome", out var javaHomeVal) && javaHomeVal.ValueKind == JsonValueKind.String)
+                    return javaHomeVal.GetString() ?? string.Empty;
+            }
+
+            return el.ToString();
+        }
+        return payload.ToString() ?? string.Empty;
+    }
+
     private static string ArgbToRgb(string? hex) => ColorHelper.NormalizeHex(hex ?? string.Empty);
 
     // ─────────────────────────────────────────────────────────────────────
@@ -2155,6 +2182,139 @@ public partial class MainWindow : Window
             {
                 Log.Error(ex, "重新扫描 Java 失败");
                 return new { success = false, error = ex.Message };
+            }
+        });
+
+        // 添加自定义 Java 路径
+        // payload: { path: string } 或直接字符串
+        _bridgeService.RegisterRequestHandler("settings:addJava", async payload =>
+        {
+            try
+            {
+                if (settings == null)
+                    return new { success = false, error = "设置视图模型未初始化" };
+
+                var path = ExtractJavaPathPayload(payload);
+                if (string.IsNullOrWhiteSpace(path))
+                    return new { success = false, error = "未提供 Java 路径" };
+
+                settings.NewJavaPath = path;
+
+                if (settings.AddJavaPathCommand is CommunityToolkit.Mvvm.Input.IAsyncRelayCommand asyncCmd)
+                    await asyncCmd.ExecuteAsync(null);
+                else
+                    settings.AddJavaPathCommand.Execute(null);
+
+                // AddJavaPathAsync 成功会清空 NewJavaPath，失败会保留并设置 StatusMessage
+                var added = string.IsNullOrEmpty(settings.NewJavaPath);
+                return new
+                {
+                    success = added,
+                    error = added ? null : settings.StatusMessage,
+                    statusMessage = settings.StatusMessage,
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "添加自定义 Java 路径失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // 移除自定义 Java 路径
+        // payload: { javaPath: string } 或直接字符串
+        _bridgeService.RegisterRequestHandler("settings:removeJava", async payload =>
+        {
+            try
+            {
+                if (settings == null)
+                    return new { success = false, error = "设置视图模型未初始化" };
+
+                var javaPath = ExtractJavaPathPayload(payload);
+                if (string.IsNullOrWhiteSpace(javaPath))
+                    return new { success = false, error = "未提供要移除的 Java 路径" };
+
+                // 通过 javaPath 或 javaHome 匹配对应的 JavaInstallation
+                var target = settings.JavaInstallations.FirstOrDefault(j =>
+                    string.Equals(j.Installation.JavaPath, javaPath, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(j.Installation.JavawPath, javaPath, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(j.Installation.JavaHome, javaPath, StringComparison.OrdinalIgnoreCase));
+
+                if (target == null)
+                    return new { success = false, error = "未在已检测列表中找到对应的 Java" };
+
+                if (!target.IsCustom)
+                    return new { success = false, error = "只能移除自定义添加的 Java 路径" };
+
+                settings.SelectedJava = target;
+
+                if (settings.RemoveJavaPathCommand is CommunityToolkit.Mvvm.Input.IAsyncRelayCommand asyncCmd)
+                    await asyncCmd.ExecuteAsync(null);
+                else
+                    settings.RemoveJavaPathCommand.Execute(null);
+
+                return new { success = true, statusMessage = settings.StatusMessage };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "移除自定义 Java 路径失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // 设为默认 Java
+        // payload: { javaPath: string } 或直接字符串
+        _bridgeService.RegisterRequestHandler("settings:setDefaultJava", payload =>
+        {
+            try
+            {
+                if (settings == null)
+                    return Task.FromResult<object?>(new { success = false, error = "设置视图模型未初始化" });
+
+                var javaPath = ExtractJavaPathPayload(payload);
+                if (string.IsNullOrWhiteSpace(javaPath))
+                    return Task.FromResult<object?>(new { success = false, error = "未提供 Java 路径" });
+
+                var target = settings.JavaInstallations.FirstOrDefault(j =>
+                    string.Equals(j.Installation.JavaPath, javaPath, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(j.Installation.JavawPath, javaPath, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(j.Installation.JavaHome, javaPath, StringComparison.OrdinalIgnoreCase));
+
+                if (target == null)
+                    return Task.FromResult<object?>(new { success = false, error = "未在已检测列表中找到对应的 Java" });
+
+                settings.SelectedJava = target;
+                settings.SetDefaultJavaCommand.Execute(null);
+
+                return Task.FromResult<object?>(new { success = true, statusMessage = settings.StatusMessage });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "设为默认 Java 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 浏览选择 Java 安装目录（弹出系统文件夹选择对话框）
+        _bridgeService.RegisterRequestHandler("settings:browseJavaPath", _ =>
+        {
+            try
+            {
+                if (settings == null)
+                    return Task.FromResult<object?>(new { success = false, error = "设置视图模型未初始化" });
+
+                settings.BrowseJavaPathCommand.Execute(null);
+
+                return Task.FromResult<object?>(new
+                {
+                    success = !string.IsNullOrEmpty(settings.NewJavaPath),
+                    path = settings.NewJavaPath ?? string.Empty,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "浏览 Java 路径失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
             }
         });
 

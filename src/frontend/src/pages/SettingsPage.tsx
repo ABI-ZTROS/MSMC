@@ -10,6 +10,10 @@ import {
   FaGithub,
   FaXmark,
   FaUser,
+  FaFolderOpen,
+  FaPlus,
+  FaTrashCan,
+  FaStar,
 } from 'react-icons/fa6'
 import {
   getSettings,
@@ -24,6 +28,10 @@ import {
   testNotification,
   getJavaList,
   rescanJava,
+  addJavaPath,
+  removeJavaPath,
+  setDefaultJava,
+  browseJavaPath,
   getAppInfo,
   getPresets,
   getPrimarySwatches,
@@ -69,6 +77,10 @@ export function SettingsPage(): JSX.Element {
   const [javaList, setJavaList] = useState<JavaInstallationInfo[]>([])
   const [isScanningJava, setIsScanningJava] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
+
+  // 自选 Java 路径相关状态
+  const [newJavaPath, setNewJavaPath] = useState('')
+  const [javaOpInProgress, setJavaOpInProgress] = useState(false)
 
   // 色板和预设数据
   const [primarySwatches, setPrimarySwatches] = useState<SwatchInfo[]>([])
@@ -232,6 +244,89 @@ export function SettingsPage(): JSX.Element {
       setStatusMessage('重新扫描 Java 失败')
     } finally {
       setIsScanningJava(false)
+    }
+  }
+
+  // 浏览选择 Java 安装目录
+  const handleBrowseJavaPath = async (): Promise<void> => {
+    try {
+      setJavaOpInProgress(true)
+      const result = await browseJavaPath()
+      if (result.success && result.path) {
+        setNewJavaPath(result.path)
+      }
+    } catch (e) {
+      console.error('浏览 Java 路径失败:', e)
+      setStatusMessage('浏览 Java 路径失败')
+    } finally {
+      setJavaOpInProgress(false)
+    }
+  }
+
+  // 添加自定义 Java 路径
+  const handleAddJavaPath = async (): Promise<void> => {
+    const path = newJavaPath.trim()
+    if (!path) {
+      setStatusMessage('请输入或选择 Java 路径')
+      return
+    }
+    try {
+      setJavaOpInProgress(true)
+      const result = await addJavaPath(path)
+      if (result.success) {
+        setNewJavaPath('')
+        setStatusMessage(result.statusMessage || '已添加 Java 路径')
+        await loadJavaList()
+      } else {
+        setStatusMessage(result.error || result.statusMessage || '添加 Java 路径失败')
+      }
+    } catch (e) {
+      console.error('添加 Java 路径失败:', e)
+      setStatusMessage('添加 Java 路径失败')
+    } finally {
+      setJavaOpInProgress(false)
+    }
+  }
+
+  // 设为默认 Java
+  const handleSetDefaultJava = async (java: JavaInstallationInfo): Promise<void> => {
+    try {
+      setJavaOpInProgress(true)
+      const result = await setDefaultJava(java.javaPath)
+      if (result.success) {
+        setStatusMessage(result.statusMessage || '已设为默认 Java')
+        await loadJavaList()
+      } else {
+        setStatusMessage(result.error || '设为默认 Java 失败')
+      }
+    } catch (e) {
+      console.error('设为默认 Java 失败:', e)
+      setStatusMessage('设为默认 Java 失败')
+    } finally {
+      setJavaOpInProgress(false)
+    }
+  }
+
+  // 移除自定义 Java 路径
+  const handleRemoveJavaPath = async (java: JavaInstallationInfo): Promise<void> => {
+    if (!java.isCustom) {
+      setStatusMessage('只能移除自定义添加的 Java 路径')
+      return
+    }
+    try {
+      setJavaOpInProgress(true)
+      const result = await removeJavaPath(java.javaPath)
+      if (result.success) {
+        setStatusMessage(result.statusMessage || '已移除 Java 路径')
+        await loadJavaList()
+      } else {
+        setStatusMessage(result.error || '移除 Java 路径失败')
+      }
+    } catch (e) {
+      console.error('移除 Java 路径失败:', e)
+      setStatusMessage('移除 Java 路径失败')
+    } finally {
+      setJavaOpInProgress(false)
     }
   }
 
@@ -885,10 +980,102 @@ export function SettingsPage(): JSX.Element {
                       )}
                     </div>
                   </div>
+                  {/* 操作按钮 */}
+                  <div
+                    className="flex items-center"
+                    style={{ gap: 4, flexShrink: 0, marginLeft: 8 }}
+                  >
+                    {!java.isDefault && (
+                      <button
+                        className="md-btn md-btn-outlined"
+                        disabled={javaOpInProgress}
+                        onClick={() => handleSetDefaultJava(java)}
+                        title="设为默认 Java"
+                        style={{ padding: '4px 8px', fontSize: 11 }}
+                      >
+                        <FaStar size={11} />
+                        <span style={{ marginLeft: 4 }}>设为默认</span>
+                      </button>
+                    )}
+                    {java.isCustom && (
+                      <button
+                        className="md-btn md-btn-outlined"
+                        disabled={javaOpInProgress}
+                        onClick={() => handleRemoveJavaPath(java)}
+                        title="移除自定义 Java 路径"
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          color: 'var(--md-accent-text)',
+                        }}
+                      >
+                        <FaTrashCan size={11} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           )}
+        </div>
+
+        {/* 添加自定义 Java 路径 */}
+        <div style={{ marginTop: 12 }}>
+          <div
+            style={{
+              fontSize: 13,
+              color: 'var(--md-body)',
+              margin: '8px 0 4px 0',
+            }}
+          >
+            自选 Java 路径
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: 'var(--md-body-light)',
+              marginBottom: 8,
+            }}
+          >
+            手动指定本机上未自动检测到的 Java 安装目录（支持 Java 和 JDK）
+          </div>
+          <div className="flex items-center" style={{ gap: 8 }}>
+            <input
+              type="text"
+              value={newJavaPath}
+              onChange={(e) => setNewJavaPath(e.target.value)}
+              placeholder="例如：C:\Program Files\Java\jdk-21"
+              disabled={javaOpInProgress}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                padding: '8px 10px',
+                borderRadius: 'var(--md-radius-small)',
+                border: '1px solid var(--md-card-subtle-border)',
+                backgroundColor: 'var(--md-card-background)',
+                color: 'var(--md-body)',
+                fontSize: 12,
+              }}
+            />
+            <button
+              className="md-btn md-btn-outlined"
+              onClick={handleBrowseJavaPath}
+              disabled={javaOpInProgress}
+              title="浏览选择 Java 安装目录"
+            >
+              <FaFolderOpen size={14} />
+              <span style={{ marginLeft: 6 }}>浏览</span>
+            </button>
+            <button
+              className="md-btn md-btn-filled"
+              onClick={handleAddJavaPath}
+              disabled={javaOpInProgress || !newJavaPath.trim()}
+              title="添加自定义 Java 路径"
+            >
+              <FaPlus size={14} />
+              <span style={{ marginLeft: 6 }}>添加</span>
+            </button>
+          </div>
         </div>
       </div>
 

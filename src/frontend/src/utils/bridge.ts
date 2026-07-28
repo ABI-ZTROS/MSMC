@@ -519,6 +519,30 @@ export function rescanJava(): Promise<{ success: boolean }> {
   return bridge.invoke<{ success: boolean }>('settings:rescanJava')
 }
 
+// 自选 Java 路径管理
+export interface JavaPathOpResult {
+  success: boolean
+  error?: string
+  statusMessage?: string
+  path?: string
+}
+
+export function addJavaPath(path: string): Promise<JavaPathOpResult> {
+  return bridge.invoke<JavaPathOpResult>('settings:addJava', { path })
+}
+
+export function removeJavaPath(javaPath: string): Promise<JavaPathOpResult> {
+  return bridge.invoke<JavaPathOpResult>('settings:removeJava', { javaPath })
+}
+
+export function setDefaultJava(javaPath: string): Promise<JavaPathOpResult> {
+  return bridge.invoke<JavaPathOpResult>('settings:setDefaultJava', { javaPath })
+}
+
+export function browseJavaPath(): Promise<JavaPathOpResult> {
+  return bridge.invoke<JavaPathOpResult>('settings:browseJavaPath')
+}
+
 export function getPresets(): Promise<PresetsResponse> {
   return bridge.invoke<PresetsResponse>('settings:getPresets')
 }
