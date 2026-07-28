@@ -536,12 +536,12 @@ public partial class MainWindow : Window
         _bridgeService.RegisterRequestHandler("systemMonitor:getMetrics", _ =>
         {
             var metrics = _vm?.MonitorPage?.CurrentMetrics;
-            var timeService = App.Services.GetRequiredService<TimeService>();
             if (metrics == null)
             {
                 return Task.FromResult<object?>(new
                 {
-                    timestamp = timeService.NowUnixMilliseconds,
+                    // v2: 直接 DateTimeOffset.UtcNow（不再经过 NTP 偏移）
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     cpuUsagePercent = 0.0,
                     memoryUsagePercent = 0.0,
                     diskUsagePercent = 0.0,
@@ -561,9 +561,11 @@ public partial class MainWindow : Window
                 });
             }
 
+            // v2: metrics.Timestamp 是本地北京时间(UTC+8)，转 UTC 再取 Unix 毫秒
+            var timestampUtc = DateTime.SpecifyKind(metrics.Timestamp.AddHours(-8), DateTimeKind.Utc);
             return Task.FromResult<object?>(new
             {
-                timestamp = timeService.ToUnixTimeMilliseconds(metrics.Timestamp),
+                timestamp = new DateTimeOffset(timestampUtc).ToUnixTimeMilliseconds(),
                 cpuUsagePercent = metrics.CpuUsagePercent,
                 memoryUsagePercent = metrics.MemoryUsagePercent,
                 diskUsagePercent = metrics.DiskUsagePercent,
@@ -589,11 +591,14 @@ public partial class MainWindow : Window
             try
             {
                 var persistence = App.Services.GetRequiredService<Services.SystemMonitoring.IMetricsPersistenceService>();
-                var timeService = App.Services.GetRequiredService<TimeService>();
-                var today = persistence.LoadDay(timeService.Now);
+                // v2: 直接用 DateTime.Now（不再经过 NTP 偏移）
+                var today = persistence.LoadDay(DateTime.Now);
                 var result = today.Select(p => new
                 {
-                    timestamp = timeService.ToUnixTimeMilliseconds(p.Timestamp),
+                    // v2: 北京时间(UTC+8) → UTC → UnixMs
+                    timestamp = new DateTimeOffset(
+                            DateTime.SpecifyKind(p.Timestamp.AddHours(-8), DateTimeKind.Utc))
+                        .ToUnixTimeMilliseconds(),
                     cpuUsagePercent = p.CpuUsagePercent,
                     memoryUsagePercent = p.MemoryUsagePercent,
                 }).ToList();
@@ -620,11 +625,13 @@ public partial class MainWindow : Window
                 days = Math.Clamp(days, 1, 30);
 
                 var persistence = App.Services.GetRequiredService<Services.SystemMonitoring.IMetricsPersistenceService>();
-                var timeService = App.Services.GetRequiredService<TimeService>();
                 var data = persistence.LoadRecentDays(days);
                 var result = data.Select(p => new
                 {
-                    timestamp = timeService.ToUnixTimeMilliseconds(p.Timestamp),
+                    // v2: 北京时间(UTC+8) → UTC → UnixMs
+                    timestamp = new DateTimeOffset(
+                            DateTime.SpecifyKind(p.Timestamp.AddHours(-8), DateTimeKind.Utc))
+                        .ToUnixTimeMilliseconds(),
                     cpuUsagePercent = p.CpuUsagePercent,
                     memoryUsagePercent = p.MemoryUsagePercent,
                 }).ToList();

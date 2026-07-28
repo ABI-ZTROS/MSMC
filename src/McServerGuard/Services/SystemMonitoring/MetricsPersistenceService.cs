@@ -65,7 +65,8 @@ public class MetricsPersistenceService : IMetricsPersistenceService
     /// <summary>读写锁</summary>
     private readonly object _lock = new();
 
-    /// <summary>时间服务</summary>
+    /// <summary>时间服务（仅使用其公共辅助方法 ToUnixTimeMilliseconds / FromUnixTimeMilliseconds，
+    /// 不依赖已移除的 NTP 偏移覆盖逻辑）</summary>
     private readonly TimeService _timeService;
 
     /// <summary>是否已释放</summary>
@@ -97,7 +98,10 @@ public class MetricsPersistenceService : IMetricsPersistenceService
                 }
 
                 // 编码记录：8 字节时间戳 + 4 字节 CPU + 4 字节内存
-                var timestampMs = _timeService.ToUnixTimeMilliseconds(timestamp);
+                // v2: 直接通过 DateTimeOffset 把「北京时间(UTC+8)」转换为 Unix 毫秒；不再经过 NTP 偏移
+                var timestampMs = new DateTimeOffset(
+                        DateTime.SpecifyKind(timestamp.AddHours(-8), DateTimeKind.Utc))
+                    .ToUnixTimeMilliseconds();
                 var cpuFloat = (float)Math.Round(cpuUsagePercent, 2);
                 var memFloat = (float)Math.Round(memoryUsagePercent, 2);
 
@@ -168,7 +172,8 @@ public class MetricsPersistenceService : IMetricsPersistenceService
     public List<MetricsHistoryPoint> LoadRecentDays(int days)
     {
         var result = new List<MetricsHistoryPoint>();
-        var today = DateOnly.FromDateTime(_timeService.Now);
+        // v2: 直接用 DateTime.Now（不再经过 NTP 偏移覆盖）
+        var today = DateOnly.FromDateTime(DateTime.Now);
 
         for (int i = days - 1; i >= 0; i--)
         {
@@ -190,7 +195,8 @@ public class MetricsPersistenceService : IMetricsPersistenceService
             if (!Directory.Exists(MetricsDir))
                 return;
 
-            var cutoff = DateOnly.FromDateTime(_timeService.Now.AddDays(-retainDays));
+            // v2: 直接用 DateTime.Now（不再经过 NTP 偏移覆盖）
+            var cutoff = DateOnly.FromDateTime(DateTime.Now.AddDays(-retainDays));
             var files = Directory.GetFiles(MetricsDir, $"*{FileExtension}");
 
             int deletedCount = 0;
@@ -375,7 +381,11 @@ public class MetricsPersistenceService : IMetricsPersistenceService
             var cpuBits = (int)(recordBuffer[8] | (recordBuffer[9] << 8) | (recordBuffer[10] << 16) | (recordBuffer[11] << 24));
             var memBits = (int)(recordBuffer[12] | (recordBuffer[13] << 8) | (recordBuffer[14] << 16) | (recordBuffer[15] << 24));
 
-            var timestamp = _timeService.FromUnixTimeMilliseconds(timestampMs);
+            // v2: 直接用 DateTimeOffset 把 UnixMs 还原为 UTC+8 北京时间，不再经过 NTP 偏移
+            var timestamp = DateTimeOffset
+                .FromUnixTimeMilliseconds(timestampMs)
+                .UtcDateTime
+                .AddHours(8);
             var cpu = Math.Round(BitConverter.Int32BitsToSingle(cpuBits), 2);
             var mem = Math.Round(BitConverter.Int32BitsToSingle(memBits), 2);
 

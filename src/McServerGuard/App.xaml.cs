@@ -201,7 +201,7 @@ public partial class App : Application
                     await Step(66, "正在构建服务容器...", "📦 构建服务容器...");
                     _serviceProvider = services.BuildServiceProvider();
 
-                    // 后台启动 NTP 时间同步（不阻塞启动流程）
+                    // 后台启动 NTP 时钟偏差诊断（不阻塞启动流程；v2：不再覆盖系统时间）
                     _ = Task.Run(async () =>
                     {
                         try
@@ -209,25 +209,64 @@ public partial class App : Application
                             var timeService = _serviceProvider.GetRequiredService<TimeService>();
                             await startupWindow.Dispatcher.InvokeAsync(() =>
                             {
-                                startupWindow.AppendLog("⏰ 正在同步权威授时中心时间...");
+                                startupWindow.AppendLog("⏰ 正在通过权威授时中心诊断系统时钟偏差...");
                             });
-                            var success = await timeService.SynchronizeAsync();
+
+                            // SynchronizeAsync 现在返回 true = 时钟正常（±60s 内）；
+                            // false = 要么 NTP 全失败，要么时钟偏差超过阈值
+                            var clockOk = await timeService.SynchronizeAsync();
+                            var offsetMs = timeService.ClockOffset.TotalMilliseconds;
+                            var offsetSeconds = Math.Round(Math.Abs(offsetMs) / 1000.0, 1);
+
                             await startupWindow.Dispatcher.InvokeAsync(() =>
                             {
-                                if (success)
+                                if (timeService.IsSynchronized)
                                 {
-                                    var offset = timeService.ClockOffset.TotalMilliseconds;
-                                    startupWindow.AppendLog($"✅ 时间同步完成，偏差 {offset:F0}ms", isSuccess: true);
+                                    if (clockOk)
+                                    {
+                                        startupWindow.AppendLog(
+                                            $"✅ 时钟偏差诊断完成，偏差 {offsetMs:F0}ms（系统时钟正常，已使用本地时间）",
+                                            isSuccess: true);
+                                    }
+                                    else
+                                    {
+                                        // NTP 成功但偏差超阈值 → 启动日志 + 日志 + 弹窗三重提示
+                                        startupWindow.AppendLog(
+                                            $"⚠️ 检测到系统时钟偏差较大: ±{offsetSeconds}s，" +
+                                            $"请检查 Windows 日期/时间设置或手动「立即同步」。" +
+                                            $"MSMC 会继续使用本地时间，不会被 NTP 强制覆盖。",
+                                            isError: true);
+
+                                        Log.Warning("系统时钟与 NTP 偏差较大: {Offset}ms，已提示用户但不覆盖时间", offsetMs);
+
+                                        _ = System.Windows.MessageBox.Show(
+                                            $"MSMC 检测到您的 Windows 系统时间与标准授时中心相差约 {offsetSeconds} 秒。\n\n" +
+                                            $"不准确的系统时间可能导致：\n" +
+                                            $"• 监控数据文件日期错误 / 跨天混乱\n" +
+                                            $"• 日志与实际发生时间不一致\n\n" +
+                                            $"建议操作：\n" +
+                                            $"  ① 打开 Windows 设置 → 时间和语言 → 日期和时间\n" +
+                                            $"  ② 开启「自动设置时间」并点击「立即同步」\n\n" +
+                                            $"MSMC 已使用本地系统时间运行，不会被 NTP 偏移覆盖。",
+                                            "系统时钟不准提示",
+                                            System.Windows.MessageBoxButton.OK,
+                                            System.Windows.MessageBoxImage.Warning);
+                                    }
                                 }
                                 else
                                 {
-                                    startupWindow.AppendLog("⚠️ 时间同步失败，使用本地时间", isError: true);
+                                    // 所有 NTP 服务器失败（比如拔网线）——不阻塞启动，只打 Warning 日志
+                                    startupWindow.AppendLog(
+                                        "⚠️ 权威授时中心全部不可达（可能未联网），已使用本地系统时间。" +
+                                        "如有需要请在 Windows 设置中手动同步一次时间。",
+                                        isError: true);
+                                    Log.Warning("NTP 诊断失败：所有服务器不可达（离线？），直接使用本地系统时间");
                                 }
                             });
                         }
                         catch (Exception ex)
                         {
-                            Log.Warning(ex, "NTP 时间同步异常");
+                            Log.Warning(ex, "NTP 时钟诊断异常（不影响程序启动，继续使用本地系统时间）");
                         }
                     });
 

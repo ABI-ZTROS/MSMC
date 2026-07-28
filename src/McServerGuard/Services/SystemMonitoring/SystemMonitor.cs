@@ -134,7 +134,8 @@ public class SystemMonitor : ISystemMonitor
     public SystemMetrics CollectSnapshot()
     {
         Log.Debug("📸 采集系统快照...");
-        var timestamp = _timeService.Now;
+        // v2: 壁钟直接用 DateTime.Now（不再叠加 NTP 偏移）
+        var timestamp = DateTime.Now;
 
         var cpuUsage = GetCpuUsage();
         var perCoreUsages = GetPerCoreCpuUsage();
@@ -510,9 +511,11 @@ public class SystemMonitor : ISystemMonitor
     // ═════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Java 进程统计缓存，避免每次采集都枚举系统进程
+    /// Java 进程统计缓存，避免每次采集都枚举系统进程。
+    /// v2：TickMs 使用 Environment.TickCount64（单调时钟）做 TTL 比较，
+    /// 彻底隔离 NTP / 系统时间跳变；Timestamp 仅用于 UI 展示，不参与 TTL 计算。
     /// </summary>
-    private (DateTime Timestamp, int ProcessCount, long WorkingSetBytes, long PrivateBytes, int ThreadCount)? _javaProcessCache;
+    private (long TickMs, DateTime Timestamp, int ProcessCount, long WorkingSetBytes, long PrivateBytes, int ThreadCount)? _javaProcessCache;
 
     /// <summary>
     /// Java 进程统计缓存 TTL（毫秒）
@@ -529,13 +532,14 @@ public class SystemMonitor : ISystemMonitor
     /// </remarks>
     private (int ProcessCount, long WorkingSetBytes, long PrivateBytes, int ThreadCount) GetJavaProcessStats()
     {
-        // 检查缓存是否有效
+        // v2: 使用单调时钟 Environment.TickCount64 做 TTL 比较，完全隔离 NTP 或系统时间跳变
+        var nowTick = Environment.TickCount64;
         if (_javaProcessCache.HasValue)
         {
-            var elapsed = _timeService.Now - _javaProcessCache.Value.Timestamp;
-            if (elapsed.TotalMilliseconds < JavaCacheTtlMs)
+            var elapsed = nowTick - _javaProcessCache.Value.TickMs;
+            if (elapsed < JavaCacheTtlMs)
             {
-                Log.Debug("☕ 使用 Java 进程统计缓存（剩余 {RemainingMs}ms）", JavaCacheTtlMs - (int)elapsed.TotalMilliseconds);
+                Log.Debug("☕ 使用 Java 进程统计缓存（剩余 {RemainingMs}ms）", JavaCacheTtlMs - elapsed);
                 return (_javaProcessCache.Value.ProcessCount,
                         _javaProcessCache.Value.WorkingSetBytes,
                         _javaProcessCache.Value.PrivateBytes,
@@ -618,8 +622,8 @@ public class SystemMonitor : ISystemMonitor
             }
         }
 
-        // 写入缓存
-        _javaProcessCache = (_timeService.Now, validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);
+        // v2: 写入缓存（TickMs 用单调时钟做 TTL；Timestamp 仅用于 UI 展示）
+        _javaProcessCache = (nowTick, DateTime.Now, validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);
         Log.Debug("☕ Java 进程统计已缓存: {Count} 个进程", validProcessCount);
 
         return (validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);
