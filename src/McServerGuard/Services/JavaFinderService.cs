@@ -161,9 +161,24 @@ public class JavaFinderService : IJavaFinderService
             if (!File.Exists(normalized))
                 continue;
 
+            // 跳过已知的 Java 路径垫片（如 Oracle javapath），这些不是真正的 Java 安装
+            if (IsKnownShimPath(normalized))
+            {
+                Log.Debug("跳过 Java 路径垫片: {Path}", normalized);
+                continue;
+            }
+
             var info = VerifyJava(normalized, isCustom);
             if (info != null)
             {
+                // 额外安全检查：验证推导出的 JAVA_HOME 是否有可用的 bin 目录
+                if (!IsUsableJavaHome(info.JavaHome))
+                {
+                    Log.Debug("跳过无法作为 JAVA_HOME 的路径: {Path} (JavaHome: {JavaHome})",
+                        normalized, info.JavaHome);
+                    continue;
+                }
+
                 found[normalized] = info;
                 Log.Debug("找到 Java: {Path} (版本: {Version})", info.JavaPath, info.VersionString);
             }
@@ -185,6 +200,16 @@ public class JavaFinderService : IJavaFinderService
     /// <returns>Java 安装信息对象；验证失败返回 null</returns>
     public JavaInstallation? Verify(string javaPath)
     {
+        if (string.IsNullOrEmpty(javaPath))
+            return null;
+
+        // 拒绝已知的路径垫片（如 Oracle javapath）
+        if (IsKnownShimPath(javaPath))
+        {
+            Log.Warning("拒绝验证 Java 路径垫片: {Path}", javaPath);
+            return null;
+        }
+
         return VerifyJava(javaPath, false);
     }
 
@@ -461,6 +486,10 @@ public class JavaFinderService : IJavaFinderService
         if (string.IsNullOrEmpty(javaPath) || !File.Exists(javaPath))
             return null;
 
+        // 跳过已知的 Java 路径垫片
+        if (IsKnownShimPath(javaPath))
+            return null;
+
         // 如果传入的是 javaw.exe，自动转换为同目录的 java.exe
         // javaw.exe 属于 GUI 子系统，-version 输出行为不稳定
         var actualJavaPath = javaPath;
@@ -657,5 +686,55 @@ public class JavaFinderService : IJavaFinderService
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// 检测是否为已知的 Java 路径垫片（Shim）目录。
+    /// Oracle Java 安装程序会在 Common Files\Oracle\javapath 或
+    /// Program Files\Java\javapath 下创建 java.exe 跳转垫片，
+    /// 这些不是真正的 Java 安装，无法作为 JAVA_HOME 使用。
+    /// </summary>
+    /// <param name="javaPath">java.exe 完整路径</param>
+    /// <returns>是否为垫片路径</returns>
+    private static bool IsKnownShimPath(string javaPath)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(javaPath);
+            if (string.IsNullOrEmpty(dir))
+                return false;
+
+            // Oracle javapath shim — 最常见的垫片路径
+            if (Path.GetFileName(dir).Equals("javapath", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 验证推导出的 JAVA_HOME 是否为可用的 Java 安装根目录。
+    /// 可用的 JAVA_HOME 必须包含 bin\java.exe 和 bin\javaw.exe。
+    /// </summary>
+    /// <param name="javaHome">JAVA_HOME 路径</param>
+    /// <returns>是否为可用的 Java 安装根目录</returns>
+    private static bool IsUsableJavaHome(string? javaHome)
+    {
+        if (string.IsNullOrEmpty(javaHome) || !Directory.Exists(javaHome))
+            return false;
+
+        var binDir = Path.Combine(javaHome, "bin");
+        if (!Directory.Exists(binDir))
+            return false;
+
+        var javaExe = Path.Combine(binDir, "java.exe");
+        if (!File.Exists(javaExe))
+            return false;
+
+        return true;
     }
 }
