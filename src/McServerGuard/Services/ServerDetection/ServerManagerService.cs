@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Management;
 using McServerGuard.Models;
 using Serilog;
@@ -370,15 +371,16 @@ public class ServerManagerService : IServerManagerService
                 Log.Information("✅ 服务器进程已启动! PID={Pid}", process.Id);
                 server.ProcessId = process.Id;
 
-                _ = Task.Run(async () =>
+                _ = Task.Run(() =>
                 {
                     try
                     {
-                        await Task.Delay(5000);
-                        if (process.HasExited)
+                        // 同步等待最多 2 秒，捕获 JVM 启动即崩溃的情况
+                        // （原 5 秒延迟过长，且异步 Delay 期间进程可能已被系统回收导致 ExitCode 丢失）
+                        if (process.WaitForExit(2000))
                         {
                             var exitCode = process.ExitCode;
-                            Log.Warning("⚠️ 服务器进程在 5 秒内异常退出! PID={Pid}, ExitCode={ExitCode}", process.Id, exitCode);
+                            Log.Warning("⚠️ 服务器进程在 2 秒内异常退出! PID={Pid}, ExitCode={ExitCode}", process.Id, exitCode);
 
                             if (exitCode == 1)
                             {
@@ -387,12 +389,15 @@ public class ServerManagerService : IServerManagerService
                                 Log.Error("   2. JVM 参数有拼写错误或不支持的参数");
                                 Log.Error("   3. 内存分配超出系统可用物理内存");
                                 Log.Error("   4. JAR 文件损坏或路径不正确");
-                                Log.Error("💡 请查看服务器控制台窗口的具体错误信息");
                             }
                             else if (exitCode == -1 || exitCode == unchecked((int)0xC0000005))
                             {
                                 Log.Error("💥 进程崩溃（退出码 {ExitCode}）：可能是 Java 本身故障、系统内存不足或杀毒软件拦截", exitCode);
                             }
+
+                            // 读取服务器日志文件，输出崩溃详情（UseShellExecute=true 时无法重定向 stderr，
+                            // 只能从事后写入的日志文件中提取错误信息）
+                            LogServerCrashDetails(server.WorkingDirectory);
                         }
                     }
                     catch (Exception ex)
@@ -411,6 +416,57 @@ public class ServerManagerService : IServerManagerService
         {
             Log.Error(ex, "❌ 启动服务器失败: {Message}", ex.Message);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// 读取服务器日志文件，输出崩溃详情
+    /// </summary>
+    /// <param name="workingDirectory">服务器工作目录</param>
+    /// <remarks>
+    /// 由于 StartServer 使用 UseShellExecute=true（为显示服务器控制台窗口），
+    /// 无法重定向 stderr，只能在进程崩溃后从日志文件中提取错误信息。
+    /// 检查路径：logs/latest.log, crash-reports/*.txt
+    /// </remarks>
+    private static void LogServerCrashDetails(string workingDirectory)
+    {
+        try
+        {
+            // 1. 读取 logs/latest.log 的最后 30 行
+            var latestLogPath = System.IO.Path.Combine(workingDirectory, "logs", "latest.log");
+            if (System.IO.File.Exists(latestLogPath))
+            {
+                var lines = System.IO.File.ReadAllLines(latestLogPath);
+                var tail = lines.Length > 30 ? lines[^30..] : lines;
+                Log.Error("📋 服务器日志最后 {Count} 行（{Path}）：", tail.Length, latestLogPath);
+                foreach (var line in tail)
+                {
+                    Log.Error("   {Line}", line);
+                }
+            }
+
+            // 2. 检查 crash-reports 目录中最新的崩溃报告
+            var crashDir = System.IO.Path.Combine(workingDirectory, "crash-reports");
+            if (System.IO.Directory.Exists(crashDir))
+            {
+                var crashFile = System.IO.Directory.GetFiles(crashDir, "*.txt")
+                    .OrderByDescending(System.IO.File.GetLastWriteTime)
+                    .FirstOrDefault();
+                if (crashFile != null)
+                {
+                    var crashTime = System.IO.File.GetLastWriteTime(crashFile);
+                    if (crashTime > DateTime.Now.AddMinutes(-1))
+                    {
+                        var crashContent = System.IO.File.ReadAllText(crashFile);
+                        var preview = crashContent.Length > 2000 ? crashContent[..2000] + "..." : crashContent;
+                        Log.Error("💥 检测到最新的崩溃报告（{Path}）：\n{Content}", crashFile, preview);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "读取服务器崩溃日志失败");
         }
     }
 

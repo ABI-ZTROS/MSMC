@@ -24,6 +24,8 @@ public class TimeService
     private const int NtpTimeoutMs = 3000;
     private static readonly TimeSpan ResyncInterval = TimeSpan.FromHours(1);
     private static readonly TimeSpan LargeClockOffsetThreshold = TimeSpan.FromSeconds(5);
+    /// <summary>NTP 偏移合理性上限：超过 ±1 天视为解析异常，直接丢弃该样本</summary>
+    private const long MaxReasonableOffsetMs = 86_400_000L;
 
     private readonly object _lock = new();
     private long _clockOffsetMs;
@@ -131,7 +133,17 @@ public class TimeService
         var roundTrip = (receiveTime - sendTime).TotalMilliseconds;
         var offset = (transmitTimestamp - sendTime).TotalMilliseconds - roundTrip / 2;
 
-        return (long)offset;
+        // 范围校验：偏移超过 ±1 天视为解析异常（NTP 时间戳溢出/网络延迟异常），
+        // 直接丢弃该样本，防止天文数字偏移污染中位数并导致 DateTime 溢出。
+        var offsetMs = (long)offset;
+        if (Math.Abs(offsetMs) > MaxReasonableOffsetMs)
+        {
+            throw new InvalidOperationException(
+                $"NTP 偏移 {offsetMs}ms 超出合理范围 (±{MaxReasonableOffsetMs}ms)，" +
+                $"transmitTimestamp={transmitTimestamp:O}, sendTime={sendTime:O}, roundTrip={roundTrip}ms");
+        }
+
+        return offsetMs;
     }
 
     private static DateTime ParseNtpTimestamp(byte[] buffer, int offset)

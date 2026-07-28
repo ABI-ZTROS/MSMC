@@ -128,15 +128,31 @@ public class ServerDetector : IServerDetector
 
         if (processResults.Count == 0)
         {
-            Log.Information("没有检测到任何 Minecraft 服务器进程");
+            Log.Information("没有检测到任何 Minecraft 服务器进程，尝试通过端口扫描兜底...");
+            // 不再直接返回 —— 进程枚举为空可能是因为：
+            // 1. Java 进程刚启动但 WMI 尚未索引到
+            // 2. 跨用户/权限问题导致 WMI 无法获取命令行
+            // 3. 非 Java 启动器启动的服务器
+            // 降级走主动端口扫描，扫描 25565-25590 等常见 Minecraft 端口
+            await DiscoverServersByPortScanAsync(processResults, servers);
+
             stopwatch.Stop();
+            if (servers.Count > 0)
+            {
+                Log.Information("✅ 端口扫描兜底发现 {Count} 个服务器", servers.Count);
+            }
+            else
+            {
+                Log.Information("端口扫描也未发现服务器");
+            }
+
             return new DetectionResult
             {
-                IsDetected = false,
+                IsDetected = servers.Count > 0,
                 Servers = servers,
                 StartupScripts = [],
                 ElapsedMs = stopwatch.ElapsedMilliseconds,
-                LogMessages = ["没有找到运行中的 Minecraft 服务器进程"]
+                LogMessages = servers.Count > 0 ? [] : ["没有找到运行中的 Minecraft 服务器进程"]
             };
         }
 
@@ -162,7 +178,7 @@ public class ServerDetector : IServerDetector
                     Log.Debug("✅ 识别到服务器: {Type} @ {Dir}", server.ServerType, server.WorkingDirectory);
                     servers.Add(server);
                     // 写入缓存，采用缓存-aside 模式
-                    _detectionCache[processId] = (server, DateTime.Now);
+                    _detectionCache[processId] = (server, Environment.TickCount64);
                 }
             }
             catch (Exception ex)
@@ -202,7 +218,7 @@ public class ServerDetector : IServerDetector
         cachedServer = null;
 
         if (!_detectionCache.TryGetValue(processId, out var cached)
-            || (DateTime.Now - cached.timestamp) >= DetectionCacheTtl)
+            || (Environment.TickCount64 - cached.timestampMs) >= DetectionCacheTtlMs)
             return false;
 
         // 进程存活验证 —— Process.GetProcessById 在进程不存在时会抛 ArgumentException
@@ -400,7 +416,7 @@ public class ServerDetector : IServerDetector
         lock (_portScanCacheLock)
         {
             if (_portScanCache.TryGetValue(port, out var cached)
-                && (DateTime.Now - cached.Timestamp) < PortScanCacheTtl)
+                && (Environment.TickCount64 - cached.TimestampMs) < PortScanCacheTtlMs)
             {
                 Log.Debug("♻️ 端口 {Port} 探测命中缓存: Open={Open}, Pid={Pid}",
                     port, cached.IsOpen, cached.ListeningPid);
@@ -418,7 +434,7 @@ public class ServerDetector : IServerDetector
 
         lock (_portScanCacheLock)
         {
-            _portScanCache[port] = (isOpen, listeningPid, DateTime.Now);
+            _portScanCache[port] = (isOpen, listeningPid, Environment.TickCount64);
         }
 
         return (isOpen, listeningPid);
@@ -598,24 +614,25 @@ public class ServerDetector : IServerDetector
     /// TTL 远大于自动检测间隔，保证大部分检测请求命中缓存（命中率约 95%），
     /// 有效降低重复扫描带来的 I/O 开销。
     /// </remarks>
-    private static readonly TimeSpan DetectionCacheTtl = TimeSpan.FromSeconds(25);
+    private static readonly long DetectionCacheTtlMs = (long)TimeSpan.FromSeconds(25).TotalMilliseconds;
 
     /// <summary>
     /// PID 生命周期缓存字典 —— Key 为进程 ID，Value 为（服务器实例, 缓存时间戳）元组
-    /// 使用 ConcurrentDictionary 支持后台自动检测与 UI 命令的并发访问
+    /// 使用 ConcurrentDictionary 支持后台自动检测与 UI 命令的并发访问。
+    /// 时间戳使用 Environment.TickCount64（单调时钟），彻底隔离 NTP 时间偏移污染。
     /// </summary>
-    private readonly ConcurrentDictionary<int, (ServerInstance server, DateTime timestamp)> _detectionCache = new();
+    private readonly ConcurrentDictionary<int, (ServerInstance server, long timestampMs)> _detectionCache = new();
 
     /// <summary>
-    /// 端口扫描结果缓存 TTL —— 比自动检测间隔长，避免每轮都 TCP connect
+    /// 端口扫描结果缓存 TTL（毫秒）—— 比自动检测间隔长，避免每轮都 TCP connect
     /// </summary>
-    private static readonly TimeSpan PortScanCacheTtl =
-        TimeSpan.FromSeconds(ServerConstants.PortScanCacheTtlSeconds);
+    private static readonly long PortScanCacheTtlMs =
+        (long)TimeSpan.FromSeconds(ServerConstants.PortScanCacheTtlSeconds).TotalMilliseconds;
 
     /// <summary>
     /// 端口扫描结果缓存 —— Key 为端口，Value 为（是否开放, 监听PID, 时间戳）
     /// </summary>
-    private readonly Dictionary<int, (bool IsOpen, int? ListeningPid, DateTime Timestamp)> _portScanCache = new();
+    private readonly Dictionary<int, (bool IsOpen, int? ListeningPid, long TimestampMs)> _portScanCache = new();
 
     /// <summary>
     /// 端口扫描缓存读写锁 —— 保护 <see cref="_portScanCache"/> 的并发访问
@@ -743,14 +760,14 @@ public class ServerDetector : IServerDetector
     /// </remarks>
     private void CleanupExpiredCacheEntries(object? state)
     {
-        var now = DateTime.Now;
+        var nowMs = Environment.TickCount64;
         int detectionRemoved = 0;
         int portRemoved = 0;
 
         // 清理 PID 生命周期缓存（ConcurrentDictionary 支持遍历时安全移除）
         foreach (var kv in _detectionCache)
         {
-            if ((now - kv.Value.timestamp) >= DetectionCacheTtl)
+            if ((nowMs - kv.Value.timestampMs) >= DetectionCacheTtlMs)
             {
                 if (_detectionCache.TryRemove(kv.Key, out _))
                     detectionRemoved++;
@@ -761,7 +778,7 @@ public class ServerDetector : IServerDetector
         lock (_portScanCacheLock)
         {
             var expiredPorts = _portScanCache
-                .Where(kv => (now - kv.Value.Timestamp) >= PortScanCacheTtl)
+                .Where(kv => (nowMs - kv.Value.TimestampMs) >= PortScanCacheTtlMs)
                 .Select(kv => kv.Key)
                 .ToList();
 
