@@ -337,7 +337,7 @@ public class MetricsPersistenceService : IMetricsPersistenceService
     /// <summary>
     /// 从文件读取所有数据点
     /// </summary>
-    private static List<MetricsHistoryPoint> ReadFile(string filePath)
+    private List<MetricsHistoryPoint> ReadFile(string filePath)
     {
         var result = new List<MetricsHistoryPoint>();
 

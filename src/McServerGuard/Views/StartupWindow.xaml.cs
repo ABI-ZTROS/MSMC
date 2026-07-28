@@ -5,10 +5,12 @@
 //           通过桥接事件推送显示启动日志、进度条，支持主题色跟随
 // 设计模式: Observer（观察主题服务变更）、消息推送模式
 // -----------------------------------------------------------------------------
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Threading;
 using McServerGuard.Services;
 using McServerGuard.Services.Frontend;
@@ -681,7 +683,7 @@ public partial class StartupWindow : Window
     </div>
     <script>
         var errDiv = document.getElementById('err-msg');
-        if (errDiv && {(!string.IsNullOrEmpty(errorMessage)).ToString().ToLower()}) {{
+        if (errDiv && {(!string.IsNullOrEmpty(errorMessage)).ToString().ToLowerInvariant()}) {{
             errDiv.style.display = 'block';
             errDiv.textContent = {JsonSerializer.Serialize(errorMessage)};
         }}
