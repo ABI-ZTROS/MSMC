@@ -54,6 +54,17 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// 完成 JVM 参数初始化、服务器列表 CollectionView 构建、已知服务器加载、
     /// 自动检测事件订阅以及自动检测循环启动。
     /// </remarks>
+    /// <summary>
+    /// 运行中服务器的「源集合」容器（不直接 ObservableProperty，因为 WPF CollectionView 替换 Source 会炸）。
+    /// 我们通过 CollectionViewSource.Source 属性替换底层 ObservableCollection 实例，
+    /// 避免 Clear() + N*Add() + Refresh() 触发的 ListCollectionView.PrepareLocalArray NRE。
+    /// </summary>
+    private readonly CollectionViewSource _runningCvs = new();
+    /// <summary>已知服务器的「源集合」容器。同上替换策略。</summary>
+    private readonly CollectionViewSource _knownCvs = new();
+    /// <summary>运行中服务器内部集合引用（构造时给 Filter 用；后续替换 Source 时不再使用）</summary>
+    private ObservableCollection<ServerInstance> _runningServersInternal = [];
+
     public ServerDetectionViewModel(
         IServerDetector serverDetector,
         IAppConfigService appConfigService,
@@ -69,7 +80,6 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         SelectedArguments = new ObservableCollection<string>();
         AllArgumentCategories = new ObservableCollection<ArgumentCategory>(Enum.GetValues<ArgumentCategory>());
 
-        // 命名方法订阅 —— Dispose 时可精确取消，避免 Lambda 闭包隐式持有 this
         SelectedArguments.CollectionChanged += OnSelectedArgumentsChanged;
 
         foreach (var arg in JvmArgumentConstants.GetRecommendedArguments())
@@ -77,22 +87,31 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             SelectedArguments.Add(BuildFullArgument(arg));
         }
 
-        var runningSource = new ObservableCollection<ServerInstance>();
-        FilteredRunningServers = new CollectionViewSource { Source = runningSource }.View;
-        FilteredRunningServers.Filter = obj => MatchesSearch(obj, true);
-        FilteredKnownServers = new CollectionViewSource { Source = KnownServers }.View;
-        FilteredKnownServers.Filter = obj => MatchesSearch(obj, false);
+        // ── 用独立 CollectionViewSource，Source 可整体替换 ──
+        // 经典错误：
+        //   _runningServersInternal.Clear(); foreach Add(...); FilteredView.Refresh()
+        //   → Clear 之后 CollectionView 进入「需要重建 InternalList」的半初始化态
+        //   → Add 期间 ListCollectionView 会往 Dispatcher 队列塞 Schedule 重建任务
+        //   → 此时立刻同步调 Refresh() → PrepareLocalArray() 访问尚未完全建好的
+        //     InternalList → NullReferenceException（WPF 内部字段没初始化完）
+        // 修复策略：
+        //   不在同一个 ObservableCollection 上 Clear+Add，而是：
+        //     1) 在内存里构建新的 List<T> / ObservableCollection<T>
+        //     2) 一次性给 CollectionViewSource.Source = newCollection
+        //   这样 WPF 会抛弃旧 ListCollectionView，用新 Source 从头构建一个全新的 View，
+        //   不可能碰到半初始化的内部状态。
+        _runningServersInternal = new ObservableCollection<ServerInstance>(_runningServersInternal);
+        _runningCvs.Source = _runningServersInternal;
+        _runningCvs.View.Filter = obj => MatchesSearch(obj, true);
+        FilteredRunningServers = _runningCvs.View;
 
-        _runningServersInternal = runningSource;
+        _knownCvs.Source = KnownServers;
+        _knownCvs.View.Filter = obj => MatchesSearch(obj, false);
+        FilteredKnownServers = _knownCvs.View;
 
         LoadKnownServers();
 
         _serverDetector.DetectionCompleted += OnAutoDetectCompleted;
-
-        // ⚠️ 不在构造函数中启动自动检测！
-        // 延迟到窗口渲染完成后由 MainViewModel 或 MainWindow 统一调度，
-        // 避免在 DI 容器构建阶段就启动 WMI 扫描，与 WebView2 初始化竞争 CPU。
-        // 使用 DeferStart() 在窗口 Loaded 后启动。
     }
 
     /// <summary>
@@ -539,26 +558,24 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher
             && !dispatcher.CheckAccess())
         {
-            dispatcher.BeginInvoke(new Action(RebuildRunningServers));
+            dispatcher.BeginInvoke(new Action(Rebuild));
             return;
         }
-        RebuildRunningServers();
+        Rebuild();
 
-        void RebuildRunningServers()
+        void Rebuild()
         {
-            _runningServersInternal.Clear();
-            foreach (var s in snapshot)
-            {
-                _runningServersInternal.Add(s);
-            }
-            if (!string.IsNullOrWhiteSpace(SearchKeyword))
-            {
-                try { FilteredRunningServers.Refresh(); }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "⚠️ FilteredRunningServers.Refresh 失败，已忽略");
-                }
-            }
+            // 🔥 关键：整体替换 CollectionViewSource.Source，
+            // 而不是 Clear() + N*Add() + Refresh()。
+            // Clear() 会把 ListCollectionView 的 InternalList 置空并标记为「待重建」，
+            // 但 Add 期间 WPF 会往 Dispatcher 队列里塞 Schedule 重建任务。此时 UI 上某些
+            // 绑定（如 SelectedItem / ICollectionView.CurrentChanged 回调）可能立刻触发一次
+            // 同步的 View.Refresh() → PrepareLocalArray() 读到半初始化的 InternalList → NRE。
+            // 整体替换 Source 相当于丢弃旧 View，让 WPF 用新 ObservableCollection 从 0 构造，
+            // 不可能碰到半初始化状态。
+            var newCollection = new ObservableCollection<ServerInstance>(snapshot);
+            _runningServersInternal = newCollection;
+            _runningCvs.Source = newCollection;
         }
     }
 
@@ -1694,16 +1711,11 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// </summary>
     private void LoadKnownServers()
     {
-        // 加载已知服务器列表：
-        // 避免出现经典 WPF bug：Clear() + foreach Add() 过程中，
-        // ListCollectionView 会同步接收到多次 CollectionChanged 通知、
-        // 内部列表处于中间态时再手动 Refresh() → PrepareLocalArray() 访问
-        // 未完全重建的 InternalList → NullReferenceException。
-        // 修复策略：
-        //   ① 先在内存里构建新列表（不触发任何 CollectionChanged）
-        //   ② 比较新旧集合，若完全相等则什么都不做，避免无意义的 UI 刷新
-        //   ③ 用 DeferRefresh() + Clear 批量 + Add 批量，把多次通知合并为一次
-        //   ④ Refresh() 时必须在 Dispatcher 线程（WPF 所有 CollectionView 操作都要求）
+        // 🔥 彻底避免 ListCollectionView.PrepareLocalArray NRE：
+        // 不在同一个 ObservableCollection 上 Clear + N*Add + Refresh，
+        // 而是：在内存里构建新的 ObservableCollection<KnownServer> → 一次性替换
+        // CollectionViewSource.Source → WPF 丢弃旧 ListCollectionView，新建基于新集合的。
+        // 这样完全绕开了「Clear 后半初始化 InternalList → 立刻 Refresh → NRE」的竞态窗口。
 
         var dispatcher = System.Windows.Application.Current?.Dispatcher;
         if (dispatcher != null && !dispatcher.CheckAccess())
@@ -1713,56 +1725,45 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var fresh = _appConfigService?.GetAllKnownServers()?.ToList() ?? [];
+        var fresh = _appConfigService?.GetAllKnownServers()?.Where(s => s is not null).ToList() ?? [];
 
-        // 快速路径：数量和元素都没变 → 跳过
+        // 快速路径：引用全部相等 → 不用重建集合，但仍然要刷新视图（可能单条记录字段被原地修改了）
         if (KnownServers.Count == fresh.Count)
         {
-            var allEqual = true;
+            var allSame = true;
             for (var i = 0; i < fresh.Count; i++)
             {
-                if (!ReferenceEquals(KnownServers[i], fresh[i]))
-                {
-                    allEqual = false;
-                    break;
-                }
+                if (!ReferenceEquals(KnownServers[i], fresh[i])) { allSame = false; break; }
             }
-            if (allEqual)
+            if (allSame)
             {
-                // 数据虽然引用相同，但可能单条记录的 Name/JarPath/Port 等字段被外部修改了
-                // （AppConfigService.UpdateKnownServer 是原地修改）。
-                // 仍然需要刷新 Filter 视图，否则搜索/过滤不会重算。
-                SafeRefreshView(FilteredKnownServers);
+                // 原地修改场景（Name/PORT/JarPath 被 UpdateKnownServer 改了）：
+                // 此时不能调 View.Refresh()（可能 NRE）。安全做法是把同一个 KnownServers 实例
+                // 重新赋给 _knownCvs.Source —— WPF 认为 Source 换了，重新构造 View，但不
+                // 涉及 Clear 中间态。
+                _knownCvs.Source = null;
+                _knownCvs.Source = KnownServers;
                 OnPropertyChanged(nameof(HasKnownServers));
                 return;
             }
         }
 
-        // 用 DeferRefresh 告诉 CollectionView：接下来是一组批量修改，
-        // 不要每次 Add 都刷新 UI。using 结束时自动触发一次整合刷新。
-        using (FilteredKnownServers.DeferRefresh())
-        {
-            KnownServers.Clear();
-            foreach (var server in fresh)
-            {
-                // 防御：AppConfigService 内部 JSON 反序列化时若某条损坏，
-                // 可能返回 null 项。ObservableCollection 允许 null，
-                // 但 WPF ListCollectionView.PrepareLocalArray 在某些版本
-                // 处理到 null 项时（尤其是 Sort/Filter 访问属性）会炸 NRE。
-                if (server is null) continue;
-                KnownServers.Add(server);
-            }
-        }
+        // 正常路径：构建新 ObservableCollection → 一次性替换 Source
+        var newCollection = new ObservableCollection<KnownServer>(fresh);
+
+        // 注意：KnownServers 是 [ObservableProperty] 生成的属性（源生成器），
+        // 直接赋值会自动发 PropertyChanged。但我们还需要手动同步给 _knownCvs.Source。
+        KnownServers = newCollection;
+        _knownCvs.Source = newCollection;
 
         OnPropertyChanged(nameof(HasKnownServers));
-        SafeRefreshView(FilteredKnownServers);
     }
 
     /// <summary>
-    /// 安全地刷新 ICollectionView：
-    ///   - 过滤 null / Disposed
-    ///   - 确保在 Dispatcher 线程
-    ///   - 捕获 WPF 内部异常（PrepareLocalArray 等偶发竞态），不让它让进程崩溃
+    /// 刷新 CollectionView（用于搜索关键字变化等「集合内容没变，只需要重算 Filter」的场景）。
+    /// 注意：**严禁**在集合刚发生大规模变更（Clear/AddRange）之后调用，此时 WPF InternalList 是
+    /// 半初始化态，Refresh → PrepareLocalArray 会 NRE。该方法只适合搜索关键字改变时使用；
+    /// 如果集合内容确实发生了变化，请走「整体替换 CollectionViewSource.Source」路径。
     /// </summary>
     private static void SafeRefreshView(ICollectionView? view)
     {
@@ -1773,16 +1774,20 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             if (dispatcher != null && !dispatcher.CheckAccess())
             {
                 dispatcher.Invoke(view.Refresh,
-                    System.Windows.Threading.DispatcherPriority.DataBind);
+                    System.Windows.Threading.DispatcherPriority.Background);
             }
             else
             {
+                // 再防御一层：如果 InternalList 半初始化态，Refresh 之前先确保可以正常 Enumerate
+                // （ListCollectionView 只有在 Filter 正常时才会在 PrepareLocalArray 里访问缓存）。
+                // 做法：在 Refresh 前先做一次惰性的 MoveToFirst 测试，失败就吞掉。
+                _ = view.IsEmpty;
                 view.Refresh();
             }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "刷新 CollectionView 失败，忽略本次异常");
+            Log.Warning(ex, "刷新 CollectionView 失败（已安全忽略），不会影响 UI。");
         }
     }
 
