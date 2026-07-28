@@ -258,9 +258,8 @@ public static class PropertiesParser
             {
                 try
                 {
-                    using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                    using var sr = new StreamReader(fs);
-                    doc = ParseDocument(sr.ReadToEnd());
+                    // 极简：默认 FileShare，不管占用；读不到就走兜底字母顺序
+                    doc = ParseDocument(File.ReadAllText(filePath));
                 }
                 catch (Exception ex)
                 {

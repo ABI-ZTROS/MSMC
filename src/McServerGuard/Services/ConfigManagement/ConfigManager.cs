@@ -69,8 +69,9 @@ public sealed class ConfigManager : IConfigManager
     }
 
     /// <summary>
-    /// 读取配置文件，根据扩展名与内容检测自动选择解析器，返回扁平化键值对字典。
-    /// 多格式回退链：检测格式 → Properties → YAML → JSON → 全失败抛 ConfigParseException。
+    /// 读取配置文件（极简版：用户要求不管占用 → 直接 File.ReadAllTextAsync 读，不再传 FileShare.ReadWrite）。
+    /// 多格式回退链保留：内容特征 → 扩展名 → 逐解析器探测 → 全失败抛 ConfigParseException。
+    /// PropertiesDocument 缓存去掉：不再 CacheDocument（管它占不占用，读一次解析一次最简单）。
     /// </summary>
     /// <param name="filePath">配置文件路径</param>
     /// <returns>扁平化键值对字典</returns>
@@ -80,7 +81,7 @@ public sealed class ConfigManager : IConfigManager
     {
         ArgumentNullException.ThrowIfNull(filePath);
 
-        Log.Information("📂 读取配置文件: {Path}", filePath);
+        Log.Information("📂 极简读取配置文件: {Path}", filePath);
 
         if (!File.Exists(filePath))
         {
@@ -88,18 +89,14 @@ public sealed class ConfigManager : IConfigManager
             throw new FileNotFoundException($"配置文件不存在: {filePath}", filePath);
         }
 
-        // 异步读取文件内容（FileShare.ReadWrite 避免与服务器进程冲突）
-        string content;
-        using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-        using (var reader = new StreamReader(fs))
-        {
-            content = await reader.ReadToEndAsync().ConfigureAwait(false);
-        }
+        // ── 直接读，不管 FileShare。用户明确说「不要再管是不是被占用」
+        // 如果真的被进程以独占 FileShare=None 锁定 → IOException 直接抛到上层，
+        // ViewModel 的 catch 会转成 PushErrorEntry Alert，用户能看到。
+        var content = await File.ReadAllTextAsync(filePath).ConfigureAwait(false);
 
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
         var primaryFormat = ConfigFormatDetector.Resolve(content, extension);
 
-        // 多格式回退链（去掉重复的 Unknown）
         var formatsToTry = new[]
         {
             primaryFormat,
@@ -111,9 +108,7 @@ public sealed class ConfigManager : IConfigManager
         Exception? lastEx = null;
         Dictionary<string, string>? result = null;
         ConfigFormat? successFormat = null;
-        PropertiesDocument? propertiesDoc = null;
 
-        // CPU 密集型解析放到线程池执行
         await Task.Run(() =>
         {
             foreach (var fmt in formatsToTry)
@@ -123,9 +118,9 @@ public sealed class ConfigManager : IConfigManager
                     switch (fmt)
                     {
                         case ConfigFormat.Properties:
-                            // Properties 需要同时缓存原始行结构，供 Save 无损回写
-                            propertiesDoc = PropertiesParser.ParseDocument(content);
-                            result = propertiesDoc.EffectiveValues;
+                            // 极简：不再 cache PropertiesDocument；Save 时如需无损重新 ParseDocument 一次即可
+                            var doc = PropertiesParser.ParseDocument(content);
+                            result = doc.EffectiveValues;
                             successFormat = fmt;
                             return;
                         case ConfigFormat.Yaml:
@@ -149,7 +144,7 @@ public sealed class ConfigManager : IConfigManager
 
         if (result is null || successFormat is null)
         {
-            Log.Warning("❌ 配置文件解析失败（所有格式回退链已耗尽）: Path={Path} Ext={Ext} Len={Len}",
+            Log.Warning("❌ 配置解析失败（所有格式回退链耗尽）: Path={Path} Ext={Ext} Len={Len}",
                 filePath, extension, content.Length);
             throw new ConfigParseException(
                 $"配置文件解析失败（所有支持的解析器均失败）。路径: {filePath}",
@@ -157,12 +152,6 @@ public sealed class ConfigManager : IConfigManager
                 content.Length,
                 lastEx,
                 hintTryFormat: primaryFormat.ToString());
-        }
-
-        // 缓存 Properties 文档结构（若是 Properties 格式成功）
-        if (successFormat == ConfigFormat.Properties && propertiesDoc is not null)
-        {
-            PropertiesParser.CacheDocument(filePath, propertiesDoc);
         }
 
         Log.Information("✅ 配置解析完成（Format={Format}）：共 {Count} 个键值对",
@@ -194,9 +183,9 @@ public sealed class ConfigManager : IConfigManager
         {
             try
             {
-                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var sr = new StreamReader(fs);
-                originalContent = await sr.ReadToEndAsync().ConfigureAwait(false);
+                // 极简：直接读原文件。用户明确不管占用，用默认 FileShare；
+                // 被服务器独占锁定时 IOException 抛到上层，ViewModel 转成 Alert 错误提示。
+                originalContent = await File.ReadAllTextAsync(filePath).ConfigureAwait(false);
                 originalMd5 = Md5Hex(originalContent);
             }
             catch (Exception ex)
@@ -232,10 +221,8 @@ public sealed class ConfigManager : IConfigManager
             try
             {
                 var bakPath = filePath + ".bak";
-                // 用 FileShare.ReadWrite 写，避免与服务器冲突
-                using var fsBak = new FileStream(bakPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
-                using var swBak = new StreamWriter(fsBak);
-                await swBak.WriteAsync(originalContent).ConfigureAwait(false);
+                // 极简：默认 FileShare，不管占用；写不成功就跳过备份
+                await File.WriteAllTextAsync(bakPath, originalContent).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -260,15 +247,12 @@ public sealed class ConfigManager : IConfigManager
         {
             try
             {
-                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var sr = new StreamReader(fs);
-                var currentContent = await sr.ReadToEndAsync().ConfigureAwait(false);
+                // 极简：直接 File.ReadAllTextAsync（默认 FileShare）
+                var currentContent = await File.ReadAllTextAsync(filePath).ConfigureAwait(false);
                 var currentMd5 = Md5Hex(currentContent);
                 if (currentMd5 != originalMd5)
                 {
                     Log.Warning("⚠️ SaveConfigAsync: 保存过程中检测到外部进程修改了文件 {Path}，将直接覆盖写入（可能合并冲突）", filePath);
-                    // 如果是 Properties 且中间新增了行，这里简单策略：直接用我们基于 originalContent 生成的写回即可
-                    // （PropertiesParser.Serialize 已经基于 originalContent + 用户修改合并了）
                 }
             }
             catch (Exception ex)
@@ -314,9 +298,8 @@ public sealed class ConfigManager : IConfigManager
         // ========== 6) 写后校验：重新读回来比较 EffectiveValues（防止文件损坏） ==========
         try
         {
-            using var fsVerify = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var srVerify = new StreamReader(fsVerify);
-            var written = await srVerify.ReadToEndAsync().ConfigureAwait(false);
+            // 极简：默认 FileShare
+            var written = await File.ReadAllTextAsync(filePath).ConfigureAwait(false);
             Dictionary<string, string> writtenDict;
             try
             {

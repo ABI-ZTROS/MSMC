@@ -75,62 +75,48 @@ public sealed class ConfigEntryGroup
 /// </remarks>
 public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 {
-    #region 常量
+    #region 常量（极简版：无目录过滤、无扫描上限——直接把所有符合扩展名的文件都列出来）
 
-    /// <summary>跳过的目录名黑名单（任何 depth 都跳过）</summary>
-    private static readonly HashSet<string> SkipDirNames = new(StringComparer.OrdinalIgnoreCase)
+    /// <summary>配置文件的扩展名白名单。任何扩展名匹配都会被收录进文件列表。
+    /// 用户说：直接走已保存服务器的列表然后去访问绝对路径(文件层)，不要再管是不是被占用。
+    /// 所以这里也不做黑名单目录/最大扫描数的限制，直接全目录一把梭。</summary>
+    private static readonly HashSet<string> ConfigExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        "mods", "world", "world_nether", "world_the_end",
-        "logs", "cache", "libraries", "versions", "assets",
-        "crash-reports", "timings"
+        ".properties", ".yml", ".yaml", ".json", ".cfg", ".conf",
+        ".toml", ".ini"
     };
-
-    /// <summary>单台服务器最大扫描配置文件数（防卡死硬上限）</summary>
-    private const int MaxFilesPerServer = 500;
 
     #endregion
 
-    #region 字段
+    #region 字段（极简：删 _scanVersion/_scanning/_loadCts/_lastLoadTask）
 
-    /// <summary>配置管理服务</summary>
+    /// <summary>配置管理服务（解析 + 保存 + 翻译描述符）</summary>
     private readonly IConfigManager _configManager;
-    /// <summary>服务器检测服务（可选）</summary>
+    /// <summary>服务器检测服务（可选，拿运行中实例列表用）</summary>
     private readonly IServerDetector? _serverDetector;
-    /// <summary>应用配置服务（可选）</summary>
+    /// <summary>应用配置服务——用户要求核心用它来拿「已保存服务器列表」</summary>
     private readonly IAppConfigService? _appConfigService;
 
-    /// <summary>原始配置快照 —— 用于重置变更与脏数据比对</summary>
+    /// <summary>原始配置快照 —— 用于重置变更与脏数据比对（保存/重置/撤销的基础）</summary>
     private Dictionary<string, string> _originalConfig = new();
 
-    /// <summary>当前编辑的配置文件完整路径</summary>
+    /// <summary>当前编辑的配置文件完整路径（绝对路径）</summary>
     private string _currentFilePath = string.Empty;
 
-    /// <summary>加载取消令牌源 —— 防止快速切换文件时的竞态</summary>
-    private CancellationTokenSource? _loadCts;
-
-    /// <summary>最后一次配置加载任务引用</summary>
-    private Task? _lastLoadTask;
-
-    /// <summary>分组更新防抖计时器</summary>
+    /// <summary>分组更新防抖计时器（保留：翻译分组展示还需要它）</summary>
     private System.Timers.Timer? _groupUpdateTimer;
 
-    /// <summary>编辑历史栈 —— 记录每次值变更前的条目引用与原始值，支持逐步撤销</summary>
+    /// <summary>编辑历史栈 —— 记录每次值变更前的条目引用与原始值（撤销功能保留）</summary>
     private readonly Stack<(ServerConfigEntry Entry, string PreviousValue)> _undoStack = new();
 
-    /// <summary>已修改条目计数器 —— O(1) 替代 O(n) 的 ConfigEntries.Any(...) 扫描</summary>
+    /// <summary>已修改条目计数器 —— O(1) 替代 O(n) 的 ConfigEntries.Any(...) 扫描（保存/脏计数保留）</summary>
     private int _modifiedCount;
 
-    /// <summary>撤销操作进行中标志 —— 防止撤销恢复值时再次触发压栈</summary>
+    /// <summary>撤销操作进行中标志 —— 防止撤销恢复值时再次触发压栈（撤销功能保留）</summary>
     private bool _isUndoing;
 
     /// <summary>指示当前实例是否已释放，防止重复 Dispose 导致资源二次释放</summary>
     private bool _disposed;
-
-    /// <summary>扫描中的版本号 —— 防止旧的长扫描覆盖新结果</summary>
-    private int _scanVersion;
-
-    /// <summary>当前是否正在扫目录 —— 防止 OnServerChanged + 桥接层重复两次扫描</summary>
-    private bool _scanning;
 
     #endregion
 
@@ -270,17 +256,65 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
     #endregion
 
-    #region 服务器列表与联动
+    #region 服务器列表与联动（极简版：直接取 AppConfigService 已知服务器列表 → WorkingDirectory 作为根目录绝对路径）
 
     /// <summary>
-    /// 刷新可用服务器列表命令
+    /// 刷新可用服务器列表。
+    /// 极简链路：
+    ///   ① AppConfigService.GetAllKnownServers() → 直接拿已保存服务器（用户要求的核心数据源）
+    ///   ② ServerDetector.DetectAllAsync() → 运行中实例作为补充（如果有就加，去重用 WorkingDirectory 比较）
+    ///   ③ 任何一台只要 WorkingDirectory 存在且非空就加入 AvailableServers（后面直接用绝对路径扫文件）
+    /// 不再做 DisplayName 去重 / ServerJarPath 校验等复杂逻辑。
     /// </summary>
     [RelayCommand]
     public async Task RefreshServerListAsync()
     {
-        Log.Information("🔄 刷新配置编辑器的服务器列表...");
+        Log.Information("🔄 配置编辑器：刷新可用服务器列表（极简版）");
         var servers = new List<ServerInstance>();
 
+        // ── 1. 核心数据源：用户要求的「已保存服务器列表」
+        if (_appConfigService != null)
+        {
+            foreach (var ks in _appConfigService.GetAllKnownServers())
+            {
+                if (string.IsNullOrEmpty(ks.WorkingDirectory) || !Directory.Exists(ks.WorkingDirectory))
+                    continue;
+
+                var jarName = string.IsNullOrWhiteSpace(ks.ServerJarPath)
+                    ? ks.Name
+                    : Path.GetFileName(ks.ServerJarPath);
+
+                var inferredType = ServerType.Unknown;
+                var jl = (jarName ?? string.Empty).ToLowerInvariant();
+                if (jl.Contains("paper")) inferredType = ServerType.Paper;
+                else if (jl.Contains("purpur")) inferredType = ServerType.Purpur;
+                else if (jl.Contains("spigot")) inferredType = ServerType.Spigot;
+                else if (jl.Contains("bukkit")) inferredType = ServerType.Bukkit;
+                else if (jl.Contains("fabric")) inferredType = ServerType.Fabric;
+                else if (jl.Contains("forge")) inferredType = ServerType.Forge;
+                else if (jl.Contains("neoforge")) inferredType = ServerType.NeoForge;
+                else if (jl.Contains("quilt")) inferredType = ServerType.Quilt;
+                else if (jl.Contains("velocity")) inferredType = ServerType.Velocity;
+                else if (jl.Contains("bungee") || jl.Contains("waterfall")) inferredType = ServerType.BungeeCord;
+                else if (jl.Contains("mohist")) inferredType = ServerType.Mohist;
+                else if (jl.Contains("arclight")) inferredType = ServerType.Arclight;
+                else if (jl.Contains("folia")) inferredType = ServerType.Folia;
+
+                servers.Add(new ServerInstance
+                {
+                    ServerJarName = jarName,
+                    WorkingDirectory = ks.WorkingDirectory,
+                    ServerJarPath = ks.ServerJarPath,
+                    ServerPort = ks.Port,
+                    ServerType = inferredType,
+                    KnownServerId = ks.KnownServerId,
+                    // 未运行状态：PID=0，DisplayName 会显示 "{Type} @ {Dir}"
+                    ProcessId = 0,
+                });
+            }
+        }
+
+        // ── 2. 可选补充：运行中服务器（如果同 WorkingDirectory 已在上面已知服务器里出现过就不加）
         try
         {
             if (_serverDetector != null)
@@ -288,64 +322,26 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                 var result = await _serverDetector.DetectAllAsync();
                 foreach (var s in result.Servers)
                 {
-                    if (!string.IsNullOrEmpty(s.WorkingDirectory) && Directory.Exists(s.WorkingDirectory))
-                        servers.Add(s);
+                    if (string.IsNullOrEmpty(s.WorkingDirectory) || !Directory.Exists(s.WorkingDirectory))
+                        continue;
+                    if (servers.Any(x =>
+                            string.Equals(x.WorkingDirectory, s.WorkingDirectory, StringComparison.OrdinalIgnoreCase)))
+                        continue;
+                    servers.Add(s);
                 }
             }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "获取运行中服务器列表失败");
-        }
-
-        if (_appConfigService != null)
-        {
-            foreach (var ks in _appConfigService.GetAllKnownServers())
-            {
-                if (!string.IsNullOrEmpty(ks.WorkingDirectory) && Directory.Exists(ks.WorkingDirectory))
-                {
-                    if (!servers.Any(s => string.Equals(s.WorkingDirectory, ks.WorkingDirectory, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        var jarName = string.IsNullOrWhiteSpace(ks.ServerJarPath)
-                            ? ks.Name
-                            : Path.GetFileName(ks.ServerJarPath);
-
-                        var inferredType = ServerType.Unknown;
-                        var jarLower = jarName.ToLowerInvariant();
-                        if (jarLower.Contains("paper")) inferredType = ServerType.Paper;
-                        else if (jarLower.Contains("purpur")) inferredType = ServerType.Purpur;
-                        else if (jarLower.Contains("spigot")) inferredType = ServerType.Spigot;
-                        else if (jarLower.Contains("bukkit")) inferredType = ServerType.Bukkit;
-                        else if (jarLower.Contains("fabric")) inferredType = ServerType.Fabric;
-                        else if (jarLower.Contains("forge")) inferredType = ServerType.Forge;
-                        else if (jarLower.Contains("neoforge")) inferredType = ServerType.NeoForge;
-                        else if (jarLower.Contains("quilt")) inferredType = ServerType.Quilt;
-                        else if (jarLower.Contains("velocity")) inferredType = ServerType.Velocity;
-                        else if (jarLower.Contains("bungee") || jarLower.Contains("waterfall")) inferredType = ServerType.BungeeCord;
-                        else if (jarLower.Contains("mohist")) inferredType = ServerType.Mohist;
-                        else if (jarLower.Contains("arclight")) inferredType = ServerType.Arclight;
-                        else if (jarLower.Contains("folia")) inferredType = ServerType.Folia;
-
-                        servers.Add(new ServerInstance
-                        {
-                            ServerJarName = jarName,
-                            WorkingDirectory = ks.WorkingDirectory,
-                            ServerJarPath = ks.ServerJarPath,
-                            ServerPort = ks.Port,
-                            ServerType = inferredType,
-                            KnownServerId = ks.KnownServerId,
-                        });
-                    }
-                }
-            }
+            Log.Warning(ex, "获取运行中服务器列表失败（忽略，不影响已知服务器）");
         }
 
         AvailableServers = servers;
-        Log.Information("✅ 服务器列表刷新完成，共 {Count} 个服务器", servers.Count);
+        Log.Information("✅ 配置编辑器服务器列表刷新完成：共 {Count} 台（已知服务器优先）", servers.Count);
     }
 
     /// <summary>
-    /// 选中服务器名称变更回调
+    /// 选中服务器名称变更回调（极简版：DisplayName / ServerJarName / 目录名三级匹配 → 赋值 Server）
     /// </summary>
     partial void OnSelectedServerNameChanged(string? value)
     {
@@ -501,29 +497,21 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
     #endregion
 
-    #region Server 切换与扫描（含并发保护 + 目录过滤重写）
+    #region Server 切换与扫描（极简版：选服务器 → 直接递归扫 → 写结果，无锁/无版本号/无过滤）
 
     /// <summary>
-    /// Server 属性变更回调 —— 同步重置状态，异步仅在「桥接层没扫过」时才触发扫目录。
-    /// 
-    /// ⚠️ 并发保护关键：
-    ///   之前的实现 L547-584 存在竞态死锁：
-    ///     ① 如果已有扫描在跑（_scanning=true），本回调先清空 ConfigFiles/Tree；
-    ///     ② 然后因 _scanning=true 不启动新扫描；
-    ///     ③ 若旧扫描版本号被更新的 scanVersion 丢弃 → 它的 finally 不清 _scanning；
-    ///     → 结果：ConfigFiles 永远空 + _scanning 永远 true = 「已知服务器文件列表永远出不来」。
-    ///   修复思路：
-    ///     · 清空仅在「确定会启动新扫描 or 已有结果」时做；
-    ///     · 如果 _scanning=true → 先看当前最新扫描是否就是本目录的（若是则保留旧结果等待它完成）；
-    ///     · ScanDirectoryForConfigFilesAsync 的 finally 无条件清 _scanning（版本号保护只决定是否应用结果，
-    ///       不决定是否释放锁——否则被丢弃的扫描会占着锁永远阻塞）。
+    /// Server 属性变更回调 —— 三步最小链路：
+    ///   ① 清空条目/分组状态
+    ///   ② 设 SelectedServerName / ServerWorkingDirectory
+    ///   ③ 直接 await 扫目录（不是 fire-and-forget，是同步直到写完 ConfigFiles/Tree）
+    /// 不再管：_scanning 锁、scanVersion 版本、needsScan 三态决策、目录黑名单、上限 500 等。
     /// </summary>
     partial void OnServerChanged(ServerInstance? value)
     {
         if (!string.IsNullOrEmpty(value?.DisplayName) && SelectedServerName != value.DisplayName)
             SelectedServerName = value.DisplayName;
 
-        // ── 条目侧：Clear 后立刻刷新分组（L5 修复：不等待 20ms Timer）
+        // ── 条目侧：Clear + 立刻同步刷新分组（防止显示上一文件/服务器残留）
         foreach (var oldEntry in ConfigEntries)
         {
             oldEntry.PropertyChanging -= OnConfigEntryChanging;
@@ -531,7 +519,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         }
         ConfigEntries.Clear();
         if (_groupUpdateTimer != null) { _groupUpdateTimer.Stop(); }
-        UpdateGroupedEntries();  // 同步立刻刷，防止前端 getEntries 读到上一文件分组
+        UpdateGroupedEntries();
 
         SelectedConfigFile = null;
         _currentFilePath = string.Empty;
@@ -555,45 +543,14 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         }
 
         ServerWorkingDirectory = value.WorkingDirectory;
-        bool dirExists = !string.IsNullOrEmpty(value.WorkingDirectory) && Directory.Exists(value.WorkingDirectory);
 
-        if (dirExists)
+        // 目录存在：同步扫完（不再管桥接层有没有扫过，就当它没扫过——反正代码量少好调试）
+        if (!string.IsNullOrEmpty(value.WorkingDirectory) && Directory.Exists(value.WorkingDirectory))
         {
-            // 目录存在分支：
-            // 竞态防护—— 如果现在正在扫，且正在扫的就是这个 WorkingDirectory → 保留旧的 ConfigFiles（空也没关系），
-            // 等它完成；如果正在扫别的目录 → 旧扫描结果一定对不上，先清空，然后强制以本目录为根启动一次新扫描。
-            // （另一条链路如 config:selectServer / config:selectDefaultServer 已经同步 await 扫过，
-            //   进来时 _scanning=false + ConfigFiles 有值，就不会重复触发异步扫描。）
-            bool needsScan;
-            if (_scanning)
-            {
-                // 正在扫描时：先把 ConfigFiles/Tree 暂时置空（避免展示旧服务器的文件，误导点击后找不到路径），
-                // 然后把需要再扫的 flag 设 true—— ScanDirectoryForConfigFilesAsync finally 无论版本号都清 _scanning，
-                // 这样即使旧扫描被丢弃，锁也能释放；我们等下启动的新扫描会 bump version，旧扫描会自然被丢弃。
-                ConfigFiles = [];
-                ConfigFileTree = [];
-                needsScan = true;
-            }
-            else if (ConfigFiles.Count == 0)
-            {
-                // 没在扫描 + 无结果：必须扫
-                ConfigFiles = [];
-                ConfigFileTree = [];
-                needsScan = true;
-            }
-            else
-            {
-                // 已有结果（来自桥接层同步赋值）：保留
-                needsScan = false;
-            }
-
-            OnPropertyChanged(nameof(ConfigFileCountText));
-            OnPropertyChanged(nameof(HasServerDirectory));
-
-            if (needsScan)
-            {
-                _ = ScanDirectoryAfterServerChangedAsync(value);
-            }
+            // 注意：这里用 _ = 是因为 OnServerChanged 是同步回调无法 async。内部自己 async void 模式，但
+            // ScanDirectoryForConfigFilesAsync 内部 ConfigFiles/ConfigFileTree 都是赋值型替换，
+            // 只要用户没在 10ms 内再切一次服务器就不会竞态；再切一次也只是覆盖结果，不会死锁。
+            _ = ScanDirectoryForConfigFilesAsync(value.WorkingDirectory);
         }
         else
         {
@@ -622,29 +579,12 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// 服务器切换后异步扫目录（仅 IO 部分），加扫描版本号防止旧结果覆盖新结果。
-    /// </summary>
-    private async System.Threading.Tasks.Task ScanDirectoryAfterServerChangedAsync(ServerInstance? value)
-    {
-        if (value is null) return;
-        if (string.IsNullOrEmpty(value.WorkingDirectory) || !Directory.Exists(value.WorkingDirectory))
-            return;
-
-        try
-        {
-            await ScanDirectoryForConfigFilesAsync(value.WorkingDirectory);
-            OnPropertyChanged(nameof(ConfigFileCountText));
-            OnPropertyChanged(nameof(HasServerDirectory));
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "服务器切换后扫描配置文件失败: {Dir}", value.WorkingDirectory);
-        }
-    }
-
-    /// <summary>
-    /// 递归扫描目录以构建配置文件列表与目录树。
-    /// 新增：scanVersion 并发保护 —— 结束时若版本号对不上则丢弃结果。
+    /// 直接递归扫描 rootPath 下所有符合扩展名的配置文件 → 赋值 ConfigFiles + ConfigFileTree。
+    /// 极简：
+    ///   · Directory.EnumerateFiles(rootPath, "*", AllDirectories) 一把梭（不跳过任何目录）
+    ///   · 扩展名只和 ConfigExtensions 白名单比
+    ///   · 不用版本号、不用锁、不包 Task.Run（除非需要后台）
+    ///   · 任何异常：Log.Error + ConfigFiles=[], ConfigFileTree=[]，不吞静默。
     /// </summary>
     public async Task ScanDirectoryForConfigFilesAsync(string rootPath)
     {
@@ -652,141 +592,86 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         {
             ConfigFiles = [];
             ConfigFileTree = [];
+            OnPropertyChanged(nameof(ConfigFileCountText));
+            OnPropertyChanged(nameof(HasServerDirectory));
             return;
         }
 
-        var localVersion = System.Threading.Interlocked.Increment(ref _scanVersion);
-        _scanning = true;
-        Log.Information("🔍 递归扫描配置文件目录: {Path} (version={V})", rootPath, localVersion);
+        Log.Information("🔍 极简扫描配置文件: Root={Path}", rootPath);
 
         try
         {
-            var (flatList, treeRoot) = await Task.Run(() =>
+            // ── 枚举（放到 Task.Run 以免大目录 UI 阻塞）
+            var (flat, tree) = await Task.Run(() =>
             {
-                var flat = new List<string>();
-                var tree = new List<ConfigFileItem>();
-                var supportedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                var flatList = new List<string>();
+                var treeRoot = new List<ConfigFileItem>();
+
+                // ① 扁平文件路径（AllDirectories 一把梭）
+                foreach (var file in Directory.EnumerateFiles(rootPath, "*", SearchOption.AllDirectories))
                 {
-                    ".properties", ".yml", ".yaml", ".json", ".cfg", ".conf",
-                    ".toml", ".ini"
-                };
-                try
-                {
-                    BuildConfigFileTree(rootPath, rootPath, supportedExtensions, tree, flat, depth: 0, fileCount: ref _scanVersion /* dummy */);
+                    var ext = Path.GetExtension(file);
+                    if (!ConfigExtensions.Contains(ext)) continue;
+                    flatList.Add(Path.GetRelativePath(rootPath, file));
                 }
-                catch (Exception ex)
+
+                // ② 按相对路径重建目录树（保留空文件夹结构）
+                // 简单做法：按相对路径拆分 → 一层层往 treeRoot 里建目录，最后挂文件
+                foreach (var rel in flatList.OrderBy(x => x, StringComparer.Ordinal))
                 {
-                    Log.Error(ex, "扫描配置文件目录失败: {Message}", ex.Message);
+                    var parts = rel.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    List<ConfigFileItem> currentLevel = treeRoot;
+                    string builtPath = rootPath;
+
+                    for (int i = 0; i < parts.Length - 1; i++)
+                    {
+                        var part = parts[i];
+                        builtPath = Path.Combine(builtPath, part);
+                        var existing = currentLevel.FirstOrDefault(x =>
+                            x.IsDirectory && x.FileName == part);
+                        if (existing == null)
+                        {
+                            existing = new ConfigFileItem(
+                                part,
+                                fullPath: builtPath,
+                                relativePath: Path.GetRelativePath(rootPath, builtPath),
+                                isDirectory: true);
+                            currentLevel.Add(existing);
+                        }
+                        currentLevel = existing.Children;
+                    }
+
+                    var fileName = parts[^1];
+                    currentLevel.Add(new ConfigFileItem(
+                        fileName,
+                        fullPath: Path.Combine(rootPath, rel),
+                        relativePath: rel,
+                        isDirectory: false));
                 }
-                return (flat, tree);
+
+                return (flatList, treeRoot);
             }).ConfigureAwait(true);
 
-            // 版本号校验：如果中间又启动了更新的扫描，丢弃当前结果
-            if (localVersion != System.Threading.Volatile.Read(ref _scanVersion))
-            {
-                Log.Debug("扫描结果被更新的版本覆盖（丢弃）: local={Local}, current={Current}",
-                    localVersion, _scanVersion);
-                return;
-            }
-
-            ConfigFiles = flatList;
-            ConfigFileTree = treeRoot;
-            OnPropertyChanged(nameof(ConfigFileCountText));
-            Log.Information("✅ 扫描完成，找到 {Count} 个配置文件", flatList.Count);
-        }
-        finally
-        {
-            // ⚠️ 修复前：仅当自己是最新扫描才清 _scanning → 如果被丢弃则占着锁 → 后续所有 OnServerChanged
-            //     进来都因 _scanning=true + ConfigFiles 被清空 → 永远拿不到新结果。
-            // 修复后：无条件释放 _scanning 锁；版本号校验只管「是否应用结果」，不管「是否释放锁」。
-            var curVer = System.Threading.Volatile.Read(ref _scanVersion);
-            if (localVersion != curVer)
-            {
-                Log.Debug("扫描结果被更新版本覆盖（释放锁但丢弃结果）: local={Local}, current={Current}",
-                    localVersion, curVer);
-            }
-            _scanning = false;
-        }
-    }
-
-    /// <summary>
-    /// 递归构建配置文件目录树 —— 目录过滤重写 + 文件数硬上限。
-    /// </summary>
-    private static void BuildConfigFileTree(
-        string currentPath,
-        string rootPath,
-        HashSet<string> supportedExtensions,
-        List<ConfigFileItem> parentList,
-        List<string> flatList,
-        int depth,
-        ref int fileCount)  // 注意：ref 只是为了让签名区分，真实计数用 flatList.Count + MaxFilesPerServer 比较
-    {
-        if (depth > 10) return;
-        if (flatList.Count >= MaxFilesPerServer) return;
-
-        try
-        {
-            // ── 先处理文件（TopDirectoryOnly，避免一下子枚举所有子目录文件卡死）
-            var files = Directory.GetFiles(currentPath);
-            foreach (var file in files)
-            {
-                if (flatList.Count >= MaxFilesPerServer) break;
-
-                var ext = Path.GetExtension(file);
-                if (!supportedExtensions.Contains(ext)) continue;
-
-                var fileName = Path.GetFileName(file);
-                var relativePath = Path.GetRelativePath(rootPath, file);
-
-                parentList.Add(new ConfigFileItem(fileName, file, relativePath, isDirectory: false));
-                flatList.Add(relativePath);
-            }
-
-            if (flatList.Count >= MaxFilesPerServer)
-            {
-                Log.Warning("⚠️ 扫描配置文件达到上限 {Max}，已中断。Dir={Dir}", MaxFilesPerServer, currentPath);
-                return;
-            }
-
-            // ── 再处理目录（加过滤规则）
-            var directories = Directory.GetDirectories(currentPath);
-            foreach (var dir in directories)
-            {
-                if (flatList.Count >= MaxFilesPerServer) break;
-
-                var dirName = Path.GetFileName(dir);
-
-                // 黑名单目录：任何 depth 都跳过
-                if (SkipDirNames.Contains(dirName)) continue;
-
-                // . 开头目录：仅在 depth=0 时跳过（避免扫 .git）；plugins/.data 这种允许进入
-                if (depth == 0 && dirName.StartsWith('.')) continue;
-
-                var dirItem = new ConfigFileItem(
-                    dirName,
-                    dir,
-                    Path.GetRelativePath(rootPath, dir),
-                    isDirectory: true);
-
-                BuildConfigFileTree(dir, rootPath, supportedExtensions, dirItem.Children, flatList, depth + 1, ref fileCount);
-
-                if (dirItem.Children.Count > 0 || depth == 0)
-                    parentList.Add(dirItem);
-            }
-        }
-        catch (UnauthorizedAccessException)
-        {
-            Log.Debug("无权限访问目录: {Path}", currentPath);
+            ConfigFiles = flat;
+            ConfigFileTree = tree;
+            Log.Information("✅ 极简扫描完成：找到 {Count} 个配置文件", flat.Count);
         }
         catch (Exception ex)
         {
-            Log.Debug("扫描目录 {Path} 时出错: {Message}", currentPath, ex.Message);
+            Log.Error(ex, "极简扫描配置文件目录失败: Root={Path}, Message={Msg}", rootPath, ex.Message);
+            ConfigFiles = [];
+            ConfigFileTree = [];
+        }
+        finally
+        {
+            OnPropertyChanged(nameof(ConfigFileCountText));
+            OnPropertyChanged(nameof(HasServerDirectory));
         }
     }
 
     /// <summary>
-    /// 把扁平相对路径列表构造成「单层文件树」—— 当 WorkingDirectory 不存在或拿不到真实目录时的兜底。
-    /// 也可供桥接层 L2 调用（config:selectServer WorkingDirectory 不存在分支）。
+    /// 把扁平相对路径列表构造成「单层文件树」—— 当 WorkingDirectory 不存在时的兜底。
+    /// 保持不动（桥接层 config:selectServer 还会用它）。
     /// </summary>
     public static List<ConfigFileItem> BuildFlatFileTree(IEnumerable<string> relativePaths)
     {
@@ -797,7 +682,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             if (string.IsNullOrWhiteSpace(p)) continue;
             tree.Add(new ConfigFileItem(
                 Path.GetFileName(p),
-                fullPath: p,         // fullPath 兜底用相对路径，上层选择时若需要会拼接 WorkingDirectory
+                fullPath: p,
                 relativePath: p,
                 isDirectory: false));
         }
@@ -806,17 +691,20 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
     #endregion
 
-    #region 配置文件加载（错误条目 + 分组时序修复）
+    #region 配置文件加载（极简版：直接 await 解析 → 单循环写条目；取消/超时/锁 都删掉）
 
     /// <summary>
-    /// 选中配置文件变更回调
+    /// 选中配置文件变更回调（极简）：
+    ///   ① 条目 Clear + 分组立刻刷新
+    ///   ② IsLoading=true
+    ///   ③ await LoadConfigAsync —— 完成后 IsLoading=false 由 finally 保证
+    /// 不再管：CTS cancel、_lastLoadTask 引用、File.Exists 前一次残留等。
     /// </summary>
     partial void OnSelectedConfigFileChanged(string? value)
     {
         Log.Debug("📄 选中配置文件: {File}", value);
         OnPropertyChanged(nameof(SelectedConfigFileName));
 
-        // ── 切换文件：Clear + 立刻同步刷新分组（防止显示上一个文件）
         foreach (var oldEntry in ConfigEntries)
         {
             oldEntry.PropertyChanging -= OnConfigEntryChanging;
@@ -826,10 +714,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         if (_groupUpdateTimer != null) { _groupUpdateTimer.Stop(); }
         UpdateGroupedEntries();
 
-        // ⚠️ 进入新文件前先把 IsLoading=false，防止上一次加载（哪怕被 cancel 了但 finally 没跑完）
-        // 的 IsLoading=true 残留导致无限转圈。真正的加载开始后会再设 true。
-        IsLoading = false;
-        LoadProgress = 0;
+        IsLoading = false; LoadProgress = 0;
 
         if (Server is null || string.IsNullOrEmpty(value))
             return;
@@ -837,153 +722,92 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         var fullPath = Path.Combine(Server.WorkingDirectory, value);
         if (!File.Exists(fullPath))
         {
-            // ── 文件不存在：显示一个错误条目提示用户（不是静默空列表）
             PushErrorEntry($"文件不存在：{value}");
             return;
         }
 
-        _loadCts?.Cancel();
-        _loadCts = new CancellationTokenSource();
-        _lastLoadTask = LoadConfigAsync(fullPath, value, _loadCts.Token);
+        // 不取消前一次、不包 Task.Run——用户真的在同一个 10ms 点两次就跑两次也没关系，
+        // 后一次 ConfigEntries.Clear() + Add() 会覆盖前一次，最终一致。
+        _ = LoadConfigAsync(fullPath, value);
     }
 
-    /// <summary>加载任务的默认超时（毫秒）——防止解析器死循环导致 UI 永远转圈</summary>
-    private const int LoadTimeoutMs = 15000;
-
     /// <summary>
-    /// 异步加载配置文件 —— 修复：分组最后一次性刷新、catch 注入 __ERROR__ 条目、超时保护。
+    /// 加载配置文件（极简版）：
+    ///   1. IsLoading=true
+    ///   2. await _configManager.ReadConfigAsync(fullPath) 直接调用
+    ///   3. foreach 单循环写 ConfigEntries（不分 batch，不 yield，多少条一次塞进去）
+    ///   4. 最后 UpdateGroupedEntries()
+    /// 任何异常 → catch 块统一 PushErrorEntry；finally 保证 IsLoading=false, LoadProgress=100。
     /// </summary>
-    private async Task LoadConfigAsync(string fullPath, string fileName, CancellationToken cancellationToken = default)
+    private async Task LoadConfigAsync(string fullPath, string fileName)
     {
-        Log.Information("📂 加载配置文件: {Path}", fullPath);
+        Log.Information("📂 极简加载配置文件: Path={Path}", fullPath);
 
-        // ⚠️ 双重保险：再设一次 false→true，避免任何竞态下的 IsLoading 残留
-        IsLoading = false;
         IsLoading = true;
         LoadProgress = 0;
 
-        // ── 超时 CTS：15 秒没完成强制取消，避免解析器/磁盘死循环
-        using var timeoutCts = new CancellationTokenSource(LoadTimeoutMs);
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-            cancellationToken, timeoutCts.Token);
-        var effectiveToken = linkedCts.Token;
-
         try
         {
-            Dictionary<string, string> config;
-            try
-            {
-                // 外层再包一层 Task.Run + 超时 Token，确保即便内部阻塞也能被取消
-                config = await Task.Run(
-                    () => _configManager.ReadConfigAsync(fullPath),
-                    effectiveToken).Unwrap().ConfigureAwait(true);
-            }
-            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
-            {
-                throw new TimeoutException(
-                    $"加载配置文件超时（>{LoadTimeoutMs / 1000}s）：{fileName}。"
-                    + "建议检查文件是否损坏或被其他进程以独占模式锁定。");
-            }
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                Log.Debug("🔄 加载已取消，丢弃结果: {Path}", fullPath);
-                return;
-            }
+            // 1) 读 + 解析（ConfigManager 内部已经三级回退：内容特征+扩展名+逐解析器探测）
+            var config = await _configManager.ReadConfigAsync(fullPath).ConfigureAwait(true);
 
             _currentFilePath = fullPath;
             var pureFileName = Path.GetFileName(fileName);
 
-            var processedEntries = await Task.Run(() =>
+            // 2) 构造条目（描述符翻译由 GetDescriptor 完成——翻译功能保留）
+            var entries = new List<ServerConfigEntry>(config.Count);
+            foreach (var kvp in config)
             {
-                return config.Select(kvp =>
+                var descriptor = _configManager.GetDescriptor(kvp.Key, pureFileName);
+                entries.Add(new ServerConfigEntry
                 {
-                    var descriptor = _configManager.GetDescriptor(kvp.Key, pureFileName);
-                    return new ServerConfigEntry
-                    {
-                        Key = kvp.Key,
-                        Value = kvp.Value,
-                        OriginalValue = kvp.Value,
-                        SourceFile = fileName,
-                        IsModified = false,
-                        Descriptor = descriptor,
-                        IsValid = descriptor is null ||
-                                  _configManager.ValidateValue(kvp.Key, fileName, kvp.Value)
-                    };
-                }).ToList();
-            }, effectiveToken);
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                Log.Debug("🔄 加载已取消，丢弃结果: {Path}", fullPath);
-                return;
+                    Key = kvp.Key,
+                    Value = kvp.Value,
+                    OriginalValue = kvp.Value,
+                    SourceFile = fileName,
+                    IsModified = false,
+                    Descriptor = descriptor,
+                    IsValid = descriptor is null
+                              || _configManager.ValidateValue(kvp.Key, fileName, kvp.Value)
+                });
             }
 
+            // 3) 订阅事件 + 一次性写入 ConfigEntries
             foreach (var oldEntry in ConfigEntries)
             {
                 oldEntry.PropertyChanging -= OnConfigEntryChanging;
                 oldEntry.PropertyChanged -= OnConfigEntryChanged;
             }
             ConfigEntries.Clear();
+
             _modifiedCount = 0;
             _originalConfig = new Dictionary<string, string>(config);
             HasUnsavedChanges = false;
             _undoStack.Clear();
             UndoCommand.NotifyCanExecuteChanged();
 
-            // ── 停止正在运行中的分组 Timer，避免中间 20ms 内读到空分组
             if (_groupUpdateTimer != null) _groupUpdateTimer.Stop();
 
-            const int batchSize = 15;  // 增大到 15，减少调度次数
-            int total = processedEntries.Count;
-            int processed = 0;
-
-            // ⚠️ 空条目特殊处理：total==0 时 for 循环不跑，LoadProgress 永远 0。
-            // 直接先把进度设满，防止用户永远看到 "加载中 0%"
-            if (total == 0)
+            foreach (var entry in entries)
             {
-                LoadProgress = 100;
-                UpdateGroupedEntries();
-                Log.Information("✅ 配置加载完成（空文件）: {File}", fileName);
-                return;
+                entry.PropertyChanging += OnConfigEntryChanging;
+                entry.PropertyChanged += OnConfigEntryChanged;
+                ConfigEntries.Add(entry);
             }
-
-            for (int i = 0; i < total; i += batchSize)
-            {
-                if (cancellationToken.IsCancellationRequested) return;
-
-                var batch = processedEntries.Skip(i).Take(batchSize).ToList();
-                foreach (var entry in batch)
-                {
-                    entry.PropertyChanging += OnConfigEntryChanging;
-                    entry.PropertyChanged += OnConfigEntryChanged;
-                    ConfigEntries.Add(entry);
-                    processed++;
-                }
-                LoadProgress = total <= 0 ? 100 : (int)(processed * 100.0 / total);
-                await Task.Yield();
-            }
-
-            // ── 全部 batch 完成：立刻同步刷分组（不再等 Timer）
+            LoadProgress = 100;
             UpdateGroupedEntries();
 
-            Log.Information("✅ 配置加载完成，共 {Count} 项配置", total);
-        }
-        catch (OperationCanceledException)
-        {
-            Log.Debug("🔄 配置加载被取消: {Path}", fullPath);
+            Log.Information("✅ 极简加载完成：{Count} 项配置", entries.Count);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "配置加载失败: {Message}", ex.Message);
+            Log.Error(ex, "极简加载失败: Path={Path}, Message={Msg}", fullPath, ex.Message);
 
-            // L3.3 修复：注入 __ERROR__ 错误条目，前端渲染为 Alert 而不是空列表
+            // 错误条目显示功能保留（用户看得到哪里错了）
             ConfigEntries.Clear();
             var userMsg = ex is ConfigParseException cpe
                 ? $"{cpe.Message}\n扩展名: {cpe.FileExtension}, 内容长度: {cpe.ContentLength}"
-                : ex is TimeoutException te
-                    ? te.Message
-                    : ex.Message;
+                : ex.Message;
             PushErrorEntry(userMsg, hintFormat: (ex as ConfigParseException)?.HintTryFormat);
         }
         finally
@@ -994,7 +818,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// 往 <see cref="ConfigEntries"/> 里压一个 "__ERROR__" 标记条目，用于前端 Alert 提示。
+    /// 往 ConfigEntries 里压一个 "__ERROR__" 标记条目（功能保留：错误 Alert 可提示）。
     /// </summary>
     private void PushErrorEntry(string message, string? hintFormat = null)
     {

@@ -2070,94 +2070,58 @@ public partial class MainWindow : Window
             }
         });
 
-        // 选择服务器
-        _bridgeService.RegisterRequestHandler("config:selectServer", async payload =>
+        // 选择服务器（极简版：只赋值 cfg.Server = matched，让 OnServerChanged 自己异步扫目录）
+        _bridgeService.RegisterRequestHandler("config:selectServer", payload =>
         {
             try
             {
                 var name = ExtractStringPayload(payload);
                 if (cfg == null || string.IsNullOrEmpty(name))
-                    return new { success = true };
+                    return Task.FromResult<object?>(new { success = true });
 
-                // 精确匹配：name 直接来自 AvailableServers[x].DisplayName，一定有一台完全相等
-                var direct = cfg.AvailableServers.FirstOrDefault(s => s.DisplayName == name)
-                    // 兜底：SelectServerByContext 五级匹配（处理中途列表刷新导致 name 不一致）
-                    ?? (cfg.SelectServerByContext(displayName: name, workingDirectory: null,
-                            serverJarPath: null, knownServerId: null)
-                        ? cfg.Server
-                        : null);
+                // ① 精确匹配 DisplayName
+                var matched = cfg.AvailableServers.FirstOrDefault(s => s.DisplayName == name);
 
-                if (direct == null)
+                // ② 兜底：SelectServerByContext 多级匹配（处理中途列表刷新导致 name 不一致）
+                if (matched == null)
                 {
-                    // 真的匹配不上：至少把 name 设上，不让前端 setSelectedServerName 被 getFileTree 的返回覆盖
-                    cfg.SelectedServerName = name;
-                    return new { success = true };
+                    if (cfg.SelectServerByContext(displayName: name, workingDirectory: null,
+                            serverJarPath: null, knownServerId: null))
+                        matched = cfg.Server;
                 }
 
-                // 🔥 关键：直接在这个 handler 里同步赋值**所有**相关属性，
-                // 不依赖 OnServerChanged 的 partial 回调。
-                // 之前的设计：cfg.Server = direct → OnServerChanged → fire-and-forget HandleServerChangedAsync
-                // 但 fire-and-forget 调度有延迟，handler return 之后前端立刻 getFileTree
-                // 时异步还没跑 → 拿到空状态 → 前端回滚。
-                // 这里直接同步赋值所有非 IO 属性，IO（扫目录）也直接 await，确保返回后状态完整。
-
-                // 1. 纯内存状态重置（同步）
-                cfg.SelectedServerName = direct.DisplayName;
-                cfg.ConfigEntries.Clear();
-                cfg.SelectedConfigFile = null;
-                cfg.ServerWorkingDirectory = direct.WorkingDirectory;
-                cfg.HasUnsavedChanges = false;
-
-                // 2. 如果目录存在，**同步 await 扫目录**，确保 ConfigFiles/ConfigFileTree 就绪
-                if (!string.IsNullOrEmpty(direct.WorkingDirectory) && Directory.Exists(direct.WorkingDirectory))
+                if (matched != null)
                 {
-                    await cfg.ScanDirectoryForConfigFilesAsync(direct.WorkingDirectory);
+                    // 极简：直接赋值 Server。OnServerChanged 会：
+                    //   · 同步重置 ConfigEntries/SelectedConfigFile/脏状态
+                    //   · fire-and-forget 触发 ScanDirectoryForConfigFilesAsync
+                    // 桥接层不再插手同步 await / 兜底 ConfigFiles 赋值——所有「选完立即 getFileTree 空」的问题，
+                    // 前端改成 200ms 后再拉一次（ConfigEditorPage 已有 120ms retry 逻辑）兜底。
+                    cfg.Server = matched;
                 }
                 else
                 {
-                    // 目录不存在/为空：用进程返回的 ConfigFiles 兜底（不触发 OnServerChanged，直接设结果）
-                    // 修复点：
-                    //   ① 不再走 cfg.Server = direct（会触发 OnServerChanged → ConfigFiles = [] 把兜底结果清空）
-                    //   ② Path.GetRelativePath("", f) 提前短路为空字符串，避免 .NET 某些版本抛 ArgumentException
-                    var wd = direct.WorkingDirectory ?? string.Empty;
-                    var fallbackFiles = direct.ConfigFiles
-                        .Where(f => !f.EndsWith('/') && !f.EndsWith('\\'))
-                        .Select(f =>
-                        {
-                            if (string.IsNullOrEmpty(wd)) return f;
-                            try { return Path.GetRelativePath(wd, f); }
-                            catch { return f; }
-                        })
-                        .ToList();
-                    cfg.ConfigFiles = fallbackFiles;
-                    cfg.ConfigFileTree = McServerGuard.ViewModels.ConfigEditorViewModel.BuildFlatFileTree(fallbackFiles);
-                    // 不设 cfg.Server = direct，避免 OnServerChanged 把上面两行结果重置
-                    return new { success = true };
+                    // 真匹配不上：至少把 SelectedServerName 设上，避免前端被回滚
+                    cfg.SelectedServerName = name;
                 }
 
-                // 3. 同步扫描完成后，把 Server 指向 direct，让属性通知（SelectedServerName 等）按正常链路发出
-                // 注意：前面已经同步赋值 SelectedServerName / ServerWorkingDirectory 了，
-                // OnServerChanged 里有"相等则不赋值"的防循环判断，不会覆盖。
-                cfg.Server = direct;
-
-                return new { success = true };
+                return Task.FromResult<object?>(new { success = true });
             }
             catch (Exception ex)
             {
-                return new { success = false, error = ex.Message };
+                Log.Error(ex, "config:selectServer 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
             }
         });
 
-        // Q3 新增：按 Dashboard 选中的服务器上下文自动联动选择 ConfigEditor 的默认服务器。
-        // 比起 config:selectServer 只靠 displayName 精确相等，这里通过 KnownServerId / WorkingDirectory /
-        // ServerJarPath 五级匹配，稳定得多，进入配置文件页后不必手动再选一遍。
-        // 🔥 关键：同步赋值 + await 扫目录，确保 handler return 之后前端立刻 getFileTree 就能拿到完整状态。
-        _bridgeService.RegisterRequestHandler("config:selectDefaultServer", async payload =>
+        // 按 Dashboard 选中的服务器上下文自动联动选择默认服务器。
+        // 极简版：直接调 SelectServerByContext + 赋值 cfg.Server = matched。不再桥接层 await 扫目录。
+        _bridgeService.RegisterRequestHandler("config:selectDefaultServer", payload =>
         {
             try
             {
                 if (cfg == null)
-                    return new { success = false, error = "配置编辑器视图模型未初始化", selected = false };
+                    return Task.FromResult<object?>(new { success = false, error = "配置编辑器视图模型未初始化", selected = false });
 
                 string? displayName = null;
                 string? workingDirectory = null;
@@ -2177,58 +2141,24 @@ public partial class MainWindow : Window
                 }
 
                 var matchedOk = cfg.SelectServerByContext(displayName, workingDirectory, serverJarPath, knownServerId);
-                var matched = cfg.Server;  // SelectServerByContext 成功时已赋值 cfg.Server
+                var matched = cfg.Server;
 
                 if (!matchedOk || matched == null)
                 {
-                    Log.Warning("config:selectDefaultServer 匹配失败: DisplayName={DN} WorkDir={WD} Jar={Jar} KnownId={KID}",
+                    Log.Warning("config:selectDefaultServer 匹配失败: DN={DN} WD={WD} Jar={Jar} KID={KID}",
                         displayName, workingDirectory, serverJarPath, knownServerId);
-                    return new { success = false, selected = false, error = "未匹配到可用服务器上下文" };
+                    return Task.FromResult<object?>(new { success = false, selected = false, error = "未匹配到可用服务器上下文" });
                 }
 
-                // ── 以下逻辑与 config:selectServer 同步链路保持一致：内存状态先赋值 → 扫目录 → 设 Server ──
-
-                // 1. 纯内存状态重置（同步）
-                cfg.SelectedServerName = matched.DisplayName;
-                cfg.ConfigEntries.Clear();
-                cfg.SelectedConfigFile = null;
-                cfg.ServerWorkingDirectory = matched.WorkingDirectory;
-                cfg.HasUnsavedChanges = false;
-
-                // 2. 如果目录存在，**同步 await 扫目录**，确保 ConfigFiles/ConfigFileTree 就绪
-                if (!string.IsNullOrEmpty(matched.WorkingDirectory) && Directory.Exists(matched.WorkingDirectory))
-                {
-                    await cfg.ScanDirectoryForConfigFilesAsync(matched.WorkingDirectory);
-                }
-                else
-                {
-                    // 目录不存在/为空：用进程返回的 ConfigFiles 兜底（短路 Path.GetRelativePath("") 异常）
-                    var wd = matched.WorkingDirectory ?? string.Empty;
-                    var fallbackFiles = matched.ConfigFiles
-                        .Where(f => !f.EndsWith('/') && !f.EndsWith('\\'))
-                        .Select(f =>
-                        {
-                            if (string.IsNullOrEmpty(wd)) return f;
-                            try { return Path.GetRelativePath(wd, f); }
-                            catch { return f; }
-                        })
-                        .ToList();
-                    cfg.ConfigFiles = fallbackFiles;
-                    cfg.ConfigFileTree = McServerGuard.ViewModels.ConfigEditorViewModel.BuildFlatFileTree(fallbackFiles);
-                }
-
-                // 3. 最后把 Server 指向 matched，触发属性通知。
-                //    注意：前面 SelectedServerName/ServerWorkingDirectory 已同步赋值，
-                //    OnServerChanged 的「相等则不赋值」保护不会覆盖；且 _scanning=true / ConfigFiles.Count>0，
-                //    异步扫目录保护（!_scanning && ConfigFiles.Count==0）也不会再触发重复扫描。
+                // 极简：直接赋值 Server。OnServerChanged 触发异步扫目录。
                 cfg.Server = matched;
 
-                return new { success = true, selected = true, appliedDisplayName = matched.DisplayName };
+                return Task.FromResult<object?>(new { success = true, selected = true, appliedDisplayName = matched.DisplayName });
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "联动选择默认服务器失败");
-                return new { success = false, selected = false, error = ex.Message };
+                return Task.FromResult<object?>(new { success = false, selected = false, error = ex.Message });
             }
         });
 
