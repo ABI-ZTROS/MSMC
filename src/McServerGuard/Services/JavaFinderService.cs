@@ -448,17 +448,42 @@ public class JavaFinderService : IJavaFinderService
     /// <summary>
     /// 验证 Java 可执行文件的有效性，并提取版本与厂商信息
     /// </summary>
-    /// <param name="javaPath">java.exe 完整路径</param>
+    /// <param name="javaPath">java.exe 或 javaw.exe 完整路径</param>
     /// <param name="isCustom">是否为自定义路径</param>
     /// <returns>Java 安装信息对象；验证失败返回 null</returns>
+    /// <remarks>
+    /// 如果传入 javaw.exe 路径，自动定位同目录下的 java.exe 进行验证，
+    /// 因为 javaw.exe 属于 GUI 子系统，在命令行重定向下可能无 stdout/stderr 输出。
+    /// 验证方式：执行 java -version，解析版本、厂商、架构信息。
+    /// </remarks>
     private static JavaInstallation? VerifyJava(string javaPath, bool isCustom)
     {
         if (string.IsNullOrEmpty(javaPath) || !File.Exists(javaPath))
             return null;
 
+        // 如果传入的是 javaw.exe，自动转换为同目录的 java.exe
+        // javaw.exe 属于 GUI 子系统，-version 输出行为不稳定
+        var actualJavaPath = javaPath;
+        var fileName = Path.GetFileName(javaPath);
+        if (fileName.Equals("javaw.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            var dir = Path.GetDirectoryName(javaPath);
+            if (dir != null)
+            {
+                var javaExe = Path.Combine(dir, "java.exe");
+                if (File.Exists(javaExe))
+                    actualJavaPath = javaExe;
+                else
+                {
+                    Log.Warning("javaw.exe 旁未找到 java.exe，跳过验证: {Path}", javaPath);
+                    return null;
+                }
+            }
+        }
+
         try
         {
-            var startInfo = new ProcessStartInfo(javaPath, "-version")
+            var startInfo = new ProcessStartInfo(actualJavaPath, "-version")
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -468,23 +493,48 @@ public class JavaFinderService : IJavaFinderService
 
             using var process = Process.Start(startInfo);
             if (process == null)
+            {
+                Log.Warning("Process.Start 返回 null: {Path}", actualJavaPath);
                 return null;
+            }
 
-            process.WaitForExit(5000);
-            if (process.ExitCode != 0)
+            // 先异步读取输出再等待退出，避免缓冲区满导致死锁
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+
+            if (!process.WaitForExit(8000))
+            {
+                Log.Warning("java -version 执行超时（8s），尝试终止进程: {Path}", actualJavaPath);
+                try { process.Kill(); } catch { /* 忽略 */ }
                 return null;
+            }
 
-            var output = process.StandardError.ReadToEnd();
+            var output = stderrTask.Result;
             if (string.IsNullOrEmpty(output))
-                output = process.StandardOutput.ReadToEnd();
+                output = stdoutTask.Result;
+
+            if (string.IsNullOrEmpty(output))
+            {
+                Log.Warning("java -version 无输出: {Path}", actualJavaPath);
+                return null;
+            }
+
+            // 某些 Java 实现的 -version 退出码可能非 0（如旧版 Oracle Java），
+            // 只要有有效输出就视为验证通过
+            if (process.ExitCode != 0)
+                Log.Debug("java -version 退出码非 0 ({Code})，但有输出，继续验证: {Path}", process.ExitCode, actualJavaPath);
 
             var version = ParseVersion(output);
-            var javaHome = GetJavaHomeFromExecutable(javaPath);
+            var javaHome = GetJavaHomeFromExecutable(actualJavaPath);
             var javawPath = javaHome != null ? GetJavawExecutable(javaHome) ?? string.Empty : string.Empty;
+
+            Log.Information("✅ Java 验证通过: {Path} | 版本: {Version} | 厂商: {Vendor} | 64位: {Is64Bit}",
+                actualJavaPath, version?.ToString() ?? "未知", ParseVendor(output),
+                output.Contains("64-Bit", StringComparison.OrdinalIgnoreCase));
 
             return new JavaInstallation
             {
-                JavaPath = javaPath,
+                JavaPath = actualJavaPath,
                 JavawPath = javawPath,
                 JavaHome = javaHome ?? string.Empty,
                 Version = version,
@@ -496,7 +546,7 @@ public class JavaFinderService : IJavaFinderService
         }
         catch (Exception ex)
         {
-            Log.Debug("验证 Java 失败 {Path}: {Msg}", javaPath, ex.Message);
+            Log.Warning("验证 Java 失败 {Path}: {Msg}", actualJavaPath, ex.Message);
             return null;
         }
     }
