@@ -8,6 +8,7 @@
 namespace McServerGuard.Services.ConfigManagement;
 
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
