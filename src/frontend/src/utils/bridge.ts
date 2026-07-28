@@ -32,6 +32,7 @@ import type {
   JvmUpdateArgumentRequest,
   JvmSetMemoryRequest,
   JvmPresetType,
+  ProcessAffinityInfo,
 } from '@/types/bridge'
 
 declare global {
@@ -571,4 +572,24 @@ export function applyJvmPreset(preset: JvmPresetType): Promise<{ success: boolea
 
 export function addCustomJvmArgument(arg: string): Promise<{ success: boolean; error?: string }> {
   return bridge.invoke<{ success: boolean; error?: string }>('jvm:addCustom', arg)
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 进程管理 API
+// ═════════════════════════════════════════════════════════════════════
+
+export function getProcessAffinities(): Promise<ProcessAffinityInfo[]> {
+  return bridge.invoke<ProcessAffinityInfo[]>('processManager:getAffinities')
+}
+
+export function getProcessInfo(pid: number): Promise<ProcessAffinityInfo | null> {
+  return bridge.invoke<ProcessAffinityInfo | null>('processManager:getInfo', { pid })
+}
+
+export function killProcessById(pid: number, graceful: boolean = true): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('processManager:kill', { pid, graceful })
+}
+
+export function setProcessAffinity(pid: number, affinityMask: number): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('processManager:setAffinity', { pid, affinityMask })
 }

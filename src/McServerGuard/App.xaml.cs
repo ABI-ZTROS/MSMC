@@ -179,6 +179,7 @@ public partial class App : Application
                     services.AddSingleton<ThreadAnalyzer>();
                     services.AddSingleton<Services.HardwareInfo.CpuIdentifier>();
                     services.AddSingleton<IMetricsPersistenceService, MetricsPersistenceService>();
+                    services.AddSingleton<Services.SystemMonitoring.IProcessManagerService, Services.SystemMonitoring.ProcessManagerService>();
 
                     await Step(46, "正在注册主题与基础服务...", "🎨 注册主题服务...");
                     services.AddSingleton<IThemeService>(_ => earlyThemeService);

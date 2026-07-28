@@ -705,6 +705,96 @@ public partial class MainWindow : Window
             }
         });
 
+        // === 进程管理相关 API ===
+
+        // 获取所有 Java 进程的 CPU 亲和性信息
+        _bridgeService.RegisterRequestHandler("processManager:getAffinities", _ =>
+        {
+            try
+            {
+                var processManager = App.Services.GetRequiredService<Services.SystemMonitoring.IProcessManagerService>();
+                var affinities = processManager.GetJavaProcessAffinities();
+                return Task.FromResult<object?>(affinities);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "获取进程亲和性信息失败");
+                return Task.FromResult<object?>(Array.Empty<object>());
+            }
+        });
+
+        // 获取指定进程的详细信息
+        _bridgeService.RegisterRequestHandler("processManager:getInfo", payload =>
+        {
+            try
+            {
+                var pid = 0;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    pid = el.TryGetProperty("pid", out var p) ? p.GetInt32() : 0;
+                }
+
+                var processManager = App.Services.GetRequiredService<Services.SystemMonitoring.IProcessManagerService>();
+                var info = processManager.GetProcessInfo(pid);
+                return Task.FromResult<object?>(info);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "获取进程信息失败");
+                return Task.FromResult<object?>(null);
+            }
+        });
+
+        // 杀进程
+        _bridgeService.RegisterRequestHandler("processManager:kill", payload =>
+        {
+            try
+            {
+                var pid = 0;
+                var graceful = true;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    pid = el.TryGetProperty("pid", out var p) ? p.GetInt32() : 0;
+                    if (el.TryGetProperty("graceful", out var g))
+                        graceful = g.GetBoolean();
+                }
+
+                var processManager = App.Services.GetRequiredService<Services.SystemMonitoring.IProcessManagerService>();
+                var (success, error) = processManager.KillProcess(pid, graceful);
+                return Task.FromResult<object?>(new { success, error });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "杀进程失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置进程 CPU 亲和性
+        _bridgeService.RegisterRequestHandler("processManager:setAffinity", payload =>
+        {
+            try
+            {
+                var pid = 0;
+                long mask = 0;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    pid = el.TryGetProperty("pid", out var p) ? p.GetInt32() : 0;
+                    if (el.TryGetProperty("affinityMask", out var m))
+                        mask = m.GetInt64();
+                }
+
+                var processManager = App.Services.GetRequiredService<Services.SystemMonitoring.IProcessManagerService>();
+                var (success, error) = processManager.SetProcessAffinity(pid, mask);
+                return Task.FromResult<object?>(new { success, error });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "设置进程亲和性失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
         // === 服务器管理相关 API ===
 
         // 获取服务器列表（运行中 + 已知）

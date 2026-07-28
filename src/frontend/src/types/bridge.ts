@@ -440,3 +440,31 @@ export interface JvmSetMemoryRequest {
 }
 
 export type JvmPresetType = 'aikar' | 'g1gc' | 'zgc'
+
+// ─────────────────────────────────────────────────────────────────────
+// 进程管理类型
+// ─────────────────────────────────────────────────────────────────────
+
+export interface ProcessAffinityInfo {
+  processId: number
+  processName: string
+  isMinecraftServer: boolean
+  displayName: string
+  affinityMask: number
+  allowedCoreIndices: number[]
+  cpuUsagePercent: number
+  workingSetBytes: number
+  threadCount: number
+  priorityClass: string
+  commandLine: string
+}
+
+export interface KillProcessByIdRequest {
+  pid: number
+  graceful?: boolean
+}
+
+export interface SetAffinityRequest {
+  pid: number
+  affinityMask: number
+}

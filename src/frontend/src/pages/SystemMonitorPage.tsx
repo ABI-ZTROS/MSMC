@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { GaugeRing } from '@/components/ui'
 import { DualLineChart } from '@/components/ui/DualLineChart'
-import { bridge, getSystemMetrics, getSystemHistory, getSystemHistoryRange, getCpuInfo } from '@/utils/bridge'
-import type { SystemMetrics, HistoryPoint, CpuInfo } from '@/types/bridge'
+import { CpuProcessTree } from '@/components/ui/CpuProcessTree'
+import {
+  bridge,
+  getSystemMetrics,
+  getSystemHistory,
+  getSystemHistoryRange,
+  getCpuInfo,
+  getProcessAffinities,
+  killProcessById,
+} from '@/utils/bridge'
+import type { SystemMetrics, HistoryPoint, CpuInfo, ProcessAffinityInfo } from '@/types/bridge'
 
 // 字节数转 GB
 function bytesToGB(bytes: number): number {
@@ -198,6 +207,7 @@ export function SystemMonitorPage(): JSX.Element {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
   const [history, setHistory] = useState<HistoryPoint[]>([])
   const [cpuInfo, setCpuInfo] = useState<CpuInfo | null>(null)
+  const [processAffinities, setProcessAffinities] = useState<ProcessAffinityInfo[]>([])
   const [loadError, setLoadError] = useState(false)
   const [historyDays, setHistoryDays] = useState(1)
   const intervalRef = useRef<number | null>(null)
@@ -239,12 +249,37 @@ export function SystemMonitorPage(): JSX.Element {
     }
   }
 
+  // 拉取 Java 进程亲和性信息
+  const fetchProcessAffinities = async () => {
+    try {
+      const data = await getProcessAffinities()
+      setProcessAffinities(data ?? [])
+    } catch (e) {
+      console.error('获取进程亲和性信息失败:', e)
+    }
+  }
+
+  // 终止进程回调：优雅停止 → 3s 超时 → 强杀，成功后刷新列表
+  const handleKillProcess = async (pid: number) => {
+    try {
+      const result = await killProcessById(pid)
+      if (result.success) {
+        await fetchProcessAffinities()
+      } else {
+        console.error('杀进程失败:', result.error)
+      }
+    } catch (e) {
+      console.error('杀进程失败:', e)
+    }
+  }
+
   const handleStart = async () => {
     try {
       await bridge.invoke('systemMonitor:start')
       await fetchMetrics()
       await fetchHistory()
       await fetchCpuInfo()
+      await fetchProcessAffinities()
     } catch (e) {
       console.error('启动监控失败:', e)
     }
@@ -269,6 +304,7 @@ export function SystemMonitorPage(): JSX.Element {
     fetchMetrics()
     fetchHistory()
     fetchCpuInfo()
+    fetchProcessAffinities()
 
     // 每 2 秒自动刷新指标，同时刷新当天历史
     intervalRef.current = window.setInterval(() => {
@@ -277,6 +313,8 @@ export function SystemMonitorPage(): JSX.Element {
       if (historyDays <= 1) {
         fetchHistory(1)
       }
+      // 同步刷新进程亲和性（杀进程后/进程退出后能及时反映）
+      fetchProcessAffinities()
     }, 2000)
 
     return () => {
@@ -467,6 +505,16 @@ export function SystemMonitorPage(): JSX.Element {
         <CpuTopology
           cpuInfo={cpuInfo}
           perCoreUsages={metrics?.perCoreCpuUsages ?? []}
+        />
+      </div>
+
+      {/* ═══ CPU 核心进程亲和性树（Minecraft 高亮 + 杀进程） ═══ */}
+      <div style={{ marginBottom: 12 }}>
+        <CpuProcessTree
+          cpuInfo={cpuInfo}
+          perCoreUsages={metrics?.perCoreCpuUsages ?? []}
+          processAffinities={processAffinities}
+          onKillProcess={handleKillProcess}
         />
       </div>
 
