@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   FaArrowsRotate,
   FaPlus,
@@ -82,7 +82,8 @@ function PortDistributionPie({ systemPorts, registeredPorts, dynamicPorts, usedP
 
   let currentAngle = -90
   const paths = segments.map((seg) => {
-    const angle = (seg.value / total) * 360
+    // 防止 total 为 0 时除零产生 NaN
+    const angle = total > 0 ? (seg.value / total) * 360 : 0
     const startAngle = currentAngle
     const endAngle = currentAngle + angle
     currentAngle = endAngle
@@ -258,9 +259,15 @@ export function NetworkMonitorPage(): JSX.Element {
   // 常见端口搜索
   const [commonPortSearch, setCommonPortSearch] = useState('')
 
+  // loadData 重入保护标志（避免 5 秒轮询在慢响应时堆积请求）
+  const loadingRef = useRef(false)
+
   const loadData = useCallback(async () => {
+    // 重入保护：上一个 loadData 未完成时不发起新请求，避免慢响应时请求堆积
+    if (loadingRef.current) return
+    loadingRef.current = true
     try {
-      // 先触发后端刷新（后端定时器可能未启动，只读快照会拿到旧数据）
+      // 先触发后端刷新（含流量采样 + 端口扫描 + 桥接规则）
       await refreshNetwork()
       const [s, p, b, c, h] = await Promise.all([
         getNetworkStatus(),
@@ -278,6 +285,8 @@ export function NetworkMonitorPage(): JSX.Element {
     } catch (err) {
       console.error('加载网络数据失败:', err)
       setLoading(false)
+    } finally {
+      loadingRef.current = false
     }
   }, [])
 
@@ -298,7 +307,8 @@ export function NetworkMonitorPage(): JSX.Element {
       })
       if (result.success) {
         setForm({ ...form, listenPort: '', connectPort: '' })
-        setTimeout(loadData, 500)
+        // 后端 addBridge 成功后已自动 RefreshPorts，直接重新拉取快照即可
+        await loadData()
       }
     } catch (err) {
       console.error('添加桥接失败:', err)
@@ -308,7 +318,8 @@ export function NetworkMonitorPage(): JSX.Element {
   const handleRemoveBridge = async (rule: BridgeRule) => {
     try {
       await removeBridge(rule.listenAddress, rule.listenPort, rule.protocol)
-      setTimeout(loadData, 500)
+      // 后端 removeBridge 成功后已自动 RefreshPorts，直接重新拉取快照即可
+      await loadData()
     } catch (err) {
       console.error('删除桥接失败:', err)
     }
@@ -316,25 +327,20 @@ export function NetworkMonitorPage(): JSX.Element {
 
   const handleKillProcess = async () => {
     if (!selectedPort) return
-    const processName = selectedPort.processName || `PID ${selectedPort.processId}`
-    if (!window.confirm(`确定要结束占用端口 ${selectedPort.port} 的进程 ${processName} 吗？`)) return
     try {
       const result = await killProcess({ port: selectedPort.port, protocol: selectedPort.protocol })
       if (result.success) {
         setSelectedPort(null)
-        setTimeout(loadData, 1000)
-      } else {
-        window.alert(`结束进程失败: ${result.error || '未知错误'}`)
+        await loadData()
       }
     } catch (err) {
       console.error('结束进程失败:', err)
-      window.alert('结束进程失败: 网络请求错误')
     }
   }
 
   const handleRefresh = async () => {
     setLoading(true)
-    await refreshNetwork()
+    // loadData 内部已调用 refreshNetwork，无需重复调用
     await loadData()
   }
 

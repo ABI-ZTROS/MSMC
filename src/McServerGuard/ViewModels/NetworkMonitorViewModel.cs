@@ -356,8 +356,11 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
             Interval = TimeSpan.FromSeconds(1)
         };
         _refreshTimer.Tick += OnRefreshTick;
-        // ⚠️ 不在构造函数中 Start()！
-        // 改为页面可见时 Start()，不可见时 Stop()，减少后台 CPU 浪费（netsh 每5秒调用）
+        // 直接启动定时器 —— WebView2 架构下 C# 端无法感知 React 路由切换，
+        // 原 StartMonitoring() 依赖 SelectedTabIndex==3 但该属性永远不会被设置。
+        // 流量采样（RefreshTraffic）开销极小（仅读性能计数器），端口扫描每5秒一次用 Task.Run 后台执行。
+        _refreshTimer.Start();
+        Log.Information("🌐 网络监控定时器已在构造函数中启动");
     }
 
     private async void OnRefreshTick(object? sender, EventArgs e)
@@ -450,7 +453,7 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         _dynamicPortValues[0] = DynamicPorts;
     }
 
-    private async Task RefreshTraffic()
+    public async Task RefreshTraffic()
     {
         // 网卡采样在后台线程执行
         await Task.Run(() => _trafficService.Sample());

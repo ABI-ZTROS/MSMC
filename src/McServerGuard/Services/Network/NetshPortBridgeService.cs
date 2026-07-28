@@ -219,37 +219,44 @@ public sealed class NetshPortBridgeService : IPortBridgeService
 
             foreach (var line in lines)
             {
-                // 兼容中英文 locale：英文表头含 "Proto"/"Listen"，中文表头含"协议"/"侦听"
-                if (!inData)
-                {
-                    if ((line.Contains("Proto") && line.Contains("Listen"))
-                        || (line.Contains("协议") && (line.Contains("侦听") || line.Contains("监听"))))
-                        inData = true;
-                    continue;
-                }
+                // netsh portproxy show all 实际输出格式（中英文 locale 均如此）：
+                //   ipv4 到 ipv4:               （分节标题，可据此推断协议，但数据行已含协议列）
+                //
+                //   协议  地址        端口    地址        端口
+                //   v4tov4  127.0.0.1   25565   127.0.0.1   25566
+                //   v6tov6  ::1         25565   ::1         25566
+                //
+                // 注：表头不含 "Proto"/"Listen"（那是旧版或某些 Windows 的格式），
+                // 中文 locale 表头为"协议 地址 端口 地址 端口"。
+                // 直接通过数据行特征（首列为 v4tov4/v6tov6/v4tov6/v6tov4）识别，不再依赖表头。
+                var trimmedLine = line.Trim();
 
                 // 跳过分隔线（全是 - 或 = 的行）
-                var trimmedLine = line.Trim();
                 if (trimmedLine.All(c => c == '-' || c == '=' || char.IsWhiteSpace(c)))
                     continue;
 
-                // netsh portproxy show all 实际输出格式（分列，非 地址:端口 合列）：
-                //   Protocol  Address         Port    Address         Port
-                //   v4tov4    127.0.0.1       25565   127.0.0.1       25566
-                //   v6tov6    ::1             25565   ::1             25566
                 var parts = trimmedLine.Split(new[] { ' ', '\t' }, System.StringSplitOptions.RemoveEmptyEntries);
+
+                // 数据行特征：首列为协议标识（v4tov4/v6tov6/v4tov6/v6tov4），共 5 列，第3、5列为端口号
                 if (parts.Length >= 5
+                    && IsPortProxyProtocol(parts[0])
                     && int.TryParse(parts[2], out var listenPort)
                     && int.TryParse(parts[4], out var connectPort))
                 {
+                    inData = true;
                     rules.Add(new PortBridgeRule
                     {
                         Protocol = parts[0],          // v4tov4 / v6tov6 / v4tov6 / v6tov4
-                        ListenAddress = parts[1],     // 127.0.0.1 或 ::1（IPv6 单列无冒号分割问题）
+                        ListenAddress = parts[1],     // 127.0.0.1 或 ::1
                         ListenPort = listenPort,
                         ConnectAddress = parts[3],
                         ConnectPort = connectPort
                     });
+                }
+                else if (inData && parts.Length >= 5)
+                {
+                    // 已进入数据区但该行格式异常，记录便于排查
+                    Log.Debug("netsh portproxy 行解析跳过: {Line}", trimmedLine);
                 }
             }
         }
@@ -259,6 +266,17 @@ public sealed class NetshPortBridgeService : IPortBridgeService
         }
 
         return rules;
+    }
+
+    /// <summary>
+    /// 判断字符串是否为 netsh portproxy 的协议标识
+    /// </summary>
+    private static bool IsPortProxyProtocol(string s)
+    {
+        return s.Equals("v4tov4", StringComparison.OrdinalIgnoreCase)
+            || s.Equals("v6tov6", StringComparison.OrdinalIgnoreCase)
+            || s.Equals("v4tov6", StringComparison.OrdinalIgnoreCase)
+            || s.Equals("v6tov4", StringComparison.OrdinalIgnoreCase);
     }
 
     public bool BridgeRuleExists(string listenAddress, int listenPort)
@@ -403,14 +421,16 @@ public sealed class NetshPortBridgeService : IPortBridgeService
     }
 
     /// <summary>
-    /// 执行 netsh 命令并返回 UTF8 编码的标准输出 —— 专用于 GetAllBridgeRules 的输出解析场景
+    /// 执行 netsh 命令并返回标准输出 —— 专用于 GetAllBridgeRules 的输出解析场景
     /// </summary>
     /// <param name="args">netsh 命令参数</param>
     /// <param name="timeoutMs">超时毫秒数</param>
     /// <returns>标准输出文本；失败返回空字符串</returns>
     /// <remarks>
-    /// 与 <see cref="RunNetsh"/> 的区别：设置 UTF8 编码以正确解析中文 locale 输出，
-    /// 不重定向 stderr（仅用于读取规则列表，不需要错误详情）。
+    /// 编码说明：netsh 在中文 Windows 上的控制台输出默认为 GBK（代码页 936），
+    /// 硬编码 UTF-8 会导致中文表头乱码。此处使用系统默认编码（Console.OutputEncoding）
+    /// 确保与 netsh 实际输出编码一致。数据行均为 ASCII（v4tov4/端口数字/IP），
+    /// 不受编码影响，但表头匹配需要正确编码。
     /// </remarks>
     private string RunNetshForOutput(string args, int timeoutMs)
     {
@@ -421,7 +441,8 @@ public sealed class NetshPortBridgeService : IPortBridgeService
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
-            StandardOutputEncoding = Encoding.UTF8
+            // 使用系统控制台默认编码（中文 Windows 为 GBK/936，英文为 437/1252）
+            StandardOutputEncoding = Console.OutputEncoding
         };
 
         using var process = Process.Start(startInfo);

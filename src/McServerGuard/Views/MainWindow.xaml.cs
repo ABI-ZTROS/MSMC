@@ -1488,7 +1488,7 @@ public partial class MainWindow : Window
         });
 
         // 添加桥接规则
-        _bridgeService.RegisterRequestHandler("network:addBridge", payload =>
+        _bridgeService.RegisterRequestHandler("network:addBridge", async payload =>
         {
             try
             {
@@ -1501,9 +1501,27 @@ public partial class MainWindow : Window
                 var connectAddress = root.TryGetProperty("connectAddress", out var ca) ? ca.GetString() ?? "127.0.0.1" : "127.0.0.1";
                 var connectPort = root.TryGetProperty("connectPort", out var cp) ? cp.GetInt32() : 0;
                 var addFirewall = root.TryGetProperty("addFirewall", out var af) && af.GetBoolean();
+                // 从 payload 读取 protocol，未提供时根据地址自动推断
+                var protocol = root.TryGetProperty("protocol", out var p) ? p.GetString() : null;
 
                 if (listenPort <= 0 || connectPort <= 0)
-                    return Task.FromResult<object?>(new { success = false, error = "端口必须大于 0" });
+                    return new { success = false, error = "端口必须大于 0" };
+
+                // 自动推断协议：地址含 ":" 视为 IPv6（::、::1、fe80:: 等），否则 IPv4
+                if (string.IsNullOrEmpty(protocol))
+                {
+                    var isV6Listen = listenAddress.Contains(':');
+                    var isV6Connect = connectAddress.Contains(':');
+                    protocol = (isV6Listen, isV6Connect) switch
+                    {
+                        (true, true) => "v6tov6",
+                        (false, false) => "v4tov4",
+                        (true, false) => "v6tov4",
+                        (false, true) => "v4tov6",
+                    };
+                    Log.Information("🔗 未指定协议，根据地址自动推断为 {Protocol} (listen={LA}, connect={CA})",
+                        protocol, listenAddress, connectAddress);
+                }
 
                 var bridgeService = App.Services.GetRequiredService<Services.Network.IPortBridgeService>();
                 var rule = new Models.PortBridgeRule
@@ -1512,26 +1530,33 @@ public partial class MainWindow : Window
                     ListenPort = listenPort,
                     ConnectAddress = connectAddress,
                     ConnectPort = connectPort,
+                    Protocol = protocol,
                 };
 
-                var success = bridgeService.AddBridgeRule(rule);
+                // netsh 操作耗时（含 ServiceController 等待 + netsh 进程启动），
+                // 必须放到后台线程，否则阻塞 UI 线程导致轮询请求堆积超时
+                var success = await Task.Run(() => bridgeService.AddBridgeRule(rule));
                 if (success && addFirewall)
-                    bridgeService.EnableFirewallRule(listenPort);
+                    await Task.Run(() => bridgeService.EnableFirewallRule(listenPort));
+
+                // 成功后立即刷新端口列表（含桥接规则），避免依赖前端 setTimeout 延迟刷新
+                if (success && net != null)
+                    await net.RefreshPorts();
 
                 if (success)
-                    return Task.FromResult<object?>(new { success });
+                    return new { success };
 
-                return Task.FromResult<object?>(new { success = false, error = bridgeService.LastError ?? "添加桥接规则失败" });
+                return new { success = false, error = bridgeService.LastError ?? "添加桥接规则失败" };
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "添加桥接规则失败");
-                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+                return new { success = false, error = ex.Message };
             }
         });
 
         // 删除桥接规则
-        _bridgeService.RegisterRequestHandler("network:removeBridge", payload =>
+        _bridgeService.RegisterRequestHandler("network:removeBridge", async payload =>
         {
             try
             {
@@ -1544,25 +1569,28 @@ public partial class MainWindow : Window
                 var protocol = root.TryGetProperty("protocol", out var p) ? p.GetString() ?? "v4tov4" : "v4tov4";
 
                 if (listenPort <= 0)
-                    return Task.FromResult<object?>(new { success = false, error = "端口必须大于 0" });
+                    return new { success = false, error = "端口必须大于 0" };
 
                 var bridgeService = App.Services.GetRequiredService<Services.Network.IPortBridgeService>();
-                var success = bridgeService.RemoveBridgeRule(listenAddress, listenPort, protocol);
+                var success = await Task.Run(() => bridgeService.RemoveBridgeRule(listenAddress, listenPort, protocol));
+
+                if (success && net != null)
+                    await net.RefreshPorts();
 
                 if (success)
-                    return Task.FromResult<object?>(new { success });
+                    return new { success };
 
-                return Task.FromResult<object?>(new { success = false, error = bridgeService.LastError ?? "删除桥接规则失败" });
+                return new { success = false, error = bridgeService.LastError ?? "删除桥接规则失败" };
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "删除桥接规则失败");
-                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+                return new { success = false, error = ex.Message };
             }
         });
 
         // 结束占用端口的进程
-        _bridgeService.RegisterRequestHandler("network:killProcess", payload =>
+        _bridgeService.RegisterRequestHandler("network:killProcess", async payload =>
         {
             try
             {
@@ -1573,7 +1601,7 @@ public partial class MainWindow : Window
                 var protocol = root.TryGetProperty("protocol", out var pr) ? pr.GetString() ?? "TCP" : "TCP";
 
                 if (port <= 0)
-                    return Task.FromResult<object?>(new { success = false, error = "无效端口" });
+                    return new { success = false, error = "无效端口" };
 
                 if (net != null && net.ListeningPorts != null)
                 {
@@ -1581,25 +1609,31 @@ public partial class MainWindow : Window
                     if (portInfo != null)
                     {
                         var networkService = App.Services.GetRequiredService<Services.Network.NetworkService>();
-                        var success = networkService.KillProcessByPort(port);
+                        // Process.GetProcesses + CloseMainWindow + WaitForExit 可能耗时数秒，
+                        // 放到后台线程避免阻塞 UI
+                        var success = await Task.Run(() => networkService.KillProcessByPort(port));
                         if (success)
-                            return Task.FromResult<object?>(new { success });
+                        {
+                            if (net != null)
+                                await net.RefreshPorts();
+                            return new { success };
+                        }
 
-                        return Task.FromResult<object?>(new { success = false, error = "结束进程失败，可能是权限不足或进程已退出" });
+                        return new { success = false, error = "结束进程失败，可能是权限不足或进程已退出" };
                     }
                 }
 
-                return Task.FromResult<object?>(new { success = false, error = "未找到占用该端口的进程" });
+                return new { success = false, error = "未找到占用该端口的进程" };
             }
             catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 5)
             {
                 Log.Error(ex, "结束进程失败：权限不足");
-                return Task.FromResult<object?>(new { success = false, error = "权限不足，请以管理员身份运行程序" });
+                return new { success = false, error = "权限不足，请以管理员身份运行程序" };
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "结束进程失败");
-                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+                return new { success = false, error = ex.Message };
             }
         });
 
@@ -1628,6 +1662,8 @@ public partial class MainWindow : Window
                     // 直接调用 RefreshPorts 并 await，确保刷新完成后再返回
                     // （RefreshCommand 声明为 ICommand，is IAsyncRelayCommand 永不命中，走 Execute 是 fire-and-forget）
                     await net.RefreshPorts();
+                    // 同步触发流量采样，确保前端每次刷新都能拿到最新速率
+                    await net.RefreshTraffic();
                 }
                 return new { success = true };
             }
