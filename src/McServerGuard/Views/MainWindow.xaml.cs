@@ -1837,8 +1837,23 @@ public partial class MainWindow : Window
         var cfg = _vm?.ConfigPage;
 
         // 获取可用服务器列表
-        _bridgeService.RegisterRequestHandler("config:getAvailableServers", _ =>
+        _bridgeService.RegisterRequestHandler("config:getAvailableServers", async _ =>
         {
+            // ConfigEditor 修复：ConfigEditorViewModel 构造函数里 _ = RefreshServerListAsync() 是 fire-and-forget，
+            // 前端进入配置页时可能赶在它完成前调 getAvailableServers → 返回空列表 → 下拉没选项 → 「选不了」。
+            // 这里兜底：如果列表为空，同步刷新一次再返回。
+            if (cfg != null && (cfg.AvailableServers == null || cfg.AvailableServers.Count == 0))
+            {
+                try
+                {
+                    await cfg.RefreshServerListAsync();
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "兜底刷新配置编辑器服务器列表失败");
+                }
+            }
+
             var servers = cfg?.AvailableServers ?? [];
             var result = servers.Select(s => new
             {
@@ -1849,7 +1864,7 @@ public partial class MainWindow : Window
                 serverPort = s.ServerPort,
             }).ToList();
 
-            return Task.FromResult<object?>(new { servers = result });
+            return new { servers = result };
         });
 
         // 获取配置文件树
@@ -2063,7 +2078,23 @@ public partial class MainWindow : Window
                 var name = ExtractStringPayload(payload);
                 if (cfg != null && !string.IsNullOrEmpty(name))
                 {
-                    cfg.SelectedServerName = name;
+                    // Pattern5/ConfigEditor 修复：
+                    // 旧实现只设 cfg.SelectedServerName = name，依赖 OnSelectedServerNameChanged 做字符串匹配。
+                    // 但 AvailableServers 里的 DisplayName 可能带 PID 后缀、ServerType 推断差异等，
+                    // 精确相等匹配不到 → Server 不变 → 配置文件不刷新 → 用户感觉「选不了」。
+                    // 改为：先尝试用 SelectServerByContext 做强匹配（按 DisplayName/WorkingDirectory/ServerJarPath），
+                    //       匹配成功则 Server 直接设好；匹配失败再回退到老的 SelectedServerName 赋值。
+                    var matched = cfg.SelectServerByContext(
+                        displayName: name,
+                        workingDirectory: null,
+                        serverJarPath: null,
+                        knownServerId: null);
+
+                    if (!matched)
+                    {
+                        // 回退：仍然设置 SelectedServerName，让 OnSelectedServerNameChanged 有机会处理
+                        cfg.SelectedServerName = name;
+                    }
                 }
                 return Task.FromResult<object?>(new { success = true });
             }
