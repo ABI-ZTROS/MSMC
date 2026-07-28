@@ -304,7 +304,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             {
                 if (!string.IsNullOrEmpty(ks.WorkingDirectory) && Directory.Exists(ks.WorkingDirectory))
                 {
-                    if (!servers.Any(s => string.Equals(s.WorkingDirectory, ks.WorkingDirectory, StringComparer.OrdinalIgnoreCase)))
+                    if (!servers.Any(s => string.Equals(s.WorkingDirectory, ks.WorkingDirectory, StringComparison.OrdinalIgnoreCase)))
                     {
                         var jarName = string.IsNullOrWhiteSpace(ks.ServerJarPath)
                             ? ks.Name
@@ -400,10 +400,10 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             best = candidates.FirstOrDefault(s =>
                 !string.IsNullOrEmpty(s.WorkingDirectory)
                 && string.Equals(Path.GetFileName(s.WorkingDirectory.TrimEnd(Path.DirectorySeparatorChar)),
-                                 dirName, StringComparer.OrdinalIgnoreCase)
+                                 dirName, StringComparison.OrdinalIgnoreCase)
                 && (jarName == null
                     || string.IsNullOrEmpty(s.ServerJarName)
-                    || string.Equals(s.ServerJarName, jarName, StringComparer.OrdinalIgnoreCase)));
+                    || string.Equals(s.ServerJarName, jarName, StringComparison.OrdinalIgnoreCase)));
         }
 
         if (best == null && !string.IsNullOrEmpty(displayName))
@@ -917,7 +917,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         {
             Key = "__ERROR__",
             Value = message,
-            DisplayName = "⚠️ 文件解析失败",
+            DisplayNameOverride = "⚠️ 文件解析失败",
             Category = "__ERROR__",
             Descriptor = null,
             SourceFile = SelectedConfigFile ?? string.Empty,

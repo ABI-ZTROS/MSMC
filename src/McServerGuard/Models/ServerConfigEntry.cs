@@ -66,10 +66,26 @@ public partial class ServerConfigEntry : ObservableObject
     public SvcDescriptor? Descriptor { get; set; }
 
     /// <summary>
-    /// 配置项的显示名称。
-    /// 优先使用描述符中的本地化名称，无描述符时回退为 Key。
+    /// 配置项分类（覆盖 Descriptor.Category）。
+    /// 用例：
+    ///   - 普通条目：null 时回退 Descriptor.Category → "其他"
+    ///   - 错误条目："__ERROR__" 单独分组，前端渲染为 Alert 横幅
+    ///   - 无 Descriptor 条目：按此字段明确分类
     /// </summary>
-    public string DisplayName => Descriptor?.DisplayName ?? Key;
+    [ObservableProperty] private string? _category;
+
+    /// <summary>
+    /// 显示名称覆盖值。
+    /// 当 Descriptor 没有元数据但又需要强制显示文案（例如 "__ERROR__" 条目）时，
+    /// 通过此字段设置友好名；非空时 DisplayName 直接取本字段，不再走 Descriptor 回退链。
+    /// </summary>
+    [ObservableProperty] private string? _displayNameOverride;
+
+    /// <summary>
+    /// 配置项的显示名称。
+    /// 优先级：DisplayNameOverride（显式覆盖）→ Descriptor.DisplayName（元数据）→ Key（原始键名）。
+    /// </summary>
+    public string DisplayName => DisplayNameOverride ?? Descriptor?.DisplayName ?? Key;
 
     /// <summary>
     /// 配置项的友好显示名称。
