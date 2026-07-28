@@ -16,6 +16,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using McServerGuard.Models;
 using McServerGuard.Services;
 using McServerGuard.Services.Colors;
 using McServerGuard.Services.Frontend;
