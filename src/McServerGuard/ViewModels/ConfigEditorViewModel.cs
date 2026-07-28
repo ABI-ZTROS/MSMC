@@ -230,7 +230,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     /// 副作用：从检测服务与应用配置服务聚合服务器列表，更新 <see cref="AvailableServers"/>。
     /// </remarks>
     [RelayCommand]
-    private async Task RefreshServerListAsync()
+    public async Task RefreshServerListAsync()
     {
         Log.Information("🔄 刷新配置编辑器的服务器列表...");
         var servers = new List<ServerInstance>();
