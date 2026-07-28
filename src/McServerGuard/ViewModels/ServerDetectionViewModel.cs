@@ -61,19 +61,55 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     // ║  结果：PrepareLocalArray 从代码路径中消失，0 次 NRE。
     // ╚══════════════════════════════════════════════════════════════════╝
 
-    /// <summary>运行中服务器（带搜索过滤的最终可绑定列表）。每次刷新整体替换。</summary>
-    [ObservableProperty]
+    /// <summary>运行中服务器（带搜索过滤的最终可绑定列表）。每次刷新整体替换。
+    /// 放弃 [ObservableProperty] 源生成器，改为显式属性+字段+OnPropertyChanged，
+    /// 避免 CS0103「当前上下文中不存在名称 FilteredRunningServers」—— 该错误由源生成器偶发不工作触发。</summary>
     private IReadOnlyList<ServerInstance> _filteredRunningServers = new List<ServerInstance>();
+    public IReadOnlyList<ServerInstance> FilteredRunningServers
+    {
+        get => _filteredRunningServers;
+        private set
+        {
+            _filteredRunningServers = value;
+            OnPropertyChanged();
+        }
+    }
 
-    /// <summary>已知服务器（带搜索过滤的最终可绑定列表）。每次刷新整体替换。</summary>
-    [ObservableProperty]
+    /// <summary>已知服务器（带搜索过滤的最终可绑定列表）。每次刷新整体替换。
+    /// 同样显式实现，规避源生成器失效导致 CS0103 FilteredKnownServers 找不到。</summary>
     private IReadOnlyList<KnownServer> _filteredKnownServers = new List<KnownServer>();
+    public IReadOnlyList<KnownServer> FilteredKnownServers
+    {
+        get => _filteredKnownServers;
+        private set
+        {
+            _filteredKnownServers = value;
+            OnPropertyChanged();
+        }
+    }
 
     /// <summary>运行中服务器原始快照（不带过滤）。刷新时先更新这个，再同步生成 FilteredRunningServers。</summary>
     private List<ServerInstance> _runningSnapshot = [];
 
     /// <summary>已知服务器原始快照（不带过滤）。刷新时先更新这个，再同步生成 FilteredKnownServers。</summary>
     private List<KnownServer> _knownSnapshot = [];
+
+    /// <summary>已知服务器集合（原始快照的包装，只读可枚举）。
+    /// 给外部（MainWindow 桥接层、日志等）枚举所有 KnownServer 用，
+    /// 内部实际以 _knownSnapshot 为准，FilteredKnownServers 才是真正给 ItemsControl 绑定的过滤后列表。
+    /// HasKnownServers 基于原始快照 Count。
+    /// </summary>
+    /// <remarks>
+    /// ⚠️ 重命名：原名 KnownServers。
+    /// 社区版 CommunityToolkit.Mvvm 8.x 的 [ObservableProperty] 源生成器若在同一部分类中
+    /// 与手动定义的 public 属性同名，会报 CS0229「成员二义性」；且原 MainWindow.xaml.cs
+    /// 访问 DetectionPage.KnownServers 时与 Bridge 层某些内部生成器产生的 KnownServers
+    /// 符号冲突。因此统一重命名为 AllKnownServers，语义也更准确（原始全量，非过滤视图）。
+    /// </remarks>
+    public IEnumerable<KnownServer> AllKnownServers => _knownSnapshot;
+
+    /// <summary>获取一个值，指示已知服务器集合是否非空</summary>
+    public bool HasKnownServers => _knownSnapshot.Count > 0;
 
     public ServerDetectionViewModel(
         IServerDetector serverDetector,
@@ -460,16 +496,6 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     public string SelectedServerSubtitle => GetActiveServer() is { } active
         ? active.DisplayName
         : "未选择服务器";
-
-    /// <summary>已知服务器集合（原始快照的包装，只读可枚举）。
-    /// 给外部（MainWindow 桥接层、日志等）枚举所有 KnownServer 用，
-    /// 内部实际以 _knownSnapshot 为准，FilteredKnownServers 才是真正给 ItemsControl 绑定的过滤后列表。
-    /// HasKnownServers 基于原始快照 Count。
-    /// </summary>
-    public IEnumerable<KnownServer> KnownServers => _knownSnapshot;
-
-    /// <summary>获取一个值，指示已知服务器集合是否非空</summary>
-    public bool HasKnownServers => _knownSnapshot.Count > 0;
 
     /// <summary>
     /// 当前选中的已知服务器
@@ -1737,7 +1763,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         ReapplyFilter();
 
         OnPropertyChanged(nameof(HasKnownServers));
-        OnPropertyChanged(nameof(KnownServers));
+        OnPropertyChanged(nameof(AllKnownServers));
     }
 
     /// <summary>

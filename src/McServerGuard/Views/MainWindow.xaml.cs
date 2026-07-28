@@ -809,7 +809,7 @@ public partial class MainWindow : Window
         _bridgeService.RegisterRequestHandler("server:list", _ =>
         {
             var running = _vm?.DetectionPage?.DetectionResult?.Servers ?? [];
-            var known = _vm?.DetectionPage?.KnownServers ?? [];
+            var known = _vm?.DetectionPage?.AllKnownServers ?? [];
 
             return Task.FromResult<object?>(new
             {
@@ -993,7 +993,7 @@ public partial class MainWindow : Window
                         // 否则 jvm:getState 返回 hasServer=false、isKnownServer=false，前端显示「启动参数未知」。
                         if (!string.IsNullOrEmpty(server.KnownServerId))
                         {
-                            var matched = vm.KnownServers
+                            var matched = vm.AllKnownServers
                                 .FirstOrDefault(k => k.KnownServerId == server.KnownServerId);
                             vm.SelectedKnownServer = matched;
                         }
@@ -1004,7 +1004,7 @@ public partial class MainWindow : Window
                     }
                     else
                     {
-                        var known = vm.KnownServers
+                        var known = vm.AllKnownServers
                             .FirstOrDefault(k => k.Name == displayName);
                         if (known != null)
                         {
@@ -1152,9 +1152,9 @@ public partial class MainWindow : Window
                     return new { success = false, error = "未指定服务器标识（knownServerId/id/name 至少一个）" };
 
                 var vm = _vm.DetectionPage;
-                var known = vm.KnownServers.FirstOrDefault(k =>
+                var known = vm.AllKnownServers.FirstOrDefault(k =>
                     !string.IsNullOrEmpty(knownServerId) && k.KnownServerId == knownServerId)
-                    ?? vm.KnownServers.FirstOrDefault(k =>
+                    ?? vm.AllKnownServers.FirstOrDefault(k =>
                            !string.IsNullOrEmpty(name) && k.Name == name);
 
                 if (known == null)
@@ -1208,9 +1208,9 @@ public partial class MainWindow : Window
                     return Task.FromResult<object?>(new { success = false, error = "未指定服务器标识（knownServerId/id/name 至少一个）" });
 
                 var vm = _vm.DetectionPage;
-                var known = vm.KnownServers.FirstOrDefault(k =>
+                var known = vm.AllKnownServers.FirstOrDefault(k =>
                     !string.IsNullOrEmpty(knownServerId) && k.KnownServerId == knownServerId)
-                    ?? vm.KnownServers.FirstOrDefault(k =>
+                    ?? vm.AllKnownServers.FirstOrDefault(k =>
                            !string.IsNullOrEmpty(name) && k.Name == name);
 
                 if (known != null)
