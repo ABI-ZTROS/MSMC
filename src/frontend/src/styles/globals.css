@@ -531,6 +531,10 @@
     background-color: var(--md-body-lighter);
   }
 
+  .md-status-dot-blue {
+    background-color: var(--md-primary-hue-mid);
+  }
+
   /* ═══════════════════════════════════════════════════════════════ */
   /* 🏷️ 徽章 */
   /* ═══════════════════════════════════════════════════════════════ */
@@ -1162,6 +1166,22 @@
   /* 数字滚动入场（用于统计数值） */
   .md-num-enter {
     animation: mdNumEnter 0.5s var(--md-ease-spring) both;
+  }
+
+  /* 轻量淡入（用于加载提示等小元素） */
+  .md-fade-in {
+    animation: mdFadeIn 0.3s var(--md-ease-standard) both;
+  }
+
+  @keyframes mdFadeIn {
+    0% {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   @keyframes mdNumEnter {

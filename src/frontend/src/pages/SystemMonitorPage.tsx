@@ -204,6 +204,17 @@ const HISTORY_RANGE_OPTIONS = [
   { label: '近 30 天', days: 30 },
 ] as const
 
+// 各数据源的刷新周期（毫秒）—— 错峰以避免同帧并发渲染
+const METRICS_REFRESH_MS = 2000      // 指标必须实时，2s 刷新
+const HISTORY_REFRESH_MS = 10000     // 历史变化慢，10s 刷新
+const AFFINITY_REFRESH_MS = 5000     // 进程亲和性变化不需要那么频繁，5s 刷新
+
+// 各数据源初次加载的延迟（毫秒）—— 分阶段加载，避免进入页面瞬间并发拉取
+const METRICS_DELAY_MS = 50          // 立即拉取核心指标
+const CPU_INFO_DELAY_MS = 100        // CPU 拓扑稍后
+const HISTORY_DELAY_MS = 300         // 历史数据更晚
+const AFFINITY_DELAY_MS = 600        // 进程亲和性最重，最后加载
+
 export function SystemMonitorPage(): JSX.Element {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
   const [history, setHistory] = useState<HistoryPoint[]>([])
@@ -211,7 +222,12 @@ export function SystemMonitorPage(): JSX.Element {
   const [processAffinities, setProcessAffinities] = useState<ProcessAffinityInfo[]>([])
   const [loadError, setLoadError] = useState(false)
   const [historyDays, setHistoryDays] = useState(1)
-  const intervalRef = useRef<number | null>(null)
+  // 加载阶段标记：用于渲染骨架屏
+  const [loadingStage, setLoadingStage] = useState<'skeleton' | 'metrics' | 'full'>('skeleton')
+
+  // 用于跨闭包读取最新的 historyDays（避免定时器依赖变化导致重建）
+  const historyDaysRef = useRef(historyDays)
+  historyDaysRef.current = historyDays
 
   // 拉取系统指标（仅更新当前快照，不追加到历史数组——历史由持久化数据驱动）
   const fetchMetrics = async () => {
@@ -219,6 +235,7 @@ export function SystemMonitorPage(): JSX.Element {
       const data = await getSystemMetrics()
       setMetrics(data)
       setLoadError(false)
+      setLoadingStage(prev => prev === 'skeleton' ? 'metrics' : prev)
     } catch (e) {
       console.error('获取系统指标失败:', e)
       setLoadError(true)
@@ -226,13 +243,14 @@ export function SystemMonitorPage(): JSX.Element {
   }
 
   // 拉取历史数据（从持久化文件加载）
-  const fetchHistory = async (days: number = historyDays) => {
+  const fetchHistory = async (days?: number) => {
     try {
-      if (days <= 1) {
+      const d = days ?? historyDaysRef.current
+      if (d <= 1) {
         const data = await getSystemHistory()
         setHistory(data)
       } else {
-        const result = await getSystemHistoryRange(days)
+        const result = await getSystemHistoryRange(d)
         setHistory(result.points)
       }
     } catch (e) {
@@ -250,17 +268,18 @@ export function SystemMonitorPage(): JSX.Element {
     }
   }
 
-  // 拉取 Java 进程亲和性信息
+  // 拉取所有进程亲和性信息（重量级操作：枚举系统所有进程）
   const fetchProcessAffinities = async () => {
     try {
       const data = await getProcessAffinities()
       setProcessAffinities(data ?? [])
+      setLoadingStage('full')
     } catch (e) {
       console.error('获取进程亲和性信息失败:', e)
     }
   }
 
-  // 终止进程回调：优雅停止 → 3s 超时 → 强杀，成功后刷新列表
+  // 终止进程回调：优雅停止 → 3s 超时 → 强杀，成功后立即刷新列表
   const handleKillProcess = async (pid: number) => {
     try {
       const result = await killProcessById(pid)
@@ -277,10 +296,11 @@ export function SystemMonitorPage(): JSX.Element {
   const handleStart = async () => {
     try {
       await bridge.invoke('systemMonitor:start')
-      await fetchMetrics()
-      await fetchHistory()
-      await fetchCpuInfo()
-      await fetchProcessAffinities()
+      // 分阶段触发，避免一次性卡顿
+      fetchMetrics()
+      window.setTimeout(fetchCpuInfo, CPU_INFO_DELAY_MS)
+      window.setTimeout(() => fetchHistory(1), HISTORY_DELAY_MS)
+      window.setTimeout(fetchProcessAffinities, AFFINITY_DELAY_MS)
     } catch (e) {
       console.error('启动监控失败:', e)
     }
@@ -300,36 +320,68 @@ export function SystemMonitorPage(): JSX.Element {
     fetchHistory(days)
   }
 
+  // 初次挂载：分阶段延迟加载（用明显的加载延迟换取流畅渲染）
   useEffect(() => {
-    // 初始拉取
-    fetchMetrics()
-    fetchHistory()
-    fetchCpuInfo()
-    fetchProcessAffinities()
+    const timers: number[] = []
 
-    // 每 2 秒自动刷新指标，同时刷新当天历史
-    intervalRef.current = window.setInterval(() => {
-      fetchMetrics()
-      // 仅在"今天"模式下实时追加历史数据
-      if (historyDays <= 1) {
-        fetchHistory(1)
-      }
-      // 同步刷新进程亲和性（杀进程后/进程退出后能及时反映）
-      fetchProcessAffinities()
-    }, 2000)
+    // 阶段 1：立即拉取轻量指标（~50ms 后），渲染核心仪表盘
+    timers.push(window.setTimeout(fetchMetrics, METRICS_DELAY_MS))
+    // 阶段 2：CPU 拓扑（~100ms 后）
+    timers.push(window.setTimeout(fetchCpuInfo, CPU_INFO_DELAY_MS))
+    // 阶段 3：历史图表（~300ms 后）
+    timers.push(window.setTimeout(() => fetchHistory(1), HISTORY_DELAY_MS))
+    // 阶段 4：进程亲和性最重，最后加载（~600ms 后）
+    timers.push(window.setTimeout(fetchProcessAffinities, AFFINITY_DELAY_MS))
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
+      timers.forEach(t => clearTimeout(t))
     }
-  }, [historyDays])
+    // 仅在挂载时执行一次；historyDays 通过 ref 在定时器中读取
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 定时刷新：三类数据错峰，避免同帧并发（与 historyDays 解耦）
+  useEffect(() => {
+    let metricsTimer: number
+    let historyTimer: number
+    let affinityTimer: number
+    let historyTick = 0
+
+    metricsTimer = window.setInterval(() => {
+      fetchMetrics()
+    }, METRICS_REFRESH_MS)
+
+    historyTimer = window.setInterval(() => {
+      historyTick++
+      // 仅在"今天"模式下每 10s 追加一次历史；其他范围不自动刷新
+      if (historyDaysRef.current <= 1) {
+        fetchHistory(1)
+      }
+    }, HISTORY_REFRESH_MS)
+
+    affinityTimer = window.setInterval(() => {
+      fetchProcessAffinities()
+    }, AFFINITY_REFRESH_MS)
+
+    return () => {
+      clearInterval(metricsTimer)
+      clearInterval(historyTimer)
+      clearInterval(affinityTimer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 将历史数据转换为图表所需格式
   const cpu = metrics?.cpuUsagePercent ?? 0
   const mem = metrics?.memoryUsagePercent ?? 0
   const disk = metrics?.diskUsagePercent ?? 0
   const threads = metrics?.totalThreadCount ?? 0
+
+  // 加载阶段对应的提示文案（让用户感知到"在加载"而非"卡死"）
+  const loadingHint =
+    loadingStage === 'skeleton' ? '正在加载监控指标…'
+    : loadingStage === 'metrics' ? '正在加载 CPU 拓扑与进程亲和性…'
+    : null
 
   return (
     <div className="md-page-enter h-full overflow-auto" style={{ padding: 8 }}>
@@ -358,6 +410,19 @@ export function SystemMonitorPage(): JSX.Element {
               className="md-status-dot md-status-dot-green md-status-pulse"
             />
             监控中
+          </span>
+        )}
+        {/* 分阶段加载提示（替换原"卡死"感） */}
+        {loadingHint && (
+          <span
+            className="flex items-center md-fade-in"
+            style={{ marginLeft: 'auto', gap: 6, fontSize: 12, color: 'var(--md-body-light)' }}
+          >
+            <span
+              className="md-status-dot md-status-dot-blue md-status-pulse"
+              style={{ width: 6, height: 6 }}
+            />
+            {loadingHint}
           </span>
         )}
       </div>
@@ -497,31 +562,37 @@ export function SystemMonitorPage(): JSX.Element {
       </div>
 
       {/* ═══ CPU 物理拓扑 ═══ */}
-      <div style={{ marginBottom: 12 }}>
-        <CpuTopology
-          cpuInfo={cpuInfo}
-          perCoreUsages={metrics?.perCoreCpuUsages ?? []}
-        />
-      </div>
+      {/* 仅在 metrics 阶段后渲染拓扑，避免无数据时的空卡片闪烁 */}
+      {loadingStage !== 'skeleton' && (
+        <div style={{ marginBottom: 12 }}>
+          <CpuTopology
+            cpuInfo={cpuInfo}
+            perCoreUsages={metrics?.perCoreCpuUsages ?? []}
+          />
+        </div>
+      )}
 
       {/* ═══ CPU 核心进程亲和性树（Minecraft 高亮 + 杀进程） ═══ */}
-      <div style={{ marginBottom: 12 }}>
-        <CpuProcessTree
-          cpuInfo={cpuInfo}
-          perCoreUsages={metrics?.perCoreCpuUsages ?? []}
-          processAffinities={processAffinities}
-          onKillProcess={handleKillProcess}
-        />
-      </div>
+      {/* 仅在 metrics 阶段后渲染进程树，避免无 cpuInfo 时的无效计算 */}
+      {loadingStage !== 'skeleton' && (
+        <div style={{ marginBottom: 12 }}>
+          <CpuProcessTree
+            cpuInfo={cpuInfo}
+            perCoreUsages={metrics?.perCoreCpuUsages ?? []}
+            processAffinities={processAffinities}
+            onKillProcess={handleKillProcess}
+          />
+        </div>
+      )}
 
       {/* ═══ 空状态：完全无数据时显示 ═══ */}
-      {!metrics && !loadError && (
+      {loadingStage === 'skeleton' && !loadError && (
         <div className="md-empty-state">
           <div className="md-empty-state-icon">📊</div>
           <div className="md-empty-state-text">正在加载监控数据...</div>
         </div>
       )}
-      {loadError && !metrics && (
+      {loadError && loadingStage === 'skeleton' && (
         <div className="md-empty-state">
           <div className="md-empty-state-icon">⚠</div>
           <div className="md-empty-state-text">无法获取监控数据，请检查桥接连接</div>
