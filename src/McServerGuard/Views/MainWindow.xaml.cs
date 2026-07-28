@@ -995,9 +995,11 @@ public partial class MainWindow : Window
 
                 await vm.StartCurrentServerCommand.ExecuteAsync(null);
 
-                var started = vm.CurrentServerStatus == ServerStatus.Running;
-                var msg = vm.OperationMessage;
-                return new { success = started, message = msg, error = started ? null : msg };
+                // 不依赖 CurrentServerStatus（会被 RefreshCurrentStatus 异步覆盖），
+                // 直接通过 OperationMessage 判断：成功消息以 ✅ 开头
+                var msg = vm.OperationMessage ?? string.Empty;
+                var started = msg.StartsWith("✅");
+                return new { success = started, message = msg, error = started ? null : (msg.StartsWith("❌") ? msg : "启动失败") };
             }
             catch (Exception ex)
             {
@@ -1020,9 +1022,10 @@ public partial class MainWindow : Window
 
                 await vm.StopCurrentServerCommand.ExecuteAsync(null);
 
-                var stopped = vm.CurrentServerStatus == ServerStatus.Stopped;
-                var msg = vm.OperationMessage;
-                return new { success = stopped, message = msg, error = stopped ? null : msg };
+                // 通过 OperationMessage 判断停止结果
+                var msg = vm.OperationMessage ?? string.Empty;
+                var stopped = msg.StartsWith("✅");
+                return new { success = stopped, message = msg, error = stopped ? null : (msg.StartsWith("❌") || msg.StartsWith("⚠️") ? msg : "停止失败") };
             }
             catch (Exception ex)
             {
@@ -1096,9 +1099,10 @@ public partial class MainWindow : Window
 
                 await vm.StartKnownServerCommand.ExecuteAsync(known);
 
-                var started = vm.CurrentServerStatus == ServerStatus.Running;
-                var msg = vm.OperationMessage;
-                return new { success = started, message = msg, error = started ? null : msg };
+                // 通过 OperationMessage 判断启动结果（与 server:start 一致）
+                var msg = vm.OperationMessage ?? string.Empty;
+                var started = msg.StartsWith("✅");
+                return new { success = started, message = msg, error = started ? null : (msg.StartsWith("❌") ? msg : "启动失败") };
             }
             catch (Exception ex)
             {

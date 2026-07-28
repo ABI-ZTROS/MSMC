@@ -901,8 +901,14 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            // OperationScope.Dispose 已恢复 ActiveOperation，此处仅刷新服务器状态
-            RefreshCurrentStatus();
+            // 启动成功时保持 Running 状态，不刷新 ——
+            // RefreshCurrentStatus 依赖 WMI/进程检测，新进程可能尚未被 WMI 索引到，
+            // 立即刷新会把 Running 误判为 Stopped，导致前端收到 success=false。
+            // 仅在未成功启动时刷新状态。
+            if (CurrentServerStatus != ServerStatus.Running)
+            {
+                RefreshCurrentStatus();
+            }
         }
     }
 
@@ -1391,12 +1397,22 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         if (server is null) return;
 
         using var scope = BeginOperation(ServerOperation.Starting);
+        CurrentServerStatus = ServerStatus.Starting;
+        OperationMessage = "🚀 正在启动服务器...";
 
         try
         {
             if (!File.Exists(server.ServerJarPath))
             {
                 OperationMessage = $"❌ JAR 文件不存在: {server.ServerJarPath}";
+                CurrentServerStatus = ServerStatus.Error;
+                return;
+            }
+
+            if (!Directory.Exists(server.WorkingDirectory))
+            {
+                OperationMessage = $"❌ 工作目录不存在: {server.WorkingDirectory}";
+                CurrentServerStatus = ServerStatus.Error;
                 return;
             }
 
@@ -1417,6 +1433,8 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             if (process != null)
             {
                 OperationMessage = $"✅ 启动成功！PID: {process.Id}";
+                Log.Information("🚀 已知服务器启动成功: {Name} PID={Pid}", server.Name, process.Id);
+                CurrentServerStatus = ServerStatus.Running;
                 server.LastSeenAt = DateTime.Now;
                 _appConfigService.UpdateKnownServer(server);
                 await Task.Delay(1500);
@@ -1426,11 +1444,14 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             else
             {
                 OperationMessage = "❌ 启动失败";
+                CurrentServerStatus = ServerStatus.Error;
+                Log.Error("❌ 已知服务器启动失败: {Name}", server.Name);
             }
         }
         catch (Exception ex)
         {
             OperationMessage = $"❌ 启动异常：{ex.Message}";
+            CurrentServerStatus = ServerStatus.Error;
             Log.Error(ex, "💥 启动已知服务器异常");
         }
         finally

@@ -324,7 +324,6 @@ export function DashboardPage(): JSX.Element {
   }
 
   const handleStart = async () => {
-    if (!window.confirm('确定要启动服务器吗？')) return
     setIsBusy(true)
     setBusyReason('正在启动服务器...')
     setOperationMessage('')
@@ -333,7 +332,7 @@ export function DashboardPage(): JSX.Element {
       if (result?.success) {
         setOperationMessage(result.message || '启动成功')
       } else {
-        setOperationMessage(`启动失败: ${result?.error || '未知错误'}`)
+        setOperationMessage(`启动失败: ${result?.error || result?.message || '未知错误'}`)
       }
       await fetchServerList()
       await fetchSelectedServer()
@@ -346,7 +345,6 @@ export function DashboardPage(): JSX.Element {
   }
 
   const handleStop = async () => {
-    if (!window.confirm('确定要停止服务器吗？正在运行的玩家将被断开连接。')) return
     setIsBusy(true)
     setBusyReason('正在停止服务器...')
     setOperationMessage('')
@@ -355,7 +353,7 @@ export function DashboardPage(): JSX.Element {
       if (result?.success) {
         setOperationMessage(result.message || '停止成功')
       } else {
-        setOperationMessage(`停止失败: ${result?.error || '未知错误'}`)
+        setOperationMessage(`停止失败: ${result?.error || result?.message || '未知错误'}`)
       }
       await fetchServerList()
       await fetchSelectedServer()
@@ -375,11 +373,11 @@ export function DashboardPage(): JSX.Element {
       if (result.success) {
         await fetchServerList()
       } else {
-        window.alert(`导入失败: ${result.error || result.message || '未知错误'}`)
+        setOperationMessage(`导入失败: ${result.error || result.message || '未知错误'}`)
       }
     } catch (e) {
       console.error('导入失败:', e)
-      window.alert('导入失败')
+      setOperationMessage(`导入失败: ${e instanceof Error ? e.message : String(e)}`)
     } finally {
       setIsBusy(false)
       setBusyReason('')
@@ -760,10 +758,11 @@ export function DashboardPage(): JSX.Element {
                         if (result.success) {
                           await fetchServerList()
                         } else {
-                          window.alert(`删除失败: ${result.error || result.message || '未知错误'}`)
+                          setOperationMessage(`删除失败: ${result.error || result.message || '未知错误'}`)
                         }
                       } catch (e) {
                         console.error('删除失败:', e)
+                        setOperationMessage(`删除失败: ${e instanceof Error ? e.message : String(e)}`)
                       }
                     }}
                     />
@@ -846,10 +845,11 @@ export function DashboardPage(): JSX.Element {
                               if (result.success) {
                                 await fetchServerList()
                               } else {
-                                window.alert(`保存失败: ${result.error || result.message || '未知错误'}`)
+                                setOperationMessage(`保存失败: ${result.error || result.message || '未知错误'}`)
                               }
                             } catch (e) {
                               console.error('保存到已知失败:', e)
+                              setOperationMessage(`保存失败: ${e instanceof Error ? e.message : String(e)}`)
                             }
                           }}
                           className="md-btn md-btn-outlined"
