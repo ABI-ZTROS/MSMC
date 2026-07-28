@@ -47,9 +47,10 @@ public class AppConfig
 
     /// <summary>
     /// 是否优先使用 javaw.exe（无控制台窗口）。
-    /// 启用后启动服务器时优先使用 javaw.exe 避免弹出命令行窗口。
+    /// 默认 false，因为 Minecraft 服务器需要控制台窗口来查看日志和输入命令。
+    /// javaw.exe 属于 GUI 子系统，会丢弃 stdout/stderr，导致服务器输出完全丢失。
     /// </summary>
-    public bool PreferJavaw { get; set; } = true;
+    public bool PreferJavaw { get; set; } = false;
 }
 
 /// <summary>

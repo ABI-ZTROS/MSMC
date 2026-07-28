@@ -712,7 +712,7 @@ export function SettingsPage(): JSX.Element {
                 color: 'var(--md-body-light)',
               }}
             >
-              无控制台窗口启动，后台静默运行
+              无控制台窗口启动（不推荐，服务器日志将不可见）
             </div>
           </div>
         </div>

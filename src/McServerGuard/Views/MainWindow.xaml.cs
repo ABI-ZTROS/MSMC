@@ -1916,7 +1916,7 @@ public partial class MainWindow : Window
                 animationDuration = settings?.AnimationDuration ?? 300,
                 enableAnimations = settings?.EnableAnimations ?? true,
                 enableWindowsNotifications = settings?.EnableWindowsNotifications ?? true,
-                preferJavaw = settings?.PreferJavaw ?? true,
+                preferJavaw = settings?.PreferJavaw ?? false,
                 statusMessage = settings?.StatusMessage ?? string.Empty,
                 isDarkMode = _themeService.IsDarkMode,
             });

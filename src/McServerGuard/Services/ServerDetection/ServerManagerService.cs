@@ -267,26 +267,21 @@ public class ServerManagerService : IServerManagerService
             string? javaExe = null;
             JavaInstallation? javaInfo = null;
 
+            // 始终使用 java.exe（而非 javaw.exe），确保服务器控制台窗口可见，
+            // 玩家可查看日志输出并输入控制台命令（stop、op、say 等）。
+            // javaw.exe 属于 GUI 子系统，会丢弃 stdout/stderr，导致服务器日志完全丢失。
             if (!string.IsNullOrEmpty(server.JavaPath))
             {
                 javaInfo = _javaFinderService.Verify(server.JavaPath);
                 if (javaInfo != null)
-                {
-                    javaExe = _javaFinderService.PreferJavaw && !string.IsNullOrEmpty(javaInfo.JavawPath)
-                        ? javaInfo.JavawPath
-                        : javaInfo.JavaPath;
-                }
+                    javaExe = javaInfo.JavaPath;
             }
 
             if (javaExe == null)
             {
                 javaInfo = _javaFinderService.FindDefault();
                 if (javaInfo != null)
-                {
-                    javaExe = _javaFinderService.PreferJavaw && !string.IsNullOrEmpty(javaInfo.JavawPath)
-                        ? javaInfo.JavawPath
-                        : javaInfo.JavaPath;
-                }
+                    javaExe = javaInfo.JavaPath;
             }
 
             if (string.IsNullOrEmpty(javaExe))
@@ -366,9 +361,7 @@ public class ServerManagerService : IServerManagerService
                 FileName = javaExe,
                 Arguments = arguments,
                 WorkingDirectory = server.WorkingDirectory,
-                UseShellExecute = false,
-                CreateNoWindow = false,
-                WindowStyle = ProcessWindowStyle.Normal
+                UseShellExecute = true,
             };
 
             var process = Process.Start(processStartInfo);

@@ -111,9 +111,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _isScanningJava;
 
-    /// <summary>是否优先使用 javaw.exe</summary>
+    /// <summary>是否优先使用 javaw.exe（默认 false，保留控制台窗口）</summary>
     [ObservableProperty]
-    private bool _preferJavaw = true;
+    private bool _preferJavaw = false;
 
     /// <summary>待添加的 Java 路径</summary>
     [ObservableProperty]
