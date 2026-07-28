@@ -123,10 +123,20 @@ public partial class ServerInstance : ObservableObject
     /// 用于 UI 展示的格式化显示名称。
     /// 运行中的实例包含 PID，未运行实例仅显示类型与目录。
     /// 当 ProcessId 为 0 时不显示 PID，避免误导用户以为存在幽灵进程。
+    /// ServerType 为 Unknown 时显示 "Minecraft Server"——因为能被扫描到说明确实是服务器，
+    /// 只是核心品牌无法识别，不应向用户暴露内部枚举值 "Unknown"。
     /// </summary>
     public string DisplayName => ProcessId > 0
-        ? $"{ServerType} @ {System.IO.Path.GetFileName(WorkingDirectory)} (PID: {ProcessId})"
-        : $"{ServerType} @ {System.IO.Path.GetFileName(WorkingDirectory)}";
+        ? $"{GetFriendlyTypeDisplay()} @ {System.IO.Path.GetFileName(WorkingDirectory)} (PID: {ProcessId})"
+        : $"{GetFriendlyTypeDisplay()} @ {System.IO.Path.GetFileName(WorkingDirectory)}";
+
+    /// <summary>
+    /// 获取 ServerType 的友好显示文本。
+    /// Unknown → "Minecraft Server"（已通过进程扫描确认为服务器，仅品牌未知）
+    /// 其余类型直接使用枚举名（Paper/Spigot/Forge 等）
+    /// </summary>
+    private string GetFriendlyTypeDisplay()
+        => ServerType == ServerType.Unknown ? "Minecraft Server" : ServerType.ToString();
 
     /// <summary>
     /// 以人类可读格式表示的最大堆内存字符串。

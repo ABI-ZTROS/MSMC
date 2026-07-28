@@ -340,6 +340,7 @@ public class ServerDetector : IServerDetector
     /// 三级识别策略：
     /// 1. JAR 名 + 配置文件匹配（快速路径）
     /// 2. JAR Manifest 解包识别（兜底，区分派生类）
+    /// 3. 终极兜底：三级全部失败时返回 Vanilla（进程已被 ProcessScanner 确认为服务器）
     /// 解决场景：JAR 被重命名、Paper 系/Forge 系/BungeeCord 系/Fabric 系派生类互相混淆
     /// </remarks>
     private async Task<ServerType> ResolveServerTypeAsync(
@@ -358,6 +359,16 @@ public class ServerDetector : IServerDetector
                 Log.Information("🔬 JAR Manifest 识别为核心类型: {Type}（覆盖原 {Old}）", manifestType, serverType);
                 serverType = manifestType;
             }
+        }
+
+        // 终极兜底：三级识别全部失败，但进程已通过 ProcessScanner 4 重保险确认是 Minecraft 服务器
+        // （JAR 关键字/nogui 标记/父进程链追溯/-jar 兜底）。
+        // 此时返回 Vanilla 而非 Unknown——Unknown 只意味着"核心品牌未知"，
+        // 但它一定是某种 Minecraft 服务器，最保守的假设是原版。
+        if (serverType == ServerType.Unknown)
+        {
+            Log.Information("🏷️ 三级类型识别均失败，兜底为 Vanilla（JAR={Jar}）", jarName);
+            serverType = ServerType.Vanilla;
         }
 
         return serverType;
