@@ -399,12 +399,12 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
                 : ((int Port, string Protocol, int? ProcessId)?)null;
 
             // 所有系统调用在后台线程执行，读出全部所需数据
-            // 复用 GetPortSnapshot 单次端口枚举结果（原 3 次枚举降为 1 次）
-            var (ports, rules, usedPct, dist) = await Task.Run(() =>
+            // 复用 GetPortSnapshot 单次端口枚举结果
+            var (ports, rules, occupiedCount, totalCount, dist) = await Task.Run(() =>
             {
-                var (p, pct, d) = _networkService.GetPortSnapshot();
+                var (p, occ, tot, d) = _networkService.GetPortSnapshot();
                 var r = _portBridgeService.GetAllBridgeRules();
-                return (p, r, pct, d);
+                return (p, r, occ, tot, d);
             });
 
             // 回到 UI 线程（DispatcherTimer 回调 + await continuation）更新绑定属性
@@ -420,8 +420,13 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
                     SelectedPort = match;
             }
 
-            UsedPorts = ports.Count;
-            UsedPercentage = usedPct;
+            // 已占用端口数（TCP 所有状态 + UDP）/ 理论端口极限 65536
+            UsedPorts = occupiedCount;
+            TotalPorts = totalCount;
+            // 保留 UsedPercentage 兼容旧前端（四舍五入到整数）
+            UsedPercentage = totalCount > 0
+                ? (int)Math.Round((double)occupiedCount / totalCount * 100)
+                : 0;
 
             SystemPorts = dist.System;
             RegisteredPorts = dist.Registered;
@@ -429,9 +434,8 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
 
             UpdatePortDistributionSeries();
 
-            // 用户操作反馈 5 秒内不覆盖，之后恢复自动刷新消息
             if (ShouldAutoRefreshOverwrite())
-                StatusMessage = $"已检测 {UsedPorts} 个占用端口";
+                StatusMessage = $"已占用 {UsedPorts}/{TotalPorts} 个端口";
         }
         catch (Exception ex)
         {

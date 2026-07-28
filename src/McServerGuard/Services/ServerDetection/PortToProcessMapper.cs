@@ -95,6 +95,19 @@ public sealed class PortToProcessMapper
         return map;
     }
 
+    /// <summary>
+    /// 获取所有 TCP 连接（含 LISTEN/ESTABLISHED/TIME_WAIT 等所有状态，IPv4 + IPv6）的 PID 映射。
+    /// 用于计算端口占用率时统计所有被 TCP 连接占用的端口（不仅限于监听状态）。
+    /// </summary>
+    /// <returns>字典：端口 → PID 列表（去重）。</returns>
+    public Dictionary<int, List<int>> GetAllTcpConnectionsPortToPidMap()
+    {
+        var map = new Dictionary<int, List<int>>();
+        FillAllTcpMap(map, AfInet);
+        FillAllTcpMap(map, AfInet6);
+        return map;
+    }
+
     /// <summary>查询监听指定 TCP 端口的 PID</summary>
     public int? GetPidByListeningPort(int port)
     {
@@ -168,6 +181,79 @@ public sealed class PortToProcessMapper
         catch (Exception ex)
         {
             Log.Warning(ex, "⚠️ PortToProcessMapper TCP 查询失败 (AF={Af})", af);
+        }
+    }
+
+    /// <summary>
+    /// 查询所有 TCP 连接（不仅 LISTEN）的端口→PID 映射。
+    /// 使用 TCP_TABLE_OWNER_PID_ALL 枚举 ESTABLISHED/TIME_WAIT/CLOSE_WAIT 等所有状态。
+    /// </summary>
+    private static void FillAllTcpMap(Dictionary<int, List<int>> map, uint af)
+    {
+        try
+        {
+            var size = 0u;
+            IpHlpApi.GetExtendedTcpTable(IntPtr.Zero, ref size, false, af,
+                TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_ALL);
+            if (size == 0) return;
+
+            var buffer = Marshal.AllocHGlobal((int)size);
+            try
+            {
+                var err = IpHlpApi.GetExtendedTcpTable(buffer, ref size, false, af,
+                    TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_ALL);
+                if (err.Failed)
+                {
+                    Log.Warning("⚠️ GetExtendedTcpTable(ALL) (AF={Af}) 调用失败: {Error}", af, err);
+                    return;
+                }
+
+                var count = Marshal.ReadInt32(buffer);
+                var rowSize = af == AfInet6
+                    ? Marshal.SizeOf<MIB_TCP6ROW_OWNER_PID>()
+                    : Marshal.SizeOf<MIB_TCPROW_OWNER_PID>();
+                var rowPtr = buffer + sizeof(int);
+
+                for (var i = 0; i < count; i++)
+                {
+                    int port;
+                    uint pid;
+
+                    if (af == AfInet6)
+                    {
+                        var row = Marshal.PtrToStructure<MIB_TCP6ROW_OWNER_PID>(rowPtr);
+                        port = ntohs(row.dwLocalPort);
+                        pid = row.dwOwningPid;
+                    }
+                    else
+                    {
+                        var row = Marshal.PtrToStructure<MIB_TCPROW_OWNER_PID>(rowPtr);
+                        port = ntohs(row.dwLocalPort);
+                        pid = row.dwOwningPid;
+                    }
+
+                    if (port > 0 && pid > 0)
+                    {
+                        if (!map.TryGetValue(port, out var list))
+                        {
+                            list = new List<int>(1);
+                            map[port] = list;
+                        }
+                        if (!list.Contains((int)pid))
+                            list.Add((int)pid);
+                    }
+
+                    rowPtr += rowSize;
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ PortToProcessMapper 全量 TCP 查询失败 (AF={Af})", af);
         }
     }
 

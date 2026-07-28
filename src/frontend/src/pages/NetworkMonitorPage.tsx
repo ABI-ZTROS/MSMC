@@ -23,6 +23,7 @@ import type {
   BridgeRule,
   CommonPortInfo,
   HourlyHistoryResponse,
+  AddBridgeRequest,
 } from '@/types/bridge'
 
 type TabKey = 'ports' | 'common' | 'bridge'
@@ -33,6 +34,7 @@ interface AddBridgeForm {
   connectAddress: string
   connectPort: string
   addFirewall: boolean
+  protocol: string
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -254,6 +256,7 @@ export function NetworkMonitorPage(): JSX.Element {
     connectAddress: '127.0.0.1',
     connectPort: '',
     addFirewall: true,
+    protocol: 'auto',
   })
 
   // 常见端口搜索
@@ -298,16 +301,19 @@ export function NetworkMonitorPage(): JSX.Element {
 
   const handleAddBridge = async () => {
     try {
-      const result = await addBridge({
+      const payload: AddBridgeRequest = {
         listenAddress: form.listenAddress,
         listenPort: parseInt(form.listenPort, 10) || 0,
         connectAddress: form.connectAddress,
         connectPort: parseInt(form.connectPort, 10) || 0,
         addFirewall: form.addFirewall,
-      })
+      }
+      if (form.protocol !== 'auto') {
+        payload.protocol = form.protocol
+      }
+      const result = await addBridge(payload)
       if (result.success) {
-        setForm({ ...form, listenPort: '', connectPort: '' })
-        // 后端 addBridge 成功后已自动 RefreshPorts，直接重新拉取快照即可
+        setForm({ ...form, listenPort: '', connectPort: '', protocol: 'auto' })
         await loadData()
       }
     } catch (err) {
@@ -357,24 +363,20 @@ export function NetworkMonitorPage(): JSX.Element {
       {/* ═══════════════════════════════════════════════════════ */}
       <div className="flex items-center flex-wrap" style={{ gap: 12 }}>
         {/* 统计卡片 */}
-        <div className="md-stat-card" style={{ width: 160 }}>
-          <div className="md-stat-label">总端口数</div>
-          <div className="md-stat-value" style={{ color: 'var(--md-primary-hue-mid)' }}>
-            {status?.totalPorts ?? 0}
-          </div>
-        </div>
-
-        <div className="md-stat-card" style={{ width: 160 }}>
-          <div className="md-stat-label">已占用</div>
+        <div className="md-stat-card" style={{ width: 180 }}>
+          <div className="md-stat-label">已占用端口</div>
           <div className="md-stat-value" style={{ color: 'var(--md-accent-text)' }}>
             {status?.usedPorts ?? 0}
           </div>
         </div>
 
-        <div className="md-stat-card" style={{ width: 160 }}>
-          <div className="md-stat-label">占用率</div>
+        <div className="md-stat-card" style={{ width: 200 }}>
+          <div className="md-stat-label">端口占用</div>
           <div className="md-stat-value" style={{ color: 'var(--md-primary-hue-mid)' }}>
-            {status?.usedPercentage ?? 0}%
+            {status?.usedPorts ?? 0} / {status?.totalPorts ?? 65536}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--md-body-light)', marginTop: 2 }}>
+            理论极限 65536
           </div>
         </div>
 
@@ -643,6 +645,22 @@ export function NetworkMonitorPage(): JSX.Element {
                         <option value="0.0.0.0">0.0.0.0 (全部)</option>
                         <option value="127.0.0.1">127.0.0.1 (本地)</option>
                         <option value="::">:: (IPv6全部)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label style={{ width: 80, fontSize: 12, color: 'var(--md-body-light)' }}>协议类型</label>
+                      <select
+                        className="md-select"
+                        style={{ flex: 1, height: 32 }}
+                        value={form.protocol}
+                        onChange={(e) => setForm({ ...form, protocol: e.target.value })}
+                      >
+                        <option value="auto">自动识别（推荐）</option>
+                        <option value="v4tov4">IPv4 → IPv4</option>
+                        <option value="v6tov6">IPv6 → IPv6</option>
+                        <option value="v4tov6">IPv4 → IPv6</option>
+                        <option value="v6tov4">IPv6 → IPv4</option>
                       </select>
                     </div>
 

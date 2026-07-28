@@ -13,14 +13,16 @@ public class NetworkService
 {
     private readonly PortToProcessMapper _portMapper;
 
-    // P1-001: 缓存 PID→进程名映射，避免逐个调用 Process.GetProcessById
     private Dictionary<int, string>? _pidNameCache;
     private DateTime _pidNameCacheTime;
     private readonly TimeSpan _pidNameCacheInterval = TimeSpan.FromSeconds(10);
     private readonly object _pidCacheLock = new();
 
-    /// <summary>系统+注册端口段上限（0-49151），动态端口段不计入"可占用"分母。</summary>
-    private const int RegisteredPortRangeMax = 49151;
+    /// <summary>TCP/UDP 端口号理论最大值（0-65535，共 65536 个端口）。</summary>
+    private const int MaxPortValue = 65535;
+
+    /// <summary>理论系统承载端口极限 = 65536（0 到 65535 共 65536 个端口）。</summary>
+    private const int TotalPortCapacity = MaxPortValue + 1;
 
     public NetworkService(PortToProcessMapper portMapper)
     {
@@ -31,14 +33,12 @@ public class NetworkService
     {
         try
         {
-            // 同时查询 TCP（IPv4+IPv6）与 UDP（IPv4+IPv6），覆盖 Bedrock(UDP 19132) 等场景
             var portPidMap = _portMapper.GetAllListeningPortToPidMap();
             var pidNames = GetPidNameMap();
             var ports = new List<PortInfo>(portPidMap.Count);
 
             foreach (var ((port, protocol), pids) in portPidMap)
             {
-                // 同端口多 PID 场景（SO_REUSEPORT），取第一个非空 PID 显示
                 var pid = pids.FirstOrDefault(p => p > 0);
                 if (pid == 0) continue;
 
@@ -52,7 +52,6 @@ public class NetworkService
                     LastUpdated = DateTime.Now
                 };
 
-                // 从缓存字典查进程名，O(1)
                 pidNames.TryGetValue(pid, out var name);
                 portInfo.ProcessName = name;
 
@@ -74,10 +73,41 @@ public class NetworkService
     }
 
     /// <summary>
-    /// 获取 PID→进程名映射（带缓存，线程安全）。
-    /// 一次 Process.GetProcesses() 枚举全表构建字典，替代逐个 Process.GetProcessById。
-    /// 缓存 10 秒，降低进程表枚举频率。
+    /// 获取当前所有被占用的端口（TCP 所有状态 + UDP）。
+    /// TCP 包含 LISTEN/ESTABLISHED/TIME_WAIT/CLOSE_WAIT 等全部状态，
+    /// UDP 包含所有绑定的 UDP 端口。
     /// </summary>
+    /// <returns>去重后的端口集合（TCP+UDP 合并去重）</returns>
+    public HashSet<int> GetAllOccupiedPorts()
+    {
+        try
+        {
+            var allTcp = _portMapper.GetAllTcpConnectionsPortToPidMap();
+            var allUdp = _portMapper.GetUdpListeningPortToPidMapMulti();
+
+            var ports = new HashSet<int>();
+            foreach (var kv in allTcp)
+                ports.Add(kv.Key);
+            foreach (var kv in allUdp)
+                ports.Add(kv.Key);
+            return ports;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "获取全部占用端口失败");
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// 获取当前已占用端口数量（TCP 所有状态 + UDP）。
+    /// 用于计算端口占用率，分母为 65536（理论端口极限）。
+    /// </summary>
+    public int GetAllOccupiedPortCount()
+    {
+        return GetAllOccupiedPorts().Count;
+    }
+
     private Dictionary<int, string> GetPidNameMap()
     {
         lock (_pidCacheLock)
@@ -128,10 +158,6 @@ public class NetworkService
         return ports.FirstOrDefault(p => p.Port == port);
     }
 
-    /// <summary>
-    /// 结束占用指定端口的进程。先尝试 CloseMainWindow（优雅停止，触发 Java shutdown hook），
-    /// 3 秒未退出则强杀。
-    /// </summary>
     public bool KillProcessByPort(int port)
     {
         try
@@ -187,16 +213,14 @@ public class NetworkService
         return PortRangeType.Dynamic;
     }
 
-    /// <summary>系统+注册端口段上限（动态端口段不计入"可占用"分母）。</summary>
-    public int GetTotalPortCount() => RegisteredPortRangeMax;
+    /// <summary>理论系统承载端口极限 = 65536。</summary>
+    public int GetTotalPortCount() => TotalPortCapacity;
 
-    public int GetUsedPortCount() => GetAllListeningPorts().Count;
+    /// <summary>当前监听端口数（LISTEN 状态）。</summary>
+    public int GetListeningPortCount() => GetAllListeningPorts().Count;
 
-    public int GetUsedPercentage()
-    {
-        var used = GetUsedPortCount();
-        return (int)((double)used / GetTotalPortCount() * 100);
-    }
+    /// <summary>当前已占用端口数（TCP 所有状态 + UDP）。</summary>
+    public int GetOccupiedPortCount() => GetAllOccupiedPortCount();
 
     public (int System, int Registered, int Dynamic) GetPortDistribution()
     {
@@ -209,27 +233,22 @@ public class NetworkService
     }
 
     /// <summary>
-    /// 一次性获取端口使用情况快照 —— 复用单次端口枚举结果，避免重复枚举
+    /// 一次性获取端口使用情况快照 —— 复用单次端口枚举结果，避免重复枚举。
+    /// 已占用端口 = TCP 所有状态端口 + UDP 端口（去重）。
+    /// 总端口 = 65536（0-65535 理论极限）。
     /// </summary>
-    /// <returns>包含端口列表、使用百分比、端口分布的元组</returns>
-    /// <remarks>
-    /// 原刷新流程分别调用 GetAllListeningPorts / GetUsedPercentage / GetPortDistribution，
-    /// 三者各自独立枚举端口表（GetUsedPercentage 内部再调一次 GetAllListeningPorts），
-    /// 单次刷新枚举 3 次端口表，5 秒周期下显著增加 CPU 开销。
-    /// 本方法仅枚举一次，基于结果计算使用率与分布，将枚举次数从 3 降为 1。
-    /// </remarks>
-    public (List<PortInfo> Ports, int UsedPercentage, (int System, int Registered, int Dynamic) Distribution)
+    public (List<PortInfo> Ports, int OccupiedCount, int TotalCount,
+        (int System, int Registered, int Dynamic) Distribution)
         GetPortSnapshot()
     {
         var ports = GetAllListeningPorts();
-        var used = ports.Count;
-        var total = RegisteredPortRangeMax;
-        var usedPct = (int)((double)used / total * 100);
+        var occupied = GetAllOccupiedPortCount();
+        var total = TotalPortCapacity;
         var distribution = (
             ports.Count(p => p.PortRange == PortRangeType.System),
             ports.Count(p => p.PortRange == PortRangeType.Registered),
             ports.Count(p => p.PortRange == PortRangeType.Dynamic)
         );
-        return (ports, usedPct, distribution);
+        return (ports, occupied, total, distribution);
     }
 }

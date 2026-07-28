@@ -192,6 +192,7 @@ export interface AddBridgeRequest {
   connectAddress: string
   connectPort: number
   addFirewall: boolean
+  protocol?: string
 }
 
 export interface KillProcessRequest {
