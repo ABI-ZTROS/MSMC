@@ -280,6 +280,10 @@ export function DashboardPage(): JSX.Element {
     try {
       const data = await getServerList()
       setServerList(data)
+      // 同步后端的自动检测状态，避免前端状态与后端不同步
+      if (typeof data.isAutoDetectEnabled === 'boolean') {
+        setAutoDetectEnabled(data.isAutoDetectEnabled)
+      }
     } catch (e) {
       console.error('获取服务器列表失败:', e)
     }
@@ -387,8 +391,14 @@ export function DashboardPage(): JSX.Element {
 
   const handleToggleAutoDetect = async () => {
     try {
-      await bridge.invoke('server:toggleAutoDetect')
-      setAutoDetectEnabled(!autoDetectEnabled)
+      const result = await bridge.invoke<{ success: boolean; isEnabled?: boolean }>('server:toggleAutoDetect')
+      // 使用后端返回的实际状态，而非翻转本地状态
+      if (result && typeof result.isEnabled === 'boolean') {
+        setAutoDetectEnabled(result.isEnabled)
+      } else {
+        // 后端未返回状态时，回退到翻转本地状态
+        setAutoDetectEnabled(!autoDetectEnabled)
+      }
     } catch (e) {
       console.error('切换自动检测失败:', e)
     }

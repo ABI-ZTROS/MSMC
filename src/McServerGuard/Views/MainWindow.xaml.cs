@@ -811,7 +811,10 @@ public partial class MainWindow : Window
                     processId = s.ProcessId,
                     serverType = s.ServerType.ToString(),
                     workingDirectory = s.WorkingDirectory,
+                    serverJarPath = s.ServerJarPath,
                     serverJarName = s.ServerJarName,
+                    javaPath = s.JavaPath,
+                    fullCommandLine = s.FullCommandLine,
                     serverPort = s.ServerPort,
                     isPortOpen = s.IsPortOpen,
                     portConflict = s.PortConflict,
@@ -822,6 +825,9 @@ public partial class MainWindow : Window
                     usesAikarFlags = s.UsesAikarFlags,
                     gcType = s.GcType,
                     configFiles = s.ConfigFiles,
+                    networkStatusText = s.NetworkStatusText,
+                    formattedMaxMemory = s.FormattedMaxMemory,
+                    isKnown = false,
                 }).ToList(),
                 known = known.Select(k => new
                 {

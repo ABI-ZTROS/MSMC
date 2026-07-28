@@ -126,6 +126,8 @@ export interface KnownServerInfo {
 export interface ServerListResponse {
   running: ServerInfo[]
   known: KnownServerInfo[]
+  isBusy: boolean
+  isAutoDetectEnabled: boolean
 }
 
 // ─────────────────────────────────────────────────────────────────────
