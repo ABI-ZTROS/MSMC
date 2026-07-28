@@ -491,8 +491,8 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// <remarks>触发运行中服务器与已知服务器的 CollectionView 重新过滤。</remarks>
     partial void OnSearchKeywordChanged(string value)
     {
-        FilteredRunningServers.Refresh();
-        FilteredKnownServers.Refresh();
+        SafeRefreshView(FilteredRunningServers);
+        SafeRefreshView(FilteredKnownServers);
     }
 
     /// <summary>
@@ -1694,13 +1694,96 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// </summary>
     private void LoadKnownServers()
     {
-        KnownServers.Clear();
-        foreach (var server in _appConfigService.GetAllKnownServers())
+        // 加载已知服务器列表：
+        // 避免出现经典 WPF bug：Clear() + foreach Add() 过程中，
+        // ListCollectionView 会同步接收到多次 CollectionChanged 通知、
+        // 内部列表处于中间态时再手动 Refresh() → PrepareLocalArray() 访问
+        // 未完全重建的 InternalList → NullReferenceException。
+        // 修复策略：
+        //   ① 先在内存里构建新列表（不触发任何 CollectionChanged）
+        //   ② 比较新旧集合，若完全相等则什么都不做，避免无意义的 UI 刷新
+        //   ③ 用 DeferRefresh() + Clear 批量 + Add 批量，把多次通知合并为一次
+        //   ④ Refresh() 时必须在 Dispatcher 线程（WPF 所有 CollectionView 操作都要求）
+
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
         {
-            KnownServers.Add(server);
+            dispatcher.Invoke(() => LoadKnownServers(),
+                System.Windows.Threading.DispatcherPriority.DataBind);
+            return;
         }
+
+        var fresh = _appConfigService?.GetAllKnownServers()?.ToList() ?? [];
+
+        // 快速路径：数量和元素都没变 → 跳过
+        if (KnownServers.Count == fresh.Count)
+        {
+            var allEqual = true;
+            for (var i = 0; i < fresh.Count; i++)
+            {
+                if (!ReferenceEquals(KnownServers[i], fresh[i]))
+                {
+                    allEqual = false;
+                    break;
+                }
+            }
+            if (allEqual)
+            {
+                // 数据虽然引用相同，但可能单条记录的 Name/JarPath/Port 等字段被外部修改了
+                // （AppConfigService.UpdateKnownServer 是原地修改）。
+                // 仍然需要刷新 Filter 视图，否则搜索/过滤不会重算。
+                SafeRefreshView(FilteredKnownServers);
+                OnPropertyChanged(nameof(HasKnownServers));
+                return;
+            }
+        }
+
+        // 用 DeferRefresh 告诉 CollectionView：接下来是一组批量修改，
+        // 不要每次 Add 都刷新 UI。using 结束时自动触发一次整合刷新。
+        using (FilteredKnownServers.DeferRefresh())
+        {
+            KnownServers.Clear();
+            foreach (var server in fresh)
+            {
+                // 防御：AppConfigService 内部 JSON 反序列化时若某条损坏，
+                // 可能返回 null 项。ObservableCollection 允许 null，
+                // 但 WPF ListCollectionView.PrepareLocalArray 在某些版本
+                // 处理到 null 项时（尤其是 Sort/Filter 访问属性）会炸 NRE。
+                if (server is null) continue;
+                KnownServers.Add(server);
+            }
+        }
+
         OnPropertyChanged(nameof(HasKnownServers));
-        FilteredKnownServers.Refresh();
+        SafeRefreshView(FilteredKnownServers);
+    }
+
+    /// <summary>
+    /// 安全地刷新 ICollectionView：
+    ///   - 过滤 null / Disposed
+    ///   - 确保在 Dispatcher 线程
+    ///   - 捕获 WPF 内部异常（PrepareLocalArray 等偶发竞态），不让它让进程崩溃
+    /// </summary>
+    private static void SafeRefreshView(ICollectionView? view)
+    {
+        if (view is null) return;
+        try
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.Invoke(view.Refresh,
+                    System.Windows.Threading.DispatcherPriority.DataBind);
+            }
+            else
+            {
+                view.Refresh();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "刷新 CollectionView 失败，忽略本次异常");
+        }
     }
 
     /// <summary>
