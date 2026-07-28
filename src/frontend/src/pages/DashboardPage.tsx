@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { clsx } from 'clsx'
+import { Reveal } from '@/components/ui/Reveal'
 import {
   bridge,
   getServerList,
@@ -808,7 +809,7 @@ export function DashboardPage(): JSX.Element {
                 {detailTab === 'console' && (
                   <div>
                     {/* 服务器控制卡片 */}
-                    <div className="md-card" style={{ padding: 16, marginBottom: 12 }}>
+                    <Reveal direction="up" delay={0} className="md-card md-card-elevated" style={{ padding: 16, marginBottom: 12 }}>
                       <div
                         style={{
                           fontSize: 15,
@@ -871,10 +872,10 @@ export function DashboardPage(): JSX.Element {
                           {operationMessage}
                         </div>
                       )}
-                    </div>
+                    </Reveal>
 
                     {/* 服务器详情卡片 */}
-                    <div className="md-card" style={{ padding: 16, marginBottom: 12 }}>
+                    <Reveal direction="up" delay={80} className="md-card md-card-elevated" style={{ padding: 16, marginBottom: 12 }}>
                       <div
                         style={{
                           fontSize: 15,
@@ -971,10 +972,10 @@ export function DashboardPage(): JSX.Element {
                           {selectedServer.javaPath}
                         </div>
                       </div>
-                    </div>
+                    </Reveal>
 
                     {/* 检测日志卡片 */}
-                    <div className="md-card" style={{ padding: 16 }}>
+                    <Reveal direction="up" delay={160} className="md-card md-card-elevated" style={{ padding: 16 }}>
                       <div
                         style={{
                           fontSize: 15,
@@ -991,7 +992,7 @@ export function DashboardPage(): JSX.Element {
                       >
                         <div style={{ opacity: 0.5 }}>[系统] 暂无检测日志</div>
                       </div>
-                    </div>
+                    </Reveal>
                   </div>
                 )}
 
@@ -999,7 +1000,7 @@ export function DashboardPage(): JSX.Element {
                 {detailTab === 'jvm' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {/* 内存设置卡片 */}
-                    <div className="md-card" style={{ padding: 16 }}>
+                    <Reveal direction="up" delay={0} className="md-card md-card-elevated" style={{ padding: 16 }}>
                       <div
                         style={{
                           fontSize: 13,
@@ -1057,10 +1058,10 @@ export function DashboardPage(): JSX.Element {
                           ⚠️ 服务器运行中无法修改内存设置
                         </div>
                       )}
-                    </div>
+                    </Reveal>
 
                     {/* 快速预设卡片 */}
-                    <div className="md-card" style={{ padding: 16 }}>
+                    <Reveal direction="up" delay={70} className="md-card md-card-elevated" style={{ padding: 16 }}>
                       <div
                         style={{
                           fontSize: 13,
@@ -1097,10 +1098,10 @@ export function DashboardPage(): JSX.Element {
                           ⚡ ZGC 回收器
                         </button>
                       </div>
-                    </div>
+                    </Reveal>
 
                     {/* 已选参数卡片 */}
-                    <div className="md-card" style={{ padding: 16 }}>
+                    <Reveal direction="up" delay={140} className="md-card md-card-elevated" style={{ padding: 16 }}>
                       <div
                         style={{
                           fontSize: 13,
@@ -1184,10 +1185,10 @@ export function DashboardPage(): JSX.Element {
                           })}
                         </div>
                       )}
-                    </div>
+                    </Reveal>
 
                     {/* 可选参数分类卡片 */}
-                    <div className="md-card" style={{ padding: 16 }}>
+                    <Reveal direction="up" delay={210} className="md-card md-card-elevated" style={{ padding: 16 }}>
                       <div
                         style={{
                           fontSize: 13,
@@ -1337,10 +1338,10 @@ export function DashboardPage(): JSX.Element {
                           </div>
                         )}
                       </div>
-                    </div>
+                    </Reveal>
 
                     {/* 自定义参数卡片 */}
-                    <div className="md-card" style={{ padding: 16 }}>
+                    <Reveal direction="up" delay={280} className="md-card md-card-elevated" style={{ padding: 16 }}>
                       <div
                         style={{
                           fontSize: 13,
@@ -1371,7 +1372,7 @@ export function DashboardPage(): JSX.Element {
                           添加
                         </button>
                       </div>
-                    </div>
+                    </Reveal>
 
                     {/* 参数编辑弹窗 */}
                     {editingArg && (

@@ -431,7 +431,7 @@ export function SettingsPage(): JSX.Element {
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* 🎨 外观设置卡片 */}
       {/* ═══════════════════════════════════════════════════════════ */}
-      <div className="md-card p-5 mb-4">
+      <div className="md-card md-card-elevated p-5 mb-4 md-stagger-item" style={{ animationDelay: '0ms' }}>
         <h2
           className="md-section-title"
           style={{ color: 'var(--md-accent-text)', margin: '0 0 12px 0' }}
@@ -748,7 +748,7 @@ export function SettingsPage(): JSX.Element {
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* 🔔 服务器设置卡片 */}
       {/* ═══════════════════════════════════════════════════════════ */}
-      <div className="md-card p-5 mb-4">
+      <div className="md-card md-card-elevated p-5 mb-4 md-stagger-item" style={{ animationDelay: '80ms' }}>
         <h2
           className="md-section-title"
           style={{ color: 'var(--md-accent-text)', margin: '0 0 12px 0' }}
@@ -828,7 +828,7 @@ export function SettingsPage(): JSX.Element {
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* ☕ Java 管理卡片 */}
       {/* ═══════════════════════════════════════════════════════════ */}
-      <div className="md-card p-5 mb-4">
+      <div className="md-card md-card-elevated p-5 mb-4 md-stagger-item" style={{ animationDelay: '160ms' }}>
         <h2
           className="md-section-title"
           style={{ color: 'var(--md-accent-text)', margin: '0 0 4px 0' }}

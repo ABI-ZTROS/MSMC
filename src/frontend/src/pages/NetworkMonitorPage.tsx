@@ -6,6 +6,7 @@ import {
   FaXmark,
 } from 'react-icons/fa6'
 import { GaugeRing } from '@/components/ui/GaugeRing'
+import { Reveal } from '@/components/ui/Reveal'
 import {
   getNetworkStatus,
   getPorts,
@@ -359,18 +360,18 @@ export function NetworkMonitorPage(): JSX.Element {
   return (
     <div className="h-full flex flex-col p-4 md-page-enter" style={{ gap: 12 }}>
       {/* ═══════════════════════════════════════════════════════ */}
-      {/* 顶部仪表盘行 */}
+      {/* 顶部仪表盘行 —— 交错揭示 */}
       {/* ═══════════════════════════════════════════════════════ */}
       <div className="flex items-center flex-wrap" style={{ gap: 12 }}>
         {/* 统计卡片 */}
-        <div className="md-stat-card" style={{ width: 180 }}>
+        <Reveal direction="up" delay={0} className="md-stat-card md-card-elevated" style={{ width: 180 }}>
           <div className="md-stat-label">已占用端口</div>
-          <div className="md-stat-value" style={{ color: 'var(--md-accent-text)' }}>
+          <div className="md-stat-value md-num-enter" style={{ color: 'var(--md-accent-text)' }}>
             {status?.usedPorts ?? 0}
           </div>
-        </div>
+        </Reveal>
 
-        <div className="md-stat-card" style={{ width: 200 }}>
+        <Reveal direction="up" delay={60} className="md-stat-card md-card-elevated" style={{ width: 200 }}>
           <div className="md-stat-label">端口占用</div>
           <div className="md-stat-value" style={{ color: 'var(--md-primary-hue-mid)' }}>
             {status?.usedPorts ?? 0} / {status?.totalPorts ?? 65536}
@@ -378,10 +379,10 @@ export function NetworkMonitorPage(): JSX.Element {
           <div style={{ fontSize: 11, color: 'var(--md-body-light)', marginTop: 2 }}>
             理论极限 65536
           </div>
-        </div>
+        </Reveal>
 
         {/* 上传速度仪表盘 */}
-        <div className="md-card" style={{ padding: 8 }}>
+        <Reveal direction="scale" delay={120} className="md-card md-card-elevated" style={{ padding: 8 }}>
           <div className="flex flex-col items-center">
             <GaugeRing
               value={status?.uploadSpeedMB ?? 0}
@@ -395,10 +396,10 @@ export function NetworkMonitorPage(): JSX.Element {
               {status?.uploadSpeedText ?? '0 B/s'}
             </div>
           </div>
-        </div>
+        </Reveal>
 
         {/* 下载速度仪表盘 */}
-        <div className="md-card" style={{ padding: 8 }}>
+        <Reveal direction="scale" delay={180} className="md-card md-card-elevated" style={{ padding: 8 }}>
           <div className="flex flex-col items-center">
             <GaugeRing
               value={status?.downloadSpeedMB ?? 0}
@@ -412,10 +413,10 @@ export function NetworkMonitorPage(): JSX.Element {
               {status?.downloadSpeedText ?? '0 B/s'}
             </div>
           </div>
-        </div>
+        </Reveal>
 
         {/* 自动刷新指示器 */}
-        <div className="md-card" style={{ padding: '8px 12px' }}>
+        <Reveal direction="fade" delay={240} className="md-card md-card-elevated" style={{ padding: '8px 12px' }}>
           <div className="flex items-center" style={{ gap: 8 }}>
             <FaArrowsRotate
               size={16}
@@ -436,10 +437,10 @@ export function NetworkMonitorPage(): JSX.Element {
               刷新
             </button>
           </div>
-        </div>
+        </Reveal>
 
         {/* 今日流量 */}
-        <div className="md-stat-card" style={{ flex: 1, minWidth: 140 }}>
+        <Reveal direction="up" delay={300} className="md-stat-card md-card-elevated" style={{ flex: 1, minWidth: 140 }}>
           <div className="md-stat-label">今日流量</div>
           <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
             <div>
@@ -455,7 +456,7 @@ export function NetworkMonitorPage(): JSX.Element {
               </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       </div>
 
       {/* ═══════════════════════════════════════════════════════ */}

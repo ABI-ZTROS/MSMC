@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { GaugeRing } from '@/components/ui'
 import { DualLineChart } from '@/components/ui/DualLineChart'
 import { CpuProcessTree } from '@/components/ui/CpuProcessTree'
+import { Reveal } from '@/components/ui/Reveal'
 import {
   bridge,
   getSystemMetrics,
@@ -361,27 +362,23 @@ export function SystemMonitorPage(): JSX.Element {
         )}
       </div>
 
-      {/* ═══ 4 列仪表盘卡片（CPU / 内存 / 磁盘 / 线程） ═══ */}
+      {/* ═══ 4 列仪表盘卡片（CPU / 内存 / 磁盘 / 线程）—— 交错揭示 ═══ */}
       <div className="grid grid-cols-4" style={{ gap: 8, marginBottom: 12 }}>
         {/* CPU 圆环 */}
-        <div
-          className="md-card"
-          style={{ padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
+        <Reveal direction="scale" delay={0} className="md-card md-card-elevated"
+          style={{ padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <GaugeRing value={cpu} label="CPU" size={120} arcThickness={8} />
-        </div>
+        </Reveal>
 
         {/* 内存圆环 + 容量明细 */}
-        <div
-          className="md-card"
+        <Reveal direction="scale" delay={70} className="md-card md-card-elevated"
           style={{
             padding: 8,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-          }}
-        >
+          }}>
           <GaugeRing value={mem} label="内存" size={120} arcThickness={8} />
           <div
             style={{
@@ -394,19 +391,17 @@ export function SystemMonitorPage(): JSX.Element {
           >
             {metrics ? formatCapacityInfo(metrics.usedMemoryBytes, metrics.totalMemoryBytes) : ''}
           </div>
-        </div>
+        </Reveal>
 
         {/* 磁盘圆环 + 容量明细 */}
-        <div
-          className="md-card"
+        <Reveal direction="scale" delay={140} className="md-card md-card-elevated"
           style={{
             padding: 8,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-          }}
-        >
+          }}>
           <GaugeRing value={disk} label="磁盘" size={120} arcThickness={8} />
           <div
             style={{
@@ -419,20 +414,19 @@ export function SystemMonitorPage(): JSX.Element {
           >
             {metrics ? formatCapacityInfo(metrics.diskUsedBytes, metrics.diskTotalBytes) : ''}
           </div>
-        </div>
+        </Reveal>
 
         {/* 线程数：图标 + 大号数字 */}
-        <div
-          className="md-card"
+        <Reveal direction="scale" delay={210} className="md-card md-card-elevated"
           style={{
             padding: 8,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-          }}
-        >
+          }}>
           <div
+            className="md-breathe"
             style={{
               fontSize: 32,
               color: 'var(--md-gauge-green)',
@@ -453,6 +447,8 @@ export function SystemMonitorPage(): JSX.Element {
             线程
           </div>
           <div
+            className="md-num-enter"
+            key={threads}
             style={{
               fontSize: 40,
               fontWeight: 700,
@@ -463,7 +459,7 @@ export function SystemMonitorPage(): JSX.Element {
           >
             {threads}
           </div>
-        </div>
+        </Reveal>
       </div>
 
       {/* ═══ 历史范围选择 ═══ */}

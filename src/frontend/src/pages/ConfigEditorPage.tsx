@@ -27,6 +27,7 @@ import {
   selectConfigServer,
   rescanConfigFiles,
 } from '@/utils/bridge'
+import { Reveal } from '@/components/ui/Reveal'
 import { useToastStore } from '@/stores/toastStore'
 import type {
   AvailableServer,
@@ -469,8 +470,10 @@ export function ConfigEditorPage(): JSX.Element {
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* 📁 左侧：配置文件卡片（服务器选择 + 文件树 + 统计） */}
       {/* ═══════════════════════════════════════════════════════════ */}
-      <div
-        className="md-card flex flex-col flex-shrink-0 overflow-hidden"
+      <Reveal
+        direction="left"
+        delay={0}
+        className="md-card md-card-elevated flex flex-col flex-shrink-0 overflow-hidden"
         style={{ width: 280 }}
       >
         {/* 标题栏（主色背景） */}
@@ -576,14 +579,14 @@ export function ConfigEditorPage(): JSX.Element {
         >
           {configFileCountText}
         </div>
-      </div>
+      </Reveal>
 
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* ✏️ 右侧：编辑区（操作栏 + 配置项分组列表） */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col gap-3 min-w-0">
         {/* 顶部操作栏 */}
-        <div className="md-card p-4 flex flex-col gap-2">
+        <Reveal direction="up" delay={80} className="md-card md-card-elevated p-4 flex flex-col gap-2">
           <div className="flex items-center justify-between gap-3">
             {/* 左侧：当前文件名 + 副标题 */}
             <div className="min-w-0">
@@ -693,7 +696,7 @@ export function ConfigEditorPage(): JSX.Element {
               {saveStatusMessage}
             </div>
           )}
-        </div>
+        </Reveal>
 
         {/* 配置项列表区 */}
         <div className="flex-1 min-h-0 relative">
@@ -739,12 +742,15 @@ export function ConfigEditorPage(): JSX.Element {
           {/* 空状态：尚未选择文件 */}
           {!selectedConfigFile && !showLoading && (
             <div className="h-full flex items-center justify-center">
-              <div
-                className="md-card text-center"
+              <Reveal
+                direction="scale"
+                delay={120}
+                className="md-card md-card-elevated text-center"
                 style={{ padding: '40px 48px' }}
               >
                 <FaFileLines
                   size={72}
+                  className="md-breathe"
                   style={{
                     color: 'var(--md-primary-hue-mid)',
                     opacity: 0.3,
@@ -782,7 +788,7 @@ export function ConfigEditorPage(): JSX.Element {
                   <FaLightbulb size={16} style={{ marginRight: 8 }} />
                   支持 server.properties / YAML / JSON 格式
                 </div>
-              </div>
+              </Reveal>
             </div>
           )}
 
