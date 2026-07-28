@@ -873,7 +873,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     /// 支持格式：.properties、.yml、.yaml、.json、.cfg、.conf、.toml、.ini、.txt。
     /// 自动跳过 mods、world、logs、cache、libraries 等非配置目录与隐藏目录。
     /// </remarks>
-    private async Task ScanDirectoryForConfigFilesAsync(string rootPath)
+    public async Task ScanDirectoryForConfigFilesAsync(string rootPath)
     {
         if (!Directory.Exists(rootPath))
         {

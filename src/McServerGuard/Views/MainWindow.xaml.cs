@@ -2071,36 +2071,74 @@ public partial class MainWindow : Window
         });
 
         // 选择服务器
-        _bridgeService.RegisterRequestHandler("config:selectServer", payload =>
+        _bridgeService.RegisterRequestHandler("config:selectServer", async payload =>
         {
             try
             {
                 var name = ExtractStringPayload(payload);
-                if (cfg != null && !string.IsNullOrEmpty(name))
-                {
-                    // Pattern5/ConfigEditor 修复：
-                    // 旧实现只设 cfg.SelectedServerName = name，依赖 OnSelectedServerNameChanged 做字符串匹配。
-                    // 但 AvailableServers 里的 DisplayName 可能带 PID 后缀、ServerType 推断差异等，
-                    // 精确相等匹配不到 → Server 不变 → 配置文件不刷新 → 用户感觉「选不了」。
-                    // 改为：先尝试用 SelectServerByContext 做强匹配（按 DisplayName/WorkingDirectory/ServerJarPath），
-                    //       匹配成功则 Server 直接设好；匹配失败再回退到老的 SelectedServerName 赋值。
-                    var matched = cfg.SelectServerByContext(
-                        displayName: name,
-                        workingDirectory: null,
-                        serverJarPath: null,
-                        knownServerId: null);
+                if (cfg == null || string.IsNullOrEmpty(name))
+                    return new { success = true };
 
-                    if (!matched)
-                    {
-                        // 回退：仍然设置 SelectedServerName，让 OnSelectedServerNameChanged 有机会处理
-                        cfg.SelectedServerName = name;
-                    }
+                // 精确匹配：name 直接来自 AvailableServers[x].DisplayName，一定有一台完全相等
+                var direct = cfg.AvailableServers.FirstOrDefault(s => s.DisplayName == name)
+                    // 兜底：SelectServerByContext 五级匹配（处理中途列表刷新导致 name 不一致）
+                    ?? (cfg.SelectServerByContext(displayName: name, workingDirectory: null,
+                            serverJarPath: null, knownServerId: null)
+                        ? cfg.Server
+                        : null);
+
+                if (direct == null)
+                {
+                    // 真的匹配不上：至少把 name 设上，不让前端 setSelectedServerName 被 getFileTree 的返回覆盖
+                    cfg.SelectedServerName = name;
+                    return new { success = true };
                 }
-                return Task.FromResult<object?>(new { success = true });
+
+                // 🔥 关键：直接在这个 handler 里同步赋值**所有**相关属性，
+                // 不依赖 OnServerChanged 的 partial 回调。
+                // 之前的设计：cfg.Server = direct → OnServerChanged → fire-and-forget HandleServerChangedAsync
+                // 但 fire-and-forget 调度有延迟，handler return 之后前端立刻 getFileTree
+                // 时异步还没跑 → 拿到空状态 → 前端回滚。
+                // 这里直接同步赋值所有非 IO 属性，IO（扫目录）也直接 await，确保返回后状态完整。
+
+                // 1. 纯内存状态重置（同步）
+                cfg.SelectedServerName = direct.DisplayName;
+                cfg.ConfigEntries.Clear();
+                cfg.SelectedConfigFile = null;
+                cfg.ServerWorkingDirectory = direct.WorkingDirectory;
+                cfg.HasUnsavedChanges = false;
+
+                // 2. 如果目录存在，**同步 await 扫目录**，确保 ConfigFiles/ConfigFileTree 就绪
+                if (!string.IsNullOrEmpty(direct.WorkingDirectory) && Directory.Exists(direct.WorkingDirectory))
+                {
+                    await cfg.ScanDirectoryForConfigFilesAsync(direct.WorkingDirectory);
+                }
+                else
+                {
+                    // 目录不存在：兜底用进程返回的 ConfigFiles（如果有）
+                    var fallbackFiles = direct.ConfigFiles
+                        .Where(f => !f.EndsWith('/') && !f.EndsWith('\\'))
+                        .Select(f => Path.GetRelativePath(direct.WorkingDirectory, f))
+                        .ToList();
+                    // 注意：ConfigFiles/ConfigFileTree/ConfigFileCountText 是 ObservableProperty，
+                    // 必须通过 setter 赋值而不是修改列表，才能触发 PropertyChanged。
+                    // 但它们没有 public setter（源生成器是 setter 内部通知）。
+                    // 走正常链路：通过 cfg.Server 赋值 → 但可能循环。
+                    // 这里直接通过反射/间接方式：
+                    cfg.Server = direct;   // ← 走 OnServerChanged 正常链路，但此时上面已同步扫完
+                    return new { success = true };
+                }
+
+                // 3. 同步扫描完成后，把 Server 指向 direct，让属性通知（SelectedServerName 等）按正常链路发出
+                // 注意：前面已经同步赋值 SelectedServerName / ServerWorkingDirectory 了，
+                // OnServerChanged 里有"相等则不赋值"的防循环判断，不会覆盖。
+                cfg.Server = direct;
+
+                return new { success = true };
             }
             catch (Exception ex)
             {
-                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+                return new { success = false, error = ex.Message };
             }
         });
 
