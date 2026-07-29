@@ -185,10 +185,13 @@ public sealed class ConfigDescriptorRegistry
     /// <param name="configFileName">配置文件名称（可包含路径）</param>
     /// <returns>匹配的配置描述符；未找到则返回 null</returns>
     /// <remarks>
-    /// 采用三级匹配策略：
+    /// 采用四级匹配策略：
     /// 1. 精确匹配：使用 (configFileName, key) 复合键进行精确查找
     /// 2. 纯文件名匹配：去除目录前缀后进行匹配（如 config/paper-global.yml → paper-global.yml）
     /// 3. 后缀匹配：针对 YAML 压平后的层级键，用注册键作为后缀进行模糊匹配
+    ///    （例：解析键 "world-settings.default.mob-spawn-range" 匹配注册键 "mob-spawn-range"）
+    /// 4. 叶键匹配：提取注册键的最后一段与解析键比较，处理 YAML 扁平化丢失父级前缀的场景
+    ///    （例：解析键 "allow-end" 匹配注册键 "settings.allow-end"）
     /// </remarks>
     public ServerConfigDescriptor? GetDescriptor(string key, string configFileName)
     {
@@ -222,6 +225,23 @@ public sealed class ConfigDescriptorRegistry
             {
                 return kvp.Value;
             }
+        }
+
+        // 第四级：叶键匹配 —— 处理 YAML 扁平化丢失父级前缀的场景
+        // 解析键 "allow-end" 可匹配注册键 "settings.allow-end"（叶键相同即可）
+        foreach (var kvp in _descriptors)
+        {
+            if (!kvp.Key.ConfigFileName.Equals(configFileName, StringComparison.OrdinalIgnoreCase) &&
+                !kvp.Key.ConfigFileName.Equals(pureFileName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var registeredKey = kvp.Key.Key;
+            var registeredLeaf = registeredKey.Contains('.')
+                ? registeredKey[(registeredKey.LastIndexOf('.') + 1)..]
+                : registeredKey;
+
+            if (key.Equals(registeredLeaf, StringComparison.OrdinalIgnoreCase))
+                return kvp.Value;
         }
 
         return null;
