@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   FaFolderOpen,
   FaFolder,
@@ -14,6 +14,8 @@ import {
   FaCircleExclamation,
   FaPowerOff,
   FaTriangleExclamation,
+  FaMagnifyingGlass,
+  FaXmark,
 } from 'react-icons/fa6'
 import {
   getConfigFileTree,
@@ -251,6 +253,70 @@ export function ConfigEditorPage(): JSX.Element {
   const [showSaveErrorModal, setShowSaveErrorModal] = useState(false)
   const [saveErrorInfo, setSaveErrorInfo] = useState<{ type: string; detail: string } | null>(null)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
+
+  // ── 配置项查找功能：实时过滤显示匹配的配置项 ──
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // 当搜索关键词改变时，自动展开所有分组以显示匹配项
+  useEffect(() => {
+    if (!searchQuery.trim()) return
+    // 搜索时展开所有分组，让匹配项可见
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      for (const g of configGroups) {
+        if (g.key !== '__ERROR__') next.add(g.key)
+      }
+      return next
+    })
+  }, [searchQuery, configGroups])
+
+  // 过滤后的配置组：按搜索关键词匹配 key/displayName/description
+  const filteredConfigGroups = useMemo(() => {
+    if (!searchQuery.trim()) return configGroups
+    const q = searchQuery.trim().toLowerCase()
+    return configGroups
+      .map((g) => ({
+        ...g,
+        items: g.items.filter((e) => {
+          if (e.key === '__ERROR__') return true // 错误条目始终显示
+          return (
+            e.key.toLowerCase().includes(q) ||
+            (e.displayName || '').toLowerCase().includes(q) ||
+            (e.friendlyDisplayName || '').toLowerCase().includes(q) ||
+            (e.description || '').toLowerCase().includes(q)
+          )
+        }),
+      }))
+      .filter((g) => g.items.length > 0)
+  }, [configGroups, searchQuery])
+
+  // 统计匹配数量
+  const searchMatchCount = useMemo(() => {
+    if (!searchQuery.trim()) return 0
+    return filteredConfigGroups.reduce((sum, g) => sum + g.items.length, 0)
+  }, [filteredConfigGroups, searchQuery])
+
+  // Ctrl+F 快捷键聚焦搜索框
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        const active = document.activeElement
+        // 如果焦点已经在输入框中，不拦截
+        if (active && active.tagName === 'INPUT') return
+        e.preventDefault()
+        searchInputRef.current?.focus()
+        searchInputRef.current?.select()
+      }
+      if (e.key === 'Escape' && isSearchFocused) {
+        setSearchQuery('')
+        searchInputRef.current?.blur()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isSearchFocused])
 
   // ── 修复：loadFileTree 拆成"获取数据"和"可选地同步 selectedServerName"两步，
   //    后端返回的 selectedServerName 只作为兜底，绝不覆盖本地已设值（除非本地是空）。
@@ -932,13 +998,94 @@ export function ConfigEditorPage(): JSX.Element {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {configGroups
+                  {/* ── 查找框 ── */}
+                  <div className="sticky top-0 z-10 pb-2" style={{ backgroundColor: 'var(--md-background)' }}>
+                    <div
+                      className="flex items-center gap-2 rounded-lg border px-3 py-1.5"
+                      style={{
+                        borderColor: isSearchFocused
+                          ? 'var(--md-primary-hue-mid)'
+                          : 'var(--md-subtle-border)',
+                        backgroundColor: 'var(--md-card-background)',
+                        transition: 'border-color 150ms var(--md-ease-standard)',
+                      }}
+                    >
+                      <FaMagnifyingGlass
+                        size={13}
+                        style={{
+                          color: isSearchFocused
+                            ? 'var(--md-primary-hue-mid)'
+                            : 'var(--md-body-lighter)',
+                          flexShrink: 0,
+                        }}
+                      />
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        className="flex-1 bg-transparent border-none outline-none"
+                        style={{
+                          fontSize: 'var(--md-font-size-base)',
+                          color: 'var(--md-body)',
+                          height: 28,
+                        }}
+                        placeholder="查找配置项（支持中英文、键名、描述）Ctrl+F"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onFocus={() => setIsSearchFocused(true)}
+                        onBlur={() => setIsSearchFocused(false)}
+                      />
+                      {searchQuery && (
+                        <>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: 'var(--md-body-lighter)',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {searchMatchCount} 项
+                          </span>
+                          <button
+                            onClick={() => {
+                              setSearchQuery('')
+                              searchInputRef.current?.focus()
+                            }}
+                            className="border-none rounded cursor-pointer flex items-center justify-center"
+                            style={{
+                              width: 20,
+                              height: 20,
+                              backgroundColor: 'var(--md-subtle-border)',
+                              color: 'var(--md-body-light)',
+                              flexShrink: 0,
+                            }}
+                            title="清除"
+                          >
+                            <FaXmark size={10} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {searchQuery && searchMatchCount === 0 && (
+                      <div
+                        className="mt-1.5 text-center"
+                        style={{
+                          fontSize: 12,
+                          color: 'var(--md-body-lighter)',
+                          padding: '4px 0',
+                        }}
+                      >
+                        未找到匹配的配置项
+                      </div>
+                    )}
+                  </div>
+
+                  {filteredConfigGroups
                     .filter((g) => g.key !== '__ERROR__')
                     .map((group) => {
                       // 过滤掉本组内的 __ERROR__ 条目（已经在顶部 Alert 渲染）
                       const items = group.items.filter((e) => e.key !== '__ERROR__')
                       if (items.length === 0) return null
-                      const isGroupExpanded = expandedGroups.has(group.key)
+                      const isGroupExpanded = expandedGroups.has(group.key) || !!searchQuery.trim()
                       return (
                         <div key={group.key} className="md-expander">
                           {/* 分组标题 */}
