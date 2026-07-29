@@ -117,7 +117,10 @@ public partial class StartupWindow : Window
 
             // 【和主窗口一致】优先 file:// 直读（Folder / ZipExtract 有真实磁盘路径时），
             // 完全绕开虚拟主机名 + 中文路径 + 杀毒拦截 30 秒超时死锁链。
-            Uri targetUri;
+            // 【修复 CS0165】声明时立刻赋兜底合法值（http 虚拟主机 URL）。
+            // 因为当 basePath!=null 但 basePath\startup.html 恰好不存在时，之前逻辑里 targetUri 没进任何赋值分支，
+            // 编译器静态分析就会报「使用了未赋值的局部变量 targetUri」。先赋兜底值 100% 过所有代码路径分析。
+            Uri targetUri = new Uri($"http://{virtualHost}/startup.html");
             bool useVirtualHost = true;
             string? directStartupPath = null;
             if (basePath != null)
