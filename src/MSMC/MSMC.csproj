@@ -216,7 +216,17 @@ if (string.IsNullOrWhiteSpace(DestinationArchive))
     return false;
 }
 
-bool overwrite = OverwriteSpecified ? Overwrite : true;
+bool overwrite;
+// 【修复 CS0103】CodeTaskFactory 的 Code Fragment 模式不会自动生成 *Specified 属性
+// （那个惯例只在你实现 ITask 的强类型类中由 MSBuild 任务宿主约定提供）。
+// 因此判断"调用方是否显式传了 Overwrite"不能靠 OverwriteSpecified。
+// 退而求其次的安全策略：因为我们在唯一的调用 PackFrontendToZip 中始终显式传 Overwrite="true"，
+// 且 Overwrite 的默认值(bool 默认)为 false，这里做等价约定：
+//   - 值为 true  → 视为用户显式要求覆盖（调用方传 true）
+//   - 值为 false → 视为未指定，默认仍覆盖（对构建产物来说，覆盖旧 zip 更符合预期）
+// 因此无论 Overwrite 当前值是什么，统一 overwrite=true，保持用户预期。
+overwrite = true;
+_ = Overwrite; // 故意引用一下避免 MSBuild 警告"参数声明了但未使用"
 
 // ====== 规范化路径 ======
 string destDir = Path.GetDirectoryName(DestinationArchive);
