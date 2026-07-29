@@ -41,6 +41,17 @@ public class UserAgreementService : IUserAgreementService
     /// <inheritdoc />
     public string? AgreedVersion { get; private set; }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// 该版本号为本软件当前生效的协议版本。每当协议条款发生重大变更
+    /// （如新增地域限制、强化版权条款等），应递增此版本号，使老用户
+    /// 在下次启动时因版本不一致而触发重新同意流程，确保新条款对其生效。
+    /// </remarks>
+    public string CurrentAgreementVersion => "3.0.0";
+
+    /// <inheritdoc />
+    public bool RequiresReagreement => !IsAgreed || AgreedVersion != CurrentAgreementVersion;
+
     /// <summary>
     /// 配置文件完整路径
     /// </summary>

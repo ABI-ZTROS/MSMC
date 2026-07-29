@@ -29,6 +29,20 @@ public interface IUserAgreementService
     string? AgreedVersion { get; }
 
     /// <summary>
+    /// 当前协议版本号（随协议内容更新而递增，作为是否需要重新同意的判定基准）
+    /// </summary>
+    string CurrentAgreementVersion { get; }
+
+    /// <summary>
+    /// 是否需要用户重新同意协议
+    /// </summary>
+    /// <remarks>
+    /// 当用户从未同意、或已同意版本与当前版本不一致时返回 true，
+    /// 用于在协议内容发生重大变更后强制用户重新阅读并同意新条款。
+    /// </remarks>
+    bool RequiresReagreement { get; }
+
+    /// <summary>
     /// 标记用户已同意协议
     /// </summary>
     /// <param name="version">协议版本号</param>

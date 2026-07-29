@@ -36,8 +36,18 @@ public partial class UserAgreementWindow : Window
     /// <summary>指示用户是否已滚动至协议底部</summary>
     private bool _hasScrolledToBottom = false;
 
-    /// <summary>当前协议版本号</summary>
-    private const string AgreementVersion = "2.0.0";
+    /// <summary>上次滚动垂直偏移量，用于计算并限制单次滚动幅度</summary>
+    private double _lastVerticalOffset;
+
+    /// <summary>单次滚动允许的最大垂直偏移增量（像素），用于限制拖动速度</summary>
+    /// <remarks>
+    /// 鼠标滚轮与拖动滑块均会触发 ScrollChanged；将每次增量钳制到该阈值以下，
+    /// 可使快速拖动被切分为小步前进，强制用户放慢阅读节奏。
+    /// </remarks>
+    private const double MaxScrollDelta = 28;
+
+    /// <summary>当前协议版本号（统一引用服务层的单一事实来源，避免多处维护不同步）</summary>
+    private string AgreementVersion => _userAgreementService.CurrentAgreementVersion;
 
     /// <summary>视觉警示动画计时器，用于驱动窗口位置微扰动效果</summary>
     private readonly DispatcherTimer _shakeTimer;
@@ -137,6 +147,7 @@ public partial class UserAgreementWindow : Window
         if (scrollViewer != null)
         {
             scrollViewer.ScrollChanged += AgreementScrollViewer_ScrollChanged;
+            _lastVerticalOffset = scrollViewer.VerticalOffset;
         }
     }
 
@@ -202,6 +213,27 @@ public partial class UserAgreementWindow : Window
     {
         if (sender is System.Windows.Controls.ScrollViewer sv)
         {
+            // 限制滚动条拖动速度：将单次滚动幅度钳制到 MaxScrollDelta 以下。
+            // 快速拖动滑块或猛滚滚轮时，每次 ScrollChanged 最多前进 28px，
+            // 被迫以小步前进，从而强制用户放慢阅读节奏。
+            var delta = sv.VerticalOffset - _lastVerticalOffset;
+            if (delta > MaxScrollDelta)
+            {
+                var clamped = _lastVerticalOffset + MaxScrollDelta;
+                sv.ScrollToVerticalOffset(clamped);
+                _lastVerticalOffset = clamped;
+            }
+            else if (delta < -MaxScrollDelta)
+            {
+                var clamped = _lastVerticalOffset - MaxScrollDelta;
+                sv.ScrollToVerticalOffset(clamped);
+                _lastVerticalOffset = clamped;
+            }
+            else
+            {
+                _lastVerticalOffset = sv.VerticalOffset;
+            }
+
             if (sv.VerticalOffset >= sv.ScrollableHeight - 1)
             {
                 _hasScrolledToBottom = true;

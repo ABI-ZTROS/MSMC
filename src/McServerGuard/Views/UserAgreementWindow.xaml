@@ -92,7 +92,7 @@
                            Margin="0,10,0,0"
                            FontWeight="SemiBold" />
                 <TextBlock x:Name="ScrollHintText"
-                           Text="请滚动至协议最底部"
+                           Text="请滚动至协议最底部（拖动速度已被限制，请耐心阅读）"
                            FontSize="11"
                            Foreground="{DynamicResource WarningRedLightBrush}"
                            Opacity="0.8"
@@ -108,15 +108,24 @@
                       Background="{DynamicResource WarningRedBackgroundBrush}">
             <StackPanel>
 
-                <!-- 前言 -->
-                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="一、协议前言" />
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- 一、协议前言与术语定义 -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="一、协议前言与术语定义" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    欢迎使用 MSMC（Minecraft Server Management Console，以下简称"本软件"）。在使用本软件前，请您仔细阅读以下全部条款。
-                    一旦您点击"同意"按钮，即表示您已充分阅读、理解并接受本协议的全部内容。
-                    如果您不同意本协议的任何条款，请不要使用本软件。
+                    欢迎使用 MSMC（Minecraft Server Management Console，以下简称"本软件"）。本协议为软件开发者（以下简称"甲方"）与您（以下简称"乙方"或"用户"）之间就本软件的下载、安装、复制、使用、运行及衍生行为所订立的具有法律约束力的最终用户许可协议（End-User License Agreement，简称"EULA"）。
                 </TextBlock>
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    本软件依据中华人民共和国相关法律法规开发，所有用户均需遵守中国法律、法规及相关司法解释的规定。
+                    乙方在下载、安装、运行本软件或以任何方式使用本软件之任何功能前，应当完整阅读本协议全部条款。乙方点击"同意并继续"按钮、或实际安装、运行、使用本软件，均视为乙方已充分阅读、理解并毫无保留地接受本协议全部内容，本协议即对乙方发生法律效力。
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    若乙方不同意本协议之任何条款，应当立即停止下载、安装、使用本软件，并删除已复制之本软件及其全部副本。乙方继续使用本软件即构成对本协议的持续确认与接受。
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本软件依据中华人民共和国相关法律法规开发、发布与运营，所有用户均须遵守中华人民共和国法律、行政法规、地方性法规、部门规章及司法解释的规定。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国民法典》第四百九十一条（电子合同成立）、《中华人民共和国著作权法》第十条（著作权内容）；本协议所引法条名称与条号仅作指引，最终以中华人民共和国现行有效官方文本为准。
                 </TextBlock>
 
                 <Border Style="{StaticResource WarningBoxStyle}">
@@ -125,12 +134,12 @@
                                    FontSize="14"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource WarningRedAccentBrush}" />
-                        <TextBlock Text="尽管本软件的源代码在 GitHub 上公开可见，但这并不意味着本软件遵循任何开源协议。"
+                        <TextBlock Text="尽管本软件的源代码在 GitHub 等平台公开可见，但这绝不意味着本软件遵循任何开源协议。"
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextBrush}"
                                    Margin="0,6,0,0"
                                    TextWrapping="Wrap" />
-                        <TextBlock Text="源代码公开仅用于学习交流和透明度展示，您不因此获得任何开源许可下的权利。"
+                        <TextBlock Text="源代码公开仅用于学习交流与透明度展示，乙方不因此获得任何开源许可下的复制、修改、分发或再许可权利。"
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="0,2,0,0"
@@ -138,119 +147,221 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 知识产权声明 -->
-                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="二、知识产权声明" />
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- 二、著作权与知识产权声明（强化） -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="二、著作权与知识产权声明" />
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.1 软件著作权" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.1 软件著作权归属" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    本软件的所有版权、专利权、商标权、商业秘密及其他知识产权，均归软件开发者所有。
-                    受《中华人民共和国著作权法》第三条第（八）项保护，计算机软件属于著作权法所称的作品。
+                    本软件（包括但不限于源代码、目标代码、可执行程序、用户界面、交互设计、图标、图形、文案、配置结构、数据库结构及配套文档）的全部著作权、专利权、商标权、商业秘密及其他一切知识产权，均完整、排他地归属于甲方所有。计算机软件作为著作权法所称作品之一，受法律保护。
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    甲方依据本协议授予乙方的，仅为有限的、可撤销的、非独占的、不可再许可的、非商业性的本软件使用许可。乙方所获得的仅是本软件之"使用权"，而非所有权，本软件之全部权利始终保留于甲方。
                 </TextBlock>
                 <TextBlock Style="{StaticResource LawRefStyle}">
-                    法律依据：《中华人民共和国著作权法》第三条、第十条、第五十三条
+                    法律依据：《中华人民共和国著作权法》第三条第（八）项、第十条、第十一条、第五十三条；《计算机软件保护条例》第二条、第八条、第九条。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.2 开源状态特别说明" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.2 非开源状态特别声明" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    本软件的源代码虽在 GitHub 等平台上公开展示，但
+                    本软件的源代码虽在 GitHub 等平台公开展示，但
                     <Bold Foreground="{DynamicResource WarningRedAccentBrush}">本软件不是开源软件</Bold>
-                    ，不遵循任何开源协议（包括但不限于 MIT、GPL、Apache、BSD 等）。
-                    源代码的公开仅出于技术交流、学习研究和透明度展示之目的，并不构成对任何权利的放弃或许可。
+                    ，不遵循、不适用任何开源协议（包括但不限于 MIT、GPL、LGPL、AGPL、Apache、BSD、Mozilla、Unlicense 等）。源代码的公开仅出于技术交流、学习研究与透明度展示之目的，并不构成对任何知识产权的放弃、许可或让渡。
                 </TextBlock>
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    您无权以任何方式使用、复制、修改、合并、发布、分发、再许可或销售本软件的副本，除非获得软件开发者的明确书面授权。
-                    任何未经授权的使用均构成对著作权的侵犯，开发者保留追究法律责任的权利。
+                    乙方无权以任何方式、为任何目的，复制、修改、改编、翻译、合并、发布、发行、分发、再许可、出售、出租、出借、逆向传播或以其他方式利用本软件之全部或部分源代码、目标代码或衍生作品，但本协议明确许可的范围内为个人学习目的查阅源代码除外。任何超出本协议许可范围的使用，均构成对甲方著作权的侵犯。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.3 用户使用限制" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.3 商业秘密与技术信息保护" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    用户不得实施下列行为：
+                    本软件所包含的算法、架构设计、数据结构、接口设计、性能优化策略、配置解析逻辑及其他未以源代码形式直接体现的技术信息，均构成甲方的商业秘密与未公开技术信息。乙方负有保密义务，不得以任何方式泄露、披露、转让或为第三方利益使用上述信息。
                 </TextBlock>
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    （一）未经授权复制、发行、出租、展览、表演、放映、广播、信息网络传播本软件；
-                </TextBlock>
-                <TextBlock Style="{StaticResource ArticleStyle}">
-                    （二）对本软件进行反向工程、反编译、反汇编或者以其他方式尝试发现源代码；
-                </TextBlock>
-                <TextBlock Style="{StaticResource ArticleStyle}">
-                    （三）故意避开或者破坏权利人为保护著作权而采取的技术措施；
-                </TextBlock>
-                <TextBlock Style="{StaticResource ArticleStyle}">
-                    （四）故意删除或者改变本软件的权利管理电子信息。
+                    乙方亦不得将本软件用于竞品分析、反向开发、技术规避或其他可能损害甲方竞争优势之目的。
                 </TextBlock>
                 <TextBlock Style="{StaticResource LawRefStyle}">
-                    法律依据：《中华人民共和国著作权法》第四十九条、第五十三条
+                    法律依据：《中华人民共和国反不正当竞争法》第九条（商业秘密保护）；《中华人民共和国民法典》第五百零一条（缔约保密义务）。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.4 禁止盗版与二改收费" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.4 反向工程、反编译与技术措施禁止" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    除法律另有明确规定外，乙方不得对本软件实施下列行为：
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （一）进行反向工程、反编译、反汇编，或以其他任何方式尝试还原、发现本软件的源代码、内部逻辑或技术原理；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （二）故意避开、破坏、绕过甲方为保护著作权而采取的技术措施（包括但不限于授权校验、完整性校验、反调试机制等）；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （三）故意删除、篡改、遮挡本软件的权利管理电子信息、版权声明、作者标识、版本标识或其他权属标记；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （四）对本软件进行二次开发、修改、派生（即"二改"），或将其嵌入、集成、打包至其他软件、产品或服务中。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国著作权法》第四十九条（技术措施保护）、第五十条（权利管理电子信息保护）、第五十三条；《计算机软件保护条例》第二十四条。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.5 第三方资源" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本软件可能使用的第三方库、组件、图标、字体、素材等资源，其著作权及其他知识产权归各自权利人所有。乙方在使用本软件时，须同时遵守相关第三方许可协议的规定。本协议不授予乙方对任何第三方资源的权利。
+                </TextBlock>
+
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- 三、软件用途与适用地点（新增） -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="三、软件用途与适用地点" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="3.1 软件用途限定" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本软件的用途严格限定为：供乙方在中华人民共和国境内（本协议所指"中华人民共和国境内"特指中国大陆地区，不含香港特别行政区、澳门特别行政区及台湾地区，下同）为管理其合法所有或已获合法授权的 Minecraft 游戏服务器，进行非商业性的本地服务器运维、监控与配置管理操作。
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    乙方不得将本软件用于下列用途：
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （一）任何以营利为目的的商业用途，包括但不限于售卖、收费下载、会员制获取、付费订阅、植入广告、捆绑销售、作为收费服务或产品的组成部分；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （二）对他人服务器进行未授权的远程管理、监控、入侵或控制；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （三）为他人提供本软件的托管、租赁、SaaS 化或类似的商业化服务；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （四）将本软件用于任何违反中华人民共和国法律法规或公序良俗的用途。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="3.2 适用地域限制（仅限中国大陆）" />
                 <Border Style="{StaticResource WarningBoxStyle}">
                     <StackPanel>
-                        <TextBlock Text="🚫 作者严正声明：对盗版和二改收费深恶痛绝"
+                        <TextBlock Text="🌍 地域限制：仅限中国大陆地区使用"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource WarningRedAccentBrush}" />
+                        <TextBlock Text="本软件及其许可、服务、技术支持，仅面向中华人民共和国大陆地区用户提供与使用。"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource WarningRedTextBrush}"
+                                   Margin="0,6,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="本协议明确排除香港特别行政区、澳门特别行政区及台湾地区（以下统称"港澳台地区"）的适用。港澳台地区用户及身处港澳台地区的用户，未经甲方事先书面同意，不得下载、安装、使用本软件，亦不得以任何方式获取本软件之服务。"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource WarningRedTextMildBrush}"
+                                   Margin="0,4,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="乙方声明并保证：乙方为中华人民共和国大陆地区居民，且在使用本软件时身处中国大陆境内。若乙方违反上述地域限制，由乙方自行承担全部法律责任与不利后果，甲方有权立即终止许可并追究责任。"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource WarningRedTextMildBrush}"
+                                   Margin="0,4,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本协议之订立、效力、解释、履行、争议解决及侵权责任，均仅适用中华人民共和国大陆地区法律。本协议项下之任何许可、授权与服务，均不构成对港澳台地区及境外任何法域的开放或要约。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国涉外民事关系法律适用法》第三条、第四十一条；《中华人民共和国民法典》第四百六十七条。港澳台地区法律问题非本协议调整范围，相关问题请咨询当地执业律师。
+                </TextBlock>
+
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- 四、用户使用限制与禁止行为 -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="四、用户使用限制与禁止行为" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="4.1 禁止盗版与二改收费" />
+                <Border Style="{StaticResource WarningBoxStyle}">
+                    <StackPanel>
+                        <TextBlock Text="🚫 作者严正声明：对盗版和二改收费零容忍"
                                    FontSize="13"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource WarningRedHighlightBrush}" />
-                        <TextBlock Text="以下行为均属于严重侵权，必将追究到底："
+                        <TextBlock Text="以下行为均属严重侵权，必将追究到底："
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextBrush}"
                                    Margin="0,6,0,0" />
-                        <TextBlock Text="• 将本软件以任何形式进行售卖、收费下载、会员制获取等牟利行为"
+                        <TextBlock Text="• 将本软件以任何形式进行售卖、收费下载、会员制获取等牟利行为；"
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="12,4,0,0" />
-                        <TextBlock Text="• 对本软件进行修改、二次开发（二改）后，以任何形式收费或牟利"
+                        <TextBlock Text="• 对本软件进行修改、二次开发（二改）后，以任何形式收费或牟利；"
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="12,2,0,0" />
-                        <TextBlock Text="• 将本软件打包进任何收费产品、服务或套餐中"
+                        <TextBlock Text="• 将本软件打包进任何收费产品、服务或套餐中；"
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="12,2,0,0" />
-                        <TextBlock Text="• 移除、修改或遮挡本软件的版权声明、作者信息、软件标识"
+                        <TextBlock Text="• 移除、修改或遮挡本软件的版权声明、作者信息、软件标识；"
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="12,2,0,0" />
-                        <TextBlock Text="• 谎称自己是本软件的作者或开发者，进行任何形式的欺诈"
+                        <TextBlock Text="• 谎称自己是本软件的作者或开发者，进行任何形式的欺诈；"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource WarningRedTextMildBrush}"
+                                   Margin="12,2,0,0" />
+                        <TextBlock Text="• 在港澳台地区及境外分发、传播或提供本软件下载。"
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="12,2,0,0" />
                     </StackPanel>
                 </Border>
                 <TextBlock Style="{StaticResource ArticleStyle}" Margin="12,8,0,4">
-                    作者对上述行为持零容忍态度。一经发现，将立即采取包括但不限于以下措施：
+                    甲方对上述行为持零容忍态度。一经发现，将立即采取包括但不限于以下措施：
                 </TextBlock>
                 <TextBlock Style="{StaticResource ArticleStyle}">
                     （一）公开曝光侵权者的身份信息和侵权行为；
                 </TextBlock>
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    （二）向相关平台（GitHub、应用商店、社交平台等）投诉举报，要求下架处理；
+                    （二）向相关平台（GitHub、应用商店、社交平台、托管平台等）投诉举报，要求下架处理；
                 </TextBlock>
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    （三）通过法律途径追究侵权者的民事责任，要求赔偿损失；
+                    （三）通过法律途径追究侵权者的民事责任，要求停止侵权、消除影响、赔礼道歉并赔偿损失（含合理维权开支）；
                 </TextBlock>
                 <TextBlock Style="{StaticResource ArticleStyle}">
                     （四）侵权情节严重、涉嫌犯罪的，将向公安机关报案，追究刑事责任。
                 </TextBlock>
-
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="2.5 第三方资源" />
-                <TextBlock Style="{StaticResource ArticleStyle}">
-                    本软件可能使用的第三方库、图标、字体等资源，其著作权归各自权利人所有，
-                    用户使用时须同时遵守相关许可协议的规定。
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国著作权法》第五十三条、第五十四条（赔偿数额）；《计算机软件保护条例》第二十四条；《中华人民共和国刑法》第二百一十七条。
                 </TextBlock>
 
-                <!-- 网络安全 -->
-                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="三、网络安全与合规" />
-
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="3.1 遵守网络安全法" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="4.2 其他禁止行为" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    用户使用本软件应当遵守《中华人民共和国网络安全法》及相关法规，不得利用本软件从事任何危害网络安全的活动。
+                    乙方不得实施下列行为：
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （一）未经授权复制、发行、出租、展览、表演、放映、广播、信息网络传播本软件；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （二）故意避开或者破坏权利人为保护著作权而采取的技术措施；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （三）故意删除或者改变本软件的权利管理电子信息；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （四）将本软件转让、出借、出租给第三方使用；
+                </TextBlock>
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    （五）利用本软件从事任何危害国家安全、社会公共利益或他人合法权益的活动。
+                </TextBlock>
+
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- 五、网络安全与合规 -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="五、网络安全与合规" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="5.1 遵守网络安全法" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    乙方使用本软件应当遵守《中华人民共和国网络安全法》《中华人民共和国数据安全法》《中华人民共和国个人信息保护法》及相关法规，不得利用本软件从事任何危害网络安全的活动。
                 </TextBlock>
                 <TextBlock Style="{StaticResource LawRefStyle}">
-                    法律依据：《中华人民共和国网络安全法》第十二条、第二十七条
+                    法律依据：《中华人民共和国网络安全法》第十二条、第二十七条；《中华人民共和国数据安全法》《中华人民共和国个人信息保护法》相关规定。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="3.2 禁止行为" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="5.2 禁止的网络安全行为" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    用户不得利用本软件实施下列行为：
+                    乙方不得利用本软件实施下列行为：
                 </TextBlock>
                 <TextBlock Style="{StaticResource ArticleStyle}">
                     （一）非法侵入他人计算机信息系统，窃取、非法获取他人数据；
@@ -259,7 +370,7 @@
                     （二）提供专门用于侵入、非法控制计算机信息系统的程序、工具；
                 </TextBlock>
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    （三）从事危害网络安全的活动，或者为他人从事危害网络安全的活动提供技术支持、广告推广、支付结算等帮助；
+                    （三）从事危害网络安全的活动，或为他人从事危害网络安全的活动提供技术支持、广告推广、支付结算等帮助；
                 </TextBlock>
                 <TextBlock Style="{StaticResource ArticleStyle}">
                     （四）传播病毒、木马、蠕虫、恶意代码等破坏性程序；
@@ -271,153 +382,149 @@
                     （六）窃取、非法买卖、非法提供公民个人信息。
                 </TextBlock>
                 <TextBlock Style="{StaticResource LawRefStyle}">
-                    法律依据：《中华人民共和国网络安全法》第二十七条、第六十三条、第六十四条；《中华人民共和国刑法》第二百八十五条、第二百八十六条
+                    法律依据：《中华人民共和国网络安全法》第二十七条、第六十三条、第六十四条；《中华人民共和国刑法》第二百八十五条、第二百八十六条。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="3.3 网络运营者义务提示" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="5.3 网络运营者义务提示" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    本软件开发者作为网络服务提供者，将依法履行网络安全保护义务，采取技术措施和其他必要措施，
-                    保障网络安全、稳定运行，有效应对网络安全事件，防范网络违法犯罪活动。
+                    甲方作为网络服务提供者，将依法履行网络安全保护义务，采取技术措施和其他必要措施，保障网络安全、稳定运行，有效应对网络安全事件，防范网络违法犯罪活动。
                 </TextBlock>
                 <TextBlock Style="{StaticResource LawRefStyle}">
-                    法律依据：《中华人民共和国网络安全法》第十条、第二十一条、第二十二条
+                    法律依据：《中华人民共和国网络安全法》第十条、第二十一条、第二十二条。
                 </TextBlock>
 
-                <!-- 用户数据与隐私 -->
-                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="四、用户数据与隐私保护" />
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- 六、用户数据与隐私保护 -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="六、用户数据与隐私保护" />
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="4.1 数据收集原则" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="6.1 数据收集原则" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    本软件尊重并保护用户的个人信息。除法律规定的情形外，未经用户同意，
-                    本软件不会收集、使用、存储、传输或向第三方提供用户的个人信息。
+                    本软件尊重并保护用户的个人信息。除法律规定的情形外，未经乙方同意，本软件不会收集、使用、存储、传输或向第三方提供乙方的个人信息。
                 </TextBlock>
                 <TextBlock Style="{StaticResource LawRefStyle}">
-                    法律依据：《中华人民共和国网络安全法》第四十一条、第四十二条、第四十四条
+                    法律依据：《中华人民共和国网络安全法》第四十一条、第四十二条、第四十四条；《中华人民共和国个人信息保护法》相关规定。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="4.2 本地数据存储" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="6.2 本地数据存储" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    本软件的配置文件、服务器信息等数据默认存储在用户本地设备上。
-                    用户应当妥善保管自己的数据，定期进行备份。
+                    本软件的配置文件、服务器信息等数据默认存储在乙方本地设备上。乙方应当妥善保管自己的数据，定期进行备份。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="4.3 数据安全责任" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="6.3 数据安全责任" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    用户应对其使用本软件过程中产生的所有数据和操作负责。
-                    因用户自身操作不当、计算机病毒、网络攻击等不可抗力因素导致的数据丢失或泄露，
-                    软件开发者不承担责任，但将依法提供必要协助。
+                    乙方应对其使用本软件过程中产生的所有数据和操作负责。因乙方自身操作不当、计算机病毒、网络攻击等不可抗力因素导致的数据丢失或泄露，甲方不承担责任，但将依法提供必要协助。
                 </TextBlock>
 
-                <!-- 刑事法律风险提示 -->
-                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="五、刑事法律风险提示" />
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- 七、刑事法律风险提示 -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="七、刑事法律风险提示" />
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="5.1 侵犯知识产权犯罪" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="7.1 侵犯知识产权犯罪" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    以营利为目的，未经著作权人许可，复制发行、通过信息网络向公众传播其文字作品、音乐、
-                    美术、视听作品、计算机软件及法律、行政法规规定的其他作品，违法所得数额较大或者有其他严重情节的，
-                    将依法追究刑事责任。
+                    以营利为目的，未经著作权人许可，复制发行、通过信息网络向公众传播其文字作品、音乐、美术、视听作品、计算机软件及法律、行政法规规定的其他作品，违法所得数额较大或者有其他严重情节的，将依法追究刑事责任。
                 </TextBlock>
                 <TextBlock Style="{StaticResource LawRefStyle}">
-                    法律依据：《中华人民共和国刑法》第二百一十七条（侵犯著作权罪）；
-                    最高人民法院、最高人民检察院《关于办理侵犯知识产权刑事案件适用法律若干问题的解释》
+                    法律依据：《中华人民共和国刑法》第二百一十七条（侵犯著作权罪）、第二百一十八条（销售侵权复制品罪）；最高人民法院、最高人民检察院《关于办理侵犯知识产权刑事案件适用法律若干问题的解释》。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="5.2 危害计算机信息系统安全犯罪" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="7.2 危害计算机信息系统安全犯罪" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    违反国家规定，侵入国家事务、国防建设、尖端科学技术领域的计算机信息系统的；
-                    或者违反国家规定，侵入前款规定以外的计算机信息系统或者采用其他技术手段，
-                    获取该计算机信息系统中存储、处理或者传输的数据，或者对该计算机信息系统实施非法控制，
-                    情节严重的，将依法追究刑事责任。
+                    违反国家规定，侵入国家事务、国防建设、尖端科学技术领域的计算机信息系统的；或者违反国家规定，侵入前款规定以外的计算机信息系统或者采用其他技术手段，获取该计算机信息系统中存储、处理或者传输的数据，或者对该计算机信息系统实施非法控制，情节严重的，将依法追究刑事责任。
                 </TextBlock>
                 <TextBlock Style="{StaticResource LawRefStyle}">
-                    法律依据：《中华人民共和国刑法》第二百八十五条、第二百八十六条；
-                    最高人民法院、最高人民检察院、公安部《关于办理信息网络犯罪案件适用刑事诉讼程序若干问题的意见》
+                    法律依据：《中华人民共和国刑法》第二百八十五条、第二百八十六条；最高人民法院、最高人民检察院、公安部《关于办理信息网络犯罪案件适用刑事诉讼程序若干问题的意见》。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="5.3 帮助信息网络犯罪活动罪" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="7.3 帮助信息网络犯罪活动罪" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    明知他人利用信息网络实施犯罪，为其犯罪提供互联网接入、服务器托管、网络存储、
-                    通讯传输等技术支持，或者提供广告推广、支付结算等帮助，情节严重的，将依法追究刑事责任。
+                    明知他人利用信息网络实施犯罪，为其犯罪提供互联网接入、服务器托管、网络存储、通讯传输等技术支持，或者提供广告推广、支付结算等帮助，情节严重的，将依法追究刑事责任。
                 </TextBlock>
                 <TextBlock Style="{StaticResource LawRefStyle}">
-                    法律依据：《中华人民共和国刑法》第二百八十七条之二
+                    法律依据：《中华人民共和国刑法》第二百八十七条之一、第二百八十七条之二。
                 </TextBlock>
 
-                <!-- 软件使用规范 -->
-                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="六、软件使用规范" />
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- 八、免责声明与责任限制 -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="八、免责声明与责任限制" />
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="6.1 合法使用" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="8.1 现状提供" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    用户应当在法律允许的范围内使用本软件，仅用于管理自己合法所有或获得授权的 Minecraft 服务器。
-                    不得将本软件用于任何非法用途。
+                    本软件按"现状"（AS IS）提供，甲方不对软件的适用性、可靠性、完整性、准确性、不侵权性作出明示或暗示的保证。在法律允许的最大范围内，甲方不对因使用或无法使用本软件而导致的任何直接、间接、附带、特殊或后果性损失承担责任。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="6.2 免责声明" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="8.2 责任上限" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    本软件按"现状"提供，软件开发者不对软件的适用性、可靠性、完整性作出明示或暗示的保证。
-                    在法律允许的最大范围内，软件开发者不对因使用或无法使用本软件而导致的任何直接或间接损失承担责任。
+                    除因甲方故意或重大过失造成乙方人身损害或法律另有规定外，甲方因本协议或本软件对乙方承担的累计赔偿责任，以乙方实际向甲方支付的对价金额为限；因乙方系免费获取本软件使用许可的，上述对价金额视为零，甲方不承担金钱赔偿责任。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="6.3 协议修改" />
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- 九、争议解决与法律适用 -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="九、争议解决与法律适用" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="9.1 法律适用" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    软件开发者有权根据需要修改本协议内容。修改后的协议将在软件更新时告知用户，
-                    继续使用本软件即表示您接受修改后的协议。
+                    本协议的订立、效力、解释、履行及争议解决，均适用中华人民共和国大陆地区法律（不含港澳台地区法律）。如本协议的任何条款与中华人民共和国现行法律相抵触，则该等条款将按法律规定重新解释，其他条款仍保持对乙方的法律效力。
                 </TextBlock>
 
-                <!-- 争议解决 -->
-                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="七、争议解决与法律适用" />
-
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="7.1 法律适用" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="9.2 争议解决" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    本协议的订立、执行、解释及争议解决均适用中华人民共和国法律。
-                    如本协议的任何条款与中华人民共和国法律相抵触，则这些条款将按法律规定重新解释，
-                    其他条款仍保持对用户的法律效力。
-                </TextBlock>
-
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="7.2 争议解决" />
-                <TextBlock Style="{StaticResource ArticleStyle}">
-                    因本协议引起的或与本协议有关的任何争议，双方应友好协商解决；协商不成的，
-                    任何一方均有权向软件开发者所在地有管辖权的人民法院提起诉讼。
-                </TextBlock>
-
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="7.3 网络侵权处理" />
-                <TextBlock Style="{StaticResource ArticleStyle}">
-                    权利人认为本软件或通过本软件提供的内容侵犯其著作权、商标权等合法权益的，
-                    可以向软件开发者发出权利通知，软件开发者将依照相关法律法规采取必要措施。
+                    因本协议引起的或与本协议有关的任何争议，双方应首先友好协商解决；协商不成的，任何一方均有权向甲方住所地有管辖权的人民法院提起诉讼。双方一致同意，本协议项下争议的管辖法院及法律适用，均限定于中华人民共和国大陆地区。
                 </TextBlock>
                 <TextBlock Style="{StaticResource LawRefStyle}">
-                    法律依据：最高人民法院《关于涉网络知识产权侵权纠纷几个法律适用问题的批复》；
-                    最高人民法院《关于审理涉及计算机网络著作权纠纷案件适用法律若干问题的解释》
+                    法律依据：《中华人民共和国民事诉讼法》关于合同纠纷管辖与协议管辖的规定；《中华人民共和国民法典》第四百九十六条、第四百九十七条（格式条款效力）。
                 </TextBlock>
 
-                <!-- 未成年人保护 -->
-                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="八、未成年人保护" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="9.3 网络侵权处理" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    国家支持研究开发有利于未成年人健康成长的网络产品和服务，
-                    依法惩治利用网络从事危害未成年人身心健康的活动。
-                    未成年人使用本软件应在监护人的指导和监督下进行。
+                    权利人认为本软件或通过本软件提供的内容侵犯其著作权、商标权等合法权益的，可以向甲方发出权利通知，甲方将依照相关法律法规采取必要措施。
                 </TextBlock>
                 <TextBlock Style="{StaticResource LawRefStyle}">
-                    法律依据：《中华人民共和国网络安全法》第十三条；《中华人民共和国未成年人保护法》
+                    法律依据：最高人民法院《关于涉网络知识产权侵权纠纷几个法律适用问题的批复》；最高人民法院《关于审理涉及计算机网络著作权纠纷案件适用法律若干问题的解释》。
                 </TextBlock>
 
-                <!-- 其他 -->
-                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="九、其他条款" />
-
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="9.1 条款独立性" />
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- 十、未成年人保护 -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="十、未成年人保护" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    本协议任何条款被有权机关认定为无效或不可执行的，不影响其他条款的效力。
+                    国家支持研究开发有利于未成年人健康成长的网络产品和服务，依法惩治利用网络从事危害未成年人身心健康的活动。未成年人使用本软件应在监护人的指导和监督下进行。
+                </TextBlock>
+                <TextBlock Style="{StaticResource LawRefStyle}">
+                    法律依据：《中华人民共和国网络安全法》第十三条；《中华人民共和国未成年人保护法》。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="9.2 通知与送达" />
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- 十一、其他条款 -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="十一、其他条款" />
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="11.1 条款独立性" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    软件开发者向用户发送的通知，可以通过软件弹窗、官方网站公告等方式送达。
-                    通知自发布之日起视为已送达。
+                    本协议任何条款被有权机关认定为无效或不可执行的，不影响其他条款的效力，且该条款应按法律规定在最大限度内有效解释。
                 </TextBlock>
 
-                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="9.3 协议版本" />
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="11.2 协议修改" />
                 <TextBlock Style="{StaticResource ArticleStyle}">
-                    本协议版本：v2.0.0
+                    甲方有权根据需要随时修改本协议内容。修改后的协议将在软件更新时告知乙方，乙方继续使用本软件即视为接受修改后的协议。乙方不同意修改的，应当停止使用并删除本软件。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="11.3 通知与送达" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    甲方向乙方发送的通知，可以通过软件弹窗、官方网站公告等方式送达。通知自发布之日起视为已送达。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="11.4 完整协议" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本协议构成双方就本软件使用的完整协议，并取代双方此前就同一事项达成的任何口头或书面约定。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="11.5 协议版本" />
+                <TextBlock Style="{StaticResource ArticleStyle}">
+                    本协议版本：v3.0.0
                     最后更新日期：2025年
                 </TextBlock>
 
@@ -434,12 +541,17 @@
                                    Margin="0,6,0,0"
                                    FontWeight="SemiBold"
                                    TextWrapping="Wrap" />
-                        <TextBlock Text="盗版、二改收费、移除版权信息等行为必将被追究法律责任，绝不姑息。"
+                        <TextBlock Text="本软件仅限中华人民共和国大陆地区（不含港澳台）使用，仅供非商业性服务器管理用途。"
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="0,4,0,0"
                                    TextWrapping="Wrap" />
-                        <TextBlock Text="如您有任何疑问，请咨询专业法律人士。"
+                        <TextBlock Text="盗版、二改收费、移除版权信息、违反地域限制等行为必将被追究法律责任，绝不姑息。"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource WarningRedTextMildBrush}"
+                                   Margin="0,4,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="本协议所引法条名称与条号仅为指引，最终以中华人民共和国现行有效官方文本为准；如涉具体法律问题，建议咨询执业律师。"
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextDimBrush}"
                                    Margin="0,4,0,0" />

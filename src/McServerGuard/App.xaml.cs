@@ -309,10 +309,10 @@ public partial class App : Application
                     var userAgreementService = _serviceProvider.GetRequiredService<IUserAgreementService>();
                     userAgreementService.Load();
 
-                    if (!userAgreementService.IsAgreed)
+                    if (userAgreementService.RequiresReagreement)
                     {
                         startupWindow.SetProgress(88, "等待用户同意协议...");
-                        startupWindow.AppendLog("📜 首次使用，等待用户同意协议...");
+                        startupWindow.AppendLog("📜 需要用户同意协议（首次使用或协议已更新）...");
                         bool agreed = false;
                         await startupWindow.Dispatcher.InvokeAsync(() =>
                         {
