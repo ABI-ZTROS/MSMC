@@ -130,7 +130,8 @@
       关键修复：
       1) npm.cmd 显式 .cmd 扩展名 —— 绕过 PowerShell ExecutionPolicy 对 npm.ps1 的拦截
       2) WorkingDirectory 指向真实前端目录 —— 避免 npm 在错误目录下找 package.json
-      3) 再加 --prefix 双保险 —— 即使 WorkingDirectory 解析失败也告诉 npm 根目录
+      3) 再加 prefix 参数双保险 —— 即使 WorkingDirectory 解析失败也告诉 npm 根目录
+         （注：npm 命令里写成两个半角减号 + prefix，为避免 XML 注释解析报错此处省略连写）
     -->
     <Exec
       Command="npm.cmd install --prefix &quot;$(FrontendDir)&quot;"
