@@ -99,8 +99,30 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             _webView.DefaultBackgroundColor = System.Drawing.Color.Black;
             Log.Information("🎨 WebView2 默认背景色已设置为黑色");
 
+            // ──────────────────────────────────────────────────────────────
+            // 【关键】显式创建 CoreWebView2Environment，带上允许 file:// 访问的 flags
+            // 用户环境下 file:// + ES Module 会触发 Chromium 内部 CORS 拦截：
+            // 所有 modulepreload / script / stylesheet 都在 8ms 内同时报 "Script error."
+            // 这是 Chromium file:// origin= null 被视为跨域。
+            // 加这 4 个 flag 把 file:// 的限制打开。
+            // ──────────────────────────────────────────────────────────────
+            var wv2Opts = new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions()
+            {
+                AdditionalBrowserArguments = string.Join(" ", new[]
+                {
+                    "--allow-file-access-from-files",
+                    "--allow-file-access",
+                    "--disable-features=SplitCacheByNetworkIsolationKey,DivideUserContextByNetworkIsolationKey",
+                    "--disable-web-security",
+                }),
+                Language = System.Globalization.CultureInfo.CurrentUICulture.Name,
+            };
+            var wv2Env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
+                browserExecutableFolder: null,
+                userDataFolder: null,
+                options: wv2Opts);
             // 确保 CoreWebView2 已创建
-            await _webView.EnsureCoreWebView2Async();
+            await _webView.EnsureCoreWebView2Async(wv2Env);
 
             // 配置桌面应用体验优化
             Log.Information("⚙️ 配置 WebView2 桌面应用体验优化...");
@@ -180,75 +202,76 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             return false;
         }
 
-        Log.Information("[WV2-LOAD] 🚀 开始加载前端资源 (模式: {Mode})", provider.ModeName);
+        // ──────────────────────────────────────────────────────────────
+        // 【关键修复】hostName 必须短 + 纯 ASCII + 不要带点（不要 .local）
+        // 否则 WebView2 老版本可能走 LLMNR/mDNS 解析 .local，导致 30s 超时。
+        // 如果调用方传进来的 hostName 含有 ".local" 或 "-"，替换为单标签短名。
+        // ──────────────────────────────────────────────────────────────
+        string effectiveHost = hostName;
+        if (effectiveHost.Contains('.') || effectiveHost.Contains('-'))
+        {
+            effectiveHost = "msmcapp";   // 单标签 ASCII 短名
+            Log.Warning("[WV2-LOAD] ⚠️ hostName=\"{Original}\" 含有 . 或 -，替换为安全短名 \"{Safe}\"（避免 30s DNS 解析超时）",
+                hostName, effectiveHost);
+        }
+
+        Log.Information("[WV2-LOAD] 🚀 开始加载前端资源 (模式: {Mode}, host: {Host})", provider.ModeName, effectiveHost);
 
         try
         {
             var basePath = await provider.GetBasePathAsync();
             Log.Information("[WV2-LOAD] 📂 GetBasePathAsync 返回: {Path}", basePath ?? "(null，将使用拦截模式)");
 
-            // 【修复 Folder 30s 超时】核心改动：
-            // 用户环境下 Folder 虚拟主机模式（http://msmc.local/）会经常等 30 秒都没 NavigationCompleted，
-            // 极大概率是中文路径 + 杀毒软件 + WebView2 虚拟主机名解析三者相互作用导致内部链路卡住。
-            // 对于 Folder/ZipExtract 这种「本地已有真实磁盘路径」的模式，直接构造 file:/// 绝对路径
-            // 然后让 WebView2 按文件协议去读，完全绕开虚拟主机名/过滤器/拦截器那一套，
-            // 是兼容性最高、最稳定的方案（WebView2 底层对 file:// 没什么可拦的，和用户直接在资源管理器
-            // 双击 index.html 打开是同一套代码路径）。
-            string? directIndexPath = null;
-            if (basePath != null)
-            {
-                directIndexPath = Path.GetFullPath(Path.Combine(basePath, "index.html"));
-                if (!File.Exists(directIndexPath))
-                {
-                    Log.Warning("[WV2-LOAD] ⚠️ basePath 存在但拼接的 index.html 不存在: {Path}", directIndexPath);
-                    directIndexPath = null;
-                }
-            }
-
+            // ──────────────────────────────────────────────────────────────
+            // 【优先级翻转 2026-07-30】http 虚拟主机优先，file:// 兜底
+            // 原因：Chromium 内核将 <script type="module"> 走的 fetch+CORS 通道，
+            // 在 file:// 协议下 origin = null，所有本地模块被视为跨域，
+            // 表现为 8ms 内所有资源统一报 "Script error."（opaque 错误）。
+            // http 协议下（即使是虚拟主机名）没有这个问题。
+            // 只有 forceFileProtocol=true（或者以后调试需要）才走 file://。
+            // ──────────────────────────────────────────────────────────────
             Uri targetUri;
-            bool useVirtualHost = true;
-            if (directIndexPath != null)
+            bool useVirtualHost = basePath != null;    // Folder/ZipExtract: 有真实路径就用 SetVirtualHostNameToFolderMapping
+            const bool forceFileProtocol = false;      // ← 调试开关：强制走 file://（需配合 --allow-file-access-from-files）
+
+            if (useVirtualHost)
             {
-                // Folder / ZipExtract：优先 file 协议直读，跳过虚拟主机名整个链路
-                try
-                {
-                    targetUri = new UriBuilder("file", string.Empty)
-                    {
-                        Path = directIndexPath.Replace('\\', '/')
-                    }.Uri;
-                    useVirtualHost = false;
-                    Log.Information("[WV2-LOAD] 📎 模式 {Mode} 有真实磁盘路径，改用 file:// 协议直读（绕开虚拟主机名 30s 超时）: {Uri}",
-                        provider.ModeName, targetUri.AbsoluteUri);
-                }
-                catch (Exception uriEx)
-                {
-                    Log.Warning(uriEx, "[WV2-LOAD] ⚠️ 构造 file:// Uri 失败（{Path}），回退到虚拟主机模式", directIndexPath);
-                    useVirtualHost = true;
-                    targetUri = new Uri($"http://{hostName}/index.html");
-                }
+                targetUri = new Uri($"http://{effectiveHost}/index.html");
+                // 先注册 folder 映射，再导航！顺序反了会找不到
+                Log.Information("[WV2-LOAD] 🔗 设置虚拟主机映射...");
+                SetVirtualHostMapping(effectiveHost, basePath!);
+                Log.Information("[WV2-LOAD] ✅ 虚拟主机映射设置完成（http://{Host}/ → {Folder}）", effectiveHost, basePath);
             }
             else
             {
-                // EmbeddedResource：basePath==null，只能走拦截模式，还是 http 虚拟主机协议
-                targetUri = new Uri($"http://{hostName}/index.html");
-                useVirtualHost = true;
-            }
-
-            if (useVirtualHost && basePath != null)
-            {
-                // 文件夹模式 / Zip 解压模式：用虚拟主机映射
-                Log.Information("[WV2-LOAD] 🔗 设置虚拟主机映射...");
-                SetVirtualHostMapping(hostName, basePath);
-                Log.Information("[WV2-LOAD] ✅ 虚拟主机映射设置完成");
-            }
-            else if (basePath == null)
-            {
-                // 嵌入资源模式：注册 WebResourceRequested 拦截
-                Log.Information("[WV2-LOAD] 🔌 注册 WebResourceRequested 拦截器...");
-                RegisterWebResourceRequested(provider, hostName);
+                // EmbeddedResource 模式：无真实磁盘路径，走 WebResourceRequested 拦截器
+                targetUri = new Uri($"http://{effectiveHost}/index.html");
+                Log.Information("[WV2-LOAD] 🔌 注册 WebResourceRequested 拦截器（EmbeddedResource 模式）...");
+                RegisterWebResourceRequested(provider, effectiveHost);
                 Log.Information("[WV2-LOAD] ✅ WebResourceRequested 拦截器注册完成");
             }
-            // else：file 模式下不需要虚拟主机也不需要拦截器，天然直接读本地文件
+
+            // ──────────────────────────────────────────────────────────────
+            // 兼容兜底：forceFileProtocol=true 时，Folder/ZipExtract 模式走 file://
+            //（--allow-file-access-from-files 已经在 WV2 启动参数里加过了）
+            // ──────────────────────────────────────────────────────────────
+            if (forceFileProtocol && basePath != null)
+            {
+                var directIndexPath = Path.GetFullPath(Path.Combine(basePath, "index.html"));
+                if (File.Exists(directIndexPath))
+                {
+                    try
+                    {
+                        targetUri = new UriBuilder("file", string.Empty) { Path = directIndexPath.Replace('\\', '/') }.Uri;
+                        useVirtualHost = false;
+                        Log.Information("[WV2-LOAD] 📎 forceFileProtocol=true → file:// 直读: {Uri}", targetUri.AbsoluteUri);
+                    }
+                    catch (Exception uriEx)
+                    {
+                        Log.Warning(uriEx, "[WV2-LOAD] ⚠️ 构造 file:// Uri 失败，保留虚拟主机模式");
+                    }
+                }
+            }
 
             var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 

@@ -94,7 +94,12 @@ public partial class MainWindow : Window
                 RegisterBridgeApis();
                 Log.Information("[UI-5] ✅ 桥接 API 注册完成");
 
-                const string virtualHost = "msmc.local";
+                // 虚拟主机名必须【短 + 纯 ASCII + 不要带点/不要用.local】！
+                // 之前用 "msmc.local"（带 .local + 点号），WebView2 老版本 Windows 10 (18363) 下
+                // 会真走 LLMNR/mDNS 解析 .local，导致 30 秒超时；且 Chromium 内核对含点号的
+                // 单标签名有时判定为「公网域名」还去查 DNS，增加不确定性。
+                // "msmcapp" 是单标签纯 ASCII，Chromium 立刻当作「内部虚拟主机名」处理，最快。
+                const string virtualHost = "msmcapp";
                 Log.Information("[UI-6] 🔍 开始加载前端，目标主机: {Host}", virtualHost);
                 var loaded = await TryLoadFrontendWithFallbackAsync(virtualHost);
                 if (!loaded)

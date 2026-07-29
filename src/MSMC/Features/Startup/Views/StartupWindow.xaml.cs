@@ -68,9 +68,36 @@ public partial class StartupWindow : Window
         {
             StartupWebView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(0xFF, 0x02, 0x06, 0x17);
 
-            await StartupWebView.EnsureCoreWebView2Async();
+            // ──────────────────────────────────────────────────────────────
+            // 【关键】显式创建 CoreWebView2Environment，带上允许 file:// 访问的 flags
+            // 因为用户环境下 file:// + ES Module 会触发 Chromium 内部 CORS 拦截：
+            // 所有 modulepreload / script / stylesheet 都在 8ms 内同时报 "Script error."
+            // 这是 Chromium file:// origin= null 被视为跨域。
+            // 加这 4 个 flag 把 file:// 的限制打开：
+            //   1) --allow-file-access-from-files: file:// 页面可读取其他 file:// 文件
+            //   2) --allow-file-access: 老内核兼容
+            //   3) --disable-features=SplitCacheByNetworkIsolationKey: 关掉按 NIK 分 cache，
+            //      这条和 NIK 有关，是 Chromium M110+ 后 file:// 下出现 CORS 问题的常见根因
+            //   4) --disable-web-security: 桌面应用兜底，就算 CORS 检查也放过
+            // ──────────────────────────────────────────────────────────────
+            var wv2Opts = new CoreWebView2EnvironmentOptions()
+            {
+                AdditionalBrowserArguments = string.Join(" ", new[]
+                {
+                    "--allow-file-access-from-files",
+                    "--allow-file-access",
+                    "--disable-features=SplitCacheByNetworkIsolationKey,DivideUserContextByNetworkIsolationKey",
+                    "--disable-web-security",
+                }),
+                Language = System.Globalization.CultureInfo.CurrentUICulture.Name,
+            };
+            var wv2Env = await CoreWebView2Environment.CreateAsync(
+                browserExecutableFolder: null,   // null = 用默认安装的 WebView2 Runtime
+                userDataFolder: null,            // null = 用默认目录（%LOCALAPPDATA%\WebView2）
+                options: wv2Opts);
+            await StartupWebView.EnsureCoreWebView2Async(wv2Env);
 
-            Log.Information("[Startup-WV2] ✅ CoreWebView2 已创建");
+            Log.Information("[Startup-WV2] ✅ CoreWebView2 已创建（含 --allow-file-access-from-files）");
 
             StartupWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
             StartupWebView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
@@ -78,6 +105,8 @@ public partial class StartupWindow : Window
             StartupWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
             StartupWebView.CoreWebView2.Settings.IsZoomControlEnabled = false;
             StartupWebView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
+            // 额外：允许本地对象（虽然我们没注入 WinRT 对象，但防止某些 WebView2 版本拦截 file://）
+            StartupWebView.CoreWebView2.Settings.AreHostObjectsAllowed = true;
 
             var initScript = GenerateBridgeInitScript();
             await StartupWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(initScript);
@@ -99,7 +128,10 @@ public partial class StartupWindow : Window
 
     private async Task LoadStartupPageAsync()
     {
-        const string virtualHost = "msmc-startup.local";
+        // 虚拟主机名必须【短 + 纯 ASCII + 不要带点】！
+        // 之前用 msmc-startup.local（带 .local），WebView2 某些老版本会真去查 LLMNR/mDNS
+        // 导致 30s 超时。直接用 "msmcstartup" 这种单标签名，Chromium 立刻判定为私有主机名。
+        const string virtualHost = "msmcstartup";
         var provider = FrontendResourceProviderFactory.Create();
 
         Log.Information("[Startup-WV2-LOAD] 📋 前端资源模式: {Mode}, 可用: {Available}", provider.ModeName, provider.IsAvailable);
@@ -115,62 +147,66 @@ public partial class StartupWindow : Window
         {
             var basePath = await provider.GetBasePathAsync();
 
-            // 【和主窗口一致】优先 file:// 直读（Folder / ZipExtract 有真实磁盘路径时），
-            // 完全绕开虚拟主机名 + 中文路径 + 杀毒拦截 30 秒超时死锁链。
-            // 【修复 CS0165】声明时立刻赋兜底合法值（http 虚拟主机 URL）。
-            // 因为当 basePath!=null 但 basePath\startup.html 恰好不存在时，之前逻辑里 targetUri 没进任何赋值分支，
-            // 编译器静态分析就会报「使用了未赋值的局部变量 targetUri」。先赋兜底值 100% 过所有代码路径分析。
-            Uri targetUri = new Uri($"http://{virtualHost}/startup.html");
-            bool useVirtualHost = true;
-            string? directStartupPath = null;
-            if (basePath != null)
+            // ──────────────────────────────────────────────────────────────
+            // 【优先级翻转】虚拟主机名(http://) 优先，file:// 兜底
+            // 因为：http 协议下 <script type=module> / <link rel=modulepreload> 的 CORS 检查 100% 通过；
+            // 之前优先 file:// 时 Chromium 把所有资源都拦了（全部 "Script error."）
+            // 只有当虚拟主机模式设置失败（basePath==null 即 EmbeddedResource 模式）才用原逻辑。
+            // ──────────────────────────────────────────────────────────────
+            bool useVirtualHost = basePath != null;   // 有真实磁盘路径就 100% 用虚拟主机
+            Uri targetUri;
+
+            if (useVirtualHost)
             {
-                directStartupPath = Path.GetFullPath(Path.Combine(basePath, "startup.html"));
-                if (!File.Exists(directStartupPath))
-                {
-                    Log.Warning("[Startup-WV2-LOAD] ⚠️ basePath 存在但未找到 startup.html: {Path}", directStartupPath);
-                    directStartupPath = null;
-                }
-                else
-                {
-                    try
-                    {
-                        targetUri = new UriBuilder("file", string.Empty)
-                        {
-                            Path = directStartupPath.Replace('\\', '/')
-                        }.Uri;
-                        useVirtualHost = false;
-                        Log.Information("[Startup-WV2-LOAD] 📎 模式 {Mode} 有真实磁盘路径，改用 file:// 直读: {Uri}",
-                            provider.ModeName, targetUri.AbsoluteUri);
-                    }
-                    catch (Exception uriEx)
-                    {
-                        Log.Warning(uriEx, "[Startup-WV2-LOAD] ⚠️ 构造 file:// Uri 失败（{Path}），回退虚拟主机模式", directStartupPath);
-                        useVirtualHost = true;
-                        targetUri = new Uri($"http://{virtualHost}/startup.html");
-                    }
-                }
+                targetUri = new Uri($"http://{virtualHost}/startup.html");
+                // 先注册映射再导航！注册晚了 URL 可能被 Chrome 识别为不存在
+                StartupWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                    hostName: virtualHost,
+                    folderPath: basePath!,   // 已判空 basePath!=null
+                    accessKind: CoreWebView2HostResourceAccessKind.Allow);
+                Log.Information(
+                    "[Startup-WV2-LOAD] 🔗 虚拟主机映射已设置（http://{Host}/ → {Folder}）",
+                    virtualHost, basePath);
             }
             else
             {
+                // EmbeddedResource 模式：basePath=null，走原拦截逻辑，targetUri 由 provider 自己决定
+                // （这时 provider 会在 Navigate 时提供，简单兜底：还是虚拟主机 URL，让 provider 的拦截器处理）
                 targetUri = new Uri($"http://{virtualHost}/startup.html");
-                useVirtualHost = true;
             }
 
-            if (useVirtualHost && basePath != null)
+            // 【兼容兜底】如果用户不想用虚拟主机（比如以后调试需要），可以保留一个开关走 file://，
+            // 但我们现在已经加了 --allow-file-access-from-files，即使走 file:// 理论上也 OK，
+            // 只是为了保险默认用 http 虚拟主机。
+            bool forceFileProtocol = false;
+            if (forceFileProtocol && basePath != null)
             {
-                StartupWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    virtualHost,
-                    basePath,
-                    CoreWebView2HostResourceAccessKind.Allow);
-                Log.Information("[Startup-WV2-LOAD] 🔗 虚拟主机映射已设置");
+                var directStartupPath = Path.GetFullPath(Path.Combine(basePath, "startup.html"));
+                if (File.Exists(directStartupPath))
+                {
+                    try
+                    {
+                        targetUri = new UriBuilder("file", string.Empty) { Path = directStartupPath.Replace('\\', '/') }.Uri;
+                        useVirtualHost = false;
+                        Log.Information("[Startup-WV2-LOAD] 📎 forceFileProtocol=true → file:// 直读 {Uri}", targetUri.AbsoluteUri);
+                    }
+                    catch (Exception uriEx)
+                    {
+                        Log.Warning(uriEx, "[Startup-WV2-LOAD] ⚠️ 构造 file:// Uri 失败，保留虚拟主机模式");
+                    }
+                }
             }
-            else if (basePath == null)
+
+            // 虚拟主机名模式：如果是 EmbeddedResource 模式（basePath==null，无法 folderMapping），
+            // 则注册 WebResourceRequested 拦截器让 provider 自己提供资源内容；
+            // 反之（Folder/ZipExtract 模式，basePath!=null），我们已经调用了
+            // SetVirtualHostNameToFolderMapping，WebView2 内部会直接去 disk 读，
+            // 不需要拦截器，更快更稳。
+            if (useVirtualHost && basePath == null)
             {
                 RegisterWebResourceRequested(provider, virtualHost);
-                Log.Information("[Startup-WV2-LOAD] 🔌 WebResourceRequested 拦截器已注册");
+                Log.Information("[Startup-WV2-LOAD] 🔌 WebResourceRequested 拦截器已注册（EmbeddedResource 模式）");
             }
-            // else: file 模式下不设映射、不注册拦截器
 
             Log.Information("[Startup-WV2-LOAD] 🧭 导航到: {Url} (模式={Mode}, 虚拟主机={UseVH})",
                 targetUri.AbsoluteUri, provider.ModeName, useVirtualHost);
