@@ -2243,7 +2243,7 @@ public partial class MainWindow : Window
             {
                 var registry = App.Services.GetRequiredService<Services.ConfigManagement.ConfigDescriptorRegistry>();
                 var index = registry.GetCoreIndex();
-                return Task.FromResult<object>(new
+                return Task.FromResult<object?>(new
                 {
                     success = true,
                     totalCores = index.Count,
@@ -2268,7 +2268,7 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 Log.Error(ex, "config:getCoreIndex 失败");
-                return Task.FromResult<object>(new { success = false, error = ex.Message });
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
             }
         });
 
