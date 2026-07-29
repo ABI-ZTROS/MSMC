@@ -106,7 +106,12 @@ public class TimeService
             }
             catch (Exception ex)
             {
-                Log.Warning(ex, "NTP 服务器 {Server} 查询失败（仅诊断，不影响时间）", server);
+                // 校验失败（InvalidOperationException）只打 Debug 简洁消息，不打堆栈；
+                // 网络超时等其他异常打完整 Warning
+                if (ex is InvalidOperationException)
+                    Log.Debug("NTP 服务器 {Server} 不可用：{Message}", server, ex.Message);
+                else
+                    Log.Warning(ex, "NTP 服务器 {Server} 查询失败（仅诊断，不影响时间）", server);
             }
 
             if (successful >= 2)
@@ -115,7 +120,7 @@ public class TimeService
 
         if (offsets.Count == 0)
         {
-            Log.Warning("所有 NTP 服务器均不可达，跳过时钟偏差诊断");
+            Log.Information("NTP 时钟诊断跳过：所有服务器不可达或响应异常（不影响系统时间，直接使用本地时钟）");
             lock (_lock)
             {
                 _isSynchronized = false;
@@ -175,7 +180,25 @@ public class TimeService
         var receiveTime = DateTime.UtcNow;
 
         var buffer = receiveResult.Buffer;
+
+        // ── NTP 响应包合法性校验 ──
+        // 国内网络环境下 UDP 123 经常被运营商劫持/拦截，返回畸形包；
+        // 不校验的话会把垃圾数据解析成 1900 年时间戳，产生天文数字偏移。
+        if (!TryValidateNtpResponse(buffer, server, out var validationError))
+        {
+            throw new InvalidOperationException(validationError);
+        }
+
         var transmitTimestamp = ParseNtpTimestamp(buffer, 40);
+
+        // TransmitTimestamp 应该在 1900-01-01 之后合理的时间范围内；
+        // 如果解析出来接近 1900 纪元起点，说明时间戳字段为空/损坏
+        if (transmitTimestamp < new DateTime(1900, 1, 2, 0, 0, 0, DateTimeKind.Utc))
+        {
+            throw new InvalidOperationException(
+                $"NTP TransmitTimestamp={transmitTimestamp:O} 异常（接近 1900 纪元起点），" +
+                $"{server} 可能返回了畸形包");
+        }
 
         var roundTrip = (receiveTime - sendTime).TotalMilliseconds;
         var offset = (transmitTimestamp - sendTime).TotalMilliseconds - roundTrip / 2;
@@ -184,18 +207,55 @@ public class TimeService
         if (Math.Abs(offsetMs) > MaxReasonableOffsetMs)
         {
             throw new InvalidOperationException(
-                $"NTP 偏移 {offsetMs}ms 超出合理范围 (±{MaxReasonableOffsetMs}ms)，" +
-                $"transmitTimestamp={transmitTimestamp:O}, sendTime={sendTime:O}, roundTrip={roundTrip}ms");
+                $"NTP 偏移 {offsetMs}ms 超出合理范围 (±{MaxReasonableOffsetMs}ms)");
         }
 
         return offsetMs;
+    }
+
+    /// <summary>
+    /// 校验 NTP 响应包的合法性，过滤运营商劫持/防火墙返回的畸形包。
+    /// </summary>
+    /// <remarks>
+    /// NTP 响应包格式（RFC 5905）：
+    ///   byte[0]: LI(2bit) | VN(3bit) | Mode(3bit)，Server 响应的 Mode 必须为 4
+    ///   byte[1]: Stratum（1=主参考源, 2-15=二级参考源, 0=未同步, 16=不可达）
+    /// </remarks>
+    private static bool TryValidateNtpResponse(byte[] buffer, string server, out string error)
+    {
+        if (buffer.Length < 48)
+        {
+            error = $"NTP 响应包长度不足（{buffer.Length} bytes，需要 48），{server} 可能被劫持";
+            return false;
+        }
+
+        // byte[0]: LI(2bit) | VN(3bit) | Mode(3bit)
+        // 合法的 NTP Server 响应 Mode 必须是 4
+        var mode = buffer[0] & 0x07;
+        if (mode != 4)
+        {
+            error = $"非 NTP 响应包（Mode={mode}，期望 4），{server} 可能被运营商劫持";
+            return false;
+        }
+
+        // byte[1]: Stratum（1=主参考源, 2-15=二级参考源, 0=未同步, 16=不可达）
+        var stratum = buffer[1];
+        if (stratum == 0 || stratum >= 16)
+        {
+            error = $"NTP 服务器 {server} Stratum={stratum}（未同步或不可达）";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
     }
 
     private static DateTime ParseNtpTimestamp(byte[] buffer, int offset)
     {
         var seconds = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, offset));
         var fraction = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, offset + 4));
-        var milliseconds = seconds * 1000 + (double)fraction * 1000 / 0x100000000L;
+        // 用浮点运算避免 uint * 1000 溢出（当前 NTP 秒数约 39.7 亿，接近 uint 上限）
+        var milliseconds = seconds * 1000.0 + fraction * 1000.0 / 0x100000000L;
         return new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(milliseconds);
     }
 

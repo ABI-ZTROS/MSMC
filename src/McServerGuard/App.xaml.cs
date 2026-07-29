@@ -255,12 +255,11 @@ public partial class App : Application
                                 }
                                 else
                                 {
-                                    // 所有 NTP 服务器失败（比如拔网线）——不阻塞启动，只打 Warning 日志
+                                    // 所有 NTP 服务器失败（未联网 / 运营商劫持 UDP 123）——不阻塞启动
                                     startupWindow.AppendLog(
-                                        "⚠️ 权威授时中心全部不可达（可能未联网），已使用本地系统时间。" +
-                                        "如有需要请在 Windows 设置中手动同步一次时间。",
-                                        isError: true);
-                                    Log.Warning("NTP 诊断失败：所有服务器不可达（离线？），直接使用本地系统时间");
+                                        "授时中心不可达（未联网或网络劫持），已使用本地系统时间。",
+                                        isError: false);
+                                    Log.Information("NTP 诊断跳过：所有服务器不可达或响应异常，直接使用本地系统时间");
                                 }
                             });
                         }
