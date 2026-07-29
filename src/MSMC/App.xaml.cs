@@ -207,9 +207,9 @@ public partial class App : Application
                     services.AddSingleton<DiskSpaceMonitor>();
                     services.AddSingleton<MemoryMonitor>();
                     services.AddSingleton<ThreadAnalyzer>();
-                    services.AddSingleton<Services.HardwareInfo.CpuIdentifier>();
+                    services.AddSingleton<CpuIdentifier>();
                     services.AddSingleton<IMetricsPersistenceService, MetricsPersistenceService>();
-                    services.AddSingleton<Services.SystemMonitoring.IProcessManagerService, Services.SystemMonitoring.ProcessManagerService>();
+                    services.AddSingleton<IProcessManagerService, ProcessManagerService>();
 
                     await Step(46, "正在注册主题与基础服务...", "🎨 注册主题服务...");
                     services.AddSingleton<IThemeService>(_ => earlyThemeService);
@@ -223,11 +223,11 @@ public partial class App : Application
                     services.AddSingleton<IWebView2BridgeService, WebView2BridgeService>();
 
                     await Step(56, "正在注册 ViewModel...", "🧩 注册 ViewModel...");
-                    services.AddSingleton<ViewModels.ServerDetectionViewModel>();
-                    services.AddSingleton<ViewModels.ConfigEditorViewModel>();
-                    services.AddSingleton<ViewModels.SystemMonitorViewModel>();
-                    services.AddSingleton<ViewModels.NetworkMonitorViewModel>();
-                    services.AddSingleton<ViewModels.SettingsViewModel>();
+                    services.AddSingleton<ServerDetectionViewModel>();
+                    services.AddSingleton<ConfigEditorViewModel>();
+                    services.AddSingleton<SystemMonitorViewModel>();
+                    services.AddSingleton<NetworkMonitorViewModel>();
+                    services.AddSingleton<SettingsViewModel>();
                     services.AddSingleton<MainViewModel>();
 
                     await Step(66, "正在构建服务容器...", "📦 构建服务容器...");

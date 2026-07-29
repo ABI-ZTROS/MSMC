@@ -12,6 +12,7 @@ using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using io.NET.ZTR_OS.Features.Settings.Services;
 using io.NET.ZTR_OS.Features.WebView2.Frontend;
 using Microsoft.Web.WebView2.Core;
 using Serilog;

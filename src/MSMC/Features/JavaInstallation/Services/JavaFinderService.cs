@@ -8,6 +8,7 @@
 using System.Diagnostics;
 using System.IO;
 using Microsoft.Win32;
+using io.NET.ZTR_OS.Features.Settings.Services;
 using Serilog;
 
 namespace io.NET.ZTR_OS.Features.JavaInstallation.Services;

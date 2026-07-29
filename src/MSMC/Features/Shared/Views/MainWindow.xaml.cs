@@ -17,9 +17,13 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using io.NET.ZTR_OS.Features.ConfigEditor.Models;
+using io.NET.ZTR_OS.Features.ConfigEditor.Services;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Models;
+using io.NET.ZTR_OS.Features.NetworkMonitor.Services;
 using io.NET.ZTR_OS.Features.ServerDetection.Models;
 using io.NET.ZTR_OS.Features.Settings.Colors;
+using io.NET.ZTR_OS.Features.Settings.Services;
+using io.NET.ZTR_OS.Features.SystemMonitoring.Services;
 using io.NET.ZTR_OS.Features.WebView2.Frontend;
 using io.NET.ZTR_OS.Features.WebView2.Services;
 using io.NET.ZTR_OS.Features.ConfigEditor.ViewModels;
@@ -593,7 +597,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var persistence = App.Services.GetRequiredService<Services.SystemMonitoring.IMetricsPersistenceService>();
+                var persistence = App.Services.GetRequiredService<IMetricsPersistenceService>();
                 // v2: 直接用 DateTime.Now（不再经过 NTP 偏移）
                 var today = persistence.LoadDay(DateTime.Now);
                 var result = today.Select(p => new
@@ -627,7 +631,7 @@ public partial class MainWindow : Window
                 }
                 days = Math.Clamp(days, 1, 30);
 
-                var persistence = App.Services.GetRequiredService<Services.SystemMonitoring.IMetricsPersistenceService>();
+                var persistence = App.Services.GetRequiredService<IMetricsPersistenceService>();
                 var data = persistence.LoadRecentDays(days);
                 var result = data.Select(p => new
                 {
@@ -683,7 +687,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var cpuIdentifier = App.Services.GetRequiredService<Services.HardwareInfo.CpuIdentifier>();
+                var cpuIdentifier = App.Services.GetRequiredService<CpuIdentifier>();
                 var cpuInfo = cpuIdentifier.GetCpuInfo();
                 return Task.FromResult<object?>(new
                 {
@@ -723,7 +727,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var processManager = App.Services.GetRequiredService<Services.SystemMonitoring.IProcessManagerService>();
+                var processManager = App.Services.GetRequiredService<IProcessManagerService>();
                 var affinities = processManager.GetAllProcessAffinities();
                 return Task.FromResult<object?>(affinities);
             }
@@ -745,7 +749,7 @@ public partial class MainWindow : Window
                     pid = el.TryGetProperty("pid", out var p) ? p.GetInt32() : 0;
                 }
 
-                var processManager = App.Services.GetRequiredService<Services.SystemMonitoring.IProcessManagerService>();
+                var processManager = App.Services.GetRequiredService<IProcessManagerService>();
                 var info = processManager.GetProcessInfo(pid);
                 return Task.FromResult<object?>(info);
             }
@@ -770,7 +774,7 @@ public partial class MainWindow : Window
                         graceful = g.GetBoolean();
                 }
 
-                var processManager = App.Services.GetRequiredService<Services.SystemMonitoring.IProcessManagerService>();
+                var processManager = App.Services.GetRequiredService<IProcessManagerService>();
                 var (success, error) = processManager.KillProcess(pid, graceful);
                 return Task.FromResult<object?>(new { success, error });
             }
@@ -795,7 +799,7 @@ public partial class MainWindow : Window
                         mask = m.GetInt64();
                 }
 
-                var processManager = App.Services.GetRequiredService<Services.SystemMonitoring.IProcessManagerService>();
+                var processManager = App.Services.GetRequiredService<IProcessManagerService>();
                 var (success, error) = processManager.SetProcessAffinity(pid, mask);
                 return Task.FromResult<object?>(new { success, error });
             }
@@ -1663,7 +1667,7 @@ public partial class MainWindow : Window
                         protocol, listenAddress, connectAddress);
                 }
 
-                var bridgeService = App.Services.GetRequiredService<Services.Network.IPortBridgeService>();
+                var bridgeService = App.Services.GetRequiredService<IPortBridgeService>();
                 var rule = new Models.PortBridgeRule
                 {
                     ListenAddress = listenAddress,
@@ -1711,7 +1715,7 @@ public partial class MainWindow : Window
                 if (listenPort <= 0)
                     return new { success = false, error = "端口必须大于 0" };
 
-                var bridgeService = App.Services.GetRequiredService<Services.Network.IPortBridgeService>();
+                var bridgeService = App.Services.GetRequiredService<IPortBridgeService>();
                 var success = await Task.Run(() => bridgeService.RemoveBridgeRule(listenAddress, listenPort, protocol));
 
                 if (success && net != null)
@@ -1748,7 +1752,7 @@ public partial class MainWindow : Window
                     var portInfo = net.ListeningPorts.FirstOrDefault(p => p.Port == port && p.Protocol == protocol);
                     if (portInfo != null)
                     {
-                        var networkService = App.Services.GetRequiredService<Services.Network.NetworkService>();
+                        var networkService = App.Services.GetRequiredService<NetworkService>();
                         // Process.GetProcesses + CloseMainWindow + WaitForExit 可能耗时数秒，
                         // 放到后台线程避免阻塞 UI
                         var success = await Task.Run(() => networkService.KillProcessByPort(port));
@@ -2244,7 +2248,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var registry = App.Services.GetRequiredService<Services.ConfigManagement.ConfigDescriptorRegistry>();
+                var registry = App.Services.GetRequiredService<ConfigDescriptorRegistry>();
                 var index = registry.GetCoreIndex();
                 return Task.FromResult<object?>(new
                 {

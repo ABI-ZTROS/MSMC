@@ -6,6 +6,7 @@
 // 设计模式: MVVM 模式
 // -----------------------------------------------------------------------------
 using CommunityToolkit.Mvvm.ComponentModel;
+using io.NET.ZTR_OS.Features.JavaInstallation.Services;
 
 namespace io.NET.ZTR_OS.Features.Settings.ViewModels;
 

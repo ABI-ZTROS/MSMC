@@ -36,7 +36,7 @@ public partial class SettingsViewModel : ObservableObject
     /// <summary>应用配置服务</summary>
     private readonly Services.IAppConfigService _appConfigService;
     /// <summary>Java 查找服务</summary>
-    private readonly Services.IJavaFinderService _javaFinderService;
+    private readonly JavaInstallation.Services.IJavaFinderService _javaFinderService;
 
     /// <summary>主题主色</summary>
     [ObservableProperty]
@@ -255,7 +255,7 @@ public partial class SettingsViewModel : ObservableObject
     /// <param name="appConfigService">应用配置服务</param>
     /// <param name="javaFinderService">Java 查找服务</param>
     /// <remarks>构造时从主题服务加载已持久化的设置。</remarks>
-    public SettingsViewModel(Services.IThemeService themeService, Services.IToastNotificationService toastService, Services.IAppConfigService appConfigService, Services.IJavaFinderService javaFinderService)
+    public SettingsViewModel(Services.IThemeService themeService, Services.IToastNotificationService toastService, Services.IAppConfigService appConfigService, JavaInstallation.Services.IJavaFinderService javaFinderService)
     {
         _themeService = themeService;
         _toastService = toastService;
@@ -828,7 +828,7 @@ public partial class SettingsViewModel : ObservableObject
 /// </summary>
 internal static class JavaInstallationExtensions
 {
-    public static string VersionDisplay(this JavaInstallation inst)
+    public static string VersionDisplay(this JavaInstallation.Services.JavaInstallation inst)
     {
         return string.IsNullOrEmpty(inst.VersionString) ? "未知版本" : $"Java {inst.VersionString}";
     }
