@@ -1668,7 +1668,7 @@ public partial class MainWindow : Window
                 }
 
                 var bridgeService = App.Services.GetRequiredService<IPortBridgeService>();
-                var rule = new Models.PortBridgeRule
+                var rule = new PortBridgeRule
                 {
                     ListenAddress = listenAddress,
                     ListenPort = listenPort,

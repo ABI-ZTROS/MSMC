@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Management;
-using io.NET.ZTR_OS.Features.JavaInstallation.Services;
+using JavaInstallationInfo = io.NET.ZTR_OS.Features.JavaInstallation.Services.JavaInstallation;
 using io.NET.ZTR_OS.Features.ServerDetection.Models;
 using Serilog;
 
@@ -267,7 +267,7 @@ public class ServerManagerService : IServerManagerService
         try
         {
             string? javaExe = null;
-            JavaInstallation? javaInfo = null;
+            JavaInstallationInfo? javaInfo = null;
 
             // 始终使用 java.exe（而非 javaw.exe），确保服务器控制台窗口可见，
             // 玩家可查看日志输出并输入控制台命令（stop、op、say 等）。
