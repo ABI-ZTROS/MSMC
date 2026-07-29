@@ -246,11 +246,12 @@
                                    Foreground="{DynamicResource WarningRedTextBrush}"
                                    Margin="0,6,0,0"
                                    TextWrapping="Wrap" />
-                        <TextBlock Text="本协议明确排除香港特别行政区、澳门特别行政区及台湾地区（以下统称"港澳台地区"）的适用。港澳台地区用户及身处港澳台地区的用户，未经甲方事先书面同意，不得下载、安装、使用本软件，亦不得以任何方式获取本软件之服务。"
-                                   FontSize="12"
+                        <TextBlock FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextMildBrush}"
                                    Margin="0,4,0,0"
-                                   TextWrapping="Wrap" />
+                                   TextWrapping="Wrap">
+                            <TextBlock.Text>本协议明确排除香港特别行政区、澳门特别行政区及台湾地区（以下统称"港澳台地区"）的适用。港澳台地区用户及身处港澳台地区的用户，未经甲方事先书面同意，不得下载、安装、使用本软件，亦不得以任何方式获取本软件之服务。</TextBlock.Text>
+                        </TextBlock>
                         <TextBlock Text="乙方声明并保证：乙方为中华人民共和国大陆地区居民，且在使用本软件时身处中国大陆境内。若乙方违反上述地域限制，由乙方自行承担全部法律责任与不利后果，甲方有权立即终止许可并追究责任。"
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextMildBrush}"
