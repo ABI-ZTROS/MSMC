@@ -1867,6 +1867,41 @@ public partial class MainWindow : Window
             return new { servers = result };
         });
 
+        // 手动定位 JAR 文件 —— 用户明确要求：「新增一个手动定位 Jar，然后顺着路径去遍历」
+        // 弹 OpenFileDialog 让用户选 JAR → 推导 WorkingDirectory → 赋值 cfg.Server → OnServerChanged 自动扫目录
+        // 返回 {success, jarPath, workingDirectory, displayName} 供前端显示
+        _bridgeService.RegisterRequestHandler("config:browseJar", _ =>
+        {
+            try
+            {
+                if (cfg == null)
+                    return Task.FromResult<object?>(new { success = false, error = "配置编辑器视图模型未初始化" });
+
+                // 注意：OpenFileDialog 必须在 STA 线程调用，桥接层线程可能是 MTA。
+                // 用 Dispatcher.Invoke 确保在 UI 线程上执行。
+                string? jarPath = null;
+                Dispatcher.Invoke(() => { jarPath = cfg.BrowseAndLoadFromJar(); });
+
+                if (string.IsNullOrEmpty(jarPath) || cfg.Server == null)
+                {
+                    return Task.FromResult<object?>(new { success = false, error = "用户取消或目录无效" });
+                }
+
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    jarPath = jarPath,
+                    workingDirectory = cfg.Server.WorkingDirectory,
+                    displayName = cfg.Server.DisplayName,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "config:browseJar 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
         // 获取配置文件树
         _bridgeService.RegisterRequestHandler("config:getFileTree", _ =>
         {

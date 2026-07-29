@@ -457,6 +457,19 @@ export function selectConfigServer(name: string): Promise<{ success: boolean; er
   return bridge.invoke<{ success: boolean; error?: string }>('config:selectServer', name)
 }
 
+// 手动定位 JAR 文件 —— 用户明确要求：「新增一个手动定位 Jar，然后顺着路径去遍历」
+// 后端弹 OpenFileDialog 让用户选 JAR → 推导 WorkingDirectory → 赋值 cfg.Server → OnServerChanged 自动扫目录
+// 返回 jarPath / workingDirectory / displayName 供前端显示
+export function selectJarManually(): Promise<{
+  success: boolean
+  jarPath?: string
+  workingDirectory?: string
+  displayName?: string
+  error?: string
+}> {
+  return bridge.invoke('config:browseJar', null)
+}
+
 // Q3: 按 Dashboard 当前选中服务器的上下文（displayName / workingDirectory / serverJarPath / knownServerId）
 // 自动联动选择 ConfigEditor 的默认服务器。比 displayName 字符串精确相等匹配稳得多。
 export function selectDefaultConfigServer(ctx: {

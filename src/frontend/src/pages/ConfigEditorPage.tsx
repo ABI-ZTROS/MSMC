@@ -16,7 +16,6 @@ import {
   FaTriangleExclamation,
 } from 'react-icons/fa6'
 import {
-  getAvailableServers,
   getConfigFileTree,
   selectConfigFile,
   getConfigEntries,
@@ -24,16 +23,13 @@ import {
   saveConfig,
   resetConfig,
   undoConfig,
-  selectConfigServer,
   rescanConfigFiles,
-  // Q3: 联动 Dashboard 当前选中服务器
-  getSelectedServer,
-  selectDefaultConfigServer,
+  // 手动定位 JAR
+  selectJarManually,
 } from '@/utils/bridge'
 import { Reveal } from '@/components/ui/Reveal'
 import { useToastStore } from '@/stores/toastStore'
 import type {
-  AvailableServer,
   ConfigFileItem,
   ConfigFileTreeResponse,
   ConfigEntry,
@@ -223,8 +219,10 @@ function ConfigEntryEditor({
 export function ConfigEditorPage(): JSX.Element {
   const showToast = useToastStore((s) => s.showToast)
 
-  const [availableServers, setAvailableServers] = useState<AvailableServer[]>([])
-  const [selectedServerName, setSelectedServerName] = useState<string | null>(null)
+  // 快速选择已移除：保留 selectedServerName 用于显示当前选中状态（手动定位 JAR 后从后端同步）
+  const [, setSelectedServerName] = useState<string | null>(null)
+  // 手动定位的 JAR 路径，显示在按钮下方供用户确认
+  const [selectedJarPath, setSelectedJarPath] = useState<string | null>(null)
   const [serverWorkingDirectory, setServerWorkingDirectory] = useState('')
   const [configFileTree, setConfigFileTree] = useState<ConfigFileItem[]>([])
   const [configFileCountText, setConfigFileCountText] = useState('')
@@ -306,44 +304,17 @@ export function ConfigEditorPage(): JSX.Element {
 
   // 防抖定时器引用，用于配置项值变更
   const debounceTimerRef = useRef<Record<string, number>>({})
-  // 跟踪当前选中的服务器名，供 setTimeout 回调判断（避免 set state 闭包）
+  // 跟踪当前选中的服务器名，供 loadFileTree 兜底判断
   const selectedServerNameRef = useRef<string | null>(null)
+  // 跟踪当前手动定位的 JAR 路径，供 setTimeout 回调判断（避免 set state 闭包）
+  const selectedJarPathRef = useRef<string | null>(null)
 
-  // 初始化：拉取服务器列表，联动 Dashboard 当前选中服务器 → 加载文件树
+  // 初始化：快速选择已移除，只做一次 loadFileTree 兜底（用户从 Dashboard 联动进入时，
+  // 后端可能已通过 config:selectDefaultServer 设好了 Server，前端拉一次文件树即可显示）
   useEffect(() => {
     const init = async (): Promise<void> => {
       try {
-        const resp = await getAvailableServers()
-        setAvailableServers(resp.servers)
-
-        // Q3 修复：自动联动 Dashboard 侧当前选中的服务器。
-        // 流程：先读 server:getSelected → 得到 displayName/workingDirectory/serverJarPath/knownServerId
-        // → 再调 config:selectDefaultServer 做五级强匹配 → 成功后直接 loadFileTree 带出配置文件。
-        // 避免 ConfigEditor 独立初始化时列表与 Dashboard 不同步，页面显示「请先选择服务器」。
-        let defaultApplied = false
-        try {
-          const sel = await getSelectedServer()
-          if (sel) {
-            const applyResult = await selectDefaultConfigServer({
-              displayName: sel.displayName,
-              workingDirectory: sel.workingDirectory,
-              serverJarPath: sel.serverJarPath,
-              knownServerId: sel.knownServerId,
-            })
-            if (applyResult?.success) defaultApplied = true
-          }
-        } catch (e) {
-          console.warn('联动 Dashboard 选中服务器失败，回退到原有默认逻辑：', e)
-        }
-
-        // 如果联动没成功（例如没有选中、或后端匹配不上），保持旧行为：直接读当前配置页面状态。
-        // 联动成功时也仍要 loadFileTree，因为 SelectServerByContext 切换了 Server，需要前端刷新文件树。
         await loadFileTree()
-
-        if (defaultApplied) {
-          // 联动成功后，顺手加载默认选中的配置条目（如果后端已自动选了一个配置文件）
-          await loadEntries()
-        }
       } catch (e) {
         console.error('初始化配置编辑器失败:', e)
       }
@@ -355,62 +326,59 @@ export function ConfigEditorPage(): JSX.Element {
       Object.values(debounceTimerRef.current).forEach((timer) => window.clearTimeout(timer))
       debounceTimerRef.current = {}
     }
-  }, [loadFileTree, loadEntries])
+  }, [loadFileTree])
 
-  const handleSelectServer = async (name: string): Promise<void> => {
-    if (name === selectedServerName) return
+  // 手动定位 JAR —— 用户明确要求：「新增一个手动定位 Jar，然后顺着路径去遍历」
+  // 链路：selectJarManually → 后端弹 OpenFileDialog → 选 JAR → 推导 WorkingDirectory → 赋值 cfg.Server
+  //       → OnServerChanged 自动扫目录 → 前端 loadFileTree 拿配置文件树
+  const handleBrowseJar = async (): Promise<void> => {
     try {
-      // ── 先本地确定，避免后续 loadFileTree 的回滚覆盖
-      setSelectedServerName(name)
-      selectedServerNameRef.current = name
       setPendingValues({})
       setSelectedConfigFile(null)
       setSelectedConfigFileName(null)
-      // 不 setConfigGroups([])——保留上一次内容直到 loading 遮罩 + 新内容到达，避免闪空白
       setExpandedDirs(new Set())
       setExpandedGroups(new Set())
       setSaveStatusMessage(null)
 
-      // 调桥接选中服务器。后端匹配失败会返回 success=false（不再假装成功）。
-      const sel = await selectConfigServer(name)
-      if (!sel?.success) {
-        // 后端匹配失败：回滚本地状态，避免下拉框显示了名字但实际没选中
-        console.error('selectConfigServer 失败:', sel?.error ?? '未知错误')
-        setSelectedServerName(null)
-        selectedServerNameRef.current = null
-        setSaveStatusMessage(`选中服务器失败: ${sel?.error ?? '未知错误'}`)
+      const result = await selectJarManually()
+      if (!result?.success) {
+        console.error('手动定位 JAR 失败:', result?.error ?? '用户取消')
+        if (result?.error && !result.error.includes('取消')) {
+          setSaveStatusMessage(`定位 JAR 失败: ${result.error}`)
+        }
         return
+      }
+
+      // 后端已赋值 cfg.Server，OnServerChanged 已 fire-and-forget 触发扫描
+      if (result.jarPath) {
+        setSelectedJarPath(result.jarPath)
+        selectedJarPathRef.current = result.jarPath
+        selectedServerNameRef.current = result.displayName ?? result.jarPath
+      }
+      if (result.workingDirectory) {
+        setServerWorkingDirectory(result.workingDirectory)
       }
 
       await loadFileTree()
 
-      // 兜底：后端的 ScanDirectoryForConfigFilesAsync 是异步（fire-and-forget）的。
-      // 如果第一次 loadFileTree 拿到的是空树但 selectedServerName 已被正确设置，
-      // 说明后端的异步扫目录还没跑完，延迟 120ms 再拉一次，避免用户看到「暂无配置文件」
-      // 但实际上服务器有配置文件（只是还没扫完）。
-      const expectedName = name
+      // 兜底：后端 ScanDirectoryForConfigFilesAsync 是 fire-and-forget，立即拉可能空树。
+      // 延迟 150ms 再拉一次（比 120ms 略长，给大目录更多扫描时间）。
+      const expectedJar = result.jarPath
       window.setTimeout(async () => {
         try {
-          // 用户中途可能换了服务器，只在仍是同一个时才应用
-          if (selectedServerNameRef.current !== expectedName) return
+          if (selectedJarPathRef.current !== expectedJar) return
           const recheck = await getConfigFileTree()
           if (recheck.tree && recheck.tree.length > 0) {
             setConfigFileTree(recheck.tree)
-            setConfigFilesState(recheck.count ? [] : [])  // 补偿：tree 有数据就用，扁平列表只是兜底
+            setConfigFilesState([])
             if (recheck.hasServerDirectory != null) setHasServerDirectory(recheck.hasServerDirectory)
             if (recheck.configFileCountText) setConfigFileCountText(recheck.configFileCountText)
             if (recheck.serverWorkingDirectory) setServerWorkingDirectory(recheck.serverWorkingDirectory)
-            // selectedServerName 补偿：只在当前本地还是 null 时应用
-            setSelectedServerName((prev) => {
-              if (prev != null) return prev
-              selectedServerNameRef.current = recheck.selectedServerName ?? null
-              return recheck.selectedServerName ?? null
-            })
           }
         } catch {}
-      }, 120)
+      }, 150)
     } catch (e) {
-      console.error('选择服务器失败:', e)
+      console.error('手动定位 JAR 失败:', e)
     }
   }
 
@@ -596,19 +564,14 @@ export function ConfigEditorPage(): JSX.Element {
             选择服务器
           </div>
           <div className="flex gap-1">
-            <select
-              className="md-select"
-              style={{ height: 32, fontSize: 12, flex: 1 }}
-              value={selectedServerName ?? ''}
-              onChange={(e) => handleSelectServer(e.target.value)}
+            <button
+              className="md-btn md-btn-outlined"
+              style={{ height: 32, fontSize: 12, flex: 1, justifyContent: 'center' }}
+              onClick={handleBrowseJar}
             >
-              {availableServers.length === 0 && <option value="">选择服务器...</option>}
-              {availableServers.map((s) => (
-                <option key={s.displayName} value={s.displayName}>
-                  {s.displayName}
-                </option>
-              ))}
-            </select>
+              <FaFolderOpen size={14} style={{ marginRight: 6 }} />
+              手动定位 JAR
+            </button>
             <button
               className="md-btn md-btn-outlined md-btn-icon"
               style={{ height: 32, width: 32 }}
@@ -618,6 +581,15 @@ export function ConfigEditorPage(): JSX.Element {
               <FaArrowsRotate size={14} />
             </button>
           </div>
+          {selectedJarPath && (
+            <div
+              className="truncate mt-1.5"
+              style={{ fontSize: 10, opacity: 0.6 }}
+              title={selectedJarPath}
+            >
+              JAR: {selectedJarPath}
+            </div>
+          )}
           {serverWorkingDirectory && (
             <div
               className="truncate mt-1.5"

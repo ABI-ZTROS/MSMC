@@ -533,6 +533,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             {
                 server.ServerJarPath = jarFiles[0];
                 server.ServerJarName = Path.GetFileName(jarFiles[0]);
+                server.ServerType = InferServerType(server.ServerJarName);
             }
         }
         catch (Exception ex)
@@ -541,6 +542,60 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         }
 
         Server = server;
+    }
+
+    /// <summary>
+    /// 手动定位 JAR 文件加载服务器实例。
+    /// 用户明确要求：「新增一个手动定位 Jar，然后顺着路径去遍历」。
+    /// 极简链路：
+    ///   ① 弹 OpenFileDialog 让用户选 JAR
+    ///   ② 推导 WorkingDirectory = Path.GetDirectoryName(jarPath)
+    ///   ③ 构造 ServerInstance 并赋值 Server（OnServerChanged 会自动扫目录）
+    ///   ④ 返回选中的 JAR 路径供前端显示
+    /// </summary>
+    /// <returns>选中的 JAR 路径（null 表示用户取消）</returns>
+    public string? BrowseAndLoadFromJar()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "Minecraft 服务器核心 (*.jar)|*.jar|所有文件 (*.*)|*.*",
+            Title = "手动定位服务器 JAR 文件",
+            CheckFileExists = true
+        };
+
+        var owner = System.Windows.Application.Current.Windows.OfType<System.Windows.Window>()
+            .FirstOrDefault(w => w.IsActive) ?? System.Windows.Application.Current.MainWindow;
+
+        if (dialog.ShowDialog(owner) != true)
+        {
+            Log.Information("⏭️ 用户取消了手动定位 JAR");
+            return null;
+        }
+
+        var jarPath = dialog.FileName;
+        var dirPath = Path.GetDirectoryName(jarPath);
+
+        if (string.IsNullOrEmpty(dirPath) || !Directory.Exists(dirPath))
+        {
+            Log.Warning("⚠️ 手动定位 JAR 失败：推导的目录无效: {Jar}", jarPath);
+            return null;
+        }
+
+        var jarName = Path.GetFileName(jarPath);
+        Log.Information("📂 手动定位 JAR: {Jar} → 目录: {Dir}", jarPath, dirPath);
+
+        // 构造 ServerInstance 并赋值 Server（OnServerChanged 会自动扫目录）
+        var server = new ServerInstance
+        {
+            ServerJarName = jarName,
+            ServerJarPath = jarPath,
+            WorkingDirectory = dirPath,
+            ServerType = InferServerType(jarName),
+            ProcessId = 0,
+        };
+
+        Server = server;
+        return jarPath;
     }
 
     /// <summary>
