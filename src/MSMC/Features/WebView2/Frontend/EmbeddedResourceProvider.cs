@@ -28,7 +28,8 @@ public class EmbeddedResourceProvider : IFrontendResourceProvider
     public EmbeddedResourceProvider()
     {
         _assembly = typeof(EmbeddedResourceProvider).Assembly;
-        _zipResourceName = $"{_assembly.GetName().Name}.wwwroot.zip";
+        // 优先尝试 AssemblyName.wwwroot.zip（csproj LogicalName 显式指定的名字）
+        _zipResourceName = EmbeddedZipResourceNameResolver.Resolve(_assembly);
 
         LoadZipArchive();
     }
@@ -41,6 +42,12 @@ public class EmbeddedResourceProvider : IFrontendResourceProvider
             if (stream == null)
             {
                 Log.Warning("未找到嵌入资源: {Name}", _zipResourceName);
+                // 再输出一次所有嵌入资源名，方便用户在 VS 输出面板直接查看
+                var allNames = _assembly.GetManifestResourceNames();
+                Log.Warning("程序集 {Asm} 当前嵌入资源清单（共 {Count} 项）:",
+                    _assembly.GetName().Name, allNames.Length);
+                foreach (var n in allNames)
+                    Log.Warning("  - {Name}", n);
                 IsAvailable = false;
                 return;
             }
@@ -156,5 +163,64 @@ public class EmbeddedResourceProvider : IFrontendResourceProvider
             [".xml"] = "application/xml; charset=utf-8",
             [".wasm"] = "application/wasm",
         };
+    }
+}
+
+/// <summary>
+/// wwwroot.zip 嵌入资源名解析器（EmbeddedResourceProvider 与 ZipExtractResourceProvider 共用）。
+/// 依次尝试：AssemblyName → RootNamespace → 旧命名 McServerGuard → 模糊匹配 EndsWith wwwroot.zip。
+/// 找不到时把所有嵌入资源名列到 WARNING 日志，用户在 VS 输出面板一眼看到实际名字，
+/// 避免猜 LogicalName 前缀到底用的是哪个。
+/// </summary>
+internal static class EmbeddedZipResourceNameResolver
+{
+    public static string Resolve(Assembly asm)
+    {
+        var asmName = asm.GetName().Name ?? string.Empty;
+        var candidates = new List<string>
+        {
+            $"{asmName}.wwwroot.zip",
+            "io.NET.ZTR_OS.wwwroot.zip",
+            "McServerGuard.wwwroot.zip",
+        };
+
+        // 1. 精确匹配候选
+        foreach (var cand in candidates)
+        {
+            using var s = asm.GetManifestResourceStream(cand);
+            if (s != null)
+            {
+                Log.Information("📦 嵌入资源精确命中: {Name}", cand);
+                return cand;
+            }
+        }
+
+        // 2. 模糊匹配：任何以 "wwwroot.zip" 结尾的嵌入资源
+        var allNames = asm.GetManifestResourceNames();
+        var matched = allNames.FirstOrDefault(n =>
+            n.EndsWith("wwwroot.zip", StringComparison.OrdinalIgnoreCase));
+
+        if (matched != null)
+        {
+            Log.Warning("📦 嵌入资源精确名未命中，回退模糊匹配: {Matched}", matched);
+            Log.Warning("📋 程序集 {Asm} 全部嵌入资源清单（排查 LogicalName 用）:", asmName);
+            foreach (var n in allNames)
+                Log.Warning("  • {Name}", n);
+            return matched;
+        }
+
+        // 3. 实在找不到：列全部资源名到日志，返回最可能的默认名
+        Log.Warning("📦 程序集 {Asm} 中未找到任何 wwwroot.zip 嵌入资源。", asmName);
+        if (allNames.Length == 0)
+        {
+            Log.Warning("📋 （程序集没有任何嵌入资源，通常意味着 csproj 的 PackFrontendToZip Target 没有执行）");
+        }
+        else
+        {
+            Log.Warning("📋 程序集 {Asm} 当前所有嵌入资源清单（共 {Count} 项）:", asmName, allNames.Length);
+            foreach (var n in allNames)
+                Log.Warning("  - {Name}", n);
+        }
+        return $"{asmName}.wwwroot.zip";
     }
 }

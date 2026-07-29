@@ -27,7 +27,8 @@ public class ZipExtractResourceProvider : IFrontendResourceProvider
     public ZipExtractResourceProvider()
     {
         _assembly = typeof(ZipExtractResourceProvider).Assembly;
-        _zipResourceName = $"{_assembly.GetName().Name}.wwwroot.zip";
+        // 复用 EmbeddedResourceProvider 里的枚举兜底逻辑，保持两条链路的资源名解析一致
+        _zipResourceName = EmbeddedZipResourceNameResolver.Resolve(_assembly);
 
         // 检查 zip 资源是否存在
         using var stream = _assembly.GetManifestResourceStream(_zipResourceName);
@@ -35,7 +36,11 @@ public class ZipExtractResourceProvider : IFrontendResourceProvider
 
         if (!IsAvailable)
         {
-            Log.Warning("未找到 wwwroot.zip 嵌入资源");
+            Log.Warning("未找到 wwwroot.zip 嵌入资源 (期望名称: {Name})", _zipResourceName);
+            var allNames = _assembly.GetManifestResourceNames();
+            Log.Warning("ZipExtractResourceProvider 程序集嵌入资源清单（共 {Count} 项）:", allNames.Length);
+            foreach (var n in allNames)
+                Log.Warning("  - {Name}", n);
         }
     }
 
