@@ -43,7 +43,7 @@ interface Particle {
  */
 export function ParticleField({
   density = 1,
-  color = '#3B82F6',
+  color = 'var(--md-primary-hue-mid)',
   connect = true,
   connectDistance = 120,
   speed = 0.25,
@@ -70,6 +70,20 @@ export function ParticleField({
     let height = 0
     let dpr = Math.min(window.devicePixelRatio || 1, 2)
     let running = true
+
+    // canvas 不支持 CSS 变量（ctx.fillStyle = 'var(...)' 会被拒绝并保持上一有效色），
+    // 这里通过 getComputedStyle 把 var(...) 解析为具体的 rgb() 值；
+    // 主题切换时 theme.ts 会改写 documentElement.style，MutationObserver 据此重新解析。
+    const resolveColor = (raw: string): string => {
+      try {
+        canvas.style.color = raw
+        const resolved = getComputedStyle(canvas).color
+        return resolved || raw
+      } catch {
+        return raw
+      }
+    }
+    let resolvedColor = resolveColor(color)
 
     const computeCount = () => {
       const area = width * height
@@ -120,7 +134,7 @@ export function ParticleField({
 
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-        ctx.fillStyle = color
+        ctx.fillStyle = resolvedColor
         ctx.globalAlpha = p.baseAlpha
         ctx.fill()
       }
@@ -128,7 +142,7 @@ export function ParticleField({
       // 绘制连线（粒子数少时直接 O(n²)）
       if (connect && particles.length <= 80) {
         ctx.globalAlpha = 1
-        ctx.strokeStyle = color
+        ctx.strokeStyle = resolvedColor
         ctx.lineWidth = 0.6
         const distSq = connectDistance * connectDistance
         for (let i = 0; i < particles.length; i++) {
@@ -170,6 +184,11 @@ export function ParticleField({
 
     const ro = new ResizeObserver(() => resize())
     ro.observe(canvas)
+    // 主题切换时重新解析 CSS 变量颜色（theme.ts 改写 documentElement.style 触发）
+    const mo = new MutationObserver(() => {
+      resolvedColor = resolveColor(color)
+    })
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] })
     if (pauseOnHidden) {
       document.addEventListener('visibilitychange', onVisibility)
     }
@@ -177,6 +196,7 @@ export function ParticleField({
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
+      mo.disconnect()
       if (pauseOnHidden) {
         document.removeEventListener('visibilitychange', onVisibility)
       }

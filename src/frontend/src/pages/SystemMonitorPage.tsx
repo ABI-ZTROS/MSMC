@@ -540,7 +540,7 @@ export function SystemMonitorPage(): JSX.Element {
               padding: '4px 12px',
               fontSize: 12,
               background: historyDays === opt.days ? 'var(--md-primary-hue-mid)' : 'var(--md-subtle-border)',
-              color: historyDays === opt.days ? '#fff' : 'var(--md-body)',
+              color: historyDays === opt.days ? 'var(--md-primary-foreground)' : 'var(--md-body)',
               border: 'none',
               borderRadius: 6,
               cursor: 'pointer',

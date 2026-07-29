@@ -168,7 +168,7 @@ export function CpuProcessTree({
               </span>
             )}
             {stats.java > 0 && (
-              <span style={{ fontSize: 10, fontWeight: 600, color: '#fff', background: 'var(--md-primary-hue-mid)', padding: '2px 6px', borderRadius: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--md-primary-foreground)', background: 'var(--md-primary-hue-mid)', padding: '2px 6px', borderRadius: 8 }}>
                 Java × {stats.java}
               </span>
             )}
@@ -366,6 +366,10 @@ export function CpuProcessTree({
                     : proc.isSystemProcess
                       ? '系统'
                       : '用户'
+                // 主色背景需用主题感知前景色（浅色主色时自动转黑字），其余饱和/灰底保持白字
+                const badgeFgColor = proc.isJavaProcess
+                  ? 'var(--md-primary-foreground)'
+                  : '#fff'
                 const canKill = !proc.isSystemProcess
 
                 return (
@@ -395,7 +399,7 @@ export function CpuProcessTree({
                           style={{
                             fontSize: 9,
                             fontWeight: 700,
-                            color: '#fff',
+                            color: badgeFgColor,
                             background: badgeColor,
                             padding: '2px 6px',
                             borderRadius: 4,
