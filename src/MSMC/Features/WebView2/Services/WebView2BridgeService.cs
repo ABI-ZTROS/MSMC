@@ -208,8 +208,12 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             var appUrl = $"http://{hostName}/index.html";
             var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            // 【修复 2】同时监听 NavigationCompleted（成功/失败 HTTP 码）和 NavigationFailed（导航级错误，
-            // 如 DNS / TLS / 无效 URL）。只要任意一个触发，立刻判结果，避免白等 30 秒。
+            // 【修复 2】监听 NavigationCompleted。
+            // 【注意】CoreWebView2 早期 1.x 稳定版没有单独的 NavigationFailed 事件，
+            // 所有导航结果（成功/失败/HTTP 4xx/5xx/TLS 错误）都会在 NavigationCompleted 里给出
+            // IsSuccess + WebErrorStatus + HttpStatusCode，因此单监听 NavigationCompleted 已完整覆盖。
+            // 如果 NavigationCompleted 长时间不来，靠下面的 30 秒超时兜底，把当时的 URL 等信息
+            // 打到 ERROR 日志里，足够排查 10 秒级卡死。
             void OnNavCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
             {
                 if (e.IsSuccess)
@@ -219,26 +223,16 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                 }
                 else
                 {
-                    Log.Error("[WV2-LOAD] ❌ NavigationCompleted 失败: WebErrorStatus={Status}, HTTP={Code}",
+                    Log.Error(
+                        "[WV2-LOAD] ❌ NavigationCompleted 失败: WebErrorStatus={Status}, HTTP={Code}。" +
+                        "常见原因: ① https 虚拟主机证书问题（已改 http）② 路径被杀毒/组策略拦截 ③ index.html 不存在",
                         e.WebErrorStatus, e.HttpStatusCode);
                     tcs.TrySetResult(false);
                 }
                 _webView!.CoreWebView2.NavigationCompleted -= OnNavCompleted;
-                _webView.CoreWebView2.NavigationFailed -= OnNavFailed;
-            }
-
-            void OnNavFailed(object? sender, CoreWebView2NavigationFailedEventArgs e)
-            {
-                Log.Error(
-                    "[WV2-LOAD] ❌ NavigationFailed: WebErrorStatus={Status}, Uri={Uri}, ErrorCode={Code}",
-                    e.WebErrorStatus, e.Uri, e.ErrorCode);
-                tcs.TrySetResult(false);
-                _webView!.CoreWebView2.NavigationCompleted -= OnNavCompleted;
-                _webView.CoreWebView2.NavigationFailed -= OnNavFailed;
             }
 
             _webView.CoreWebView2.NavigationCompleted += OnNavCompleted;
-            _webView.CoreWebView2.NavigationFailed += OnNavFailed;
 
             // 开始导航
             Log.Information("[WV2-LOAD] 🧭 开始导航到: {Url}", appUrl);
@@ -246,7 +240,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
             // 【修复 3】超时 10s → 30s
             // WebView2 冷启动 + 中文路径虚拟主机首次读取 + 4.6MB vendor.js 加载 + 反混淆初始化，
-            // 低端机上 10 秒是明显不够的。30 秒更稳妥，且真实错误会被 NavigationFailed 提前结束。
+            // 低端机上 10 秒是明显不够的。30 秒更稳妥，真实错误会在 NavigationCompleted 里立刻给出（WebErrorStatus + HTTP 状态码）。
             var timeout = Task.Delay(TimeSpan.FromSeconds(30));
             var completed = await Task.WhenAny(tcs.Task, timeout);
 
@@ -254,10 +248,10 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             {
                 Log.Error(
                     "[WV2-LOAD] ⏰ 前端页面加载超时 (30s)！模式: {Mode}, Url: {Url}。" +
-                    "若持续出现，请检查: ① 虚拟主机路径是否可读（权限/杀毒拦截）② 手动在浏览器打开该 index.html 是否能正常渲染。",
+                    "若持续出现，请检查: ① 虚拟主机路径是否可读（权限/杀毒拦截/中文路径）② 手动在浏览器打开该 index.html 是否能正常渲染。" +
+                    "（注：WebView2 1.x SDK 导航失败只走 NavigationCompleted，若此处超时说明该事件一直未触发，通常是 WebView2 初始化被中断或页面脚本死锁）",
                     provider.ModeName, appUrl);
                 _webView.CoreWebView2.NavigationCompleted -= OnNavCompleted;
-                _webView.CoreWebView2.NavigationFailed -= OnNavFailed;
                 return false;
             }
 

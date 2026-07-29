@@ -129,7 +129,8 @@ public partial class StartupWindow : Window
                 Log.Information("[Startup-WV2-LOAD] 🔌 WebResourceRequested 拦截器已注册");
             }
 
-            // 【和主窗口一致】改用 http:// 虚拟协议 + 导航完成/失败双事件监听 + 30 秒超时
+            // 【和主窗口一致】改用 http:// 虚拟协议 + NavigationCompleted 单监听（覆盖成功/失败）+ 30 秒超时
+            // 注：WebView2 1.x 稳定版没有独立 NavigationFailed 事件，所有错误统一走 NavigationCompleted。
             var startupUrl = $"http://{virtualHost}/startup.html";
             Log.Information("[Startup-WV2-LOAD] 🧭 导航到: {Url}", startupUrl);
 
@@ -144,25 +145,16 @@ public partial class StartupWindow : Window
                 }
                 else
                 {
-                    Log.Error("[Startup-WV2-LOAD] ❌ NavigationCompleted 失败: Status={Status}, HTTP={Code}",
+                    Log.Error(
+                        "[Startup-WV2-LOAD] ❌ NavigationCompleted 失败: Status={Status}, HTTP={Code}。" +
+                        "常见原因: ① 虚拟主机协议不匹配（已从 https 改为 http）② 文件路径被杀毒拦截 ③ startup.html 实际不存在",
                         e.WebErrorStatus, e.HttpStatusCode);
                     tcs.TrySetResult(false);
                 }
                 StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
-                StartupWebView.CoreWebView2.NavigationFailed -= OnFailed;
-            }
-
-            void OnFailed(object? sender, CoreWebView2NavigationFailedEventArgs e)
-            {
-                Log.Error("[Startup-WV2-LOAD] ❌ NavigationFailed: Status={Status}, Uri={Uri}, Code={Code}",
-                    e.WebErrorStatus, e.Uri, e.ErrorCode);
-                tcs.TrySetResult(false);
-                StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
-                StartupWebView.CoreWebView2.NavigationFailed -= OnFailed;
             }
 
             StartupWebView.CoreWebView2.NavigationCompleted += OnCompleted;
-            StartupWebView.CoreWebView2.NavigationFailed += OnFailed;
 
             StartupWebView.Source = new Uri(startupUrl);
 
@@ -170,9 +162,10 @@ public partial class StartupWindow : Window
             var done = await Task.WhenAny(tcs.Task, timeout);
             if (done == timeout)
             {
-                Log.Error("[Startup-WV2-LOAD] ⏰ 启动页加载超时 (30s)，协议已从 https 改为 http；若仍超，请检查路径权限/杀毒拦截");
+                Log.Error(
+                    "[Startup-WV2-LOAD] ⏰ 启动页加载超时 (30s)，协议已从 https 改为 http；若仍超，" +
+                    "请检查路径权限/中文路径/杀毒软件拦截，或直接在浏览器打开目标 startup.html 验证。");
                 StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
-                StartupWebView.CoreWebView2.NavigationFailed -= OnFailed;
                 LoadFallbackPage("启动页加载超时");
                 return;
             }
