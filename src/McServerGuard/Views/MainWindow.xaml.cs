@@ -2236,6 +2236,42 @@ public partial class MainWindow : Window
             }
         });
 
+        // 获取核心索引表 —— 供软件查询所有服务器核心的配置文件翻译索引
+        _bridgeService.RegisterRequestHandler("config:getCoreIndex", _ =>
+        {
+            try
+            {
+                var registry = App.Services.GetRequiredService<Services.ConfigManagement.ConfigDescriptorRegistry>();
+                var index = registry.GetCoreIndex();
+                return Task.FromResult<object>(new
+                {
+                    success = true,
+                    totalCores = index.Count,
+                    totalDescriptors = index.Sum(c => c.ConfigFiles.Sum(f => f.DescriptorCount)),
+                    cores = index.Select(c => new
+                    {
+                        coreType = c.CoreType,
+                        displayName = c.DisplayName,
+                        category = c.Category,
+                        inheritance = c.Inheritance,
+                        isDeprecated = c.IsDeprecated,
+                        configFiles = c.ConfigFiles.Select(f => new
+                        {
+                            fileName = f.FileName,
+                            format = f.Format,
+                            source = f.Source,
+                            descriptorCount = f.DescriptorCount
+                        })
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "config:getCoreIndex 失败");
+                return Task.FromResult<object>(new { success = false, error = ex.Message });
+            }
+        });
+
         Log.Information("✅ 配置编辑 API 注册完成");
     }
 

@@ -296,6 +296,226 @@ public sealed class ConfigDescriptorRegistry
     /// <param name="DescriptorCount">该文件已注册的描述符数量</param>
     public sealed record FileCoverageStat(string ConfigFileName, int DescriptorCount);
 
+    // ==================== 核心索引表 ====================
+
+    /// <summary>
+    /// 核心索引条目：描述一种服务器核心及其配置文件清单
+    /// </summary>
+    public sealed record CoreIndexEntry(
+        string CoreType,                       // 核心代号（与 ServerType 枚举名一致）
+        string DisplayName,                    // 中文显示名
+        string Category,                       // 分类（原版/Paper系/代理端/混合端/模组端/基岩版/独立实现）
+        string Inheritance,                    // 继承关系链
+        bool IsDeprecated,                     // 是否已停更/归档
+        List<CoreConfigFileInfo> ConfigFiles   // 该核心的配置文件列表
+    );
+
+    /// <summary>
+    /// 核心配置文件信息
+    /// </summary>
+    public sealed record CoreConfigFileInfo(
+        string FileName,     // 配置文件名（可含路径）
+        string Format,       // 格式：YAML/TOML/Properties/HOCON/CONF
+        string Source,       // 来源：原版继承/Bukkit继承/核心专属
+        int DescriptorCount  // 已注册的描述符数量
+    );
+
+    /// <summary>
+    /// 核心索引表：手动维护的核心元数据，用于软件查询和展示
+    /// </summary>
+    private static readonly List<CoreIndexEntry> _coreIndex =
+    [
+        // ── 原版与基础插件端 ──
+        new("Vanilla", "原版", "原版", "Mojang 官方", false,
+        [
+            new("server.properties", "Properties", "原版", 0),
+        ]),
+        new("Bukkit", "Bukkit", "基础插件端", "Vanilla → Bukkit", false,
+        [
+            new("bukkit.yml", "YAML", "Bukkit 专属", 0),
+            new("permissions.yml", "YAML", "Bukkit 专属", 0),
+            new("commands.yml", "YAML", "Bukkit 专属", 0),
+            new("help.yml", "YAML", "Bukkit 专属", 0),
+            new("server.properties", "Properties", "原版继承", 0),
+        ]),
+        new("Spigot", "Spigot", "基础插件端", "Vanilla → Bukkit → Spigot", false,
+        [
+            new("spigot.yml", "YAML", "Spigot 专属", 0),
+            new("bukkit.yml", "YAML", "Bukkit 继承", 0),
+            new("server.properties", "Properties", "原版继承", 0),
+        ]),
+        new("Paper", "Paper", "基础插件端", "Vanilla → Bukkit → Spigot → Paper", false,
+        [
+            new("config/paper-global.yml", "YAML", "Paper 专属", 0),
+            new("config/paper-world-defaults.yml", "YAML", "Paper 专属", 0),
+            new("spigot.yml", "YAML", "Spigot 继承", 0),
+            new("bukkit.yml", "YAML", "Bukkit 继承", 0),
+            new("server.properties", "Properties", "原版继承", 0),
+        ]),
+
+        // ── Paper 系派生核心（活跃） ──
+        new("Folia", "Folia", "Paper系", "Paper → Folia", false,
+        [
+            new("config/paper-global.yml", "YAML", "Folia 追加 ThreadedRegions 节", 0),
+        ]),
+        new("Purpur", "Purpur", "Paper系", "Paper → Pufferfish → Purpur", false,
+        [
+            new("purpur.yml", "YAML", "Purpur 专属", 0),
+        ]),
+        new("Pufferfish", "Pufferfish", "Paper系", "Paper → Pufferfish", false,
+        [
+            new("pufferfish.yml", "YAML", "Pufferfish 专属", 0),
+        ]),
+        new("Leaves", "Leaves", "Paper系", "Paper → Leaves", false,
+        [
+            new("leaves.yml", "YAML", "Leaves 专属", 0),
+        ]),
+        new("Leaf", "Leaf", "Paper系", "Leaves → Leaf", false,
+        [
+            new("leaf.yml", "YAML", "Leaf 专属", 0),
+            new("config/leaf-global.yml", "YAML", "Leaf 专属", 0),
+        ]),
+        new("Luminol", "Luminol", "Paper系", "Leaves → Luminol", false,
+        [
+            new("luminol_global_config.toml", "TOML", "Luminol 专属", 0),
+        ]),
+        new("Kaiiju", "Kaiiju", "Paper系", "Folia → Kaiiju", false,
+        [
+            new("kaiiju.yml", "YAML", "Kaiiju 专属", 0),
+        ]),
+        new("NachoSpigot", "NachoSpigot", "Paper系", "Paper → NachoSpigot", false,
+        [
+            new("nacho.yml", "YAML", "NachoSpigot 专属", 0),
+        ]),
+        new("USpigot", "USpigot", "Paper系", "Spigot → USpigot", false,
+        [
+            new("uspigot.yml", "YAML", "USpigot 专属", 0),
+        ]),
+
+        // ── Paper 系派生核心（已停更） ──
+        new("Yatopia", "Yatopia", "Paper系", "Tuinity → Yatopia", true,
+        [
+            new("yatopia.yml", "YAML", "Yatopia 专属", 0),
+        ]),
+        new("Airplane", "Airplane", "Paper系", "Paper → Airplane", true,
+        [
+            new("airplane.yml", "YAML", "Airplane 专属", 0),
+        ]),
+        new("Tuinity", "Tuinity", "Paper系", "Paper → Tuinity", true,
+        [
+            new("tuinity.yml", "YAML", "Tuinity 专属", 0),
+        ]),
+        new("Akarin", "Akarin", "Paper系", "Paper → Akarin", true,
+        [
+            new("akarin.yml", "YAML", "Akarin 专属", 0),
+        ]),
+
+        // ── 模组端 ──
+        new("Forge", "Forge", "模组端", "Mojang → Forge", false,
+        [
+            new("forge-server.toml", "TOML", "Forge 专属", 0),
+        ]),
+        new("NeoForge", "NeoForge", "模组端", "Forge → NeoForge", false,
+        [
+            new("neoforge-server.toml", "TOML", "NeoForge 专属", 0),
+            new("neoforge-common.toml", "TOML", "NeoForge 专属", 0),
+        ]),
+        new("Fabric", "Fabric", "模组端", "Mojang → Fabric", false,
+        [
+            new("fabric-server-launcher.properties", "Properties", "Fabric 专属", 0),
+        ]),
+        new("Quilt", "Quilt", "模组端", "Fabric → Quilt", false,
+        [
+            new("quilt-server-launcher.properties", "Properties", "Quilt 专属", 0),
+        ]),
+
+        // ── 代理端 ──
+        new("BungeeCord", "BungeeCord", "代理端", "Spigot 团队", false,
+        [
+            new("config.yml", "YAML", "BungeeCord 专属", 0),
+        ]),
+        new("Velocity", "Velocity", "代理端", "PaperMC 独立实现", false,
+        [
+            new("velocity.toml", "TOML", "Velocity 专属", 0),
+        ]),
+        new("Waterfall", "Waterfall", "代理端", "BungeeCord → Waterfall", true,
+        [
+            new("waterfall.yml", "YAML", "Waterfall 专属", 0),
+            new("config.yml", "YAML", "BungeeCord 继承", 0),
+        ]),
+        new("FlameCord", "FlameCord", "代理端", "BungeeCord → FlameCord", false,
+        [
+            new("flamecord.yml", "YAML", "FlameCord 专属", 0),
+            new("config.yml", "YAML", "BungeeCord 继承", 0),
+        ]),
+        new("HexaCord", "HexaCord", "代理端", "BungeeCord → HexaCord", false,
+        [
+            new("hexacord.yml", "YAML", "HexaCord 专属", 0),
+            new("config.yml", "YAML", "BungeeCord 继承", 0),
+        ]),
+
+        // ── 混合端 ──
+        new("Mohist", "Mohist", "混合端", "Forge + Bukkit", false,
+        [
+            new("mohist-config.yml", "YAML", "Mohist 专属", 0),
+        ]),
+        new("Arclight", "Arclight", "混合端", "Forge/NeoForge/Fabric + Bukkit", false,
+        [
+            new("arclight.conf", "HOCON", "Arclight 专属", 0),
+        ]),
+        new("CatServer", "CatServer", "混合端", "Forge + Bukkit", false,
+        [
+            new("catserver.yml", "YAML", "CatServer 专属", 0),
+        ]),
+        new("Magma", "Magma", "混合端", "Thermos → Magma (Forge + Bukkit)", false,
+        [
+            new("magma.yml", "Properties", "Magma 专属", 0),
+        ]),
+        new("Banner", "Banner", "混合端", "Fabric + Bukkit", false,
+        [
+            new("banner.yml", "YAML", "Banner 专属", 0),
+        ]),
+
+        // ── 基岩版 / 独立实现 / Sponge ──
+        new("Sponge", "Sponge", "独立实现", "SpongePowered 独立", false,
+        [
+            new("config/sponge/global.conf", "HOCON", "Sponge 专属", 0),
+        ]),
+        new("SpongeForge", "SpongeForge", "独立实现", "Sponge on Forge", false,
+        [
+            new("config/sponge/spongeforge-global.conf", "HOCON", "SpongeForge 差异", 0),
+        ]),
+        new("Nukkit", "Nukkit", "基岩版", "CloudburstMC 基岩版 Java 实现", false,
+        [
+            new("nukkit.yml", "YAML", "Nukkit 专属", 0),
+            new("nukkit-server.properties", "Properties", "Nukkit 基岩版专属", 0),
+        ]),
+        new("PowerNukkit", "PowerNukkit", "基岩版", "Nukkit → PowerNukkit", false,
+        [
+            new("powernukkit.yml", "YAML", "PowerNukkit 专属", 0),
+            new("powernukkit-server.properties", "Properties", "PowerNukkit 基岩版专属", 0),
+        ]),
+        new("Glowstone", "Glowstone", "独立实现", "独立 Bukkit API 实现", false,
+        [
+            new("config/glowstone/glowstone.yml", "YAML", "Glowstone 专属", 0),
+        ]),
+    ];
+
+    /// <summary>
+    /// 获取核心索引表，供软件查询和展示所有服务器核心的配置文件翻译索引
+    /// </summary>
+    /// <returns>核心索引条目列表，每个条目包含核心代号、显示名、分类、继承关系和配置文件清单（含描述符数量）</returns>
+    public List<CoreIndexEntry> GetCoreIndex()
+    {
+        // 为每个配置文件填充实际的描述符数量
+        return _coreIndex.Select(entry => entry with
+        {
+            ConfigFiles = entry.ConfigFiles
+                .Select(f => f with { DescriptorCount = _descriptors.Count(d => d.Key.ConfigFileName == f.FileName) })
+                .ToList()
+        }).ToList();
+    }
+
     /// <summary>
     /// 注册 server.properties 配置文件的所有关键配置项
     /// </summary>

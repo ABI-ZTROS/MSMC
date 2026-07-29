@@ -485,6 +485,35 @@ export function rescanConfigFiles(): Promise<{ success: boolean }> {
   return bridge.invoke<{ success: boolean }>('config:rescan')
 }
 
+// 核心索引表 —— 查询所有服务器核心的配置文件翻译索引
+export interface CoreConfigFileInfo {
+  fileName: string
+  format: string
+  source: string
+  descriptorCount: number
+}
+
+export interface CoreIndexEntry {
+  coreType: string
+  displayName: string
+  category: string
+  inheritance: string
+  isDeprecated: boolean
+  configFiles: CoreConfigFileInfo[]
+}
+
+export interface CoreIndexResponse {
+  success: boolean
+  totalCores?: number
+  totalDescriptors?: number
+  cores?: CoreIndexEntry[]
+  error?: string
+}
+
+export function getCoreIndex(): Promise<CoreIndexResponse> {
+  return bridge.invoke<CoreIndexResponse>('config:getCoreIndex')
+}
+
 // ═════════════════════════════════════════════════════════════════════
 // 设置 API
 // ═════════════════════════════════════════════════════════════════════
