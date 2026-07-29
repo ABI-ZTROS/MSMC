@@ -26,8 +26,13 @@ public static partial class ServerTypeClassifier
     [
         (ServerConstants.VanillaJarPatterns, ServerType.Vanilla),
         (ServerConstants.BukkitJarPatterns, ServerType.Bukkit),
+        // USpigot 优先于 Spigot（USpigot 是 Spigot 下游）
+        (ServerConstants.USpigotJarPatterns, ServerType.USpigot),
         (ServerConstants.SpigotJarPatterns, ServerType.Spigot),
-        // Paper 系派生类优先（Folia > Kaiiju > Purpur > Pufferfish > Yatopia > Airplane > Tuinity > Akarin > NachoSpigot > Paper）
+        // Paper 系派生类优先（Luminol > Leaf > Leaves > Folia > Kaiiju > Purpur > Pufferfish > Yatopia > Airplane > Tuinity > Akarin > NachoSpigot > Paper）
+        (ServerConstants.LuminolJarPatterns, ServerType.Luminol),
+        (ServerConstants.LeafJarPatterns, ServerType.Leaf),
+        (ServerConstants.LeavesJarPatterns, ServerType.Leaves),
         (ServerConstants.FoliaJarPatterns, ServerType.Folia),
         (ServerConstants.KaiijuJarPatterns, ServerType.Kaiiju),
         (ServerConstants.PurpurJarPatterns, ServerType.Purpur),
@@ -158,6 +163,9 @@ public static partial class ServerTypeClassifier
         var uniqueChecks = new[]
         {
             // Paper 系派生类优先（共享 paper-global.yml，必须先检测派生类独有文件）
+            (ServerType.Luminol,      new[] { "luminol.yml", "config/luminol/" }),
+            (ServerType.Leaf,         new[] { "leaf.yml", "leafmc.yml", "config/leaf/" }),
+            (ServerType.Leaves,       new[] { "leaves.yml", "config/leaves-global.yml" }),
             (ServerType.Folia,        new[] { "config/folia-global.yml" }),
             (ServerType.Kaiiju,       new[] { "kaiiju.yml", "config/kaiiju.yml" }),
             (ServerType.Purpur,       new[] { "purpur.yml", "config/purpur.yml" }),
@@ -179,7 +187,8 @@ public static partial class ServerTypeClassifier
             // Fabric 系
             (ServerType.Fabric,       new[] { "fabric-server-launch.properties", ".fabric/" }),
             (ServerType.Banner,       new[] { "banner.yml" }),
-            // Spigot / Bukkit
+            // Spigot / Bukkit（USpigot 优先于 Spigot）
+            (ServerType.USpigot,      new[] { "uspigot.yml", "u-spigot.yml" }),
             (ServerType.Spigot,       new[] { "spigot.yml" }),
             (ServerType.Bukkit,       new[] { "bukkit.yml" }),
             // 代理端

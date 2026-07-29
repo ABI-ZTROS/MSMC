@@ -177,6 +177,26 @@ public enum ServerType
     /// Glowstone 服务端，独立 Bukkit API 实现。
     /// </summary>
     Glowstone,
+
+    /// <summary>
+    /// Luminol 服务端，基于 Leaves 的极速优化分支，主打启动性能与异步方块生成。
+    /// </summary>
+    Luminol,
+
+    /// <summary>
+    /// Leaf 服务端，基于 Leaves 的轻量优化分支（LeafMC）。
+    /// </summary>
+    Leaf,
+
+    /// <summary>
+    /// Leaves 服务端，基于 Paper 的下游优化分支，专注于启动速度与性能优化。
+    /// </summary>
+    Leaves,
+
+    /// <summary>
+    /// USpigot 服务端，Spigot 的下游优化分支（国内衍生核心）。
+    /// </summary>
+    USpigot,
 }
 
 /// <summary>
@@ -222,6 +242,10 @@ public static class ServerConstants
     public static readonly string[] NukkitJarPatterns = ["nukkit-*.jar", "nukkit.jar"];
     public static readonly string[] PowerNukkitJarPatterns = ["powernukkit-*.jar", "powernukkit.jar"];
     public static readonly string[] GlowstoneJarPatterns = ["glowstone-*.jar", "glowstone.jar"];
+    public static readonly string[] LuminolJarPatterns = ["luminol-*.jar", "luminol.jar"];
+    public static readonly string[] LeafJarPatterns = ["leaf-*.jar", "leafmc-*.jar", "leaf.jar", "leafmc.jar"];
+    public static readonly string[] LeavesJarPatterns = ["leaves-*.jar", "leaves.jar"];
+    public static readonly string[] USpigotJarPatterns = ["uspigot-*.jar", "uspigot.jar", "u-spigot-*.jar"];
 
     /// <summary>
     /// 服务器 JAR 文件关键词列表。
@@ -234,7 +258,8 @@ public static class ServerConstants
         "mohist", "arclight", "catserver", "sponge", "spongevanilla",
         "waterfall", "flamecord", "hexacord", "quilt", "airplane", "tuinity", "yatopia",
         "akarin", "kaiiju", "nacho", "nachospigot", "magma", "banner", "spongeforge",
-        "nukkit", "powernukkit", "glowstone"
+        "nukkit", "powernukkit", "glowstone",
+        "luminol", "leafmc", "leaves", "uspigot"
     ];
 
     /// <summary>
@@ -288,6 +313,10 @@ public static class ServerConstants
         [ServerType.Nukkit] = ["nukkit.yml"],
         [ServerType.PowerNukkit] = ["powernukkit.yml"],
         [ServerType.Glowstone] = ["config/glowstone/"],
+        [ServerType.Luminol] = ["luminol.yml", "config/luminol/"],
+        [ServerType.Leaf] = ["leaf.yml", "leafmc.yml", "config/leaf/"],
+        [ServerType.Leaves] = ["leaves.yml", "config/leaves-global.yml"],
+        [ServerType.USpigot] = ["uspigot.yml", "u-spigot.yml"],
     };
 
     /// <summary>

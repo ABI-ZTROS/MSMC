@@ -286,19 +286,40 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
                 var inferredType = ServerType.Unknown;
                 var jl = (jarName ?? string.Empty).ToLowerInvariant();
-                if (jl.Contains("paper")) inferredType = ServerType.Paper;
+                // 判断顺序：先更具体的分支优先，避免上游核心被误判为其上游
+                if (jl.Contains("uspigot") || jl.Contains("u-spigot")) inferredType = ServerType.USpigot;
+                else if (jl.Contains("luminol")) inferredType = ServerType.Luminol;
+                else if (jl.Contains("leafmc") || (jl.Contains("leaf") && !jl.Contains("leaves"))) inferredType = ServerType.Leaf;
+                else if (jl.Contains("leaves")) inferredType = ServerType.Leaves;
+                else if (jl.Contains("folia")) inferredType = ServerType.Folia;
+                else if (jl.Contains("kaiiju")) inferredType = ServerType.Kaiiju;
                 else if (jl.Contains("purpur")) inferredType = ServerType.Purpur;
+                else if (jl.Contains("pufferfish")) inferredType = ServerType.Pufferfish;
+                else if (jl.Contains("airplane")) inferredType = ServerType.Airplane;
+                else if (jl.Contains("tuinity")) inferredType = ServerType.Tuinity;
+                else if (jl.Contains("yatopia")) inferredType = ServerType.Yatopia;
+                else if (jl.Contains("akarin")) inferredType = ServerType.Akarin;
+                else if (jl.Contains("nachospigot") || jl.Contains("nacho-")) inferredType = ServerType.NachoSpigot;
                 else if (jl.Contains("spigot")) inferredType = ServerType.Spigot;
+                else if (jl.Contains("paper")) inferredType = ServerType.Paper;
                 else if (jl.Contains("bukkit")) inferredType = ServerType.Bukkit;
-                else if (jl.Contains("fabric")) inferredType = ServerType.Fabric;
-                else if (jl.Contains("forge")) inferredType = ServerType.Forge;
                 else if (jl.Contains("neoforge")) inferredType = ServerType.NeoForge;
+                else if (jl.Contains("forge")) inferredType = ServerType.Forge;
                 else if (jl.Contains("quilt")) inferredType = ServerType.Quilt;
+                else if (jl.Contains("fabric")) inferredType = ServerType.Fabric;
                 else if (jl.Contains("velocity")) inferredType = ServerType.Velocity;
-                else if (jl.Contains("bungee") || jl.Contains("waterfall")) inferredType = ServerType.BungeeCord;
+                else if (jl.Contains("bungee") || jl.Contains("waterfall") || jl.Contains("flamecord")) inferredType = ServerType.BungeeCord;
+                else if (jl.Contains("hexacord")) inferredType = ServerType.HexaCord;
                 else if (jl.Contains("mohist")) inferredType = ServerType.Mohist;
                 else if (jl.Contains("arclight")) inferredType = ServerType.Arclight;
-                else if (jl.Contains("folia")) inferredType = ServerType.Folia;
+                else if (jl.Contains("catserver")) inferredType = ServerType.CatServer;
+                else if (jl.Contains("banner")) inferredType = ServerType.Banner;
+                else if (jl.Contains("magma")) inferredType = ServerType.Magma;
+                else if (jl.Contains("spongeforge")) inferredType = ServerType.SpongeForge;
+                else if (jl.Contains("sponge") || jl.Contains("spongevanilla")) inferredType = ServerType.Sponge;
+                else if (jl.Contains("powernukkit")) inferredType = ServerType.PowerNukkit;
+                else if (jl.Contains("nukkit")) inferredType = ServerType.Nukkit;
+                else if (jl.Contains("glowstone")) inferredType = ServerType.Glowstone;
 
                 servers.Add(new ServerInstance
                 {
