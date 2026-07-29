@@ -842,7 +842,7 @@
                                     <Border Width="48" Height="48"
                                             CornerRadius="{DynamicResource AppCornerRadius}"
                                             Background="{DynamicResource CardBackgroundBrush}">
-                                        <Image Source="pack://application:,,,/Resources/Images/avatars/ABI-ZTROS.png"
+                                        <Image Source="pack://application:,,,/MSMC;component/Resources/Images/avatars/ABI-ZTROS.png"
                                                Stretch="UniformToFill"
                                                RenderOptions.BitmapScalingMode="HighQuality" />
                                     </Border>
@@ -898,7 +898,7 @@
                                             CornerRadius="12"
                                             Background="{DynamicResource CardBackgroundBrush}"
                                             ClipToBounds="True">
-                                        <Image Source="pack://application:,,,/Resources/Images/yanlanxiang.jpg"
+                                        <Image Source="pack://application:,,,/MSMC;component/Resources/Images/yanlanxiang.jpg"
                                                Stretch="UniformToFill" />
                                     </Border>
                                     <StackPanel Margin="12,0,0,0"
@@ -1008,7 +1008,7 @@
                                             CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                             Background="{DynamicResource CardBackgroundBrush}"
                                             HorizontalAlignment="Center">
-                                        <Image Source="pack://application:,,,/Resources/Images/avatars/MochaCello92377.png"
+                                        <Image Source="pack://application:,,,/MSMC;component/Resources/Images/avatars/MochaCello92377.png"
                                                Stretch="UniformToFill"
                                                RenderOptions.BitmapScalingMode="HighQuality" />
                                     </Border>
@@ -1051,7 +1051,7 @@
                                             CornerRadius="{DynamicResource AppCornerRadiusSmall}"
                                             Background="{DynamicResource CardBackgroundBrush}"
                                             HorizontalAlignment="Center">
-                                        <Image Source="pack://application:,,,/Resources/Images/avatars/CatStack-pixe.png"
+                                        <Image Source="pack://application:,,,/MSMC;component/Resources/Images/avatars/CatStack-pixe.png"
                                                Stretch="UniformToFill"
                                                RenderOptions.BitmapScalingMode="HighQuality" />
                                     </Border>

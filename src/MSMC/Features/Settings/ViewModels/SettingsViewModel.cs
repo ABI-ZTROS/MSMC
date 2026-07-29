@@ -14,6 +14,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using io.NET.ZTR_OS.Features.JavaInstallation.Services;
 using io.NET.ZTR_OS.Features.Settings.Services;
+using JavaInstallationInfo = io.NET.ZTR_OS.Features.JavaInstallation.Services.JavaInstallation;
 using Serilog;
 
 namespace io.NET.ZTR_OS.Features.Settings.ViewModels;
@@ -30,13 +31,13 @@ namespace io.NET.ZTR_OS.Features.Settings.ViewModels;
 public partial class SettingsViewModel : ObservableObject
 {
     /// <summary>主题服务</summary>
-    private readonly Services.IThemeService _themeService;
+    private readonly IThemeService _themeService;
     /// <summary>吐司通知服务</summary>
-    private readonly Services.IToastNotificationService _toastService;
+    private readonly IToastNotificationService _toastService;
     /// <summary>应用配置服务</summary>
-    private readonly Services.IAppConfigService _appConfigService;
+    private readonly IAppConfigService _appConfigService;
     /// <summary>Java 查找服务</summary>
-    private readonly JavaInstallation.Services.IJavaFinderService _javaFinderService;
+    private readonly IJavaFinderService _javaFinderService;
 
     /// <summary>主题主色</summary>
     [ObservableProperty]
@@ -255,7 +256,7 @@ public partial class SettingsViewModel : ObservableObject
     /// <param name="appConfigService">应用配置服务</param>
     /// <param name="javaFinderService">Java 查找服务</param>
     /// <remarks>构造时从主题服务加载已持久化的设置。</remarks>
-    public SettingsViewModel(Services.IThemeService themeService, Services.IToastNotificationService toastService, Services.IAppConfigService appConfigService, JavaInstallation.Services.IJavaFinderService javaFinderService)
+    public SettingsViewModel(IThemeService themeService, IToastNotificationService toastService, IAppConfigService appConfigService, IJavaFinderService javaFinderService)
     {
         _themeService = themeService;
         _toastService = toastService;
@@ -408,7 +409,7 @@ public partial class SettingsViewModel : ObservableObject
     /// </summary>
     /// <remarks>
     /// 触发条件：用户点击应用按钮。
-    /// 副作用：将当前 ViewModel 属性同步到 <see cref="Services.IThemeService"/>，使主题实时生效。
+    /// 副作用：将当前 ViewModel 属性同步到 <see cref="IThemeService"/>，使主题实时生效。
     /// 使用批量更新模式避免多次全量重绘。
     /// </remarks>
     [RelayCommand]
@@ -446,7 +447,7 @@ public partial class SettingsViewModel : ObservableObject
     /// </summary>
     /// <remarks>
     /// 触发条件：用户点击保存按钮。
-    /// 副作用：调用 <see cref="Services.IThemeService.SaveSettings"/> 持久化当前主题配置，
+    /// 副作用：调用 <see cref="IThemeService.SaveSettings"/> 持久化当前主题配置，
     /// 并通过吐司通知反馈结果。
     /// </remarks>
     [RelayCommand]
@@ -533,7 +534,7 @@ public partial class SettingsViewModel : ObservableObject
     /// </summary>
     /// <remarks>
     /// 触发条件：用户点击重置按钮。
-    /// 副作用：调用 <see cref="Services.IThemeService.ResetToDefault"/> 恢复默认配置，
+    /// 副作用：调用 <see cref="IThemeService.ResetToDefault"/> 恢复默认配置，
     /// 同步到 ViewModel 所有属性并触发通知。
     /// </remarks>
     [RelayCommand]
@@ -575,7 +576,7 @@ public partial class SettingsViewModel : ObservableObject
     /// </summary>
     /// <remarks>
     /// 触发条件：用户点击测试通知按钮。
-    /// 副作用：调用 <see cref="Services.IToastNotificationService.ShowSuccess"/> 弹出测试通知。
+    /// 副作用：调用 <see cref="IToastNotificationService.ShowSuccess"/> 弹出测试通知。
     /// </remarks>
     [RelayCommand]
     private void TestNotification()
@@ -828,7 +829,7 @@ public partial class SettingsViewModel : ObservableObject
 /// </summary>
 internal static class JavaInstallationExtensions
 {
-    public static string VersionDisplay(this JavaInstallation.Services.JavaInstallation inst)
+    public static string VersionDisplay(this JavaInstallationInfo inst)
     {
         return string.IsNullOrEmpty(inst.VersionString) ? "未知版本" : $"Java {inst.VersionString}";
     }

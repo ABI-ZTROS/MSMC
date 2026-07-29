@@ -500,7 +500,7 @@ public class ThemeService : IThemeService
         try
         {
             var fontFamily = new FontFamily(
-                new Uri("pack://application:,,,/io.NET.ZTR_OS;component/Resources/Fonts/"),
+                new Uri("pack://application:,,,/MSMC;component/Resources/Fonts/"),
                 "./#Space Grotesk Light, Microsoft YaHei UI");
             resources["AppFontFamily"] = fontFamily;
 
