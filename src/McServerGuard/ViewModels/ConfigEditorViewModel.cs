@@ -281,8 +281,8 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                     continue;
 
                 var jarName = string.IsNullOrWhiteSpace(ks.ServerJarPath)
-                    ? (ks.Name ?? string.Empty)
-                    : Path.GetFileName(ks.ServerJarPath!);
+                    ? ks.Name
+                    : Path.GetFileName(ks.ServerJarPath);
 
                 var inferredType = ServerType.Unknown;
                 var jl = (jarName ?? string.Empty).ToLowerInvariant();
