@@ -88,12 +88,10 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
     #endregion
 
-    #region 字段（极简：删 _scanVersion/_scanning/_loadCts/_lastLoadTask）
+    #region 字段（极简：删 _scanVersion/_scanning/_loadCts/_lastLoadTask/_serverDetector）
 
     /// <summary>配置管理服务（解析 + 保存 + 翻译描述符）</summary>
     private readonly IConfigManager _configManager;
-    /// <summary>服务器检测服务（可选，拿运行中实例列表用）</summary>
-    private readonly IServerDetector? _serverDetector;
     /// <summary>应用配置服务——用户要求核心用它来拿「已保存服务器列表」</summary>
     private readonly IAppConfigService? _appConfigService;
 
@@ -137,17 +135,20 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// 初始化配置编辑器视图模型的新实例（完整依赖版本）
+    /// 初始化配置编辑器视图模型的新实例（完整依赖版本）。
+    /// 注：serverDetector 参数保留以兼容 DI 容器签名，但极简版不再调用它
+    /// （用户要求："直接走已保存服务器的列表然后去访问绝对路径"）。
     /// </summary>
     /// <param name="configManager">配置管理服务</param>
-    /// <param name="serverDetector">服务器检测服务</param>
+    /// <param name="serverDetector">服务器检测服务（保留参数兼容 DI，内部不再使用）</param>
     /// <param name="appConfigService">应用配置服务</param>
     public ConfigEditorViewModel(
         IConfigManager configManager,
         IServerDetector serverDetector,
         IAppConfigService appConfigService) : this(configManager)
     {
-        _serverDetector = serverDetector;
+        // 极简版：不再使用 _serverDetector。参数保留以避免破坏 DI 注册。
+        _ = serverDetector;
         _appConfigService = appConfigService;
 
         _ = RefreshServerListAsync();
@@ -260,105 +261,118 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// 刷新可用服务器列表。
-    /// 极简链路：
-    ///   ① AppConfigService.GetAllKnownServers() → 直接拿已保存服务器（用户要求的核心数据源）
-    ///   ② ServerDetector.DetectAllAsync() → 运行中实例作为补充（如果有就加，去重用 WorkingDirectory 比较）
-    ///   ③ 任何一台只要 WorkingDirectory 存在且非空就加入 AvailableServers（后面直接用绝对路径扫文件）
-    /// 不再做 DisplayName 去重 / ServerJarPath 校验等复杂逻辑。
+    /// 极简链路（用户明确要求）：
+    ///   ① 只走 AppConfigService.GetAllKnownServers() —— 已保存服务器列表是唯一数据源
+    ///   ② WorkingDirectory 优先；为空时从 ServerJarPath 推导（"多一个调用"）
+    ///   ③ 推导出的目录不存在就跳过；存在就加入 AvailableServers
+    /// 不再调 ServerDetector —— 用户明确说"直接走已保存服务器的列表然后去访问绝对路径(文件层)"。
     /// </summary>
     [RelayCommand]
     public async Task RefreshServerListAsync()
     {
-        Log.Information("🔄 配置编辑器：刷新可用服务器列表（极简版）");
+        Log.Information("🔄 配置编辑器：刷新可用服务器列表（极简版：仅已知服务器）");
         var servers = new List<ServerInstance>();
 
-        // ── 1. 核心数据源：用户要求的「已保存服务器列表」
-        if (_appConfigService != null)
+        if (_appConfigService == null)
+        {
+            AvailableServers = servers;
+            Log.Warning("⚠️ AppConfigService 未注入，可用服务器列表为空");
+            return;
+        }
+
+        await Task.Run(() =>
         {
             foreach (var ks in _appConfigService.GetAllKnownServers())
             {
-                if (string.IsNullOrEmpty(ks.WorkingDirectory) || !Directory.Exists(ks.WorkingDirectory))
+                // ── 核心：WorkingDirectory 优先，为空时从 ServerJarPath 推导（"多一个调用"）
+                var workingDir = ks.WorkingDirectory;
+                if (string.IsNullOrWhiteSpace(workingDir) && !string.IsNullOrWhiteSpace(ks.ServerJarPath))
+                {
+                    try
+                    {
+                        var derived = Path.GetDirectoryName(ks.ServerJarPath);
+                        if (!string.IsNullOrWhiteSpace(derived))
+                        {
+                            workingDir = derived;
+                            Log.Information("📂 WorkingDirectory 为空，从 JarPath 推导: {Jar} → {Dir}",
+                                ks.ServerJarPath, workingDir);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "从 ServerJarPath 推导 WorkingDirectory 失败: {Jar}", ks.ServerJarPath);
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(workingDir) || !Directory.Exists(workingDir))
+                {
+                    Log.Debug("⏭️ 跳过已知服务器（目录无效）: Name={Name} Dir={Dir}", ks.Name, workingDir);
                     continue;
+                }
 
                 var jarName = string.IsNullOrWhiteSpace(ks.ServerJarPath)
                     ? ks.Name
                     : Path.GetFileName(ks.ServerJarPath);
 
-                var inferredType = ServerType.Unknown;
-                var jl = (jarName ?? string.Empty).ToLowerInvariant();
-                // 判断顺序：先更具体的分支优先，避免上游核心被误判为其上游
-                if (jl.Contains("uspigot") || jl.Contains("u-spigot")) inferredType = ServerType.USpigot;
-                else if (jl.Contains("luminol")) inferredType = ServerType.Luminol;
-                else if (jl.Contains("leafmc") || (jl.Contains("leaf") && !jl.Contains("leaves"))) inferredType = ServerType.Leaf;
-                else if (jl.Contains("leaves")) inferredType = ServerType.Leaves;
-                else if (jl.Contains("folia")) inferredType = ServerType.Folia;
-                else if (jl.Contains("kaiiju")) inferredType = ServerType.Kaiiju;
-                else if (jl.Contains("purpur")) inferredType = ServerType.Purpur;
-                else if (jl.Contains("pufferfish")) inferredType = ServerType.Pufferfish;
-                else if (jl.Contains("airplane")) inferredType = ServerType.Airplane;
-                else if (jl.Contains("tuinity")) inferredType = ServerType.Tuinity;
-                else if (jl.Contains("yatopia")) inferredType = ServerType.Yatopia;
-                else if (jl.Contains("akarin")) inferredType = ServerType.Akarin;
-                else if (jl.Contains("nachospigot") || jl.Contains("nacho-")) inferredType = ServerType.NachoSpigot;
-                else if (jl.Contains("spigot")) inferredType = ServerType.Spigot;
-                else if (jl.Contains("paper")) inferredType = ServerType.Paper;
-                else if (jl.Contains("bukkit")) inferredType = ServerType.Bukkit;
-                else if (jl.Contains("neoforge")) inferredType = ServerType.NeoForge;
-                else if (jl.Contains("forge")) inferredType = ServerType.Forge;
-                else if (jl.Contains("quilt")) inferredType = ServerType.Quilt;
-                else if (jl.Contains("fabric")) inferredType = ServerType.Fabric;
-                else if (jl.Contains("velocity")) inferredType = ServerType.Velocity;
-                else if (jl.Contains("bungee") || jl.Contains("waterfall") || jl.Contains("flamecord")) inferredType = ServerType.BungeeCord;
-                else if (jl.Contains("hexacord")) inferredType = ServerType.HexaCord;
-                else if (jl.Contains("mohist")) inferredType = ServerType.Mohist;
-                else if (jl.Contains("arclight")) inferredType = ServerType.Arclight;
-                else if (jl.Contains("catserver")) inferredType = ServerType.CatServer;
-                else if (jl.Contains("banner")) inferredType = ServerType.Banner;
-                else if (jl.Contains("magma")) inferredType = ServerType.Magma;
-                else if (jl.Contains("spongeforge")) inferredType = ServerType.SpongeForge;
-                else if (jl.Contains("sponge") || jl.Contains("spongevanilla")) inferredType = ServerType.Sponge;
-                else if (jl.Contains("powernukkit")) inferredType = ServerType.PowerNukkit;
-                else if (jl.Contains("nukkit")) inferredType = ServerType.Nukkit;
-                else if (jl.Contains("glowstone")) inferredType = ServerType.Glowstone;
-
                 servers.Add(new ServerInstance
                 {
                     ServerJarName = jarName,
-                    WorkingDirectory = ks.WorkingDirectory,
+                    WorkingDirectory = workingDir,
                     ServerJarPath = ks.ServerJarPath,
                     ServerPort = ks.Port,
-                    ServerType = inferredType,
+                    ServerType = InferServerType(jarName ?? string.Empty),
                     KnownServerId = ks.KnownServerId,
                     // 未运行状态：PID=0，DisplayName 会显示 "{Type} @ {Dir}"
                     ProcessId = 0,
                 });
             }
-        }
-
-        // ── 2. 可选补充：运行中服务器（如果同 WorkingDirectory 已在上面已知服务器里出现过就不加）
-        try
-        {
-            if (_serverDetector != null)
-            {
-                var result = await _serverDetector.DetectAllAsync();
-                foreach (var s in result.Servers)
-                {
-                    if (string.IsNullOrEmpty(s.WorkingDirectory) || !Directory.Exists(s.WorkingDirectory))
-                        continue;
-                    if (servers.Any(x =>
-                            string.Equals(x.WorkingDirectory, s.WorkingDirectory, StringComparison.OrdinalIgnoreCase)))
-                        continue;
-                    servers.Add(s);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "获取运行中服务器列表失败（忽略，不影响已知服务器）");
-        }
+        }).ConfigureAwait(true);
 
         AvailableServers = servers;
-        Log.Information("✅ 配置编辑器服务器列表刷新完成：共 {Count} 台（已知服务器优先）", servers.Count);
+        Log.Information("✅ 配置编辑器服务器列表刷新完成：共 {Count} 台", servers.Count);
+    }
+
+    /// <summary>
+    /// 根据 JAR 文件名推断服务器类型（派生类优先于基类，避免上游核心被误判为其上游）。
+    /// 抽成方法供 RefreshServerListAsync 复用，与 ServerTypeClassifier.JarNameTypeMap 保持一致语义。
+    /// </summary>
+    private static ServerType InferServerType(string jarName)
+    {
+        var jl = (jarName ?? string.Empty).ToLowerInvariant();
+        if (jl.Contains("uspigot") || jl.Contains("u-spigot")) return ServerType.USpigot;
+        if (jl.Contains("luminol")) return ServerType.Luminol;
+        if (jl.Contains("leafmc") || (jl.Contains("leaf") && !jl.Contains("leaves"))) return ServerType.Leaf;
+        if (jl.Contains("leaves")) return ServerType.Leaves;
+        if (jl.Contains("folia")) return ServerType.Folia;
+        if (jl.Contains("kaiiju")) return ServerType.Kaiiju;
+        if (jl.Contains("purpur")) return ServerType.Purpur;
+        if (jl.Contains("pufferfish")) return ServerType.Pufferfish;
+        if (jl.Contains("airplane")) return ServerType.Airplane;
+        if (jl.Contains("tuinity")) return ServerType.Tuinity;
+        if (jl.Contains("yatopia")) return ServerType.Yatopia;
+        if (jl.Contains("akarin")) return ServerType.Akarin;
+        if (jl.Contains("nachospigot") || jl.Contains("nacho-")) return ServerType.NachoSpigot;
+        if (jl.Contains("spigot")) return ServerType.Spigot;
+        if (jl.Contains("paper")) return ServerType.Paper;
+        if (jl.Contains("bukkit")) return ServerType.Bukkit;
+        if (jl.Contains("neoforge")) return ServerType.NeoForge;
+        if (jl.Contains("forge")) return ServerType.Forge;
+        if (jl.Contains("quilt")) return ServerType.Quilt;
+        if (jl.Contains("fabric")) return ServerType.Fabric;
+        if (jl.Contains("velocity")) return ServerType.Velocity;
+        if (jl.Contains("bungee") || jl.Contains("waterfall") || jl.Contains("flamecord")) return ServerType.BungeeCord;
+        if (jl.Contains("hexacord")) return ServerType.HexaCord;
+        if (jl.Contains("mohist")) return ServerType.Mohist;
+        if (jl.Contains("arclight")) return ServerType.Arclight;
+        if (jl.Contains("catserver")) return ServerType.CatServer;
+        if (jl.Contains("banner")) return ServerType.Banner;
+        if (jl.Contains("magma")) return ServerType.Magma;
+        if (jl.Contains("spongeforge")) return ServerType.SpongeForge;
+        if (jl.Contains("sponge") || jl.Contains("spongevanilla")) return ServerType.Sponge;
+        if (jl.Contains("powernukkit")) return ServerType.PowerNukkit;
+        if (jl.Contains("nukkit")) return ServerType.Nukkit;
+        if (jl.Contains("glowstone")) return ServerType.Glowstone;
+        return ServerType.Unknown;
     }
 
     /// <summary>
@@ -524,8 +538,8 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     /// Server 属性变更回调 —— 三步最小链路：
     ///   ① 清空条目/分组状态
     ///   ② 设 SelectedServerName / ServerWorkingDirectory
-    ///   ③ 直接 await 扫目录（不是 fire-and-forget，是同步直到写完 ConfigFiles/Tree）
-    /// 不再管：_scanning 锁、scanVersion 版本、needsScan 三态决策、目录黑名单、上限 500 等。
+    ///   ③ 直接 fire-and-forget 扫目录（WorkingDirectory 在 RefreshServerListAsync 里已保证有效）
+    /// 不再管：_scanning 锁、scanVersion 版本、needsScan 三态决策、目录黑名单、ConfigFiles 兜底等。
     /// </summary>
     partial void OnServerChanged(ServerInstance? value)
     {
@@ -565,46 +579,19 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
         ServerWorkingDirectory = value.WorkingDirectory;
 
-        // 目录存在：同步扫完（不再管桥接层有没有扫过，就当它没扫过——反正代码量少好调试）
-        if (!string.IsNullOrEmpty(value.WorkingDirectory) && Directory.Exists(value.WorkingDirectory))
-        {
-            // 注意：这里用 _ = 是因为 OnServerChanged 是同步回调无法 async。内部自己 async void 模式，但
-            // ScanDirectoryForConfigFilesAsync 内部 ConfigFiles/ConfigFileTree 都是赋值型替换，
-            // 只要用户没在 10ms 内再切一次服务器就不会竞态；再切一次也只是覆盖结果，不会死锁。
-            _ = ScanDirectoryForConfigFilesAsync(value.WorkingDirectory);
-        }
-        else
-        {
-            // WorkingDirectory 为空或不存在：用进程返回的 ConfigFiles 兜底
-            if (string.IsNullOrEmpty(value.WorkingDirectory))
-            {
-                ConfigFiles = value.ConfigFiles
-                    .Where(f => !f.EndsWith('/') && !f.EndsWith('\\'))
-                    .ToList();
-            }
-            else
-            {
-                ConfigFiles = value.ConfigFiles
-                    .Where(f => !f.EndsWith('/') && !f.EndsWith('\\'))
-                    .Select(f =>
-                    {
-                        try { return Path.GetRelativePath(value.WorkingDirectory, f); }
-                        catch { return f; }
-                    })
-                    .ToList();
-            }
-            ConfigFileTree = BuildFlatFileTree(ConfigFiles);
-            OnPropertyChanged(nameof(ConfigFileCountText));
-            OnPropertyChanged(nameof(HasServerDirectory));
-        }
+        // WorkingDirectory 一定有效（RefreshServerListAsync 已保证）：直接扫，无兜底分支
+        // 注意：OnServerChanged 是同步回调无法 await，用 _ = fire-and-forget；
+        // ScanDirectoryForConfigFilesAsync 内部 ConfigFiles/ConfigFileTree 都是赋值型替换，
+        // 切换服务器时只是覆盖结果，不会死锁。
+        _ = ScanDirectoryForConfigFilesAsync(value.WorkingDirectory);
     }
 
     /// <summary>
     /// 直接递归扫描 rootPath 下所有符合扩展名的配置文件 → 赋值 ConfigFiles + ConfigFileTree。
-    /// 极简：
-    ///   · Directory.EnumerateFiles(rootPath, "*", AllDirectories) 一把梭（不跳过任何目录）
+    /// 极简 + 用户要求排序：
+    ///   · 递归枚举每个目录：先子目录（A-Z），后文件（A-Z）
     ///   · 扩展名只和 ConfigExtensions 白名单比
-    ///   · 不用版本号、不用锁、不包 Task.Run（除非需要后台）
+    ///   · 不跳过任何目录、无版本号、无锁
     ///   · 任何异常：Log.Error + ConfigFiles=[], ConfigFileTree=[]，不吞静默。
     /// </summary>
     public async Task ScanDirectoryForConfigFilesAsync(string rootPath)
@@ -622,54 +609,11 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
         try
         {
-            // ── 枚举（放到 Task.Run 以免大目录 UI 阻塞）
             var (flat, tree) = await Task.Run(() =>
             {
                 var flatList = new List<string>();
                 var treeRoot = new List<ConfigFileItem>();
-
-                // ① 扁平文件路径（AllDirectories 一把梭）
-                foreach (var file in Directory.EnumerateFiles(rootPath, "*", SearchOption.AllDirectories))
-                {
-                    var ext = Path.GetExtension(file);
-                    if (!ConfigExtensions.Contains(ext)) continue;
-                    flatList.Add(Path.GetRelativePath(rootPath, file));
-                }
-
-                // ② 按相对路径重建目录树（保留空文件夹结构）
-                // 简单做法：按相对路径拆分 → 一层层往 treeRoot 里建目录，最后挂文件
-                foreach (var rel in flatList.OrderBy(x => x, StringComparer.Ordinal))
-                {
-                    var parts = rel.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                    List<ConfigFileItem> currentLevel = treeRoot;
-                    string builtPath = rootPath;
-
-                    for (int i = 0; i < parts.Length - 1; i++)
-                    {
-                        var part = parts[i];
-                        builtPath = Path.Combine(builtPath, part);
-                        var existing = currentLevel.FirstOrDefault(x =>
-                            x.IsDirectory && x.FileName == part);
-                        if (existing == null)
-                        {
-                            existing = new ConfigFileItem(
-                                part,
-                                fullPath: builtPath,
-                                relativePath: Path.GetRelativePath(rootPath, builtPath),
-                                isDirectory: true);
-                            currentLevel.Add(existing);
-                        }
-                        currentLevel = existing.Children;
-                    }
-
-                    var fileName = parts[^1];
-                    currentLevel.Add(new ConfigFileItem(
-                        fileName,
-                        fullPath: Path.Combine(rootPath, rel),
-                        relativePath: rel,
-                        isDirectory: false));
-                }
-
+                ScanDirectoryRecursive(rootPath, rootPath, flatList, treeRoot);
                 return (flatList, treeRoot);
             }).ConfigureAwait(true);
 
@@ -691,8 +635,64 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// 把扁平相对路径列表构造成「单层文件树」—— 当 WorkingDirectory 不存在时的兜底。
-    /// 保持不动（桥接层 config:selectServer 还会用它）。
+    /// 递归扫描单个目录：先列出子目录（A-Z），再列出符合扩展名的文件（A-Z）。
+    /// flatList 顺序 = 树深度优先遍历顺序，与 UI 树展开顺序一致。
+    /// </summary>
+    private static void ScanDirectoryRecursive(
+        string rootPath,
+        string currentDir,
+        List<string> flatList,
+        List<ConfigFileItem> treeChildren)
+    {
+        // ── 子目录（A-Z 排序，忽略大小写）
+        string[] subDirs;
+        try { subDirs = Directory.GetDirectories(currentDir); }
+        catch (UnauthorizedAccessException) { return; }
+        catch (DirectoryNotFoundException) { return; }
+
+        Array.Sort(subDirs, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var subDir in subDirs)
+        {
+            var dirName = Path.GetFileName(subDir);
+            var relPath = Path.GetRelativePath(rootPath, subDir);
+            var dirNode = new ConfigFileItem(
+                dirName,
+                fullPath: subDir,
+                relativePath: relPath,
+                isDirectory: true);
+            treeChildren.Add(dirNode);
+
+            // 递归：子目录内容追加到 dirNode.Children
+            ScanDirectoryRecursive(rootPath, subDir, flatList, dirNode.Children);
+        }
+
+        // ── 文件（A-Z 排序，仅扩展名在白名单中的）
+        string[] files;
+        try { files = Directory.GetFiles(currentDir); }
+        catch (UnauthorizedAccessException) { return; }
+        catch (DirectoryNotFoundException) { return; }
+
+        var matchedFiles = files
+            .Where(f => ConfigExtensions.Contains(Path.GetExtension(f)))
+            .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var file in matchedFiles)
+        {
+            var fileName = Path.GetFileName(file);
+            var relPath = Path.GetRelativePath(rootPath, file);
+            flatList.Add(relPath);
+            treeChildren.Add(new ConfigFileItem(
+                fileName,
+                fullPath: file,
+                relativePath: relPath,
+                isDirectory: false));
+        }
+    }
+
+    /// <summary>
+    /// 把扁平相对路径列表构造成「单层文件树」—— 兜底工具方法（保留供外部调用）。
     /// </summary>
     public static List<ConfigFileItem> BuildFlatFileTree(IEnumerable<string> relativePaths)
     {
