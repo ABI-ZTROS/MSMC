@@ -281,8 +281,8 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                     continue;
 
                 var jarName = string.IsNullOrWhiteSpace(ks.ServerJarPath)
-                    ? ks.Name
-                    : Path.GetFileName(ks.ServerJarPath);
+                    ? (ks.Name ?? string.Empty)
+                    : Path.GetFileName(ks.ServerJarPath!);
 
                 var inferredType = ServerType.Unknown;
                 var jl = (jarName ?? string.Empty).ToLowerInvariant();
@@ -1099,10 +1099,6 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             _groupUpdateTimer.Dispose();
             _groupUpdateTimer = null;
         }
-
-        _loadCts?.Cancel();
-        _loadCts?.Dispose();
-        _loadCts = null;
 
         GC.SuppressFinalize(this);
         Log.Information("✅ ConfigEditorViewModel 资源释放完成");
