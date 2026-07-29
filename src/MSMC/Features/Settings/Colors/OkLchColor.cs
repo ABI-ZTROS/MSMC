@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Media;
 
-namespace io.NET.ZTR_OS.Features.Settings.Colors
-    public readonly struct OkLchColor
+namespace io.NET.ZTR_OS.Features.Settings.Colors;
+
+public readonly struct OkLchColor
     {
         public double L { get; }
         public double C { get; }

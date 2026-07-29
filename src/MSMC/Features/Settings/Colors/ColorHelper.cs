@@ -1,8 +1,9 @@
 using System;
 using System.Windows.Media;
 
-namespace io.NET.ZTR_OS.Features.Settings.Colors
-    public static class ColorHelper
+namespace io.NET.ZTR_OS.Features.Settings.Colors;
+
+public static class ColorHelper
     {
         public static string ToRgbHex(Color color)
         {
