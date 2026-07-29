@@ -1,4 +1,4 @@
-<!-- 🏠 主窗口 —— io.NET.ZTR_OS 的大本营 -->
+<!-- [HOME] 主窗口 —— io.NET.ZTR_OS 的大本营 -->
 <!-- WebView2 重构版：标题栏 + WebView2 内容 + 状态栏 -->
 <Window x:Class="io.NET.ZTR_OS.Features.Shared.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -37,16 +37,16 @@
     </Window.Resources>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 📐 整体布局：自定义标题栏 + WebView2（占满，状态栏改到网页里） -->
+    <!-- [LAYOUT] 整体布局：自定义标题栏 + WebView2（占满，状态栏改到网页里） -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />  <!-- 🎨 自定义标题栏 -->
-            <RowDefinition Height="*" />     <!-- 🌐 WebView2 内容区（占满） -->
+            <RowDefinition Height="Auto" />  <!-- [THEME] 自定义标题栏 -->
+            <RowDefinition Height="*" />     <!-- [NET] WebView2 内容区（占满） -->
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 🎨 自定义标题栏 —— 可拖动                                   -->
+        <!-- [THEME] 自定义标题栏 —— 可拖动                                   -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="0"
                 x:Name="TitleBar"
@@ -110,7 +110,7 @@
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 🌐 WebView2 —— 承载 Web UI                                 -->
+        <!-- [NET] WebView2 —— 承载 Web UI                                 -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <wv2:WebView2 Grid.Row="1"
                       x:Name="MainWebView"

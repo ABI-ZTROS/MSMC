@@ -76,7 +76,7 @@ public partial class App : Application
 
         // 2. 第一行死日志：确认 CLR 成功加载了 App 类
         ForceLog("========================================");
-        ForceLog($"[BOOT-0] ✅ App .cctor 入口已命中  PID={Environment.ProcessId}  Time={DateTime.Now:HH:mm:ss.fff}");
+        ForceLog($"[BOOT-0] [OK] App .cctor 入口已命中  PID={Environment.ProcessId}  Time={DateTime.Now:HH:mm:ss.fff}");
         ForceLog($"[BOOT-0]    BaseDir = {AppContext.BaseDirectory}");
         ForceLog($"[BOOT-0]    OS      = {Environment.OSVersion}  /  .NET = {Environment.Version}");
         ForceLog($"[BOOT-0]    x64     = {Environment.Is64BitProcess}  /  CPU = {Environment.ProcessorCount}");
@@ -86,16 +86,16 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
             var ex = e.ExceptionObject as Exception;
-            ForceLog($"💀 AppDomain.UnhandledException  IsTerminating={e.IsTerminating}");
+            ForceLog($"[FATAL] AppDomain.UnhandledException  IsTerminating={e.IsTerminating}");
             ForceLog(ex?.ToString() ?? "(ExceptionObject 不是 Exception 类型，无法序列化)");
-            try { Log.Fatal(ex, "💀 非UI线程致命异常 AppDomain.UnhandledException (终止={IsTerminating})", e.IsTerminating); } catch { /* Serilog 可能还没初始化 */ }
+            try { Log.Fatal(ex, "[FATAL] 非UI线程致命异常 AppDomain.UnhandledException (终止={IsTerminating})", e.IsTerminating); } catch { /* Serilog 可能还没初始化 */ }
             try { WriteForceCrashDump(ex); } catch { }
         };
 
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {
-            ForceLog($"⚠️ TaskScheduler.UnobservedTaskException: {e.Exception}");
-            try { Log.Error(e.Exception, "⚠️ Task 未观察异常 UnobservedTaskException"); } catch { }
+            ForceLog($"[WARN] TaskScheduler.UnobservedTaskException: {e.Exception}");
+            try { Log.Error(e.Exception, "[WARN] Task 未观察异常 UnobservedTaskException"); } catch { }
             e.SetObserved();
         };
     }
@@ -138,7 +138,7 @@ public partial class App : Application
                 $"{Environment.NewLine}--- 异常信息 ---{Environment.NewLine}{ex}{Environment.NewLine}" +
                 $"{Environment.NewLine}--- 内部异常 ---{Environment.NewLine}{ex?.InnerException}{Environment.NewLine}";
             File.WriteAllText(filePath, dump);
-            ForceLog($"🗂️ 强制崩溃转储已写入: {filePath}");
+            ForceLog($"[DUMP] 强制崩溃转储已写入: {filePath}");
             return filePath;
         }
         catch (Exception wtf)
@@ -155,7 +155,7 @@ public partial class App : Application
     /// <param name="e">启动事件参数</param>
     protected override void OnStartup(StartupEventArgs e)
     {
-        ForceLog("[BOOT-1] 🚀 OnStartup 入口命中");
+        ForceLog("[BOOT-1] [BOOT] OnStartup 入口命中");
 
         // ─────────────────────────────────────────────────────
         // 【防静默退出】显式设置 ShutdownMode = OnExplicitShutdown
@@ -171,8 +171,8 @@ public partial class App : Application
         //  所以 DispatcherUnhandledException 不能放 .cctor 里挂）
         DispatcherUnhandledException += (_, e2) =>
         {
-            ForceLog($"💥 DispatcherUnhandledException: {e2.Exception}");
-            try { Log.Fatal(e2.Exception, "💥 UI 线程未处理异常 DispatcherUnhandledException"); } catch { }
+            ForceLog($"[FATAL] DispatcherUnhandledException: {e2.Exception}");
+            try { Log.Fatal(e2.Exception, "[FATAL] UI 线程未处理异常 DispatcherUnhandledException"); } catch { }
             try { WriteForceCrashDump(e2.Exception); } catch { }
             // 先不 Handled，让 ShowCrashReport 弹框；如果弹框失败就标记 Handled 防进程裸崩
             try { ShowCrashReport(e2.Exception); e2.Handled = true; }
@@ -180,7 +180,7 @@ public partial class App : Application
         };
         ForceLog("[BOOT-1]    DispatcherUnhandledException 已挂载");
 
-        ForceLog("[BOOT-2] 📝 开始初始化 Serilog...");
+        ForceLog("[BOOT-2] [LOG] 开始初始化 Serilog...");
 
         string logFileName = "(未初始化)";
         try
@@ -200,11 +200,11 @@ public partial class App : Application
                 .MinimumLevel.Override("io.NET.ZTR_OS.Features.NetworkMonitor", Serilog.Events.LogEventLevel.Warning)
                 .WriteTo.File(logFileName)
                 .CreateLogger();
-            ForceLog($"[BOOT-2] ✅ Serilog OK  日志文件: {logFileName}");
+            ForceLog($"[BOOT-2] [OK] Serilog OK  日志文件: {logFileName}");
         }
         catch (Exception serilogEx)
         {
-            ForceLog($"[BOOT-2] ❌ Serilog 初始化失败: {serilogEx}");
+            ForceLog($"[BOOT-2] [ERR] Serilog 初始化失败: {serilogEx}");
             // 注意：即使 Serilog 挂了也不能 return，继续往下走——我们有 ForceLog 兜底
         }
 
@@ -223,13 +223,13 @@ public partial class App : Application
             }
             if (oldFiles.Count > 0)
             {
-                ForceLog($"[BOOT-2] 🧹 已清理 {oldFiles.Count} 个旧日志文件");
-                try { Log.Information("🧹 已清理 {Count} 个旧日志文件", oldFiles.Count); } catch { }
+                ForceLog($"[BOOT-2] [CLEAN] 已清理 {oldFiles.Count} 个旧日志文件");
+                try { Log.Information("[CLEAN] 已清理 {Count} 个旧日志文件", oldFiles.Count); } catch { }
             }
         }
         catch (Exception ex)
         {
-            ForceLog($"[BOOT-2] ⚠️ 清理旧日志失败: {ex.Message}");
+            ForceLog($"[BOOT-2] [WARN] 清理旧日志失败: {ex.Message}");
             try { Log.Warning(ex, "清理旧日志文件失败"); } catch { }
         }
 
@@ -243,8 +243,8 @@ public partial class App : Application
         try
         {
             base.OnStartup(e);
-            ForceLog("[BOOT-3] ✅ base.OnStartup(e) 成功返回（XAML 资源字典加载 OK）");
-            try { Log.Information("🚀 io.NET.ZTR_OS 正在启动..."); } catch { }
+            ForceLog("[BOOT-3] [OK] base.OnStartup(e) 成功返回（XAML 资源字典加载 OK）");
+            try { Log.Information("[BOOT] io.NET.ZTR_OS 正在启动..."); } catch { }
 
             // ─────────────────────────────────────────────────────
             // 阶段 -1：用户协议前置校验（优先级最高，必须在任何 UI / NTP / 配置 / 启动页之前）
@@ -254,16 +254,16 @@ public partial class App : Application
             userAgreementService.Load();
             if (userAgreementService.RequiresReagreement)
             {
-                Log.Information("📜 需要用户同意协议（首次使用或协议已更新），在启动窗口之前弹出协议窗口...");
+                Log.Information("[LOG] 需要用户同意协议（首次使用或协议已更新），在启动窗口之前弹出协议窗口...");
                 var earlyAgreementWindow = new UserAgreementWindow(userAgreementService);
                 var agreed = earlyAgreementWindow.ShowDialog() == true;
                 if (!agreed)
                 {
-                    Log.Information("❌ 用户未同意协议，终止启动");
+                    Log.Information("[ERR] 用户未同意协议，终止启动");
                     Shutdown();
                     return;
                 }
-                Log.Information("✅ 用户已同意协议 v{Version}", userAgreementService.CurrentAgreementVersion);
+                Log.Information("[OK] 用户已同意协议 v{Version}", userAgreementService.CurrentAgreementVersion);
             }
 
             // ─────────────────────────────────────────────────────
@@ -277,8 +277,8 @@ public partial class App : Application
             // ─────────────────────────────────────────────────────
             // 阶段 1：显示启动窗口
             // ─────────────────────────────────────────────────────
-            ForceLog("[BOOT-4] 🪟 准备 new StartupWindow(earlyThemeService)...");
-            try { Log.Information("🪟 显示启动窗口..."); } catch { }
+            ForceLog("[BOOT-4] [UI] 准备 new StartupWindow(earlyThemeService)...");
+            try { Log.Information("[UI] 显示启动窗口..."); } catch { }
             StartupWindow startupWindow;
             try
             {
@@ -286,7 +286,7 @@ public partial class App : Application
             }
             catch (Exception swCtorEx)
             {
-                ForceLog($"[BOOT-4] ❌ StartupWindow .ctor 崩溃: {swCtorEx}");
+                ForceLog($"[BOOT-4] [ERR] StartupWindow .ctor 崩溃: {swCtorEx}");
                 WriteForceCrashDump(swCtorEx);
                 MessageBox.Show(
                     $"启动窗口构造失败：{swCtorEx.Message}\n\n{swCtorEx.StackTrace}",
@@ -295,7 +295,7 @@ public partial class App : Application
                 Shutdown(-1);
                 return;
             }
-            ForceLog("[BOOT-4] ✅ StartupWindow .ctor 成功，准备 Show()...");
+            ForceLog("[BOOT-4] [OK] StartupWindow .ctor 成功，准备 Show()...");
 
             try
             {
@@ -303,7 +303,7 @@ public partial class App : Application
             }
             catch (Exception swShowEx)
             {
-                ForceLog($"[BOOT-4] ❌ StartupWindow.Show() 崩溃: {swShowEx}");
+                ForceLog($"[BOOT-4] [ERR] StartupWindow.Show() 崩溃: {swShowEx}");
                 WriteForceCrashDump(swShowEx);
                 MessageBox.Show(
                     $"启动窗口显示失败：{swShowEx.Message}\n\n{swShowEx.StackTrace}",
@@ -312,19 +312,19 @@ public partial class App : Application
                 Shutdown(-1);
                 return;
             }
-            ForceLog("[BOOT-4] ✅ StartupWindow.Show() 成功");
+            ForceLog("[BOOT-4] [OK] StartupWindow.Show() 成功");
 
             // 将启动窗口设为 MainWindow 以便消息循环正常工作
             MainWindow = startupWindow;
 
             try
             {
-                startupWindow.AppendLog("🚀 io.NET.ZTR_OS 启动中...");
-                startupWindow.AppendLog("📋 正在初始化核心服务...");
+                startupWindow.AppendLog("[BOOT] io.NET.ZTR_OS 启动中...");
+                startupWindow.AppendLog("[LOG] 正在初始化核心服务...");
             }
             catch (Exception logEx)
             {
-                ForceLog($"[BOOT-4] ⚠️ startupWindow.AppendLog 失败（不致命，继续）: {logEx.Message}");
+                ForceLog($"[BOOT-4] [WARN] startupWindow.AppendLog 失败（不致命，继续）: {logEx.Message}");
             }
 
             // ─────────────────────────────────────────────────────
@@ -345,13 +345,13 @@ public partial class App : Application
                         await Task.Delay(100);
                     }
 
-                    await Step(5, "正在搭建 DI 容器...", "🏗️ 搭建 DI 容器...");
+                    await Step(5, "正在搭建 DI 容器...", "[BUILD] 搭建 DI 容器...");
                     var services = new ServiceCollection();
 
-                    await Step(8, "正在初始化时间服务...", "⏰ 初始化时间服务...");
+                    await Step(8, "正在初始化时间服务...", "[TIME] 初始化时间服务...");
                     services.AddSingleton<TimeService>();
 
-                    await Step(12, "正在注册服务器检测服务...", "🎯 注册服务器检测服务...");
+                    await Step(12, "正在注册服务器检测服务...", "[DONE] 注册服务器检测服务...");
                     services.AddSingleton<IServerDetector, ServerDetector>();
                     services.AddSingleton<IServerImporterService, ServerImporterService>();
                     services.AddSingleton<IServerManagerService, ServerManagerService>();
@@ -368,15 +368,15 @@ public partial class App : Application
                     services.AddSingleton<NetworkTrafficService>();
                     services.AddSingleton<JarCoreIdentifier>();
 
-                    await Step(22, "正在注册权限服务...", "🔐 注册权限服务...");
+                    await Step(22, "正在注册权限服务...", "[SEC] 注册权限服务...");
                     services.AddSingleton<AdminPrivilegeService>();
                     services.AddSingleton<IPrivilegeService, PrivilegeService>();
 
-                    await Step(30, "正在注册配置管理服务...", "📋 注册配置管理服务...");
+                    await Step(30, "正在注册配置管理服务...", "[LOG] 注册配置管理服务...");
                     services.AddSingleton<IConfigManager, ConfigManager>();
                     services.AddSingleton<ConfigDescriptorRegistry>();
 
-                    await Step(38, "正在注册系统监控服务...", "📊 注册系统监控服务...");
+                    await Step(38, "正在注册系统监控服务...", "[METRIC] 注册系统监控服务...");
                     services.AddSingleton<ISystemMonitor, SystemMonitor>();
                     services.AddSingleton<DiskSpaceMonitor>();
                     services.AddSingleton<MemoryMonitor>();
@@ -385,7 +385,7 @@ public partial class App : Application
                     services.AddSingleton<IMetricsPersistenceService, MetricsPersistenceService>();
                     services.AddSingleton<IProcessManagerService, ProcessManagerService>();
 
-                    await Step(46, "正在注册主题与基础服务...", "🎨 注册主题服务...");
+                    await Step(46, "正在注册主题与基础服务...", "[THEME] 注册主题服务...");
                     services.AddSingleton<IThemeService>(_ => earlyThemeService);
                     // 复用「阶段 -1」已 Load、并在必要时已弹出协议窗口的实例，
                     // 避免再次 new 一个造成版本状态 / 同意状态不一致
@@ -396,7 +396,7 @@ public partial class App : Application
                     services.AddSingleton<MemoryOptimizerService>();
                     services.AddSingleton<IWebView2BridgeService, WebView2BridgeService>();
 
-                    await Step(56, "正在注册 ViewModel...", "🧩 注册 ViewModel...");
+                    await Step(56, "正在注册 ViewModel...", "[ASSEMBLE] 注册 ViewModel...");
                     services.AddSingleton<ServerDetectionViewModel>();
                     services.AddSingleton<ConfigEditorViewModel>();
                     services.AddSingleton<SystemMonitorViewModel>();
@@ -404,7 +404,7 @@ public partial class App : Application
                     services.AddSingleton<SettingsViewModel>();
                     services.AddSingleton<MainViewModel>();
 
-                    await Step(66, "正在构建服务容器...", "📦 构建服务容器...");
+                    await Step(66, "正在构建服务容器...", "[PKG] 构建服务容器...");
                     _serviceProvider = services.BuildServiceProvider();
 
                     // 后台启动 NTP 时钟偏差诊断（不阻塞启动流程；v2：不再覆盖系统时间）
@@ -415,7 +415,7 @@ public partial class App : Application
                             var timeService = _serviceProvider.GetRequiredService<TimeService>();
                             await startupWindow.Dispatcher.InvokeAsync(() =>
                             {
-                                startupWindow.AppendLog("⏰ 正在通过权威授时中心诊断系统时钟偏差...");
+                                startupWindow.AppendLog("[TIME] 正在通过权威授时中心诊断系统时钟偏差...");
                             });
 
                             // SynchronizeAsync 现在返回 true = 时钟正常（±60s 内）；
@@ -431,14 +431,14 @@ public partial class App : Application
                                     if (clockOk)
                                     {
                                         startupWindow.AppendLog(
-                                            $"✅ 时钟偏差诊断完成，偏差 {offsetMs:F0}ms（系统时钟正常，已使用本地时间）",
+                                            $"[OK] 时钟偏差诊断完成，偏差 {offsetMs:F0}ms（系统时钟正常，已使用本地时间）",
                                             isSuccess: true);
                                     }
                                     else
                                     {
                                         // NTP 成功但偏差超阈值 → 启动日志 + 日志 + 弹窗三重提示
                                         startupWindow.AppendLog(
-                                            $"⚠️ 检测到系统时钟偏差较大: ±{offsetSeconds}s，" +
+                                            $"[WARN] 检测到系统时钟偏差较大: ±{offsetSeconds}s，" +
                                             $"请检查 Windows 日期/时间设置或手动「立即同步」。" +
                                             $"MSMC 会继续使用本地时间，不会被 NTP 强制覆盖。",
                                             isError: true);
@@ -479,11 +479,11 @@ public partial class App : Application
                     await startupWindow.Dispatcher.InvokeAsync(ConfigureRenderOptimizations);
 
                     // 检查管理员权限
-                    await Step(72, "正在检查管理员权限...", "🔐 检查管理员权限...");
+                    await Step(72, "正在检查管理员权限...", "[SEC] 检查管理员权限...");
                     var privilegeService = _serviceProvider.GetRequiredService<IPrivilegeService>();
                     if (!privilegeService.IsRunningAsAdmin && privilegeService.IsWindows)
                     {
-                        startupWindow.AppendLog("⚠️ 当前不是管理员权限，部分功能可能受限", isError: true);
+                        startupWindow.AppendLog("[WARN] 当前不是管理员权限，部分功能可能受限", isError: true);
                         await startupWindow.Dispatcher.InvokeAsync(() =>
                         {
                             var result = System.Windows.MessageBox.Show(
@@ -505,7 +505,7 @@ public partial class App : Application
                     }
 
                     // 加载全局配置
-                    await Step(80, "正在加载全局配置...", "📂 加载全局配置...");
+                    await Step(80, "正在加载全局配置...", "[FS] 加载全局配置...");
                     _serviceProvider.GetRequiredService<IAppConfigService>().Load();
                     AnimationSettings.ThemeService = _serviceProvider.GetRequiredService<IThemeService>();
 
@@ -513,12 +513,12 @@ public partial class App : Application
                     // 这里只把结果告诉用户，不再二次弹窗
                     await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
-                        startupWindow.AppendLog($"📜 用户协议 v{userAgreementService.CurrentAgreementVersion} 已同意", isSuccess: true);
+                        startupWindow.AppendLog($"[LOG] 用户协议 v{userAgreementService.CurrentAgreementVersion} 已同意", isSuccess: true);
                     });
 
                     // 创建主窗口
-                    await Step(92, "正在创建主窗口...", "🪟 正在创建主窗口...");
-                    ForceLog("[BOOT-5] 🪟 准备 new MainWindow + MainViewModel...");
+                    await Step(92, "正在创建主窗口...", "[UI] 正在创建主窗口...");
+                    ForceLog("[BOOT-5] [UI] 准备 new MainWindow + MainViewModel...");
                     MainWindow? mainWindow = null;
                     await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
@@ -528,22 +528,22 @@ public partial class App : Application
                             {
                                 DataContext = _serviceProvider.GetRequiredService<MainViewModel>()
                             };
-                            ForceLog("[BOOT-5] ✅ MainWindow .ctor 成功");
+                            ForceLog("[BOOT-5] [OK] MainWindow .ctor 成功");
                         }
                         catch (Exception mwCtorEx)
                         {
-                            ForceLog($"[BOOT-5] ❌ MainWindow .ctor 崩溃: {mwCtorEx}");
+                            ForceLog($"[BOOT-5] [ERR] MainWindow .ctor 崩溃: {mwCtorEx}");
                             WriteForceCrashDump(mwCtorEx);
                             throw; // 让外层 catch 接管
                         }
                     });
 
                     // 启动内存优化服务
-                    await Step(96, "正在启动内存优化服务...", "🧹 启动内存优化服务...");
+                    await Step(96, "正在启动内存优化服务...", "[CLEAN] 启动内存优化服务...");
                     await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
                         try { _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start(); }
-                        catch (Exception moEx) { ForceLog($"[BOOT-5] ⚠️ MemoryOptimizer.Start 失败（不致命）: {moEx.Message}"); }
+                        catch (Exception moEx) { ForceLog($"[BOOT-5] [WARN] MemoryOptimizer.Start 失败（不致命）: {moEx.Message}"); }
                     });
 
                     startupWindow.MarkCompleted();
@@ -556,28 +556,28 @@ public partial class App : Application
                     // 顺序不能变！必须先 Show 主窗口成功，再切 ShutdownMode，最后才关启动窗口
                     // 否则 OnLastWindowClose 会直接把进程带走（虽然我们是 OnExplicitShutdown，但防一手）
                     // ─────────────────────────────────────────────────────
-                    ForceLog("[BOOT-6] 🎯 准备 MainWindow.Show() + ShutdownMode 切换...");
+                    ForceLog("[BOOT-6] [DONE] 准备 MainWindow.Show() + ShutdownMode 切换...");
                     await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
                         try
                         {
                             if (mainWindow == null)
                             {
-                                ForceLog("[BOOT-6] ❌ mainWindow 是 null，无法 Show！");
+                                ForceLog("[BOOT-6] [ERR] mainWindow 是 null，无法 Show！");
                                 throw new InvalidOperationException("MainWindow 实例为 null");
                             }
 
                             mainWindow.Show();
-                            ForceLog("[BOOT-6] ✅ MainWindow.Show() 成功");
+                            ForceLog("[BOOT-6] [OK] MainWindow.Show() 成功");
 
                             // 主窗口 Show 成功后，把 ShutdownMode 切回正常：主窗口关了程序就退
                             MainWindow = mainWindow;
                             ShutdownMode = ShutdownMode.OnMainWindowClose;
-                            ForceLog("[BOOT-6] ✅ ShutdownMode 已切换为 OnMainWindowClose");
+                            ForceLog("[BOOT-6] [OK] ShutdownMode 已切换为 OnMainWindowClose");
                         }
                         catch (Exception mwShowEx)
                         {
-                            ForceLog($"[BOOT-6] ❌ MainWindow.Show 崩溃: {mwShowEx}");
+                            ForceLog($"[BOOT-6] [ERR] MainWindow.Show 崩溃: {mwShowEx}");
                             WriteForceCrashDump(mwShowEx);
                             MessageBox.Show(
                                 $"主窗口显示失败：{mwShowEx.Message}\n\n{mwShowEx.StackTrace}",
@@ -591,22 +591,22 @@ public partial class App : Application
                         try
                         {
                             startupWindow.Close();
-                            ForceLog("[BOOT-6] ✅ StartupWindow.Close() 成功");
+                            ForceLog("[BOOT-6] [OK] StartupWindow.Close() 成功");
                         }
                         catch (Exception swCloseEx)
                         {
-                            ForceLog($"[BOOT-6] ⚠️ StartupWindow.Close 失败（不致命，主窗口已经出来了）: {swCloseEx.Message}");
+                            ForceLog($"[BOOT-6] [WARN] StartupWindow.Close 失败（不致命，主窗口已经出来了）: {swCloseEx.Message}");
                         }
                     });
 
-                    ForceLog("[BOOT-END] 🏁 启动流程全部完成！");
-                    try { Log.Information("✅ io.NET.ZTR_OS 启动完成，主窗口已就绪！"); } catch { }
+                    ForceLog("[BOOT-END] [FIN] 启动流程全部完成！");
+                    try { Log.Information("[OK] io.NET.ZTR_OS 启动完成，主窗口已就绪！"); } catch { }
                 }
                 catch (Exception ex)
                 {
-                    ForceLog($"💥 [Task.Run 内部] 启动过程致命异常: {ex}");
+                    ForceLog($"[FATAL] [Task.Run 内部] 启动过程致命异常: {ex}");
                     WriteForceCrashDump(ex);
-                    try { Log.Fatal(ex, "💥 启动过程发生致命异常（Task.Run 内部）"); } catch { }
+                    try { Log.Fatal(ex, "[FATAL] 启动过程发生致命异常（Task.Run 内部）"); } catch { }
                     try { WriteCrashDump(ex); } catch { }
 
                     bool handled = false;
@@ -620,7 +620,7 @@ public partial class App : Application
                     }
                     catch (Exception mwEx)
                     {
-                        ForceLog($"💥 startupWindow.MarkFailed 也崩了（可能窗口已关闭）: {mwEx.Message}");
+                        ForceLog($"[FATAL] startupWindow.MarkFailed 也崩了（可能窗口已关闭）: {mwEx.Message}");
                     }
 
                     if (!handled)
@@ -644,9 +644,9 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            ForceLog($"💥 [OnStartup 外层 catch] 启动前期致命异常: {ex}");
+            ForceLog($"[FATAL] [OnStartup 外层 catch] 启动前期致命异常: {ex}");
             WriteForceCrashDump(ex);
-            try { Log.Fatal(ex, "💥 启动前期发生致命异常（OnStartup 外层）"); } catch { }
+            try { Log.Fatal(ex, "[FATAL] 启动前期发生致命异常（OnStartup 外层）"); } catch { }
             try { WriteCrashDump(ex); } catch { }
             try
             {
@@ -674,8 +674,8 @@ public partial class App : Application
     /// </remarks>
     protected override void OnExit(ExitEventArgs e)
     {
-        ForceLog($"[EXIT] 👋 OnExit 入口命中  ApplicationExitCode={e.ApplicationExitCode}");
-        try { Log.Information("👋 应用退出，开始清理资源..."); } catch { }
+        ForceLog($"[EXIT] [EXIT] OnExit 入口命中  ApplicationExitCode={e.ApplicationExitCode}");
+        try { Log.Information("[EXIT] 应用退出，开始清理资源..."); } catch { }
 
         try
         {
@@ -684,8 +684,8 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            ForceLog($"[EXIT] ⚠️ MainViewModel 释放异常: {ex.Message}");
-            try { Log.Warning(ex, "⚠️ MainViewModel 释放时发生异常（已忽略）"); } catch { }
+            ForceLog($"[EXIT] [WARN] MainViewModel 释放异常: {ex.Message}");
+            try { Log.Warning(ex, "[WARN] MainViewModel 释放时发生异常（已忽略）"); } catch { }
         }
 
         try
@@ -694,14 +694,14 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            ForceLog($"[EXIT] ⚠️ ServiceProvider 释放异常: {ex.Message}");
-            try { Log.Warning(ex, "⚠️ ServiceProvider 释放时发生异常（已忽略）"); } catch { }
+            ForceLog($"[EXIT] [WARN] ServiceProvider 释放异常: {ex.Message}");
+            try { Log.Warning(ex, "[WARN] ServiceProvider 释放时发生异常（已忽略）"); } catch { }
         }
 
-        ForceLog("[EXIT] ✅ 资源清理完成");
+        ForceLog("[EXIT] [OK] 资源清理完成");
         try
         {
-            Log.Information("✅ 资源清理完成，再见！");
+            Log.Information("[OK] 资源清理完成，再见！");
             Log.CloseAndFlush();
         }
         catch { /* Serilog 可能早就挂了或者压根没初始化 */ }
@@ -718,7 +718,7 @@ public partial class App : Application
         // 第一层：UI 线程 Dispatcher 未处理异常
         DispatcherUnhandledException += (sender, e) =>
         {
-            Log.Fatal(e.Exception, "💥 UI 线程未处理异常");
+            Log.Fatal(e.Exception, "[FATAL] UI 线程未处理异常");
             e.Handled = true;
             ShowCrashReport(e.Exception);
         };
@@ -728,7 +728,7 @@ public partial class App : Application
         {
             if (e.ExceptionObject is Exception ex)
             {
-                Log.Fatal(ex, "💀 非UI线程致命异常 (终止进程={IsTerminating})", e.IsTerminating);
+                Log.Fatal(ex, "[FATAL] 非UI线程致命异常 (终止进程={IsTerminating})", e.IsTerminating);
                 WriteCrashDump(ex);
             }
         };
@@ -736,7 +736,7 @@ public partial class App : Application
         // 第三层：Task 未观察异常（fire-and-forget 任务异常）
         TaskScheduler.UnobservedTaskException += (sender, e) =>
         {
-            Log.Error(e.Exception, "⚠️ Task未观察异常（火忘了灭）");
+            Log.Error(e.Exception, "[WARN] Task未观察异常（火忘了灭）");
             e.SetObserved(); // 标记已观察，防止进程终止
         };
     }
@@ -758,7 +758,7 @@ public partial class App : Application
         try
         {
             var crashLog = WriteCrashDump(ex);
-            var msg = $"💥 哎呀，程序出了点问题！\n\n" +
+            var msg = $"[FATAL] 哎呀，程序出了点问题！\n\n" +
                       $"错误信息：{ex.Message}\n\n" +
                       $"Serilog 日志: {crashLog}\n" +
                       $"强制死日志: {forceCrashPath ?? "(未写入成功)"}\n" +
@@ -766,7 +766,7 @@ public partial class App : Application
                       $"你可以把这些文件发给开发者排查问题。\n\n" +
                       $"点击确定继续使用（不保证稳定），点击取消退出程序。";
 
-            var result = MessageBox.Show(msg, "MSMC 崩溃了 🫠",
+            var result = MessageBox.Show(msg, "MSMC 崩溃了 ",
                 MessageBoxButton.OKCancel, MessageBoxImage.Error);
 
             if (result == MessageBoxResult.Cancel)
@@ -776,7 +776,7 @@ public partial class App : Application
         }
         catch (Exception reportEx)
         {
-            ForceLog($"💥 ShowCrashReport 内部也崩了: {reportEx}");
+            ForceLog($"[FATAL] ShowCrashReport 内部也崩了: {reportEx}");
             // 连崩溃报告都崩了的时候，最后手段：裸 MessageBox
             try
             {
@@ -800,7 +800,7 @@ public partial class App : Application
     {
         try
         {
-            Log.Information("🎨 配置 WPF 渲染管线优化...");
+            Log.Information("[THEME] 配置 WPF 渲染管线优化...");
 
             // 启用硬件加速渲染（默认值，显式声明确保没有被降级）
             System.Windows.Media.RenderOptions.ProcessRenderMode =
@@ -809,21 +809,21 @@ public partial class App : Application
             // 设置渲染模式为硬件渲染
             if (System.Windows.Media.RenderCapability.Tier >> 16 >= 2)
             {
-                Log.Information("🖥️ 显卡支持 Tier 2 渲染，启用完全硬件加速");
+                Log.Information("[HOST] 显卡支持 Tier 2 渲染，启用完全硬件加速");
             }
             else
             {
-                Log.Warning("⚠️ 显卡渲染等级较低，部分效果可能降级");
+                Log.Warning("[WARN] 显卡渲染等级较低，部分效果可能降级");
             }
 
             // 位图缓存策略：不在全局设置，在各页面静态元素上按需使用 BitmapCache
             // 原因：全局缓存可能导致内存占用过高，且动态内容缓存会适得其反
 
-            Log.Information("✅ WPF 渲染管线优化配置完成");
+            Log.Information("[OK] WPF 渲染管线优化配置完成");
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ 渲染优化配置失败，使用默认设置: {Message}", ex.Message);
+            Log.Warning(ex, "[WARN] 渲染优化配置失败，使用默认设置: {Message}", ex.Message);
         }
     }
 

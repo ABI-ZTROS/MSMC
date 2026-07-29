@@ -68,7 +68,7 @@ export function StartupPage(): JSX.Element {
               const payload = data.payload as { percent: number; status?: string }
               if (payload) {
                 setProgress(Math.max(0, Math.min(100, payload.percent)))
-                // ✅ 修复问题 2：之前完全忽略了 status 字段，现在同步展示
+                // [OK] 修复问题 2：之前完全忽略了 status 字段，现在同步展示
                 if (typeof payload.status === 'string' && payload.status.length > 0) {
                   setCurrentStatus(payload.status)
                 }
@@ -92,7 +92,7 @@ export function StartupPage(): JSX.Element {
               setProgress(100)
               setCurrentStatus('初始化完成')
               const payload = data.payload as { message?: string }
-              const msg = payload?.message || '✅ 初始化完成，正在启动主界面...'
+              const msg = payload?.message || '[OK] 初始化完成，正在启动主界面...'
               appendLog(msg, 'success')
               break
             }
@@ -102,7 +102,7 @@ export function StartupPage(): JSX.Element {
               const payload = data.payload as { message?: string }
               const msg = payload?.message || '启动失败'
               setCurrentStatus(`启动失败：${msg}`)
-              appendLog(`❌ 启动失败：${msg}`, 'error')
+              appendLog(`[ERR] 启动失败：${msg}`, 'error')
               break
             }
             case 'startup:init': {
@@ -274,7 +274,7 @@ export function StartupPage(): JSX.Element {
           style={{
             backgroundColor: 'var(--md-card-background)',
             border: '1px solid var(--md-subtle-border)',
-            // ✅ 修复问题 3：给整个日志卡片加上阴影，让它和启动页背景有明显边界
+            // [OK] 修复问题 3：给整个日志卡片加上阴影，让它和启动页背景有明显边界
             boxShadow: '0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03)',
           }}
         >
@@ -298,7 +298,7 @@ export function StartupPage(): JSX.Element {
               >
                 启动日志
               </span>
-              {/* ✅ 修复问题 2：进度条上方展示当前阶段的加载细节（status 字段） */}
+              {/* [OK] 修复问题 2：进度条上方展示当前阶段的加载细节（status 字段） */}
               <span
                 style={{
                   fontSize: 10,
@@ -364,7 +364,7 @@ export function StartupPage(): JSX.Element {
             ref={logContainerRef}
             className="flex-1 overflow-y-auto min-h-0"
             style={{
-              // ✅ 修复问题 3：给日志区加内边距 + 上下 padding 不对称，让它看起来像终端
+              // [OK] 修复问题 3：给日志区加内边距 + 上下 padding 不对称，让它看起来像终端
               padding: '12px 14px 16px 14px',
               // 内边界：深色填充，和顶部标题栏视觉上分隔
               backgroundColor: 'rgba(0, 0, 0, 0.22)',
@@ -394,7 +394,7 @@ export function StartupPage(): JSX.Element {
                   fontFamily: 'Consolas, "JetBrains Mono", "Cascadia Code", monospace',
                   fontSize: 12,
                   lineHeight: 1.75,
-                  // ✅ 修复问题 3：每条日志一个轻微背景色卡片 + 底边距，不再是散在的纯文本
+                  // [OK] 修复问题 3：每条日志一个轻微背景色卡片 + 底边距，不再是散在的纯文本
                   marginBottom: 3,
                   padding: '2px 6px',
                   borderRadius: 3,

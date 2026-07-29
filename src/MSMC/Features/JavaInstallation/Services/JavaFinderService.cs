@@ -230,7 +230,7 @@ public class JavaFinderService : IJavaFinderService
         {
             customPaths.Add(normalized);
             _appConfigService.Save();
-            Log.Information("➕ 已添加自定义 Java 路径: {Path}", normalized);
+            Log.Information("[ADD] 已添加自定义 Java 路径: {Path}", normalized);
         }
     }
 
@@ -252,7 +252,7 @@ public class JavaFinderService : IJavaFinderService
         if (removed > 0)
         {
             _appConfigService.Save();
-            Log.Information("🗑️ 已移除自定义 Java 路径: {Path}", normalized);
+            Log.Information("[TRASH]️ 已移除自定义 Java 路径: {Path}", normalized);
         }
     }
 
@@ -558,7 +558,7 @@ public class JavaFinderService : IJavaFinderService
             var javaHome = GetJavaHomeFromExecutable(actualJavaPath);
             var javawPath = javaHome != null ? GetJavawExecutable(javaHome) ?? string.Empty : string.Empty;
 
-            Log.Information("✅ Java 验证通过: {Path} | 版本: {Version} | 厂商: {Vendor} | 64位: {Is64Bit}",
+            Log.Information("[OK] Java 验证通过: {Path} | 版本: {Version} | 厂商: {Vendor} | 64位: {Is64Bit}",
                 actualJavaPath, version?.ToString() ?? "未知", ParseVendor(output),
                 output.Contains("64-Bit", StringComparison.OrdinalIgnoreCase));
 

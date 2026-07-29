@@ -20,13 +20,13 @@ public static class FrontendResourceProviderFactory
         if (_cachedProvider != null)
             return _cachedProvider;
 
-        Log.Information("🔍 正在查找前端资源提供器...");
+        Log.Information("[FIND] 正在查找前端资源提供器...");
 
         // 1. 优先：开发环境本地文件夹
         var folderProvider = TryCreateFolderProvider();
         if (folderProvider != null && folderProvider.IsAvailable)
         {
-            Log.Information("✅ 使用本地文件夹模式加载前端");
+            Log.Information("[OK] 使用本地文件夹模式加载前端");
             _cachedProvider = folderProvider;
             return _cachedProvider;
         }
@@ -35,7 +35,7 @@ public static class FrontendResourceProviderFactory
         var embeddedProvider = new EmbeddedResourceProvider();
         if (embeddedProvider.IsAvailable)
         {
-            Log.Information("✅ 使用嵌入资源模式加载前端 (B 模式)");
+            Log.Information("[OK] 使用嵌入资源模式加载前端 (B 模式)");
             _cachedProvider = embeddedProvider;
             return _cachedProvider;
         }
@@ -44,13 +44,13 @@ public static class FrontendResourceProviderFactory
         var zipProvider = new ZipExtractResourceProvider();
         if (zipProvider.IsAvailable)
         {
-            Log.Information("✅ 使用 Zip 解压模式加载前端 (C 模式/兜底)");
+            Log.Information("[OK] 使用 Zip 解压模式加载前端 (C 模式/兜底)");
             _cachedProvider = zipProvider;
             return _cachedProvider;
         }
 
         // 4. 都不行，返回一个不可用的提供器
-        Log.Warning("⚠️ 未找到任何可用的前端资源提供器，将加载测试页面");
+        Log.Warning("[WARN] 未找到任何可用的前端资源提供器，将加载测试页面");
         _cachedProvider = new NullResourceProvider();
         return _cachedProvider;
     }

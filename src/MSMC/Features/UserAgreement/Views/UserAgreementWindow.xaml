@@ -130,7 +130,7 @@
 
                 <Border Style="{StaticResource WarningBoxStyle}">
                     <StackPanel>
-                        <TextBlock Text="⚠️ 重要声明：本软件不是开源软件"
+                        <TextBlock Text="[WARN] 重要声明：本软件不是开源软件"
                                    FontSize="14"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource WarningRedAccentBrush}" />
@@ -237,7 +237,7 @@
                 <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="3.2 适用地域限制（仅限中国大陆）" />
                 <Border Style="{StaticResource WarningBoxStyle}">
                     <StackPanel>
-                        <TextBlock Text="🌍 地域限制：仅限中国大陆地区使用"
+                        <TextBlock Text="[NET] 地域限制：仅限中国大陆地区使用"
                                    FontSize="14"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource WarningRedAccentBrush}" />
@@ -274,7 +274,7 @@
                 <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="4.1 禁止盗版与二改收费" />
                 <Border Style="{StaticResource WarningBoxStyle}">
                     <StackPanel>
-                        <TextBlock Text="🚫 作者严正声明：对盗版和二改收费零容忍"
+                        <TextBlock Text="[ERR] 作者严正声明：对盗版和二改收费零容忍"
                                    FontSize="13"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource WarningRedHighlightBrush}" />
@@ -532,7 +532,7 @@
                 <!-- 底部警示 -->
                 <Border Style="{StaticResource WarningBoxStyle}" Margin="0,28,0,0">
                     <StackPanel>
-                        <TextBlock Text="⛔ 请您务必注意"
+                        <TextBlock Text="[STOP] 请您务必注意"
                                    FontSize="14"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource WarningRedHighlightBrush}" />

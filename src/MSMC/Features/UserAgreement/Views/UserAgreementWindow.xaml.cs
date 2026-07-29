@@ -194,7 +194,7 @@ public partial class UserAgreementWindow : Window
         {
             _countdownTimer.Stop();
             _isCountdownPaused = true;
-            CountdownText.Text = "⚠️ 请保持窗口焦点，倒计时已暂停";
+            CountdownText.Text = "[WARN] 请保持窗口焦点，倒计时已暂停";
         }
     }
 
@@ -428,7 +428,7 @@ public partial class UserAgreementWindow : Window
 
         var window = new Window
         {
-            Title = "⚠️ 错误",
+            Title = "[WARN] 错误",
             Width = w,
             Height = h,
             WindowStartupLocation = WindowStartupLocation.Manual,
@@ -457,7 +457,7 @@ public partial class UserAgreementWindow : Window
         var iconTransform = new TranslateTransform();
         var icon = new System.Windows.Controls.TextBlock
         {
-            Text = "❌",
+            Text = "[ERR]",
             FontSize = 36,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 16, 0),

@@ -1,4 +1,4 @@
-<!-- 🎛️ 配置编辑页面 —— "你是 server.properties 的主治医生，开始诊断吧" -->
+<!-- [CTRL] 配置编辑页面 —— "你是 server.properties 的主治医生，开始诊断吧" -->
 <UserControl x:Class="io.NET.ZTR_OS.Features.ConfigEditor.Views.ConfigEditorPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -13,10 +13,10 @@
     </UserControl.InputBindings>
 
     <UserControl.Resources>
-        <!-- 🎢 配置卡片入场动画缓动函数 -->
+        <!--  配置卡片入场动画缓动函数 -->
         <CubicEase x:Key="ConfigCardEase" EasingMode="EaseOut" />
 
-        <!-- 🎨 配置项卡片样式 -->
+        <!-- [THEME] 配置项卡片样式 -->
         <Style x:Key="ConfigItemCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
             <Setter Property="CornerRadius" Value="{DynamicResource AppCornerRadiusSmall}" />
@@ -37,7 +37,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- 🎯 配置名文字样式 -->
+        <!-- [DONE] 配置名文字样式 -->
         <Style x:Key="ConfigNameStyle" TargetType="TextBlock">
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="13" />
@@ -45,7 +45,7 @@
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
 
-        <!-- 💬 配置描述文字样式 -->
+        <!-- [MSG] 配置描述文字样式 -->
         <Style x:Key="ConfigDescStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
@@ -54,13 +54,13 @@
             <Setter Property="Margin" Value="0,2,0,0" />
         </Style>
 
-        <!-- 📂 分类 Expander 头部样式 -->
+        <!-- [FS] 分类 Expander 头部样式 -->
         <Style x:Key="CategoryExpanderStyle" TargetType="Expander">
             <Setter Property="Margin" Value="0,0,0,8" />
             <Setter Property="Padding" Value="0" />
         </Style>
 
-        <!-- 🔘 分类标题文字样式 -->
+        <!-- [CTRL] 分类标题文字样式 -->
         <Style x:Key="CategoryTitleStyle" TargetType="TextBlock">
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="FontSize" Value="14" />
@@ -68,7 +68,7 @@
             <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
         </Style>
 
-        <!-- 📝 配置值输入框样式 -->
+        <!-- [LOG] 配置值输入框样式 -->
         <Style x:Key="ConfigValueTextBoxStyle" TargetType="TextBox"
                BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
             <Setter Property="MinWidth" Value="180" />
@@ -78,7 +78,7 @@
             <Setter Property="Padding" Value="8,0" />
         </Style>
 
-        <!-- 🎯 枚举下拉框样式 -->
+        <!-- [DONE] 枚举下拉框样式 -->
         <Style x:Key="ConfigComboBoxStyle" TargetType="ComboBox"
                BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
             <Setter Property="MinWidth" Value="180" />
@@ -86,7 +86,7 @@
             <Setter Property="Height" Value="36" />
         </Style>
 
-        <!-- 🎯 模板选择器：根据类型选择编辑模板（放在所有样式定义之后） -->
+        <!-- [DONE] 模板选择器：根据类型选择编辑模板（放在所有样式定义之后） -->
         <selectors:ConfigEditorTemplateSelector x:Key="ConfigEditorTemplateSelector">
             <selectors:ConfigEditorTemplateSelector.BoolTemplate>
                 <DataTemplate>
@@ -133,22 +133,22 @@
         </selectors:ConfigEditorTemplateSelector>
     </UserControl.Resources>
 
-    <!-- 📐 Grid 两列布局：左侧文件列表（280px）+ 右侧编辑区 -->
+    <!-- [LAYOUT] Grid 两列布局：左侧文件列表（280px）+ 右侧编辑区 -->
     <Grid Margin="12">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="280" />  <!-- 📁 左侧：配置文件列表 -->
-            <ColumnDefinition Width="*" />     <!-- ✏️ 右侧：配置编辑区 -->
+            <ColumnDefinition Width="280" />  <!-- [FS] 左侧：配置文件列表 -->
+            <ColumnDefinition Width="*" />     <!-- [EDIT] 右侧：配置编辑区 -->
         </Grid.ColumnDefinitions>
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!-- 📁 左侧 Card：服务器选择 + 配置文件列表 -->
+        <!-- [FS] 左侧 Card：服务器选择 + 配置文件列表 -->
         <!-- ═══════════════════════════════════════════════════ -->
         <materialDesign:Card Grid.Column="0"
                              Margin="0,0,12,0"
                              Padding="0"
                              UniformCornerRadius="{DynamicResource AppCornerRadiusValue}">
             <DockPanel>
-                <!-- 🔝 标题栏 -->
+                <!-- [TOP] 标题栏 -->
                 <Border DockPanel.Dock="Top"
                         Background="{DynamicResource PrimaryHueMidBrush}"
                         CornerRadius="12,12,0,0"
@@ -167,7 +167,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 🖥️ 服务器选择区 -->
+                <!-- [HOST] 服务器选择区 -->
                 <Border DockPanel.Dock="Top"
                         Padding="12,10"
                         BorderThickness="0,0,0,1"
@@ -230,7 +230,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 📋 文件列表 —— 选哪个文件就编辑哪个 -->
+                <!-- [LOG] 文件列表 —— 选哪个文件就编辑哪个 -->
                 <ListBox ItemsSource="{Binding ConfigFiles}"
                          SelectedItem="{Binding SelectedConfigFile}"
                          Background="Transparent"
@@ -292,7 +292,7 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <!-- 📊 文件统计信息 -->
+                <!-- [METRIC] 文件统计信息 -->
                 <Border DockPanel.Dock="Bottom"
                         Padding="12,8"
                         BorderThickness="0,1,0,0"
@@ -306,15 +306,15 @@
         </materialDesign:Card>
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!-- ✏️ 右侧：保存/重置按钮 + 分类配置项编辑 -->
+        <!-- [EDIT] 右侧：保存/重置按钮 + 分类配置项编辑 -->
         <!-- ═══════════════════════════════════════════════════ -->
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />  <!-- 🔘 按钮栏 -->
-                <RowDefinition Height="*" />     <!-- 📝 配置项列表 -->
+                <RowDefinition Height="Auto" />  <!-- [CTRL] 按钮栏 -->
+                <RowDefinition Height="*" />     <!-- [LOG] 配置项列表 -->
             </Grid.RowDefinitions>
 
-            <!-- ═══ 🔘 顶部操作按钮栏 ═══ -->
+            <!-- ═══ [CTRL] 顶部操作按钮栏 ═══ -->
             <Border Grid.Row="0"
                     Background="{DynamicResource CardBackgroundBrush}"
                     CornerRadius="{DynamicResource AppCornerRadius}"
@@ -330,7 +330,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- 🏷️ 左侧：当前文件名 + 状态 -->
+                    <!-- [LABEL] 左侧：当前文件名 + 状态 -->
                     <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding SelectedConfigFileName}"
                                    FontSize="16"
@@ -350,7 +350,7 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- 🔘 右侧：操作按钮 -->
+                    <!-- [CTRL] 右侧：操作按钮 -->
                     <StackPanel Grid.Row="0" Grid.Column="1"
                                 Orientation="Horizontal"
                                 VerticalAlignment="Center">
@@ -381,7 +381,7 @@
                             </StackPanel>
                         </Button>
 
-                        <!-- 🔄 重置按钮 -->
+                        <!-- [REFRESH] 重置按钮 -->
                         <Button Command="{Binding ResetChangesCommand}"
                                 Margin="0,0,12,0"
                                 Padding="16,10"
@@ -407,7 +407,7 @@
                             </StackPanel>
                         </Button>
 
-                        <!-- 💾 保存按钮 -->
+                        <!-- [SAVE] 保存按钮 -->
                         <Button Command="{Binding SaveConfigCommand}"
                                 Padding="20,10"
                                 FontSize="13"
@@ -435,7 +435,7 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- 💬 保存状态消息 -->
+                    <!-- [MSG] 保存状态消息 -->
                     <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
                                Text="{Binding SaveStatusMessage}"
                                FontSize="12"
@@ -457,7 +457,7 @@
                 </Grid>
             </Border>
 
-            <!-- ═══ 📝 配置项：按分类分组的 Expander 列表 ═══ -->
+            <!-- ═══ [LOG] 配置项：按分类分组的 Expander 列表 ═══ -->
             <!-- 用 ScrollViewer + ItemsControl 替代 ListBox：
                  - 不需要 ListBox 的选中功能（无 SelectedItem 绑定）
                  - ScrollViewer 直接处理滚轮，100% 可靠
@@ -480,7 +480,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <!-- 📂 每个 Category 一个 Expander -->
+                            <!-- [FS] 每个 Category 一个 Expander -->
                             <Expander IsExpanded="True"
                                       Style="{DynamicResource MaterialDesignExpander}"
                                       Margin="0,0,0,4">
@@ -520,7 +520,7 @@
                                     </Border>
                                 </Expander.Header>
 
-                                <!-- 📋 分类下的配置项列表 -->
+                                <!-- [LOG] 分类下的配置项列表 -->
                                 <ItemsControl ItemsSource="{Binding Items}"
                                               Margin="4,8,4,8"
                                               VirtualizingStackPanel.IsVirtualizing="True"
@@ -533,7 +533,7 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <!-- 🎛️ 单个配置项卡片 -->
+                                            <!-- [CTRL] 单个配置项卡片 -->
                                             <Border Style="{StaticResource ConfigItemCardStyle}">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
@@ -541,14 +541,14 @@
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
-                                                    <!-- 🏷️ 左侧：配置名 + 描述 -->
+                                                    <!-- [LABEL] 左侧：配置名 + 描述 -->
                                                     <StackPanel Grid.Column="0"
                                                                 VerticalAlignment="Center">
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Text="{Binding FriendlyDisplayName}"
                                                                        Style="{StaticResource ConfigNameStyle}"
                                                                        ToolTip="{Binding FriendlyDisplayName}" />
-                                                            <!-- ⚠️ 需要重启标识 -->
+                                                            <!-- [WARN] 需要重启标识 -->
                                                             <iconPacks:PackIconFontAwesome6 Kind="RotateLeftSolid"
                                                                                     Width="14" Height="14"
                                                                                     VerticalAlignment="Center"
@@ -566,7 +566,7 @@
                                                                    ToolTip="{Binding Description}"
                                                                    TextTrimming="CharacterEllipsis"
                                                                    MaxHeight="44" />
-                                                        <!-- 🔑 键名（小字显示） -->
+                                                        <!-- [KEY] 键名（小字显示） -->
                                                         <TextBlock Text="{Binding Key}"
                                                                    FontSize="10"
                                                                    Foreground="{DynamicResource MaterialDesignBodyLight}"
@@ -577,14 +577,14 @@
                                                                    ToolTip="{Binding Key}" />
                                                     </StackPanel>
 
-                                                    <!-- ✏️ 右侧：编辑控件（根据类型动态选择模板） -->
+                                                    <!-- [EDIT] 右侧：编辑控件（根据类型动态选择模板） -->
                                                     <StackPanel Grid.Column="1"
                                                                 VerticalAlignment="Center"
                                                                 HorizontalAlignment="Right">
                                                         <ContentPresenter Content="{Binding}"
                                                                           ContentTemplateSelector="{StaticResource ConfigEditorTemplateSelector}" />
 
-                                                        <!-- ⚠️ 验证错误提示 -->
+                                                        <!-- [WARN] 验证错误提示 -->
                                                         <TextBlock Text="{Binding ErrorMessage}"
                                                                    Foreground="{DynamicResource ErrorTextBrush}"
                                                                    FontSize="11"
@@ -597,7 +597,7 @@
                                                         </TextBlock>
                                                     </StackPanel>
 
-                                                    <!-- 📌 修改状态指示器（左上角小圆点） -->
+                                                    <!-- [NOTE] 修改状态指示器（左上角小圆点） -->
                                                     <Ellipse Grid.Column="1"
                                                              Width="8" Height="8"
                                                              VerticalAlignment="Top"
@@ -651,7 +651,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- 😶 还没选文件呢 —— 空状态 -->
+            <!--  还没选文件呢 —— 空状态 -->
             <StackPanel Grid.Row="1"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Center">

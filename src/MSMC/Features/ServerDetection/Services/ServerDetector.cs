@@ -114,7 +114,7 @@ public class ServerDetector : IServerDetector
         _portResolver = portResolver;
         _jarCoreIdentifier = jarCoreIdentifier;
         _appConfigService = appConfigService;
-        Log.Information("🕵️ ServerDetector 初始化完毕（含 KnownServer JAR 锁定检测 + 网络套件 + JAR Manifest 兜底）");
+        Log.Information("[SCAN] ServerDetector 初始化完毕（含 KnownServer JAR 锁定检测 + 网络套件 + JAR Manifest 兜底）");
 
         // 启动缓存定期清理计时器 —— 每 30 秒扫描并移除过期条目，防止缓存无限增长
         _cacheCleanupTimer = new Timer(CleanupExpiredCacheEntries, null, CacheCleanupInterval, CacheCleanupInterval);
@@ -150,7 +150,7 @@ public class ServerDetector : IServerDetector
                 updateValueFactory: (_, _) => (pid, expire));
         }
 
-        Log.Information("🔗 已注册启动时 PID 缓存: PID={Pid}, JAR={Jar}, KnownId={Id}",
+        Log.Information("[LINK] 已注册启动时 PID 缓存: PID={Pid}, JAR={Jar}, KnownId={Id}",
             pid, Path.GetFileName(jarPath), knownServerId ?? "(null)");
     }
 
@@ -177,20 +177,20 @@ public class ServerDetector : IServerDetector
         var logMessages = new List<string>();
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        Log.Information("🔍 DetectAllAsync: 开始完整检测管道...");
+        Log.Information("[FIND] DetectAllAsync: 开始完整检测管道...");
 
         // ── 阶段一：ProcessScanner 进程枚举 ──────────────────────────────────
         var processResults = await _processScanner.ScanServerProcessesAsync();
-        Log.Debug("📊 阶段一: ProcessScanner 返回 {Count} 个候选进程", processResults.Count);
+        Log.Debug("[METRIC] 阶段一: ProcessScanner 返回 {Count} 个候选进程", processResults.Count);
 
         // ── 阶段二A：启动时 PID 缓存 + KnownServer JAR 锁定交叉检测 ─────────
         // ① 启动时 PID 缓存优先（MSMC 内部启动后 30s 内有效，完全绕过 WMI 延迟）
         var fromStartCache = ApplyStartSessionPidCache(processResults, servers);
-        Log.Debug("🔗 阶段二A(启动缓存): 补入 {Count} 个服务器", fromStartCache);
+        Log.Debug("[LINK] 阶段二A(启动缓存): 补入 {Count} 个服务器", fromStartCache);
 
         // ② KnownServer JAR 锁定交叉检测（对所有已知服务器查 JAR 是否被锁，反查 pid）
         var fromJarLock = await DetectKnownServersByJarLockAsync(processResults, servers);
-        Log.Debug("🔗 阶段二A(JAR锁定): 补入 {Count} 个服务器", fromJarLock);
+        Log.Debug("[LINK] 阶段二A(JAR锁定): 补入 {Count} 个服务器", fromJarLock);
 
         // ── 关键 early return 调整：不再以 processResults.Count==0 为唯一依据 ──
         // 如果 ProcessScanner 为空，但阶段二A 已经通过启动缓存/JAR 锁定发现了服务器，
@@ -232,7 +232,7 @@ public class ServerDetector : IServerDetector
                 var server = await BuildServerInstanceAsync(processId, commandLine);
                 if (server is not null)
                 {
-                    Log.Debug("✅ 识别到服务器: {Type} @ {Dir}", server.ServerType, server.WorkingDirectory);
+                    Log.Debug("[OK] 识别到服务器: {Type} @ {Dir}", server.ServerType, server.WorkingDirectory);
                     servers.Add(server);
                     _detectionCache[processId] = (server, Environment.TickCount64);
                 }
@@ -249,7 +249,7 @@ public class ServerDetector : IServerDetector
         await DiscoverServersByPortScanAsync(processResults, servers);
 
         stopwatch.Stop();
-        Log.Information("✅ 检测完成，共发现 {Count} 个服务器（耗时 {Ms}ms）", servers.Count, stopwatch.ElapsedMilliseconds);
+        Log.Information("[OK] 检测完成，共发现 {Count} 个服务器（耗时 {Ms}ms）", servers.Count, stopwatch.ElapsedMilliseconds);
 
         return new DetectionResult
         {
@@ -368,7 +368,7 @@ public class ServerDetector : IServerDetector
 
             servers.Add(instance);
             _detectionCache[pid] = (instance, nowTick); // 写入生命周期缓存，TTL 内复用
-            Log.Information("🔗 启动缓存补入服务器: PID={Pid}, DisplayName={Name}", pid, instance.DisplayName);
+            Log.Information("[LINK] 启动缓存补入服务器: PID={Pid}, DisplayName={Name}", pid, instance.DisplayName);
             added++;
             process.Dispose();
         }
@@ -430,7 +430,7 @@ public class ServerDetector : IServerDetector
 
                 if (matchedProc == null || matchedProc.HasExited)
                 {
-                    Log.Debug("🔒 JAR 被锁定但未找到匹配 Java 进程: {Jar}", known.ServerJarPath);
+                    Log.Debug("[SEC] JAR 被锁定但未找到匹配 Java 进程: {Jar}", known.ServerJarPath);
                     continue;
                 }
 
@@ -468,7 +468,7 @@ public class ServerDetector : IServerDetector
 
                 servers.Add(instance);
                 _detectionCache[pid] = (instance, nowTick);
-                Log.Information("🔒 JAR锁定补入服务器: PID={Pid}, DisplayName={Name}", pid, instance.DisplayName);
+                Log.Information("[SEC] JAR锁定补入服务器: PID={Pid}, DisplayName={Name}", pid, instance.DisplayName);
                 added++;
             }
             catch (Exception ex)
@@ -583,14 +583,14 @@ public class ServerDetector : IServerDetector
         try
         {
             using var p = Process.GetProcessById(processId);
-            Log.Debug("♻️ 命中缓存: PID={Pid} Type={Type}", processId, cached.server.ServerType);
+            Log.Debug("[CACHE] 命中缓存: PID={Pid} Type={Type}", processId, cached.server.ServerType);
             cachedServer = cached.server;
             return true;
         }
         catch (ArgumentException)
         {
             _detectionCache.TryRemove(processId, out _);
-            Log.Debug("🗑️ 进程 PID={Pid} 已退出，从缓存中移除", processId);
+            Log.Debug("[TRASH]️ 进程 PID={Pid} 已退出，从缓存中移除", processId);
             return false;
         }
     }
@@ -662,9 +662,9 @@ public class ServerDetector : IServerDetector
             processId, serverType, jarName, workingDir, configuredPort,
             isPortOpen ? "开放" : "未开放");
 
-        Log.Debug("🔍 路径调试 - WorkingDirectory: {Dir} (长度={Len})",
+        Log.Debug("[FIND] 路径调试 - WorkingDirectory: {Dir} (长度={Len})",
             workingDir, workingDir?.Length ?? 0);
-        Log.Debug("🔍 路径调试 - JarFilePath: {Path}", parsed.JarFilePath);
+        Log.Debug("[FIND] 路径调试 - JarFilePath: {Path}", parsed.JarFilePath);
 
         return new ServerInstance
         {
@@ -714,7 +714,7 @@ public class ServerDetector : IServerDetector
             var manifestType = await _jarCoreIdentifier.IdentifyAsync(jarFilePath);
             if (manifestType != ServerType.Unknown && manifestType != serverType)
             {
-                Log.Information("🔬 JAR Manifest 识别为核心类型: {Type}（覆盖原 {Old}）", manifestType, serverType);
+                Log.Information("[SCAN] JAR Manifest 识别为核心类型: {Type}（覆盖原 {Old}）", manifestType, serverType);
                 serverType = manifestType;
             }
         }
@@ -725,7 +725,7 @@ public class ServerDetector : IServerDetector
         // 但它一定是某种 Minecraft 服务器，最保守的假设是原版。
         if (serverType == ServerType.Unknown)
         {
-            Log.Information("🏷️ 三级类型识别均失败，兜底为 Vanilla（JAR={Jar}）", jarName);
+            Log.Information("[LABEL] 三级类型识别均失败，兜底为 Vanilla（JAR={Jar}）", jarName);
             serverType = ServerType.Vanilla;
         }
 
@@ -763,7 +763,7 @@ public class ServerDetector : IServerDetector
         // 3. 双向交叉验证：配置端口开放但监听 PID 与进程 PID 不一致 → 端口被占用
         if (isPortOpen && listeningPid.HasValue && listeningPid.Value != processId)
         {
-            Log.Warning("⚠️ 端口 {Port} 开放但监听 PID={Actual} 与进程 PID={Expected} 不一致，端口可能被占用",
+            Log.Warning("[WARN] 端口 {Port} 开放但监听 PID={Actual} 与进程 PID={Expected} 不一致，端口可能被占用",
                 configuredPort, listeningPid.Value, processId);
         }
 
@@ -787,7 +787,7 @@ public class ServerDetector : IServerDetector
             if (_portScanCache.TryGetValue(port, out var cached)
                 && (Environment.TickCount64 - cached.TimestampMs) < PortScanCacheTtlMs)
             {
-                Log.Debug("♻️ 端口 {Port} 探测命中缓存: Open={Open}, Pid={Pid}",
+                Log.Debug("[CACHE] 端口 {Port} 探测命中缓存: Open={Open}, Pid={Pid}",
                     port, cached.IsOpen, cached.ListeningPid);
                 return (cached.IsOpen, cached.ListeningPid);
             }
@@ -853,7 +853,7 @@ public class ServerDetector : IServerDetector
             }
 
             // 端口开放但 PID 未知或不在已知列表 —— 疑似新实例
-            Log.Information("📡 端口扫描发现新实例: 端口={Port} PID={Pid}", port, listeningPid);
+            Log.Information("[BRDG] 端口扫描发现新实例: 端口={Port} PID={Pid}", port, listeningPid);
 
             discovered.Add(new ServerInstance
             {
@@ -889,12 +889,12 @@ public class ServerDetector : IServerDetector
             return scripts;
         }
 
-        Log.Information("📜 扫描启动脚本: {Dir}", directory);
+        Log.Information("[LOG] 扫描启动脚本: {Dir}", directory);
 
         var batFiles = Directory.GetFiles(directory, "*.bat", SearchOption.TopDirectoryOnly);
         foreach (var file in batFiles)
         {
-            Log.Debug("📄 分析启动脚本: {File}", file);
+            Log.Debug("[LOG] 分析启动脚本: {File}", file);
             try
             {
                 var info = AnalyzeStartupScript(file);
@@ -913,7 +913,7 @@ public class ServerDetector : IServerDetector
         var shFiles = Directory.GetFiles(directory, "*.sh", SearchOption.TopDirectoryOnly);
         foreach (var file in shFiles)
         {
-            Log.Debug("📄 分析启动脚本: {File}", file);
+            Log.Debug("[LOG] 分析启动脚本: {File}", file);
             try
             {
                 var info = AnalyzeStartupScript(file);
@@ -1056,7 +1056,7 @@ public class ServerDetector : IServerDetector
         {
             if (IsAutoDetectRunning)
             {
-                Log.Warning("⚠️ 自动检测已经在运行了！");
+                Log.Warning("[WARN] 自动检测已经在运行了！");
                 return;
             }
 
@@ -1065,7 +1065,7 @@ public class ServerDetector : IServerDetector
 
             _autoDetectTask = Task.Run(async () =>
             {
-                Log.Information("⏱️ 自动检测循环已启动，每 3 秒检测一次服务器");
+                Log.Information("[TIME] 自动检测循环已启动，每 3 秒检测一次服务器");
                 while (!token.IsCancellationRequested)
                 {
                     try
@@ -1081,7 +1081,7 @@ public class ServerDetector : IServerDetector
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "❌ 自动检测循环出错: {Message}", ex.Message);
+                        Log.Error(ex, "[ERR] 自动检测循环出错: {Message}", ex.Message);
                     }
 
                     try
@@ -1160,7 +1160,7 @@ public class ServerDetector : IServerDetector
 
         if (detectionRemoved > 0 || portRemoved > 0)
         {
-            Log.Debug("🧹 缓存清理：移除 {Detection} 个检测缓存 + {Port} 个端口缓存",
+            Log.Debug("[CLEAN] 缓存清理：移除 {Detection} 个检测缓存 + {Port} 个端口缓存",
                 detectionRemoved, portRemoved);
         }
     }

@@ -79,36 +79,36 @@ public class ProcessScanner
         var javaPids = CollectJavaProcessIds();
         if (javaPids.Count == 0)
         {
-            Log.Information("没有找到任何 Java 进程，世界清静了 🌿");
+            Log.Information("没有找到任何 Java 进程，世界清静了 [CLEAN]");
             return results;
         }
 
-        Log.Information("📡 ProcessScanner: 一次性 WMI 批量查询所有进程信息...");
+        Log.Information("[BRDG] ProcessScanner: 一次性 WMI 批量查询所有进程信息...");
 
         // 一次性 WMI 批量查询：获取所有进程的 PID / 父PID / 命令行 / 名称
         var processInfoMap = LoadAllProcessInfoBatch();
         if (processInfoMap.Count == 0)
         {
             LastSkipReason = "WMI 批量查询失败，无法获取进程信息";
-            Log.Warning("⚠️ WMI 批量查询返回空结果，无法扫描服务器进程");
+            Log.Warning("[WARN] WMI 批量查询返回空结果，无法扫描服务器进程");
             return results;
         }
 
         // 内存中构建 Shell 进程 ID 集合（从批量结果中过滤，无需额外 Process 枚举）
         var shellProcessIds = BuildShellProcessIds(processInfoMap);
 
-        Log.Information("📡 ProcessScanner: 使用批量缓存处理 {Count} 个 Java 进程...", javaPids.Count);
+        Log.Information("[BRDG] ProcessScanner: 使用批量缓存处理 {Count} 个 Java 进程...", javaPids.Count);
 
         foreach (var pid in javaPids)
         {
             try
             {
-                Log.Debug("🔎 发现 Java 进程: PID={Pid}", pid);
+                Log.Debug("[FIND] 发现 Java 进程: PID={Pid}", pid);
 
                 // 从批量缓存读取命令行（命中失败说明 WMI 未返回该进程，可能是跨用户/服务进程）
                 if (!processInfoMap.TryGetValue(pid, out var info))
                 {
-                    Log.Warning("⚠️ 跳过 Java 进程 PID={Pid}（批量缓存中无此进程信息，可能跨用户）", pid);
+                    Log.Warning("[WARN] 跳过 Java 进程 PID={Pid}（批量缓存中无此进程信息，可能跨用户）", pid);
                     LastSkippedCount++;
                     continue;
                 }
@@ -116,7 +116,7 @@ public class ProcessScanner
                 var commandLine = info.CommandLine;
                 if (string.IsNullOrWhiteSpace(commandLine))
                 {
-                    Log.Warning("⚠️ 跳过 Java 进程 PID={Pid}（命令行为空，可能跨用户/服务进程）", pid);
+                    Log.Warning("[WARN] 跳过 Java 进程 PID={Pid}（命令行为空，可能跨用户/服务进程）", pid);
                     LastSkipReason = "进程命令行为空（跨用户/服务进程）";
                     LastSkippedCount++;
                     continue;
@@ -208,7 +208,7 @@ public class ProcessScanner
             }
         }
 
-        Log.Information("✅ 扫描完成，共获取 {Count} 个唯一服务器进程", uniqueResults.Count);
+        Log.Information("[OK] 扫描完成，共获取 {Count} 个唯一服务器进程", uniqueResults.Count);
         return uniqueResults;
     }
 
@@ -270,19 +270,19 @@ public class ProcessScanner
                     }
                 }
             }
-            Log.Debug("📊 批量 WMI 查询完成，共 {Count} 个进程", map.Count);
+            Log.Debug("[METRIC] 批量 WMI 查询完成，共 {Count} 个进程", map.Count);
         }
         catch (System.Runtime.InteropServices.COMException ex)
         {
-            Log.Warning(ex, "⚠️ 批量 WMI 查询失败（COM 异常）: {Message}", ex.Message);
+            Log.Warning(ex, "[WARN] 批量 WMI 查询失败（COM 异常）: {Message}", ex.Message);
         }
         catch (UnauthorizedAccessException ex)
         {
-            Log.Warning(ex, "⚠️ 批量 WMI 查询失败（权限不足）: {Message}", ex.Message);
+            Log.Warning(ex, "[WARN] 批量 WMI 查询失败（权限不足）: {Message}", ex.Message);
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ 批量 WMI 查询失败: {Message}", ex.Message);
+            Log.Warning(ex, "[WARN] 批量 WMI 查询失败: {Message}", ex.Message);
         }
         return map;
     }
@@ -328,7 +328,7 @@ public class ProcessScanner
                 }
             }
         }
-        Log.Debug("📊 发现 {Count} 个 Shell/启动器进程（内存过滤）", ids.Count);
+        Log.Debug("[METRIC] 发现 {Count} 个 Shell/启动器进程（内存过滤）", ids.Count);
         return ids;
     }
 
@@ -352,7 +352,7 @@ public class ProcessScanner
     {
         if (depth > MaxParentChainDepth)
         {
-            Log.Debug("🔗 进程 PID={Pid} 父进程链深度超过 {Depth} 层，停止追溯", processId, MaxParentChainDepth);
+            Log.Debug("[LINK] 进程 PID={Pid} 父进程链深度超过 {Depth} 层，停止追溯", processId, MaxParentChainDepth);
             return false;
         }
 
@@ -362,11 +362,11 @@ public class ProcessScanner
         int parentId = info.ParentId;
         if (parentId <= 0) return false;
 
-        Log.Debug("🔗 进程 PID={Pid} 的父进程 PID={ParentId}", processId, parentId);
+        Log.Debug("[LINK] 进程 PID={Pid} 的父进程 PID={ParentId}", processId, parentId);
 
         if (shellProcessIds.Contains(parentId))
         {
-            Log.Debug("✅ 进程 PID={Pid} 由 Shell 进程 PID={ParentId} 直接启动", processId, parentId);
+            Log.Debug("[OK] 进程 PID={Pid} 由 Shell 进程 PID={ParentId} 直接启动", processId, parentId);
             return true;
         }
 

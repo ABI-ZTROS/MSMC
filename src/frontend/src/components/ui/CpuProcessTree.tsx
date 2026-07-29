@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { CpuInfo, ProcessAffinityInfo } from '@/types/bridge'
+import { IconByName } from '@/utils/icons'
 
 interface CpuProcessTreeProps {
   cpuInfo: CpuInfo | null
@@ -16,12 +17,12 @@ function bytesToMB(bytes: number): number {
 
 type FilterKey = 'all' | 'minecraft' | 'java' | 'user' | 'system'
 
-const FILTER_OPTIONS: { key: FilterKey; label: string; icon: string }[] = [
-  { key: 'all', label: '全部', icon: '📋' },
-  { key: 'minecraft', label: 'Minecraft', icon: '🎮' },
-  { key: 'java', label: 'Java', icon: '☕' },
-  { key: 'user', label: '用户', icon: '👤' },
-  { key: 'system', label: '系统', icon: '⚙️' },
+const FILTER_OPTIONS: { key: FilterKey; label: string; iconName: string }[] = [
+  { key: 'all',       label: '全部',       iconName: 'folderTree' },
+  { key: 'minecraft', label: 'Minecraft',  iconName: 'gamepad' },
+  { key: 'java',      label: 'Java',       iconName: 'java' },
+  { key: 'user',      label: '用户',       iconName: 'user' },
+  { key: 'system',    label: '系统',       iconName: 'monitor' },
 ]
 
 export function CpuProcessTree({
@@ -123,7 +124,7 @@ export function CpuProcessTree({
     return (
       <div className="md-card" style={{ padding: 16 }}>
         <div className="flex items-center" style={{ gap: 8, marginBottom: 12 }}>
-          <span style={{ fontSize: 18 }}>🌲</span>
+          <IconByName name="folderTree" size={18} />
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--md-body)' }}>
             CPU 核心进程亲和性树
           </span>
@@ -144,19 +145,18 @@ export function CpuProcessTree({
         onClick={() => setCollapsed(c => !c)}
       >
         <div className="flex items-center" style={{ gap: 8 }}>
-          <span
+          <IconByName
+            name="play"
+            size={10}
             style={{
-              fontSize: 12,
               color: 'var(--md-body-light)',
               transition: 'transform 0.25s ease',
-              transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+              transform: collapsed ? 'rotate(-90deg)' : 'rotate(90deg)',
               display: 'inline-block',
               width: 12,
             }}
-          >
-            ▼
-          </span>
-          <span style={{ fontSize: 18 }}>🌲</span>
+          />
+          <IconByName name="folderTree" size={18} />
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--md-body)' }}>
             CPU 核心进程亲和性树
           </span>
@@ -218,7 +218,10 @@ export function CpuProcessTree({
                   transition: 'all 0.15s ease',
                 }}
               >
-                {opt.icon} {opt.label} ({count})
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <IconByName name={opt.iconName} size={12} />
+                  {opt.label} ({count})
+                </span>
               </button>
             )
           })}
@@ -239,7 +242,7 @@ export function CpuProcessTree({
               borderRadius: 6,
             }}
           >
-            <span>🖥️</span>
+            <span>[HOST]</span>
             <span>CPU</span>
             <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 400 }}>
               {physicalCores}P / {logicalCores}L
@@ -341,7 +344,7 @@ export function CpuProcessTree({
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--md-subtle-border)' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--md-body)' }}>
-                📋 进程列表（{filteredProcesses.length}）
+                [LOG] 进程列表（{filteredProcesses.length}）
               </div>
               <div style={{ fontSize: 10, color: 'var(--md-body-light)', opacity: 0.6 }}>
                 按 CPU 占用降序
@@ -487,7 +490,7 @@ export function CpuProcessTree({
                             </>
                           ) : (
                             <span style={{ fontSize: 10, color: 'var(--md-body-light)', opacity: 0.6, fontStyle: 'italic' }}>
-                              ⚠️ 系统进程，不允许终止
+                              [WARN] 系统进程，不允许终止
                             </span>
                           )}
                         </div>

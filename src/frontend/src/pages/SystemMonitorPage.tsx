@@ -3,6 +3,7 @@ import { GaugeRing } from '@/components/ui'
 import { DualLineChart } from '@/components/ui/DualLineChart'
 import { CpuProcessTree } from '@/components/ui/CpuProcessTree'
 import { Reveal } from '@/components/ui/Reveal'
+import { IconByName } from '@/utils/icons'
 import {
   getBridge,
   getSystemMetrics,
@@ -52,7 +53,7 @@ function CpuTopology({ cpuInfo, perCoreUsages }: CpuTopologyProps): JSX.Element 
     return (
       <div className="md-card" style={{ padding: 16 }}>
         <div className="flex items-center" style={{ gap: 8, marginBottom: 12 }}>
-          <span style={{ fontSize: 18 }}>🖥️</span>
+          <IconByName name="desktop" size={18} />
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--md-body)' }}>
             CPU 物理拓扑
           </span>
@@ -84,7 +85,7 @@ function CpuTopology({ cpuInfo, perCoreUsages }: CpuTopologyProps): JSX.Element 
           >
             ▼
           </span>
-          <span style={{ fontSize: 18 }}>🖥️</span>
+          <IconByName name="desktop" size={18} />
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--md-body)' }}>
             CPU 物理拓扑
           </span>
@@ -492,17 +493,12 @@ export function SystemMonitorPage(): JSX.Element {
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-          <div
+          <IconByName
+            name="bolt"
+            size={32}
             className="md-breathe"
-            style={{
-              fontSize: 32,
-              color: 'var(--md-gauge-green)',
-              marginBottom: 4,
-              marginTop: 8,
-            }}
-          >
-            ⚡
-          </div>
+            style={{ color: 'var(--md-gauge-green)', marginBottom: 4, marginTop: 8 }}
+          />
           <div
             style={{
               fontSize: 13,
@@ -531,7 +527,7 @@ export function SystemMonitorPage(): JSX.Element {
 
       {/* ═══ 历史范围选择 ═══ */}
       <div className="flex items-center" style={{ gap: 6, marginBottom: 8 }}>
-        <span style={{ fontSize: 12, color: 'var(--md-body-light)', opacity: 0.7, marginRight: 4 }}>📅</span>
+        <IconByName name="calendar" size={12} style={{ color: 'var(--md-body-light)', opacity: 0.7, marginRight: 4 }} />
         {HISTORY_RANGE_OPTIONS.map(opt => (
           <button
             key={opt.days}
@@ -590,13 +586,15 @@ export function SystemMonitorPage(): JSX.Element {
       {/* ═══ 空状态：完全无数据时显示 ═══ */}
       {loadingStage === 'skeleton' && !loadError && (
         <div className="md-empty-state">
-          <div className="md-empty-state-icon">📊</div>
+          <div className="md-empty-state-icon"><IconByName name="monitor" size={64} /></div>
           <div className="md-empty-state-text">正在加载监控数据...</div>
         </div>
       )}
       {loadError && loadingStage === 'skeleton' && (
         <div className="md-empty-state">
-          <div className="md-empty-state-icon">⚠</div>
+          <div className="md-empty-state-icon">
+            <IconByName name="warning" size={48} />
+          </div>
           <div className="md-empty-state-text">无法获取监控数据，请检查桥接连接</div>
         </div>
       )}

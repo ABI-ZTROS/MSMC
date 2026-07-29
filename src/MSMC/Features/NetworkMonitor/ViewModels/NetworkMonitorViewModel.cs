@@ -360,7 +360,7 @@ public class NetworkMonitorViewModel : INotifyPropertyChanged
         // 原 StartMonitoring() 依赖 SelectedTabIndex==3 但该属性永远不会被设置。
         // 流量采样（RefreshTraffic）开销极小（仅读性能计数器），端口扫描每5秒一次用 Task.Run 后台执行。
         _refreshTimer.Start();
-        Log.Information("🌐 网络监控定时器已在构造函数中启动");
+        Log.Information("[NET] 网络监控定时器已在构造函数中启动");
     }
 
     private async void OnRefreshTick(object? sender, EventArgs e)

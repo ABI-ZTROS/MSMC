@@ -47,7 +47,7 @@ public sealed class PortScanner
         ArgumentOutOfRangeException.ThrowIfLessThan(port, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535);
 
-        Log.Debug("🔌 PortScanner: 探测端口 {Port} (超时 {Timeout}ms)", port, timeoutMs);
+        Log.Debug("[API] PortScanner: 探测端口 {Port} (超时 {Timeout}ms)", port, timeoutMs);
 
         using var client = new TcpClient();
 
@@ -63,7 +63,7 @@ public sealed class PortScanner
                 // race 修复：timeoutTask 先到，但 connectTask 可能也刚好完成（并发竞态），先检查避免漏报开放端口
                 if (connectTask.IsCompletedSuccessfully)
                 {
-                    Log.Debug("✅ 端口 {Port} 开放（与超时同时完成）", port);
+                    Log.Debug("[OK] 端口 {Port} 开放（与超时同时完成）", port);
                     return true;
                 }
                 // 超时后 connectTask 仍在飞行中，方法末尾 using 会 Dispose client，
@@ -72,24 +72,24 @@ public sealed class PortScanner
                 _ = connectTask.ContinueWith(
                     t => { var _ = t.Exception; },
                     TaskContinuationOptions.OnlyOnFaulted);
-                Log.Debug("⏱️ 端口 {Port} 探测超时", port);
+                Log.Debug("[TIME] 端口 {Port} 探测超时", port);
                 return false;
             }
 
             // 等待 connectTask 完成以观察可能的异常
             await connectTask;
-            Log.Debug("✅ 端口 {Port} 开放", port);
+            Log.Debug("[OK] 端口 {Port} 开放", port);
             return true;
         }
         catch (SocketException ex)
         {
             // ConnectionRefused 是最常见的正常失败情况，降级为 Debug 避免日志刷屏
-            Log.Debug("❌ 端口 {Port} 未开放: {SocketError}", port, ex.SocketErrorCode);
+            Log.Debug("[ERR] 端口 {Port} 未开放: {SocketError}", port, ex.SocketErrorCode);
             return false;
         }
         catch (Exception ex)
         {
-            Log.Debug(ex, "❌ 端口 {Port} 探测异常", port);
+            Log.Debug(ex, "[ERR] 端口 {Port} 探测异常", port);
             return false;
         }
     }
@@ -131,7 +131,7 @@ public sealed class PortScanner
         if (uniquePorts.Count == 0)
             return [];
 
-        Log.Information("📡 PortScanner: 扫描 {Count} 个端口", uniquePorts.Count);
+        Log.Information("[BRDG] PortScanner: 扫描 {Count} 个端口", uniquePorts.Count);
 
         var openPorts = new List<int>();
         using var semaphore = new SemaphoreSlim(ServerConstants.PortScanMaxConcurrency);
@@ -164,7 +164,7 @@ public sealed class PortScanner
         await Task.WhenAll(tasks);
 
         openPorts.Sort();
-        Log.Information("📡 端口扫描完成，发现 {Count} 个开放端口: [{Ports}]",
+        Log.Information("[BRDG] 端口扫描完成，发现 {Count} 个开放端口: [{Ports}]",
             openPorts.Count, string.Join(", ", openPorts));
 
         return openPorts;

@@ -138,7 +138,7 @@ public class ServerManagerService : IServerManagerService
                                 server.ProcessId = runningProcess.Id;
                                 return true;
                             }
-                            Log.Warning("⚠️ 进程 PID={Pid} 已退出", runningProcess.Id);
+                            Log.Warning("[WARN] 进程 PID={Pid} 已退出", runningProcess.Id);
                         }
                         finally
                         {
@@ -148,10 +148,10 @@ public class ServerManagerService : IServerManagerService
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "⚠️ 检查 JAR 锁定状态时出错: {JarPath}", server.ServerJarPath);
+                    Log.Error(ex, "[WARN] 检查 JAR 锁定状态时出错: {JarPath}", server.ServerJarPath);
                 }
                 
-                Log.Warning("⚠️ JAR 文件被锁定，但未找到对应的服务器进程 PID={StoredPid}", server.ProcessId);
+                Log.Warning("[WARN] JAR 文件被锁定，但未找到对应的服务器进程 PID={StoredPid}", server.ProcessId);
                 return false;
             }
             
@@ -173,7 +173,7 @@ public class ServerManagerService : IServerManagerService
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "⚠️ 查找服务器进程时出错: {JarPath}", server.ServerJarPath);
+                Log.Error(ex, "[WARN] 查找服务器进程时出错: {JarPath}", server.ServerJarPath);
             }
         }
 
@@ -185,15 +185,15 @@ public class ServerManagerService : IServerManagerService
                 if (!process.HasExited)
                     return true;
 
-                Log.Information("⚠️ 进程 PID={Pid} 已退出", server.ProcessId);
+                Log.Information("[WARN] 进程 PID={Pid} 已退出", server.ProcessId);
             }
             catch (ArgumentException)
             {
-                Log.Information("⚠️ 进程 PID={Pid} 不存在", server.ProcessId);
+                Log.Information("[WARN] 进程 PID={Pid} 不存在", server.ProcessId);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "⚠️ 检查进程状态时出错 PID={Pid}", server.ProcessId);
+                Log.Error(ex, "[WARN] 检查进程状态时出错 PID={Pid}", server.ProcessId);
             }
         }
 
@@ -220,7 +220,7 @@ public class ServerManagerService : IServerManagerService
             if (processId != null)
                 return true;
             
-            Log.Warning("⚠️ JAR 文件被锁定，但未找到对应的服务器进程: {JarPath}", jarFilePath);
+            Log.Warning("[WARN] JAR 文件被锁定，但未找到对应的服务器进程: {JarPath}", jarFilePath);
             return false;
         }
 
@@ -245,23 +245,23 @@ public class ServerManagerService : IServerManagerService
     /// </remarks>
     public Process? StartServer(ServerInstance server)
     {
-        Log.Information("🚀 尝试启动服务器: {JarName}", server.ServerJarName);
+        Log.Information("[BOOT] 尝试启动服务器: {JarName}", server.ServerJarName);
 
         if (IsServerRunning(server))
         {
-            Log.Warning("⚠️ 服务器已经在运行中，跳过启动");
+            Log.Warning("[WARN] 服务器已经在运行中，跳过启动");
             return null;
         }
 
         if (!File.Exists(server.ServerJarPath))
         {
-            Log.Error("❌ JAR 文件不存在: {JarPath}", server.ServerJarPath);
+            Log.Error("[ERR] JAR 文件不存在: {JarPath}", server.ServerJarPath);
             return null;
         }
 
         if (!Directory.Exists(server.WorkingDirectory))
         {
-            Log.Error("❌ 工作目录不存在: {Dir}", server.WorkingDirectory);
+            Log.Error("[ERR] 工作目录不存在: {Dir}", server.WorkingDirectory);
             return null;
         }
 
@@ -289,42 +289,42 @@ public class ServerManagerService : IServerManagerService
 
             if (string.IsNullOrEmpty(javaExe))
             {
-                Log.Error("❌ 找不到 Java 可执行文件，请确保已安装 Java 并配置环境变量");
+                Log.Error("[ERR] 找不到 Java 可执行文件，请确保已安装 Java 并配置环境变量");
                 return null;
             }
 
             if (!File.Exists(javaExe))
             {
-                Log.Error("❌ Java 可执行文件不存在: {JavaPath}", javaExe);
+                Log.Error("[ERR] Java 可执行文件不存在: {JavaPath}", javaExe);
                 return null;
             }
 
             if (javaInfo != null)
             {
-                Log.Information("☕ 使用 Java: {Version} ({Vendor})", javaInfo.VersionString, javaInfo.Vendor);
+                Log.Information("[JAVA] 使用 Java: {Version} ({Vendor})", javaInfo.VersionString, javaInfo.Vendor);
 
                 if (javaInfo.Version != null)
                 {
                     var major = javaInfo.Version.Major;
                     if (major < 21)
                     {
-                        Log.Warning("⚠️ Java 版本较低 ({Version})，Minecraft 1.20.5+ / Paper 1.20.5+ 需要 Java 21 或更高版本", javaInfo.VersionString);
+                        Log.Warning("[WARN] Java 版本较低 ({Version})，Minecraft 1.20.5+ / Paper 1.20.5+ 需要 Java 21 或更高版本", javaInfo.VersionString);
                         Log.Warning("   如果服务器闪退，请先升级到 Java 21");
                     }
                     else if (major < 17)
                     {
-                        Log.Error("❌ Java 版本过低 ({Version})，Minecraft 1.17+ 需要 Java 17 以上", javaInfo.VersionString);
+                        Log.Error("[ERR] Java 版本过低 ({Version})，Minecraft 1.17+ 需要 Java 17 以上", javaInfo.VersionString);
                     }
 
                     if (major < 11)
                     {
-                        Log.Error("❌ Java {Version} 太旧了，几乎所有现代 Minecraft 服务器都无法运行", javaInfo.VersionString);
+                        Log.Error("[ERR] Java {Version} 太旧了，几乎所有现代 Minecraft 服务器都无法运行", javaInfo.VersionString);
                     }
                 }
 
                 if (!javaInfo.Is64Bit)
                 {
-                    Log.Warning("⚠️ 检测到 32 位 Java，内存将被限制在 2GB 以内，强烈建议使用 64 位 Java");
+                    Log.Warning("[WARN] 检测到 32 位 Java，内存将被限制在 2GB 以内，强烈建议使用 64 位 Java");
                 }
             }
 
@@ -349,15 +349,15 @@ public class ServerManagerService : IServerManagerService
 
             foreach (var warning in normalizationResult.Warnings)
             {
-                Log.Warning("⚠️ 参数警告: {Warning}", warning);
+                Log.Warning("[WARN] 参数警告: {Warning}", warning);
             }
 
             var arguments = BuildStartupArguments(normalizedServer);
             
             var fullCommand = $"{javaExe} {arguments}";
             
-            Log.Information("📝 启动命令: {Cmd}", fullCommand);
-            Log.Information("📁 工作目录: {Dir}", server.WorkingDirectory);
+            Log.Information("[LOG] 启动命令: {Cmd}", fullCommand);
+            Log.Information("[FS] 工作目录: {Dir}", server.WorkingDirectory);
             
             var processStartInfo = new ProcessStartInfo
             {
@@ -370,7 +370,7 @@ public class ServerManagerService : IServerManagerService
             var process = Process.Start(processStartInfo);
             if (process != null)
             {
-                Log.Information("✅ 服务器进程已启动! PID={Pid}", process.Id);
+                Log.Information("[OK] 服务器进程已启动! PID={Pid}", process.Id);
                 server.ProcessId = process.Id;
 
                 _ = Task.Run(() =>
@@ -382,11 +382,11 @@ public class ServerManagerService : IServerManagerService
                         if (process.WaitForExit(2000))
                         {
                             var exitCode = process.ExitCode;
-                            Log.Warning("⚠️ 服务器进程在 2 秒内异常退出! PID={Pid}, ExitCode={ExitCode}", process.Id, exitCode);
+                            Log.Warning("[WARN] 服务器进程在 2 秒内异常退出! PID={Pid}, ExitCode={ExitCode}", process.Id, exitCode);
 
                             if (exitCode == 1)
                             {
-                                Log.Error("💥 退出码 1：通常是 JVM 启动失败，常见原因：");
+                                Log.Error("[FATAL] 退出码 1：通常是 JVM 启动失败，常见原因：");
                                 Log.Error("   1. Java 版本不兼容（Minecraft 1.20.5+ 需要 Java 21）");
                                 Log.Error("   2. JVM 参数有拼写错误或不支持的参数");
                                 Log.Error("   3. 内存分配超出系统可用物理内存");
@@ -394,7 +394,7 @@ public class ServerManagerService : IServerManagerService
                             }
                             else if (exitCode == -1 || exitCode == unchecked((int)0xC0000005))
                             {
-                                Log.Error("💥 进程崩溃（退出码 {ExitCode}）：可能是 Java 本身故障、系统内存不足或杀毒软件拦截", exitCode);
+                                Log.Error("[FATAL] 进程崩溃（退出码 {ExitCode}）：可能是 Java 本身故障、系统内存不足或杀毒软件拦截", exitCode);
                             }
 
                             // 读取服务器日志文件，输出崩溃详情（UseShellExecute=true 时无法重定向 stderr，
@@ -411,12 +411,12 @@ public class ServerManagerService : IServerManagerService
                 return process;
             }
             
-            Log.Error("❌ 启动进程返回 null");
+            Log.Error("[ERR] 启动进程返回 null");
             return null;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 启动服务器失败: {Message}", ex.Message);
+            Log.Error(ex, "[ERR] 启动服务器失败: {Message}", ex.Message);
             return null;
         }
     }
@@ -440,7 +440,7 @@ public class ServerManagerService : IServerManagerService
             {
                 var lines = System.IO.File.ReadAllLines(latestLogPath);
                 var tail = lines.Length > 30 ? lines[^30..] : lines;
-                Log.Error("📋 服务器日志最后 {Count} 行（{Path}）：", tail.Length, latestLogPath);
+                Log.Error("[LOG] 服务器日志最后 {Count} 行（{Path}）：", tail.Length, latestLogPath);
                 foreach (var line in tail)
                 {
                     Log.Error("   {Line}", line);
@@ -461,7 +461,7 @@ public class ServerManagerService : IServerManagerService
                     {
                         var crashContent = System.IO.File.ReadAllText(crashFile);
                         var preview = crashContent.Length > 2000 ? crashContent[..2000] + "..." : crashContent;
-                        Log.Error("💥 检测到最新的崩溃报告（{Path}）：\n{Content}", crashFile, preview);
+                        Log.Error("[FATAL] 检测到最新的崩溃报告（{Path}）：\n{Content}", crashFile, preview);
                     }
                 }
             }
@@ -485,7 +485,7 @@ public class ServerManagerService : IServerManagerService
     /// </remarks>
     public bool StopServer(ServerInstance server)
     {
-        Log.Information("🛑 尝试停止服务器: {JarName}", server.ServerJarName);
+        Log.Information("[STOP] 尝试停止服务器: {JarName}", server.ServerJarName);
 
         // 优先通过 JAR 名匹配当前运行中的进程
         var process = FindServerProcess(server);
@@ -501,7 +501,7 @@ public class ServerManagerService : IServerManagerService
         }
 
         // 未找到运行中的进程 —— 目标状态（服务器停止）已达成，视为成功
-        Log.Information("ℹ️ 未找到运行中的服务器进程，视为已停止: {JarName}", server.ServerJarName);
+        Log.Information("[INFO] 未找到运行中的服务器进程，视为已停止: {JarName}", server.ServerJarName);
         return true;
     }
 
@@ -516,7 +516,7 @@ public class ServerManagerService : IServerManagerService
     /// </remarks>
     public bool StopServerByProcessId(int processId)
     {
-        Log.Information("🛑 尝试终止进程: PID={Pid}", processId);
+        Log.Information("[STOP] 尝试终止进程: PID={Pid}", processId);
 
         try
         {
@@ -524,7 +524,7 @@ public class ServerManagerService : IServerManagerService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 终止进程失败 PID={Pid}", processId);
+            Log.Error(ex, "[ERR] 终止进程失败 PID={Pid}", processId);
             return false;
         }
     }
@@ -569,7 +569,7 @@ public class ServerManagerService : IServerManagerService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 查找 Java 进程失败");
+            Log.Error(ex, "[ERR] 查找 Java 进程失败");
         }
 
         return null;
@@ -612,7 +612,7 @@ public class ServerManagerService : IServerManagerService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 获取服务器进程 ID 失败");
+            Log.Error(ex, "[ERR] 获取服务器进程 ID 失败");
         }
 
         return null;
@@ -646,7 +646,7 @@ public class ServerManagerService : IServerManagerService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 检查 JAR 文件锁定状态失败: {JarPath}", jarFilePath);
+            Log.Error(ex, "[ERR] 检查 JAR 文件锁定状态失败: {JarPath}", jarFilePath);
             return false;
         }
     }
@@ -850,7 +850,7 @@ public class ServerManagerService : IServerManagerService
                     {
                         childProcess.Kill();
                         childProcess.WaitForExit(3000);
-                        Log.Information("🔫 已终止子进程: PID={Pid}", childId);
+                        Log.Information("[KILL] 已终止子进程: PID={Pid}", childId);
                     }
                 }
                 catch (ArgumentException)
@@ -871,26 +871,26 @@ public class ServerManagerService : IServerManagerService
                 if (parentProcess.HasExited)
                 {
                     // 进程已退出 —— 目标状态已达成，视为成功
-                    Log.Information("ℹ️ 进程已退出（无需终止）: PID={Pid}", parentProcessId);
+                    Log.Information("[INFO] 进程已退出（无需终止）: PID={Pid}", parentProcessId);
                     return true;
                 }
 
                 parentProcess.Kill();
                 parentProcess.WaitForExit(5000);
-                Log.Information("🔫 已终止父进程: PID={Pid}", parentProcessId);
+                Log.Information("[KILL] 已终止父进程: PID={Pid}", parentProcessId);
                 return true;
             }
             catch (ArgumentException)
             {
                 // GetProcessById 找不到进程会抛 ArgumentException
                 // 说明进程已经不在 —— 目标状态已达成，视为成功
-                Log.Information("ℹ️ 进程已不存在（视为已停止）: PID={Pid}", parentProcessId);
+                Log.Information("[INFO] 进程已不存在（视为已停止）: PID={Pid}", parentProcessId);
                 return true;
             }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 终止进程树失败 PID={Pid}", parentProcessId);
+            Log.Error(ex, "[ERR] 终止进程树失败 PID={Pid}", parentProcessId);
         }
 
         return false;
@@ -935,7 +935,7 @@ public class ServerManagerService : IServerManagerService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 获取子进程 ID 失败 PID={Pid}", parentProcessId);
+            Log.Error(ex, "[ERR] 获取子进程 ID 失败 PID={Pid}", parentProcessId);
         }
 
         return childIds;
@@ -970,7 +970,7 @@ public class ServerManagerService : IServerManagerService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 获取命令行失败 PID={Pid}", processId);
+            Log.Error(ex, "[FATAL] 获取命令行失败 PID={Pid}", processId);
         }
 
         return string.Empty;
@@ -1027,12 +1027,12 @@ public class ServerManagerService : IServerManagerService
         }
         catch (ArgumentException)
         {
-            Log.Debug("⚠️ 获取内存失败：进程不存在 PID={Pid}", processId);
+            Log.Debug("[WARN] 获取内存失败：进程不存在 PID={Pid}", processId);
             return null;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "⚠️ 获取进程内存失败 PID={Pid}", processId);
+            Log.Error(ex, "[WARN] 获取进程内存失败 PID={Pid}", processId);
             return null;
         }
     }
@@ -1065,12 +1065,12 @@ public class ServerManagerService : IServerManagerService
         }
         catch (ArgumentException)
         {
-            Log.Debug("⚠️ 获取 CPU 失败：进程不存在 PID={Pid}", processId);
+            Log.Debug("[WARN] 获取 CPU 失败：进程不存在 PID={Pid}", processId);
             return null;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "⚠️ 获取进程 CPU 失败 PID={Pid}", processId);
+            Log.Error(ex, "[WARN] 获取进程 CPU 失败 PID={Pid}", processId);
             return null;
         }
     }

@@ -64,7 +64,7 @@ public sealed class ConfigManager : IConfigManager
     public ConfigManager(ConfigDescriptorRegistry registry)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-        Log.Information("⚙️ ConfigManager 初始化，注册表已加载 {Count} 个描述符",
+        Log.Information("[CFG] ConfigManager 初始化，注册表已加载 {Count} 个描述符",
             registry.GetDescriptorsForFile("server.properties").Count);
     }
 
@@ -81,11 +81,11 @@ public sealed class ConfigManager : IConfigManager
     {
         ArgumentNullException.ThrowIfNull(filePath);
 
-        Log.Information("📂 极简读取配置文件: {Path}", filePath);
+        Log.Information("[FS] 极简读取配置文件: {Path}", filePath);
 
         if (!File.Exists(filePath))
         {
-            Log.Warning("❌ 配置文件不存在: {Path}", filePath);
+            Log.Warning("[ERR] 配置文件不存在: {Path}", filePath);
             throw new FileNotFoundException($"配置文件不存在: {filePath}", filePath);
         }
 
@@ -144,7 +144,7 @@ public sealed class ConfigManager : IConfigManager
 
         if (result is null || successFormat is null)
         {
-            Log.Warning("❌ 配置解析失败（所有格式回退链耗尽）: Path={Path} Ext={Ext} Len={Len}",
+            Log.Warning("[ERR] 配置解析失败（所有格式回退链耗尽）: Path={Path} Ext={Ext} Len={Len}",
                 filePath, extension, content.Length);
             throw new ConfigParseException(
                 $"配置文件解析失败（所有支持的解析器均失败）。路径: {filePath}",
@@ -154,7 +154,7 @@ public sealed class ConfigManager : IConfigManager
                 hintTryFormat: primaryFormat.ToString());
         }
 
-        Log.Information("✅ 配置解析完成（Format={Format}）：共 {Count} 个键值对",
+        Log.Information("[OK] 配置解析完成（Format={Format}）：共 {Count} 个键值对",
             successFormat, result.Count);
         return result;
     }
@@ -172,7 +172,7 @@ public sealed class ConfigManager : IConfigManager
         ArgumentNullException.ThrowIfNull(filePath);
         ArgumentNullException.ThrowIfNull(config);
 
-        Log.Information("💾 保存配置到: {Path} ({Count} 键)", filePath, config.Count);
+        Log.Information("[SAVE] 保存配置到: {Path} ({Count} 键)", filePath, config.Count);
 
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
 
@@ -194,7 +194,7 @@ public sealed class ConfigManager : IConfigManager
             }
         }
 
-        // 🔥 格式检测：优先用 Resolve（内容特征 + 扩展名 + 逐解析器探测 三级回退），
+        // [FATAL] 格式检测：优先用 Resolve（内容特征 + 扩展名 + 逐解析器探测 三级回退），
         // 只有原文件读不到时才回退纯扩展名 DetectByExtension。
         // 之前只用 DetectByExtension：如果 .properties 被用户改名成 .txt，会按 Properties 兜底但内容特征更准确时才好。
         ConfigFormat format;
@@ -252,7 +252,7 @@ public sealed class ConfigManager : IConfigManager
                 var currentMd5 = Md5Hex(currentContent);
                 if (currentMd5 != originalMd5)
                 {
-                    Log.Warning("⚠️ SaveConfigAsync: 保存过程中检测到外部进程修改了文件 {Path}，将直接覆盖写入（可能合并冲突）", filePath);
+                    Log.Warning("[WARN] SaveConfigAsync: 保存过程中检测到外部进程修改了文件 {Path}，将直接覆盖写入（可能合并冲突）", filePath);
                 }
             }
             catch (Exception ex)
@@ -321,7 +321,7 @@ public sealed class ConfigManager : IConfigManager
             {
                 if (!writtenDict.TryGetValue(kvp.Key, out var wv) || !string.Equals(wv, kvp.Value, StringComparison.Ordinal))
                 {
-                    Log.Error("❌ SaveConfigAsync: 写回校验失败 Key={Key} Expected={Expected} Actual={Actual}",
+                    Log.Error("[ERR] SaveConfigAsync: 写回校验失败 Key={Key} Expected={Expected} Actual={Actual}",
                         kvp.Key, kvp.Value, wv);
                     // 若有备份则尝试恢复
                     var bakPath = filePath + ".bak";
@@ -335,11 +335,11 @@ public sealed class ConfigManager : IConfigManager
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ SaveConfigAsync: 写回校验异常 Path={Path}", filePath);
+            Log.Error(ex, "[ERR] SaveConfigAsync: 写回校验异常 Path={Path}", filePath);
             throw;
         }
 
-        Log.Information("✅ 配置文件 {FilePath} 已保存，共 {Count} 个配置项",
+        Log.Information("[OK] 配置文件 {FilePath} 已保存，共 {Count} 个配置项",
             filePath, config.Count);
     }
 
@@ -351,7 +351,7 @@ public sealed class ConfigManager : IConfigManager
     /// <returns>配置描述符；未找到返回<c>null</c></returns>
     public ServerConfigDescriptor? GetDescriptor(string key, string configFileName)
     {
-        Log.Debug("🔍 查询描述符: Key={Key} File={File}", key, configFileName);
+        Log.Debug("[FIND] 查询描述符: Key={Key} File={File}", key, configFileName);
         return _registry.GetDescriptor(key, configFileName);
     }
 
@@ -374,7 +374,7 @@ public sealed class ConfigManager : IConfigManager
     /// </remarks>
     public bool ValidateValue(string key, string configFileName, string value)
     {
-        Log.Debug("🔍 验证值: Key={Key} Value={Value}", key, value);
+        Log.Debug("[FIND] 验证值: Key={Key} Value={Value}", key, value);
         var descriptor = _registry.GetDescriptor(key, configFileName);
         if (descriptor is null)
         {

@@ -92,7 +92,7 @@ public static partial class CommandLineParser
     /// <returns>解析后的<see cref="ParsedCommandLine"/>对象（非空引用，字段可能为空字符串）</returns>
     public static ParsedCommandLine Parse(string commandLine)
     {
-        Log.Debug("🔧 解析命令行: {Cmd}", commandLine?.Length > 100 ? commandLine[..100] + "..." : commandLine);
+        Log.Debug("[CFG] 解析命令行: {Cmd}", commandLine?.Length > 100 ? commandLine[..100] + "..." : commandLine);
 
         if (string.IsNullOrWhiteSpace(commandLine))
             return new ParsedCommandLine();
@@ -207,17 +207,17 @@ public static partial class CommandLineParser
 
         if (normalizedJvmArgs.Warnings.Count > 0)
         {
-            Log.Debug("📝 命令行解析规范化警告: {Count} 条", normalizedJvmArgs.Warnings.Count);
+            Log.Debug("[LOG] 命令行解析规范化警告: {Count} 条", normalizedJvmArgs.Warnings.Count);
             foreach (var warning in normalizedJvmArgs.Warnings)
             {
-                Log.Debug("  ⚠️ {Warning}", warning);
+                Log.Debug("  [WARN] {Warning}", warning);
             }
         }
 
         // 规范化后参数数量变化时，重新提取内存参数（可能新增了规范化后的Xms/Xmx）
         if (normalizedJvmArgs.Arguments.Count != jvmArguments.Count)
         {
-            Log.Debug("🧹 JVM 参数规范化: {Original} → {Final} 个", jvmArguments.Count, normalizedJvmArgs.Arguments.Count);
+            Log.Debug("[CLEAN] JVM 参数规范化: {Original} → {Final} 个", jvmArguments.Count, normalizedJvmArgs.Arguments.Count);
             jvmArguments = normalizedJvmArgs.Arguments;
 
             if (initialHeapBytes == 0)
@@ -257,7 +257,7 @@ public static partial class CommandLineParser
     /// <returns>转换后的字节数；解析失败返回0</returns>
     public static long ParseMemoryValue(string value)
     {
-        Log.Debug("📏 解析内存值: {Value}", value);
+        Log.Debug("[SIZE] 解析内存值: {Value}", value);
         if (string.IsNullOrWhiteSpace(value))
             return 0;
 

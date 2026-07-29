@@ -82,28 +82,28 @@ public class AppConfigService : IAppConfigService
                                 ks.Name,
                                 @"\s*\(PID:\s*\d+\)\s*$",
                                 string.Empty).Trim();
-                            Log.Information("🧹 已清理已知服务器名称中的 PID 后缀: {Name}", ks.Name);
+                            Log.Information("[CLEAN] 已清理已知服务器名称中的 PID 后缀: {Name}", ks.Name);
                         }
                     }
 
-                    Log.Information("📂 全局配置已加载，已知服务器 {Count} 个", Config.KnownServers.Count);
+                    Log.Information("[FS] 全局配置已加载，已知服务器 {Count} 个", Config.KnownServers.Count);
                 }
                 else
                 {
                     Config = new AppConfig();
-                    Log.Information("📂 未找到全局配置文件，使用默认配置");
+                    Log.Information("[FS] 未找到全局配置文件，使用默认配置");
                 }
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "❌ 加载全局配置失败，使用默认配置");
+                Log.Error(ex, "[ERR] 加载全局配置失败，使用默认配置");
                 try
                 {
                     if (File.Exists(ConfigPath))
                     {
                         var bakPath = ConfigPath + ".corrupt.bak";
                         File.Copy(ConfigPath, bakPath, true);
-                        Log.Warning("📦 已备份损坏的全局配置到: {BakPath}", bakPath);
+                        Log.Warning("[PKG] 已备份损坏的全局配置到: {BakPath}", bakPath);
                     }
                 }
                 catch { /* 备份失败不影响主流程 */ }
@@ -148,11 +148,11 @@ public class AppConfigService : IAppConfigService
                 File.Replace(tmpPath, ConfigPath, null);
             else
                 File.Move(tmpPath, ConfigPath);
-            Log.Information("💾 全局配置已保存");
+            Log.Information("[SAVE] 全局配置已保存");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 保存全局配置失败");
+            Log.Error(ex, "[ERR] 保存全局配置失败");
         }
     }
 
@@ -190,12 +190,12 @@ public class AppConfigService : IAppConfigService
                 existing.MaxHeapMemoryBytes = server.MaxHeapMemoryBytes;
                 existing.Port = server.Port;
                 existing.LastSeenAt = DateTime.Now;
-                Log.Information("🔄 已知服务器已更新: {Name}", server.Name);
+                Log.Information("[REFRESH] 已知服务器已更新: {Name}", server.Name);
             }
             else
             {
                 Config.KnownServers.Add(server);
-                Log.Information("➕ 新增已知服务器: {Name}", server.Name);
+                Log.Information("[ADD] 新增已知服务器: {Name}", server.Name);
             }
         }
         Save();
@@ -213,7 +213,7 @@ public class AppConfigService : IAppConfigService
             if (server != null)
             {
                 Config.KnownServers.Remove(server);
-                Log.Information("🗑️ 已移除已知服务器: {Name}", server.Name);
+                Log.Information("[TRASH]️ 已移除已知服务器: {Name}", server.Name);
             }
             else
             {

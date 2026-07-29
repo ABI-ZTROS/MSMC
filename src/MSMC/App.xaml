@@ -5,17 +5,17 @@
              xmlns:converters="clr-namespace:io.NET.ZTR_OS.Features.Shared.Converters">
     <Application.Resources>
         <ResourceDictionary>
-            <!-- 🎨 MaterialDesign 暗色主题 —— 苍穹蓝 + 暖珊瑚，清新科技感 -->
+            <!-- [THEME] MaterialDesign 暗色主题 —— 苍穹蓝 + 暖珊瑚，清新科技感 -->
             <ResourceDictionary.MergedDictionaries>
                 <materialDesign:BundledTheme BaseTheme="Dark"
                                               PrimaryColor="Blue"
                                               SecondaryColor="Pink" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
-                <!-- 🎨 自定义资源字典 —— 深度定制的笔刷、导航样式、卡片样式 -->
+                <!-- [THEME] 自定义资源字典 —— 深度定制的笔刷、导航样式、卡片样式 -->
                 <ResourceDictionary Source="/Features/Shared/Themes/AppResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- 🔄 全局转换器 —— 所有页面都能用 -->
+            <!-- [REFRESH] 全局转换器 —— 所有页面都能用 -->
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
             <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
             <converters:InvertBoolConverter x:Key="InvertBoolConverter" />

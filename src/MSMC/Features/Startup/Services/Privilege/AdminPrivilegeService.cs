@@ -41,12 +41,12 @@ public class AdminPrivilegeService
             using var identity = WindowsIdentity.GetCurrent();
             var principal = new WindowsPrincipal(identity);
             var isAdmin = principal.IsInRole(WindowsBuiltInRole.Administrator);
-            Log.Information("🔐 管理员权限检查: {Result}", isAdmin ? "是" : "否");
+            Log.Information("[SEC] 管理员权限检查: {Result}", isAdmin ? "是" : "否");
             return isAdmin;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "🔐 管理员权限检查失败");
+            Log.Error(ex, "[SEC] 管理员权限检查失败");
             return false;
         }
     }
@@ -68,11 +68,11 @@ public class AdminPrivilegeService
             var exePath = Environment.ProcessPath;
             if (string.IsNullOrEmpty(exePath))
             {
-                Log.Error("🔐 无法获取当前程序路径");
+                Log.Error("[SEC] 无法获取当前程序路径");
                 return false;
             }
 
-            Log.Information("🔐 正在以管理员身份重启: {ExePath}", exePath);
+            Log.Information("[SEC] 正在以管理员身份重启: {ExePath}", exePath);
 
             var startInfo = new ProcessStartInfo
             {
@@ -84,7 +84,7 @@ public class AdminPrivilegeService
 
             Process.Start(startInfo);
 
-            Log.Information("🔐 UAC 提权请求已发起，当前进程即将退出");
+            Log.Information("[SEC] UAC 提权请求已发起，当前进程即将退出");
 
             // 延迟退出，确保日志写入完成
             Task.Delay(500).ContinueWith(_ =>
@@ -101,7 +101,7 @@ public class AdminPrivilegeService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "🔐 以管理员身份重启失败");
+            Log.Error(ex, "[SEC] 以管理员身份重启失败");
             return false;
         }
     }

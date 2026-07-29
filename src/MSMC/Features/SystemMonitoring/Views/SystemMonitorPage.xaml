@@ -1,4 +1,4 @@
-<!-- 🏎️ 系统监控页面 —— "仪表盘亮起来，看看你的服务器有没有在燃烧" -->
+<!-- [SPEED] 系统监控页面 —— "仪表盘亮起来，看看你的服务器有没有在燃烧" -->
 <UserControl x:Class="io.NET.ZTR_OS.Features.SystemMonitoring.Views.SystemMonitorPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -12,7 +12,7 @@
         <StackPanel>
 
             <!-- ═══════════════════════════════════════════════ -->
-            <!-- 🎛️ 控制按钮：开始/停止监控 -->
+            <!-- [CTRL] 控制按钮：开始/停止监控 -->
             <!-- ═══════════════════════════════════════════════ -->
             <StackPanel x:Name="ControlButtonsPanel" Orientation="Horizontal"
                         Margin="0,0,0,12">
@@ -31,12 +31,12 @@
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════ -->
-            <!-- 🎛️ 圆环仪表盘：CPU / 内存 / 磁盘 —— 三大件一排站 -->
+            <!-- [CTRL] 圆环仪表盘：CPU / 内存 / 磁盘 —— 三大件一排站 -->
             <!-- 线程数没有圆环，用大号数字 + 图标就够了 -->
             <!-- ═══════════════════════════════════════════════ -->
             <UniformGrid x:Name="GaugesGrid" Columns="4" Margin="0,0,0,12">
 
-                <!-- 🖥️ CPU 圆环仪表盘 —— 占满整个卡片，视觉效果拉满 -->
+                <!-- [HOST] CPU 圆环仪表盘 —— 占满整个卡片，视觉效果拉满 -->
                 <materialDesign:Card Margin="4" Padding="8"
                                      VerticalAlignment="Stretch">
                     <StackPanel VerticalAlignment="Center"
@@ -46,14 +46,14 @@
                     </StackPanel>
                 </materialDesign:Card>
 
-                <!-- 💾 内存圆环仪表盘 —— 圆环上方，详细信息下方 -->
+                <!-- [SAVE] 内存圆环仪表盘 —— 圆环上方，详细信息下方 -->
                 <materialDesign:Card Margin="4" Padding="8"
                                      VerticalAlignment="Stretch">
                     <StackPanel VerticalAlignment="Center"
                                 HorizontalAlignment="Center">
                         <controls:GaugeRingControl Value="{Binding CurrentMetrics.MemoryUsagePercent, TargetNullValue=0}"
                                                     Label="内存" />
-                        <!-- 💬 内存容量明细 —— 已用/总共，数字太抽象了要看具体的 -->
+                        <!-- [MSG] 内存容量明细 —— 已用/总共，数字太抽象了要看具体的 -->
                         <TextBlock Text="{Binding MemoryInfoText}"
                                    FontSize="11"
                                    Opacity="0.7"
@@ -62,14 +62,14 @@
                     </StackPanel>
                 </materialDesign:Card>
 
-                <!-- 📀 磁盘圆环仪表盘 —— 圆环上方，磁盘明细下方 -->
+                <!-- [DISK] 磁盘圆环仪表盘 —— 圆环上方，磁盘明细下方 -->
                 <materialDesign:Card Margin="4" Padding="8"
                                      VerticalAlignment="Stretch">
                     <StackPanel VerticalAlignment="Center"
                                 HorizontalAlignment="Center">
                         <controls:GaugeRingControl Value="{Binding CurrentMetrics.DiskUsagePercent, TargetNullValue=0}"
                                                     Label="磁盘" />
-                        <!-- 💬 磁盘容量明细 —— 盘符+已用/总共 -->
+                        <!-- [MSG] 磁盘容量明细 —— 盘符+已用/总共 -->
                         <TextBlock Text="{Binding DiskInfoText}"
                                    FontSize="11"
                                    Opacity="0.7"
@@ -78,12 +78,12 @@
                     </StackPanel>
                 </materialDesign:Card>
 
-                <!-- 🧵 线程卡片 —— 没有圆环，用图标 + 超大数字，简单粗暴 -->
+                <!-- [THREAD] 线程卡片 —— 没有圆环，用图标 + 超大数字，简单粗暴 -->
                 <materialDesign:Card Margin="4" Padding="8"
                                      VerticalAlignment="Stretch">
                     <StackPanel VerticalAlignment="Center"
                                 HorizontalAlignment="Center">
-                        <!-- 🧵 线程图标 —— 醒目的绿色 -->
+                        <!-- [THREAD] 线程图标 —— 醒目的绿色 -->
                         <iconPacks:PackIconFontAwesome6 Kind="TriangleExclamationSolid"
                                                 Width="32" Height="32"
                                                 HorizontalAlignment="Center"
@@ -94,7 +94,7 @@
                                    Opacity="0.7"
                                    HorizontalAlignment="Center"
                                    Margin="0,0,0,8" />
-                        <!-- 🔢 大号数字 —— 一眼看到有多少线程在跑 -->
+                        <!-- [NUM] 大号数字 —— 一眼看到有多少线程在跑 -->
                         <TextBlock Text="{Binding CurrentMetrics.TotalThreadCount, TargetNullValue=0}"
                                    FontSize="40"
                                    FontWeight="Bold"
@@ -105,7 +105,7 @@
             </UniformGrid>
 
             <!-- ═══════════════════════════════════════════════ -->
-            <!-- 📈 CPU 趋势折线图 —— 告别 TextBox，拥抱曲线之美 -->
+            <!-- [METRIC] CPU 趋势折线图 —— 告别 TextBox，拥抱曲线之美 -->
             <!-- ═══════════════════════════════════════════════ -->
             <materialDesign:Card x:Name="CpuChartCard" Margin="0,0,0,12" Padding="16">
                 <StackPanel>
@@ -120,7 +120,7 @@
                                    FontSize="16" FontWeight="Bold"
                                    VerticalAlignment="Center" />
                     </StackPanel>
-                    <!-- 📈 LiveCharts2 折线图 —— 绿色曲线，丝滑如德芙 -->
+                    <!-- [METRIC] LiveCharts2 折线图 —— 绿色曲线，丝滑如德芙 -->
                     <lcw:CartesianChart Series="{Binding CpuSeries}"
                                         XAxes="{Binding TrendXAxis}"
                                         YAxes="{Binding TrendYAxis}"
@@ -130,7 +130,7 @@
             </materialDesign:Card>
 
             <!-- ═══════════════════════════════════════════════ -->
-            <!-- 📈 内存趋势折线图 —— 同样的配方，不同的味道 -->
+            <!-- [METRIC] 内存趋势折线图 —— 同样的配方，不同的味道 -->
             <!-- ═══════════════════════════════════════════════ -->
             <materialDesign:Card x:Name="MemoryChartCard" Margin="0,0,0,12" Padding="16">
                 <StackPanel>
@@ -145,7 +145,7 @@
                                    FontSize="16" FontWeight="Bold"
                                    VerticalAlignment="Center" />
                     </StackPanel>
-                    <!-- 📈 LiveCharts2 折线图 —— 蓝色曲线，优雅如夜空 -->
+                    <!-- [METRIC] LiveCharts2 折线图 —— 蓝色曲线，优雅如夜空 -->
                     <lcw:CartesianChart Series="{Binding MemorySeries}"
                                         XAxes="{Binding TrendXAxis}"
                                         YAxes="{Binding TrendYAxis}"

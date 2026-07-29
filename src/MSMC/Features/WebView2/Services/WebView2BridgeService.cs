@@ -89,15 +89,15 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
         // 保存 UI 线程调度器（WebView2 回调在后台线程，需要封送回 UI 线程操作 WPF 控件）
         _uiDispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
-        Log.Information("📌 UI 线程调度器已捕获");
+        Log.Information("[NOTE] UI 线程调度器已捕获");
 
-        Log.Information("🌉 WebView2 桥接服务初始化中...");
+        Log.Information("[BRDG] WebView2 桥接服务初始化中...");
 
         try
         {
             // 设置默认背景色为黑色，防止白屏闪烁
             _webView.DefaultBackgroundColor = System.Drawing.Color.Black;
-            Log.Information("🎨 WebView2 默认背景色已设置为黑色");
+            Log.Information("[THEME] WebView2 默认背景色已设置为黑色");
 
             // ──────────────────────────────────────────────────────────────
             // 【关键】显式创建 CoreWebView2Environment，带上允许 file:// 访问的 flags
@@ -125,33 +125,33 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             await _webView.EnsureCoreWebView2Async(wv2Env);
 
             // 配置桌面应用体验优化
-            Log.Information("⚙️ 配置 WebView2 桌面应用体验优化...");
+            Log.Information("[CFG] 配置 WebView2 桌面应用体验优化...");
 
             // 禁用开发者工具（F12）
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
-            Log.Information("   ✅ 已禁用开发者工具");
+            Log.Information("   [OK] 已禁用开发者工具");
 
             // 禁用浏览器快捷键（F5刷新、Ctrl+R刷新、Ctrl+N新窗口等）
             _webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
-            Log.Information("   ✅ 已禁用浏览器快捷键");
+            Log.Information("   [OK] 已禁用浏览器快捷键");
 
             // 禁用默认上下文菜单（右键菜单）
             _webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
-            Log.Information("   ✅ 已禁用默认上下文菜单");
+            Log.Information("   [OK] 已禁用默认上下文菜单");
 
             // 禁用状态条（左下角显示链接地址）
             _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-            Log.Information("   ✅ 已禁用状态条");
+            Log.Information("   [OK] 已禁用状态条");
 
             // 禁止缩放
             _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
-            Log.Information("   ✅ 已禁用缩放控制");
+            Log.Information("   [OK] 已禁用缩放控制");
 
             // 禁用默认脚本对话框（alert/confirm/prompt）
             _webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
-            Log.Information("   ✅ 已禁用默认脚本对话框");
+            Log.Information("   [OK] 已禁用默认脚本对话框");
 
-            Log.Information("⚙️ WebView2 桌面应用体验优化配置完成");
+            Log.Information("[CFG] WebView2 桌面应用体验优化配置完成");
 
             // 注册消息接收事件
             _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
@@ -164,14 +164,14 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             // 确保诊断脚本和前端代码执行时 window.__msmc_bridge__ 已就绪
             var initScript = GenerateBridgeInitScript();
             await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(initScript);
-            Log.Information("🔌 桥接脚本已通过 AddScriptToExecuteOnDocumentCreatedAsync 注册（将在页面脚本之前执行）");
+            Log.Information("[API] 桥接脚本已通过 AddScriptToExecuteOnDocumentCreatedAsync 注册（将在页面脚本之前执行）");
 
             IsInitialized = true;
-            Log.Information("✅ WebView2 桥接服务初始化完成");
+            Log.Information("[OK] WebView2 桥接服务初始化完成");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ WebView2 桥接服务初始化失败");
+            Log.Error(ex, "[ERR] WebView2 桥接服务初始化失败");
             throw;
         }
     }
@@ -187,7 +187,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             folderPath,
             Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
 
-        Log.Information("🌐 虚拟主机映射已设置: {HostName} -> {FolderPath}", hostName, folderPath);
+        Log.Information("[NET] 虚拟主机映射已设置: {HostName} -> {FolderPath}", hostName, folderPath);
     }
 
     /// <inheritdoc />
@@ -198,7 +198,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
         if (!provider.IsAvailable)
         {
-            Log.Warning("[WV2-LOAD] ⚠️ 前端资源提供器不可用: {Mode}", provider.ModeName);
+            Log.Warning("[WV2-LOAD] [WARN] 前端资源提供器不可用: {Mode}", provider.ModeName);
             return false;
         }
 
@@ -211,16 +211,16 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         if (effectiveHost.Contains('.') || effectiveHost.Contains('-'))
         {
             effectiveHost = "msmcapp";   // 单标签 ASCII 短名
-            Log.Warning("[WV2-LOAD] ⚠️ hostName=\"{Original}\" 含有 . 或 -，替换为安全短名 \"{Safe}\"（避免 30s DNS 解析超时）",
+            Log.Warning("[WV2-LOAD] [WARN] hostName=\"{Original}\" 含有 . 或 -，替换为安全短名 \"{Safe}\"（避免 30s DNS 解析超时）",
                 hostName, effectiveHost);
         }
 
-        Log.Information("[WV2-LOAD] 🚀 开始加载前端资源 (模式: {Mode}, host: {Host})", provider.ModeName, effectiveHost);
+        Log.Information("[WV2-LOAD] [BOOT] 开始加载前端资源 (模式: {Mode}, host: {Host})", provider.ModeName, effectiveHost);
 
         try
         {
             var basePath = await provider.GetBasePathAsync();
-            Log.Information("[WV2-LOAD] 📂 GetBasePathAsync 返回: {Path}", basePath ?? "(null，将使用拦截模式)");
+            Log.Information("[WV2-LOAD] [FS] GetBasePathAsync 返回: {Path}", basePath ?? "(null，将使用拦截模式)");
 
             // ──────────────────────────────────────────────────────────────
             // 【优先级翻转 2026-07-30】http 虚拟主机优先，file:// 兜底
@@ -238,17 +238,17 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             {
                 targetUri = new Uri($"http://{effectiveHost}/index.html");
                 // 先注册 folder 映射，再导航！顺序反了会找不到
-                Log.Information("[WV2-LOAD] 🔗 设置虚拟主机映射...");
+                Log.Information("[WV2-LOAD] [LINK] 设置虚拟主机映射...");
                 SetVirtualHostMapping(effectiveHost, basePath!);
-                Log.Information("[WV2-LOAD] ✅ 虚拟主机映射设置完成（http://{Host}/ → {Folder}）", effectiveHost, basePath);
+                Log.Information("[WV2-LOAD] [OK] 虚拟主机映射设置完成（http://{Host}/ → {Folder}）", effectiveHost, basePath);
             }
             else
             {
                 // EmbeddedResource 模式：无真实磁盘路径，走 WebResourceRequested 拦截器
                 targetUri = new Uri($"http://{effectiveHost}/index.html");
-                Log.Information("[WV2-LOAD] 🔌 注册 WebResourceRequested 拦截器（EmbeddedResource 模式）...");
+                Log.Information("[WV2-LOAD] [API] 注册 WebResourceRequested 拦截器（EmbeddedResource 模式）...");
                 RegisterWebResourceRequested(provider, effectiveHost);
-                Log.Information("[WV2-LOAD] ✅ WebResourceRequested 拦截器注册完成");
+                Log.Information("[WV2-LOAD] [OK] WebResourceRequested 拦截器注册完成");
             }
 
             // ──────────────────────────────────────────────────────────────
@@ -264,11 +264,11 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                     {
                         targetUri = new UriBuilder("file", string.Empty) { Path = directIndexPath.Replace('\\', '/') }.Uri;
                         useVirtualHost = false;
-                        Log.Information("[WV2-LOAD] 📎 forceFileProtocol=true → file:// 直读: {Uri}", targetUri.AbsoluteUri);
+                        Log.Information("[WV2-LOAD] [ALT] forceFileProtocol=true → file:// 直读: {Uri}", targetUri.AbsoluteUri);
                     }
                     catch (Exception uriEx)
                     {
-                        Log.Warning(uriEx, "[WV2-LOAD] ⚠️ 构造 file:// Uri 失败，保留虚拟主机模式");
+                        Log.Warning(uriEx, "[WV2-LOAD] [WARN] 构造 file:// Uri 失败，保留虚拟主机模式");
                     }
                 }
             }
@@ -281,14 +281,14 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             {
                 if (e.IsSuccess)
                 {
-                    Log.Information("[WV2-LOAD] 📨 NavigationCompleted: 成功 HTTP {Code} (模式={Mode}, Uri={Uri})",
+                    Log.Information("[WV2-LOAD] [MSG] NavigationCompleted: 成功 HTTP {Code} (模式={Mode}, Uri={Uri})",
                         e.HttpStatusCode, provider.ModeName, targetUri.AbsoluteUri);
                     tcs.TrySetResult(true);
                 }
                 else
                 {
                     Log.Error(
-                        "[WV2-LOAD] ❌ NavigationCompleted 失败: WebErrorStatus={Status}, HTTP={Code} (模式={Mode}, Uri={Uri})。" +
+                        "[WV2-LOAD] [ERR] NavigationCompleted 失败: WebErrorStatus={Status}, HTTP={Code} (模式={Mode}, Uri={Uri})。" +
                         "常见原因: ① https 虚拟主机证书问题（已改 http）② 路径被杀毒/组策略拦截 ③ index.html 不存在 ④ file 协议下相对路径引用出错",
                         e.WebErrorStatus, e.HttpStatusCode, provider.ModeName, targetUri.AbsoluteUri);
                     tcs.TrySetResult(false);
@@ -302,7 +302,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             _webView.CoreWebView2.NavigationCompleted += OnNavCompleted;
 
             // 开始导航
-            Log.Information("[WV2-LOAD] 🧭 开始导航到: {Url} (模式={Mode}, 虚拟主机={UseVH})",
+            Log.Information("[WV2-LOAD] [NAV] 开始导航到: {Url} (模式={Mode}, 虚拟主机={UseVH})",
                 targetUri.AbsoluteUri, provider.ModeName, useVirtualHost);
             _webView.Source = targetUri;
 
@@ -314,7 +314,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             if (completed == timeout)
             {
                 Log.Error(
-                    "[WV2-LOAD] ⏰ 前端页面加载超时 ({Sec}s)！模式: {Mode}, Uri: {Url}, 虚拟主机={UseVH}。" +
+                    "[WV2-LOAD] [TIME] 前端页面加载超时 ({Sec}s)！模式: {Mode}, Uri: {Url}, 虚拟主机={UseVH}。" +
                     "若持续出现，请检查: ① 目标 index.html 是否真实存在 ② 手动在浏览器打开该文件是否能正常渲染 ③ 关闭杀毒软件重试。" +
                     "（注：WebView2 1.x SDK 导航失败只走 NavigationCompleted，若此处超时说明该事件一直未触发，通常是 WebView2 初始化被中断或页面脚本死锁）",
                     timeoutSeconds, provider.ModeName, targetUri.AbsoluteUri, useVirtualHost);
@@ -326,18 +326,18 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             }
 
             var success = tcs.Task.Result;
-            Log.Information("[WV2-LOAD] 🎯 导航完成，结果: {Result} (模式={Mode})",
+            Log.Information("[WV2-LOAD] [DONE] 导航完成，结果: {Result} (模式={Mode})",
                 success ? "成功" : "失败", provider.ModeName);
             if (!success)
             {
-                Log.Error("[WV2-LOAD] ❌ 前端页面加载失败，模式: {Mode}", provider.ModeName);
+                Log.Error("[WV2-LOAD] [ERR] 前端页面加载失败，模式: {Mode}", provider.ModeName);
             }
 
             return success;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "[WV2-LOAD-ERR] ❌ 加载前端资源失败 (模式: {Mode})", provider.ModeName);
+            Log.Error(ex, "[WV2-LOAD-ERR] [ERR] 加载前端资源失败 (模式: {Mode})", provider.ModeName);
             return false;
         }
     }
@@ -381,7 +381,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             }
         };
 
-        Log.Information("🔌 WebResourceRequested 拦截已注册 ({Count} 个过滤器): http://{HostName}", filters.Length, hostName);
+        Log.Information("[API] WebResourceRequested 拦截已注册 ({Count} 个过滤器): http://{HostName}", filters.Length, hostName);
     }
 
     /// <summary>
@@ -412,7 +412,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         if (string.IsNullOrEmpty(relativePath) || relativePath == "/")
             relativePath = "/index.html";
 
-        Log.Information("📥 WebResource 请求: {Path}", relativePath);
+        Log.Information("[MSG] WebResource 请求: {Path}", relativePath);
 
         try
         {
@@ -420,7 +420,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             using var resourceStream = await provider.GetResourceAsync(relativePath);
             if (resourceStream == null)
             {
-                Log.Warning("❌ 资源未找到: {Path}", relativePath);
+                Log.Warning("[ERR] 资源未找到: {Path}", relativePath);
                 args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
                     null, 404, "Not Found", "Content-Type: text/plain");
                 return;
@@ -444,11 +444,11 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                 "OK",
                 headers);
 
-            Log.Information("✅ 嵌入资源响应: {Path} ({MimeType}, {Size} bytes)", relativePath, mimeType, memoryStream.Length);
+            Log.Information("[OK] 嵌入资源响应: {Path} ({MimeType}, {Size} bytes)", relativePath, mimeType, memoryStream.Length);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 处理资源请求失败: {Path}", relativePath);
+            Log.Error(ex, "[ERR] 处理资源请求失败: {Path}", relativePath);
             args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
                 null, 500, "Internal Server Error", "Content-Type: text/plain");
         }
@@ -463,12 +463,12 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
         if (e.IsSuccess)
         {
-            Log.Information("📄 页面导航完成（成功），桥接脚本已由 AddScript 自动注入");
+            Log.Information("[LOG] 页面导航完成（成功），桥接脚本已由 AddScript 自动注入");
         }
         else
         {
             // 导航失败用 Error 级别，确保在日志中可见
-            Log.Error("[WV2-NAV] ❌ 页面导航失败: IsSuccess={Success}, WebErrorStatus={Status}",
+            Log.Error("[WV2-NAV] [ERR] 页面导航失败: IsSuccess={Success}, WebErrorStatus={Status}",
                 e.IsSuccess, e.WebErrorStatus);
         }
     }
@@ -604,49 +604,49 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         try
         {
             var json = e.WebMessageAsJson;
-            Log.Information("[WV2-MSG] 📨 收到 JS 消息 (原始 JSON 长度: {Len})", json?.Length ?? 0);
-            Log.Debug("[WV2-MSG] 📨 消息内容: {Json}", json);
+            Log.Information("[WV2-MSG] [MSG] 收到 JS 消息 (原始 JSON 长度: {Len})", json?.Length ?? 0);
+            Log.Debug("[WV2-MSG] [MSG] 消息内容: {Json}", json);
 
             var message = JsonSerializer.Deserialize<BridgeMessage>(json, JsonOptions);
 
             if (message == null)
             {
-                Log.Warning("[WV2-MSG] ⚠️ 收到无效的桥接消息: {Json}", json);
+                Log.Warning("[WV2-MSG] [WARN] 收到无效的桥接消息: {Json}", json);
                 return;
             }
 
-            Log.Information("[WV2-MSG] 📋 消息类型: {Type}, Action: {Action}, ID: {Id}",
+            Log.Information("[WV2-MSG] [LOG] 消息类型: {Type}, Action: {Action}, ID: {Id}",
                 message.Type, message.Action, message.Id ?? "(无)");
 
             switch (message.Type)
             {
                 case BridgeMessageType.Request:
-                    Log.Information("[WV2-MSG] 🔄 处理请求: {Action}", message.Action);
+                    Log.Information("[WV2-MSG] [REFRESH] 处理请求: {Action}", message.Action);
                     await HandleRequestAsync(message);
                     break;
 
                 case BridgeMessageType.Response:
-                    Log.Information("[WV2-MSG] 📤 处理响应: {Action}", message.Action);
+                    Log.Information("[WV2-MSG] [MSG] 处理响应: {Action}", message.Action);
                     HandleResponse(message);
                     break;
 
                 case BridgeMessageType.Event:
-                    Log.Information("[WV2-MSG] 🎯 处理事件: {Action}", message.Action);
+                    Log.Information("[WV2-MSG] [DONE] 处理事件: {Action}", message.Action);
                     HandleJsEvent(message);
                     break;
 
                 case BridgeMessageType.Log:
-                    Log.Information("[WV2-JS] 💬 {Payload}", message.Payload);
+                    Log.Information("[WV2-JS] [MSG] {Payload}", message.Payload);
                     break;
 
                 default:
-                    Log.Warning("[WV2-MSG] ⚠️ 未知的消息类型: {Type}", message.Type);
+                    Log.Warning("[WV2-MSG] [WARN] 未知的消息类型: {Type}", message.Type);
                     break;
             }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "[WV2-MSG-ERR] ❌ 处理桥接消息时发生异常");
+            Log.Error(ex, "[WV2-MSG-ERR] [ERR] 处理桥接消息时发生异常");
         }
     }
 
@@ -655,7 +655,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     /// </summary>
     private async Task HandleRequestAsync(BridgeMessage message)
     {
-        Log.Information("[WV2-REQ] 📥 处理请求: {Action} (ID={Id})", message.Action, message.Id);
+        Log.Information("[WV2-REQ] [MSG] 处理请求: {Action} (ID={Id})", message.Action, message.Id);
 
         var response = new BridgeMessage
         {
@@ -668,13 +668,13 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         {
             if (_requestHandlers.TryGetValue(message.Action, out var handler))
             {
-                Log.Information("[WV2-REQ] 🔍 找到处理程序: {Action}", message.Action);
+                Log.Information("[WV2-REQ] [FIND] 找到处理程序: {Action}", message.Action);
 
                 object? result;
                 // 封送到 UI 线程执行（防止跨线程访问 WPF 控件导致的外部异常）
                 if (_uiDispatcher != null && !_uiDispatcher.CheckAccess())
                 {
-                    Log.Debug("[WV2-REQ] 🔄 封送到 UI 线程执行: {Action}", message.Action);
+                    Log.Debug("[WV2-REQ] [REFRESH] 封送到 UI 线程执行: {Action}", message.Action);
                     var tcs = new TaskCompletionSource<object?>();
                     _ = _uiDispatcher.BeginInvoke(async () =>
                     {
@@ -697,23 +697,23 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
                 response.Payload = result;
                 response.Success = true;
-                Log.Information("[WV2-REQ] ✅ 请求处理成功: {Action}", message.Action);
+                Log.Information("[WV2-REQ] [OK] 请求处理成功: {Action}", message.Action);
             }
             else
             {
                 response.Success = false;
                 response.Error = $"未找到请求处理程序: {message.Action}";
-                Log.Warning("[WV2-REQ] ⚠️ 未找到请求处理程序: {Action}", message.Action);
+                Log.Warning("[WV2-REQ] [WARN] 未找到请求处理程序: {Action}", message.Action);
             }
         }
         catch (Exception ex)
         {
             response.Success = false;
             response.Error = ex.Message;
-            Log.Error(ex, "[WV2-REQ-ERR] ❌ 处理请求 {Action} 时发生异常", message.Action);
+            Log.Error(ex, "[WV2-REQ-ERR] [ERR] 处理请求 {Action} 时发生异常", message.Action);
         }
 
-        Log.Information("[WV2-REQ] 📤 发送响应: {Action} (Success={Success})", message.Action, response.Success);
+        Log.Information("[WV2-REQ] [MSG] 发送响应: {Action} (Success={Success})", message.Action, response.Success);
         await SendMessageAsync(response);
     }
 
@@ -907,6 +907,6 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         _requestHandlers.Clear();
         _eventSubscribers.Clear();
 
-        Log.Information("👋 WebView2 桥接服务已关闭");
+        Log.Information("[EXIT] WebView2 桥接服务已关闭");
     }
 }

@@ -131,7 +131,7 @@ public sealed class PortToProcessMapper
                     TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_LISTENER);
                 if (err.Failed)
                 {
-                    Log.Warning("⚠️ GetExtendedTcpTable (AF={Af}) 调用失败: {Error}", af, err);
+                    Log.Warning("[WARN] GetExtendedTcpTable (AF={Af}) 调用失败: {Error}", af, err);
                     return;
                 }
 
@@ -180,7 +180,7 @@ public sealed class PortToProcessMapper
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ PortToProcessMapper TCP 查询失败 (AF={Af})", af);
+            Log.Warning(ex, "[WARN] PortToProcessMapper TCP 查询失败 (AF={Af})", af);
         }
     }
 
@@ -204,7 +204,7 @@ public sealed class PortToProcessMapper
                     TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_ALL);
                 if (err.Failed)
                 {
-                    Log.Warning("⚠️ GetExtendedTcpTable(ALL) (AF={Af}) 调用失败: {Error}", af, err);
+                    Log.Warning("[WARN] GetExtendedTcpTable(ALL) (AF={Af}) 调用失败: {Error}", af, err);
                     return;
                 }
 
@@ -253,7 +253,7 @@ public sealed class PortToProcessMapper
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ PortToProcessMapper 全量 TCP 查询失败 (AF={Af})", af);
+            Log.Warning(ex, "[WARN] PortToProcessMapper 全量 TCP 查询失败 (AF={Af})", af);
         }
     }
 
@@ -273,7 +273,7 @@ public sealed class PortToProcessMapper
                     UDP_TABLE_CLASS.UDP_TABLE_OWNER_PID);
                 if (err.Failed)
                 {
-                    Log.Warning("⚠️ GetExtendedUdpTable (AF={Af}) 调用失败: {Error}", af, err);
+                    Log.Warning("[WARN] GetExtendedUdpTable (AF={Af}) 调用失败: {Error}", af, err);
                     return;
                 }
 
@@ -322,7 +322,7 @@ public sealed class PortToProcessMapper
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ PortToProcessMapper UDP 查询失败 (AF={Af})", af);
+            Log.Warning(ex, "[WARN] PortToProcessMapper UDP 查询失败 (AF={Af})", af);
         }
     }
 

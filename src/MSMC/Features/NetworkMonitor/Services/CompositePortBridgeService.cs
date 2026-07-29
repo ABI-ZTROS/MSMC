@@ -48,26 +48,26 @@ public sealed class CompositePortBridgeService : IPortBridgeService
         if (_netsh.AddBridgeRule(rule))
         {
             rule.Engine = "netsh";
-            Log.Information("✅ 桥接规则通过 netsh 内核态启动: {Listen}:{LPort} -> {Connect}:{CPort}",
+            Log.Information("[OK] 桥接规则通过 netsh 内核态启动: {Listen}:{LPort} -> {Connect}:{CPort}",
                 rule.ListenAddress, rule.ListenPort, rule.ConnectAddress, rule.ConnectPort);
             return true;
         }
 
         var netshError = _netsh.LastError;
-        Log.Warning("⚠️ netsh 失败，降级到 TcpForwarder 用户态转发: {Error}", netshError);
+        Log.Warning("[WARN] netsh 失败，降级到 TcpForwarder 用户态转发: {Error}", netshError);
 
         // 策略 2：降级到用户态 TcpForwarder
         if (_tcpForwarder.AddForward(rule))
         {
             rule.Engine = "TcpForwarder";
-            Log.Information("✅ 桥接规则通过 TcpForwarder 用户态启动: {Listen}:{LPort} -> {Connect}:{CPort}",
+            Log.Information("[OK] 桥接规则通过 TcpForwarder 用户态启动: {Listen}:{LPort} -> {Connect}:{CPort}",
                 rule.ListenAddress, rule.ListenPort, rule.ConnectAddress, rule.ConnectPort);
             return true;
         }
 
         var forwarderError = _tcpForwarder.LastError;
         LastError = $"netsh: {netshError} | TcpForwarder: {forwarderError}";
-        Log.Error("❌ 两个引擎均失败: {Error}", LastError);
+        Log.Error("[ERR] 两个引擎均失败: {Error}", LastError);
         return false;
     }
 

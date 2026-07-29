@@ -57,12 +57,12 @@ public partial class StartupWindow : Window
 
         Loaded += StartupWindow_Loaded;
 
-        Log.Information("🪟 StartupWindow (WebView2) 已创建");
+        Log.Information("[UI] StartupWindow (WebView2) 已创建");
     }
 
     private async void StartupWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        Log.Information("[Startup-WV2] 🚀 启动窗口已加载，开始初始化 WebView2...");
+        Log.Information("[Startup-WV2] [BOOT] 启动窗口已加载，开始初始化 WebView2...");
 
         try
         {
@@ -97,7 +97,7 @@ public partial class StartupWindow : Window
                 options: wv2Opts);
             await StartupWebView.EnsureCoreWebView2Async(wv2Env);
 
-            Log.Information("[Startup-WV2] ✅ CoreWebView2 已创建（含 --allow-file-access-from-files）");
+            Log.Information("[Startup-WV2] [OK] CoreWebView2 已创建（含 --allow-file-access-from-files）");
 
             StartupWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
             StartupWebView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
@@ -110,7 +110,7 @@ public partial class StartupWindow : Window
 
             var initScript = GenerateBridgeInitScript();
             await StartupWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(initScript);
-            Log.Information("[Startup-WV2] 🔌 桥接初始化脚本已注入");
+            Log.Information("[Startup-WV2] [API] 桥接初始化脚本已注入");
 
             StartupWebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
             StartupWebView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
@@ -121,7 +121,7 @@ public partial class StartupWindow : Window
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "[Startup-WV2-ERR] ❌ WebView2 初始化失败");
+            Log.Error(ex, "[Startup-WV2-ERR] [ERR] WebView2 初始化失败");
             _ = LoadFallbackPageAsync(ex.Message);
         }
     }
@@ -134,11 +134,11 @@ public partial class StartupWindow : Window
         const string virtualHost = "msmcstartup";
         var provider = FrontendResourceProviderFactory.Create();
 
-        Log.Information("[Startup-WV2-LOAD] 📋 前端资源模式: {Mode}, 可用: {Available}", provider.ModeName, provider.IsAvailable);
+        Log.Information("[Startup-WV2-LOAD] [LOG] 前端资源模式: {Mode}, 可用: {Available}", provider.ModeName, provider.IsAvailable);
 
         if (!provider.IsAvailable)
         {
-            Log.Warning("[Startup-WV2-LOAD] ⚠️ 前端资源提供器不可用，使用兜底页面");
+            Log.Warning("[Startup-WV2-LOAD] [WARN] 前端资源提供器不可用，使用兜底页面");
             _ = LoadFallbackPageAsync("前端资源未找到");
             return;
         }
@@ -165,7 +165,7 @@ public partial class StartupWindow : Window
                     folderPath: basePath!,   // 已判空 basePath!=null
                     accessKind: CoreWebView2HostResourceAccessKind.Allow);
                 Log.Information(
-                    "[Startup-WV2-LOAD] 🔗 虚拟主机映射已设置（http://{Host}/ → {Folder}）",
+                    "[Startup-WV2-LOAD] [LINK] 虚拟主机映射已设置（http://{Host}/ → {Folder}）",
                     virtualHost, basePath);
             }
             else
@@ -188,11 +188,11 @@ public partial class StartupWindow : Window
                     {
                         targetUri = new UriBuilder("file", string.Empty) { Path = directStartupPath.Replace('\\', '/') }.Uri;
                         useVirtualHost = false;
-                        Log.Information("[Startup-WV2-LOAD] 📎 forceFileProtocol=true → file:// 直读 {Uri}", targetUri.AbsoluteUri);
+                        Log.Information("[Startup-WV2-LOAD] [ALT] forceFileProtocol=true → file:// 直读 {Uri}", targetUri.AbsoluteUri);
                     }
                     catch (Exception uriEx)
                     {
-                        Log.Warning(uriEx, "[Startup-WV2-LOAD] ⚠️ 构造 file:// Uri 失败，保留虚拟主机模式");
+                        Log.Warning(uriEx, "[Startup-WV2-LOAD] [WARN] 构造 file:// Uri 失败，保留虚拟主机模式");
                     }
                 }
             }
@@ -205,10 +205,10 @@ public partial class StartupWindow : Window
             if (useVirtualHost && basePath == null)
             {
                 RegisterWebResourceRequested(provider, virtualHost);
-                Log.Information("[Startup-WV2-LOAD] 🔌 WebResourceRequested 拦截器已注册（EmbeddedResource 模式）");
+                Log.Information("[Startup-WV2-LOAD] [API] WebResourceRequested 拦截器已注册（EmbeddedResource 模式）");
             }
 
-            Log.Information("[Startup-WV2-LOAD] 🧭 导航到: {Url} (模式={Mode}, 虚拟主机={UseVH})",
+            Log.Information("[Startup-WV2-LOAD] [NAV] 导航到: {Url} (模式={Mode}, 虚拟主机={UseVH})",
                 targetUri.AbsoluteUri, provider.ModeName, useVirtualHost);
 
             var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -217,14 +217,14 @@ public partial class StartupWindow : Window
             {
                 if (e.IsSuccess)
                 {
-                    Log.Information("[Startup-WV2-LOAD] ✅ 导航成功 HTTP {Code} (Uri={Uri})",
+                    Log.Information("[Startup-WV2-LOAD] [OK] 导航成功 HTTP {Code} (Uri={Uri})",
                         e.HttpStatusCode, targetUri.AbsoluteUri);
                     tcs.TrySetResult(true);
                 }
                 else
                 {
                     Log.Error(
-                        "[Startup-WV2-LOAD] ❌ NavigationCompleted 失败: Status={Status}, HTTP={Code} (Uri={Uri})。" +
+                        "[Startup-WV2-LOAD] [ERR] NavigationCompleted 失败: Status={Status}, HTTP={Code} (Uri={Uri})。" +
                         "常见原因: ① 虚拟主机协议不匹配（已从 https 改为 http）② 文件路径被杀毒拦截 ③ startup.html 实际不存在",
                         e.WebErrorStatus, e.HttpStatusCode, targetUri.AbsoluteUri);
                     tcs.TrySetResult(false);
@@ -237,7 +237,7 @@ public partial class StartupWindow : Window
 
             if (StartupWebView.CoreWebView2 == null)
             {
-                Log.Warning("[Startup-WV2-LOAD] ⚠️ StartupWebView.CoreWebView2 订阅前已为 null，跳过订阅直接走兜底");
+                Log.Warning("[Startup-WV2-LOAD] [WARN] StartupWebView.CoreWebView2 订阅前已为 null，跳过订阅直接走兜底");
                 _ = LoadFallbackPageAsync("WebView2 已释放");
                 return;
             }
@@ -251,7 +251,7 @@ public partial class StartupWindow : Window
             if (done == timeout)
             {
                 Log.Error(
-                    "[Startup-WV2-LOAD] ⏰ 启动页加载超时 ({Sec}s)，模式: {Mode}, Uri: {Uri}, 虚拟主机={UseVH}；若仍超，" +
+                    "[Startup-WV2-LOAD] [TIME] 启动页加载超时 ({Sec}s)，模式: {Mode}, Uri: {Uri}, 虚拟主机={UseVH}；若仍超，" +
                     "请检查路径权限/中文路径/杀毒软件拦截，或直接在浏览器打开目标 startup.html 验证。",
                     timeoutSeconds, provider.ModeName, targetUri.AbsoluteUri, useVirtualHost);
                 if (StartupWebView.CoreWebView2 != null)
@@ -269,7 +269,7 @@ public partial class StartupWindow : Window
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "[Startup-WV2-LOAD-ERR] ❌ 加载启动页失败");
+            Log.Error(ex, "[Startup-WV2-LOAD-ERR] [ERR] 加载启动页失败");
             _ = LoadFallbackPageAsync(ex.Message);
         }
     }
@@ -361,7 +361,7 @@ public partial class StartupWindow : Window
     {
         if (e.IsSuccess)
         {
-            Log.Information("[Startup-WV2] ✅ 启动页导航完成");
+            Log.Information("[Startup-WV2] [OK] 启动页导航完成");
             _frontendLoaded = true;
 
             SendInitEvent();
@@ -370,7 +370,7 @@ public partial class StartupWindow : Window
         }
         else
         {
-            Log.Error("[Startup-WV2] ❌ 启动页导航失败: {Status}", e.WebErrorStatus);
+            Log.Error("[Startup-WV2] [ERR] 启动页导航失败: {Status}", e.WebErrorStatus);
         }
     }
 
@@ -392,7 +392,7 @@ public partial class StartupWindow : Window
                     HandleJsEvent(action, message.Payload);
                     break;
                 case "log":
-                    Log.Information("[Startup-WV2-JS] 💬 {Payload}", message.Payload);
+                    Log.Information("[Startup-WV2-JS] [MSG] {Payload}", message.Payload);
                     break;
             }
         }
@@ -404,12 +404,12 @@ public partial class StartupWindow : Window
 
     private void HandleJsEvent(string action, object? payload)
     {
-        Log.Debug("[Startup-WV2] 📨 收到 JS 事件: {Action}", action);
+        Log.Debug("[Startup-WV2] [MSG] 收到 JS 事件: {Action}", action);
 
         switch (action)
         {
             case "startup:ready":
-                Log.Information("[Startup-WV2] ✅ 前端启动页已就绪");
+                Log.Information("[Startup-WV2] [OK] 前端启动页已就绪");
                 _frontendLoaded = true;
                 SendInitEvent();
                 FlushPendingOperations();
@@ -569,7 +569,7 @@ public partial class StartupWindow : Window
 
         SendEvent("startup:completed", new
         {
-            message = "✅ 初始化完成，正在启动主界面...",
+            message = "[OK] 初始化完成，正在启动主界面...",
         });
     }
 
@@ -750,7 +750,7 @@ public partial class StartupWindow : Window
             // 0) 控件存活
             if (StartupWebView == null)
             {
-                Log.Warning("[Startup-Fallback] ⚠️ StartupWebView 控件已为 null，放弃加载兜底页");
+                Log.Warning("[Startup-Fallback] [WARN] StartupWebView 控件已为 null，放弃加载兜底页");
                 return;
             }
 
@@ -760,7 +760,7 @@ public partial class StartupWindow : Window
             //    改用 MS 官方推荐的"设置 Source = about:blank 触发控件内部标准初始化流程"：
             if (StartupWebView.CoreWebView2 == null || !_webViewInitialized)
             {
-                Log.Warning("[Startup-Fallback] ⚠️ CoreWebView2 未初始化，用 Source=about:blank 触发初始化 (errorMsg={Error})",
+                Log.Warning("[Startup-Fallback] [WARN] CoreWebView2 未初始化，用 Source=about:blank 触发初始化 (errorMsg={Error})",
                     errorMessage);
                 try
                 {
@@ -783,7 +783,7 @@ public partial class StartupWindow : Window
                     }
                     catch (Exception sourceEx)
                     {
-                        Log.Warning(sourceEx, "[Startup-Fallback] ⚠️ 设置 Source=about:blank 失败（非致命，尝试 EnsureCoreWebView2Async）");
+                        Log.Warning(sourceEx, "[Startup-Fallback] [WARN] 设置 Source=about:blank 失败（非致命，尝试 EnsureCoreWebView2Async）");
                     }
 
                     var cwvAfterSource = StartupWebView.CoreWebView2;
@@ -793,7 +793,7 @@ public partial class StartupWindow : Window
                         var navDone = await Task.WhenAny(aboutBlankTcs.Task, Task.Delay(3000));
                         if (navDone != aboutBlankTcs.Task)
                         {
-                            Log.Warning("[Startup-Fallback] ⚠️ about:blank 3s 未完成导航，继续尝试补 Ensure");
+                            Log.Warning("[Startup-Fallback] [WARN] about:blank 3s 未完成导航，继续尝试补 Ensure");
                             if (StartupWebView.CoreWebView2 != null)
                                 StartupWebView.CoreWebView2.NavigationCompleted -= OnBlankNav;
                         }
@@ -804,7 +804,7 @@ public partial class StartupWindow : Window
                 }
                 catch (Exception initEx)
                 {
-                    Log.Error(initEx, "[Startup-Fallback] ❌ Source=about:blank + EnsureCoreWebView2Async 组合失败，已彻底放弃初始化 CoreWebView2，兜底页也不会显示（没有可用的 WebView2 Core）");
+                    Log.Error(initEx, "[Startup-Fallback] [ERR] Source=about:blank + EnsureCoreWebView2Async 组合失败，已彻底放弃初始化 CoreWebView2，兜底页也不会显示（没有可用的 WebView2 Core）");
                     return;
                 }
 
@@ -812,7 +812,7 @@ public partial class StartupWindow : Window
                 var cwv = StartupWebView.CoreWebView2;
                 if (cwv == null)
                 {
-                    Log.Warning("[Startup-Fallback] ⚠️ 双重初始化后 CoreWebView2 仍为 null，彻底放弃脚本注入，只尝试显示 HTML");
+                    Log.Warning("[Startup-Fallback] [WARN] 双重初始化后 CoreWebView2 仍为 null，彻底放弃脚本注入，只尝试显示 HTML");
                 }
                 else
                 {
@@ -826,20 +826,20 @@ public partial class StartupWindow : Window
                     }
                     catch (Exception scriptEx)
                     {
-                        Log.Warning(scriptEx, "[Startup-Fallback] ⚠️ 注入 Bridge Init 脚本失败（不致命，继续）");
+                        Log.Warning(scriptEx, "[Startup-Fallback] [WARN] 注入 Bridge Init 脚本失败（不致命，继续）");
                     }
 
                     try { cwv.WebMessageReceived += OnWebMessageReceived; }
-                    catch (Exception subEx) { Log.Warning(subEx, "[Startup-Fallback] ⚠️ 订阅 WebMessageReceived 失败（不致命，继续）"); }
+                    catch (Exception subEx) { Log.Warning(subEx, "[Startup-Fallback] [WARN] 订阅 WebMessageReceived 失败（不致命，继续）"); }
 
                     try { cwv.Settings.AreDevToolsEnabled = false; }
-                    catch (Exception devEx) { Log.Warning(devEx, "[Startup-Fallback] ⚠️ 关闭 DevTools 失败（不致命，继续）"); }
+                    catch (Exception devEx) { Log.Warning(devEx, "[Startup-Fallback] [WARN] 关闭 DevTools 失败（不致命，继续）"); }
 
                     try { cwv.Settings.AreDefaultContextMenusEnabled = false; }
-                    catch (Exception ctxEx) { Log.Warning(ctxEx, "[Startup-Fallback] ⚠️ 关闭右键菜单失败（不致命，继续）"); }
+                    catch (Exception ctxEx) { Log.Warning(ctxEx, "[Startup-Fallback] [WARN] 关闭右键菜单失败（不致命，继续）"); }
 
                     _webViewInitialized = true;
-                    Log.Information("[Startup-Fallback] ✅ CoreWebView2 延迟初始化完成（Source=about:blank + Ensure）");
+                    Log.Information("[Startup-Fallback] [OK] CoreWebView2 延迟初始化完成（Source=about:blank + Ensure）");
                 }
             }
 
@@ -849,33 +849,33 @@ public partial class StartupWindow : Window
             {
                 if (StartupWebView.CoreWebView2 == null)
                 {
-                    Log.Warning("[Startup-Fallback] ⚠️ NavigateToString 前 CoreWebView2 仍为 null，尝试回退 Data URI 方式");
+                    Log.Warning("[Startup-Fallback] [WARN] NavigateToString 前 CoreWebView2 仍为 null，尝试回退 Data URI 方式");
                     throw new InvalidOperationException("CoreWebView2 is still null before NavigateToString");
                 }
                 StartupWebView.NavigateToString(fallbackHtml);
-                Log.Information("[Startup-Fallback] ✅ NavigateToString 兜底页已触发");
+                Log.Information("[Startup-Fallback] [OK] NavigateToString 兜底页已触发");
             }
             catch (Exception navEx)
             {
-                Log.Warning(navEx, "[Startup-Fallback] ⚠️ NavigateToString 失败，回退到 Source=data:... Data URI");
+                Log.Warning(navEx, "[Startup-Fallback] [WARN] NavigateToString 失败，回退到 Source=data:... Data URI");
                 try
                 {
                     // Data URI 方案：和 NavigateToString 等效显示一段 HTML，但触发的是"导航到 URL"的
                     // 常规代码路径，对 WebView2 Core 内部状态半初始化的环境兼容性更高。
                     var htmlEscaped = Uri.EscapeDataString(fallbackHtml);
                     StartupWebView.Source = new Uri($"data:text/html;charset=utf-8,{htmlEscaped}");
-                    Log.Information("[Startup-Fallback] ✅ 已通过 Data URI Source 设置兜底页 HTML");
+                    Log.Information("[Startup-Fallback] [OK] 已通过 Data URI Source 设置兜底页 HTML");
                 }
                 catch (Exception dataEx)
                 {
-                    Log.Error(dataEx, "[Startup-Fallback] ❌ Data URI Source 也失败，已彻底放弃向 WebView2 写任何内容（Core 状态不可用）。用户界面会停留在空白或之前内容。");
+                    Log.Error(dataEx, "[Startup-Fallback] [ERR] Data URI Source 也失败，已彻底放弃向 WebView2 写任何内容（Core 状态不可用）。用户界面会停留在空白或之前内容。");
                 }
             }
         }
         catch (Exception ex)
         {
             // 最后一层保险：任何未预料异常都吞掉写日志，绝对不能冒泡到 UI Dispatcher 变成 FTL。
-            Log.Error(ex, "[Startup-Fallback] ❌ 兜底页整体执行失败，已放弃（不应影响后续主窗口）");
+            Log.Error(ex, "[Startup-Fallback] [ERR] 兜底页整体执行失败，已放弃（不应影响后续主窗口）");
         }
     }
 
@@ -965,7 +965,7 @@ public partial class StartupWindow : Window
 </head>
 <body>
     <div class='container'>
-        <div class='logo'>🛡</div>
+        <div class='logo'>[SEC]</div>
         <h1>MSMC</h1>
         <p class='subtitle'>Minecraft 服务器管理控制台</p>
         <div class='loading'></div>

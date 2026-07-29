@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fa6'
 import { GaugeRing } from '@/components/ui/GaugeRing'
 import { Reveal } from '@/components/ui/Reveal'
+import { IconByName } from '@/utils/icons'
 import {
   getNetworkStatus,
   getPorts,
@@ -525,7 +526,7 @@ export function NetworkMonitorPage(): JSX.Element {
                         <tr>
                           <td colSpan={5}>
                             <div className="md-empty-state">
-                              <div className="md-empty-state-icon">🔌</div>
+                              <div className="md-empty-state-icon"><IconByName name="net" size={48} /></div>
                               <div className="md-empty-state-text">暂无端口数据</div>
                             </div>
                           </td>
@@ -553,7 +554,7 @@ export function NetworkMonitorPage(): JSX.Element {
               <div className="flex flex-col h-full">
                 {/* 搜索框 */}
                 <div className="flex items-center p-2" style={{ gap: 6, borderBottom: '1px solid var(--md-card-subtle-border)' }}>
-                  <span style={{ fontSize: 12, opacity: 0.6 }}>🔍</span>
+                  <IconByName name="search" size={12} style={{ opacity: 0.6 }} />
                   <input
                     type="text"
                     value={commonPortSearch}
@@ -564,7 +565,7 @@ export function NetworkMonitorPage(): JSX.Element {
                   />
                   {commonPortSearch && (
                     <button onClick={() => setCommonPortSearch('')} className="md-btn md-btn-flat md-btn-icon" title="清空搜索">
-                      ✕
+                      <IconByName name="close" size={14} />
                     </button>
                   )}
                 </div>
@@ -777,7 +778,7 @@ export function NetworkMonitorPage(): JSX.Element {
                           <tr>
                             <td colSpan={6}>
                               <div className="md-empty-state">
-                                <div className="md-empty-state-icon">🔗</div>
+                                <div className="md-empty-state-icon"><IconByName name="link" size={48} /></div>
                                 <div className="md-empty-state-text">暂无桥接规则</div>
                               </div>
                             </td>
@@ -839,7 +840,7 @@ export function NetworkMonitorPage(): JSX.Element {
                 />
               ) : (
                 <div className="md-empty-state h-full">
-                  <div className="md-empty-state-icon">📊</div>
+                  <div className="md-empty-state-icon"><IconByName name="chart" size={48} /></div>
                   <div className="md-empty-state-text">加载中...</div>
                 </div>
               )}

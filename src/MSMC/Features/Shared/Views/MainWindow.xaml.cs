@@ -48,7 +48,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        Log.Information("🏗️ MainWindow (WebView2) 正在初始化...");
+        Log.Information("[BUILD] MainWindow (WebView2) 正在初始化...");
         InitializeComponent();
 
         _themeService = App.Services.GetRequiredService<IThemeService>();
@@ -61,7 +61,7 @@ public partial class MainWindow : Window
         Closing += MainWindow_Closing;
         StateChanged += MainWindow_StateChanged;
 
-        Log.Information("✅ MainWindow (WebView2) 初始化完成");
+        Log.Information("[OK] MainWindow (WebView2) 初始化完成");
     }
 
     // 窗口 Loaded 事件处理：延迟初始化 WebView2 和桥接服务
@@ -69,19 +69,19 @@ public partial class MainWindow : Window
     // 避免用户看到"白屏冻结"——窗口先显示，然后内容逐步加载
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        Log.Information("[UI-1] 🌐 MainWindow_Loaded 触发，延迟初始化 WebView2（等待窗口渲染完成）...");
+        Log.Information("[UI-1] [NET] MainWindow_Loaded 触发，延迟初始化 WebView2（等待窗口渲染完成）...");
 
         Dispatcher.BeginInvoke(async () =>
         {
-            Log.Information("[UI-2] 🔧 初始化 WebView2 桥接服务...");
+            Log.Information("[UI-2] [CFG] 初始化 WebView2 桥接服务...");
             try
             {
                 await _bridgeService.InitializeAsync(MainWebView);
-                Log.Information("[UI-3] ✅ WebView2 桥接服务初始化完成");
+                Log.Information("[UI-3] [OK] WebView2 桥接服务初始化完成");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[UI-ERR] ❌ WebView2 桥接服务初始化失败");
+                Log.Error(ex, "[UI-ERR] [ERR] WebView2 桥接服务初始化失败");
                 MessageBox.Show($"WebView2 初始化失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
@@ -90,9 +90,9 @@ public partial class MainWindow : Window
             // 原 async void lambda 中这两段缺乏异常保护，未处理异常会在 Dispatcher 上导致进程不稳定
             try
             {
-                Log.Information("[UI-4] 📡 注册桥接 API 处理程序...");
+                Log.Information("[UI-4] [BRDG] 注册桥接 API 处理程序...");
                 RegisterBridgeApis();
-                Log.Information("[UI-5] ✅ 桥接 API 注册完成");
+                Log.Information("[UI-5] [OK] 桥接 API 注册完成");
 
                 // 虚拟主机名必须【短 + 纯 ASCII + 不要带点/不要用.local】！
                 // 之前用 "msmc.local"（带 .local + 点号），WebView2 老版本 Windows 10 (18363) 下
@@ -100,19 +100,19 @@ public partial class MainWindow : Window
                 // 单标签名有时判定为「公网域名」还去查 DNS，增加不确定性。
                 // "msmcapp" 是单标签纯 ASCII，Chromium 立刻当作「内部虚拟主机名」处理，最快。
                 const string virtualHost = "msmcapp";
-                Log.Information("[UI-6] 🔍 开始加载前端，目标主机: {Host}", virtualHost);
+                Log.Information("[UI-6] [FIND] 开始加载前端，目标主机: {Host}", virtualHost);
                 var loaded = await TryLoadFrontendWithFallbackAsync(virtualHost);
                 if (!loaded)
                 {
-                    Log.Warning("[UI-7] ⚠️ 所有前端加载方式都失败，加载内置测试页面");
+                    Log.Warning("[UI-7] [WARN] 所有前端加载方式都失败，加载内置测试页面");
                     LoadTestPage();
                 }
 
-                Log.Information("[UI-8] ✅ WebView2 初始化全部完成");
+                Log.Information("[UI-8] [OK] WebView2 初始化全部完成");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[UI-ERR] ❌ 前端加载或 API 注册失败");
+                Log.Error(ex, "[UI-ERR] [ERR] 前端加载或 API 注册失败");
             }
 
             // WebView2 就绪后，延迟启动后台服务（避免与前端加载竞争 CPU）
@@ -124,7 +124,7 @@ public partial class MainWindow : Window
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "[UI-ERR] ❌ 延迟启动后台服务失败");
+                    Log.Error(ex, "[UI-ERR] [ERR] 延迟启动后台服务失败");
                 }
             }, DispatcherPriority.ApplicationIdle);
         }, DispatcherPriority.ApplicationIdle);
@@ -135,24 +135,24 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task<bool> TryLoadFrontendWithFallbackAsync(string virtualHost)
     {
-        Log.Information("[UI-LOAD-1] 🏭 创建前端资源提供器工厂...");
+        Log.Information("[UI-LOAD-1] [FACTORY] 创建前端资源提供器工厂...");
 
         // 1. 先尝试用工厂选择最优模式（B模式优先）
         var provider = FrontendResourceProviderFactory.Create();
-        Log.Information("[UI-LOAD-2] 📋 工厂选择模式: {Mode}, 是否可用: {Available}", provider.ModeName, provider.IsAvailable);
+        Log.Information("[UI-LOAD-2] [LOG] 工厂选择模式: {Mode}, 是否可用: {Available}", provider.ModeName, provider.IsAvailable);
 
         if (provider.IsAvailable)
         {
-            Log.Information("[UI-LOAD-3] 🚀 尝试用模式 {Mode} 加载前端...", provider.ModeName);
+            Log.Information("[UI-LOAD-3] [BOOT] 尝试用模式 {Mode} 加载前端...", provider.ModeName);
             var loaded = await _bridgeService.LoadFrontendAsync(provider, virtualHost);
-            Log.Information("[UI-LOAD-4] 📊 模式 {Mode} 加载结果: {Result}", provider.ModeName, loaded ? "成功" : "失败");
+            Log.Information("[UI-LOAD-4] [METRIC] 模式 {Mode} 加载结果: {Result}", provider.ModeName, loaded ? "成功" : "失败");
 
             if (loaded)
             {
-                Log.Information("[UI-LOAD-5] ✅ 前端加载成功 (模式: {Mode})", provider.ModeName);
+                Log.Information("[UI-LOAD-5] [OK] 前端加载成功 (模式: {Mode})", provider.ModeName);
                 return true;
             }
-            Log.Warning("[UI-LOAD-6] ⚠️ 模式 {Mode} 加载失败，尝试降级...", provider.ModeName);
+            Log.Warning("[UI-LOAD-6] [WARN] 模式 {Mode} 加载失败，尝试降级...", provider.ModeName);
         }
 
         // 2. 如果 B 模式失败，显式尝试 C 模式（Zip 解压）
@@ -160,35 +160,35 @@ public partial class MainWindow : Window
         {
             try
             {
-                Log.Information("[UI-LOAD-7] 🔄 创建 ZipExtract 提供器（C模式兜底）...");
+                Log.Information("[UI-LOAD-7] [REFRESH] 创建 ZipExtract 提供器（C模式兜底）...");
                 var zipProvider = new ZipExtractResourceProvider();
-                Log.Information("[UI-LOAD-8] 📋 ZipExtract 模式是否可用: {Available}", zipProvider.IsAvailable);
+                Log.Information("[UI-LOAD-8] [LOG] ZipExtract 模式是否可用: {Available}", zipProvider.IsAvailable);
 
                 if (zipProvider.IsAvailable)
                 {
-                    Log.Information("[UI-LOAD-9] 🚀 尝试用 C 模式 (Zip 解压) 加载前端...");
+                    Log.Information("[UI-LOAD-9] [BOOT] 尝试用 C 模式 (Zip 解压) 加载前端...");
                     var loaded = await _bridgeService.LoadFrontendAsync(zipProvider, virtualHost);
-                    Log.Information("[UI-LOAD-10] 📊 C 模式加载结果: {Result}", loaded ? "成功" : "失败");
+                    Log.Information("[UI-LOAD-10] [METRIC] C 模式加载结果: {Result}", loaded ? "成功" : "失败");
 
                     if (loaded)
                     {
-                        Log.Information("[UI-LOAD-11] ✅ 前端加载成功 (模式: {Mode})", zipProvider.ModeName);
+                        Log.Information("[UI-LOAD-11] [OK] 前端加载成功 (模式: {Mode})", zipProvider.ModeName);
                         return true;
                     }
-                    Log.Warning("[UI-LOAD-12] ⚠️ C 模式也加载失败");
+                    Log.Warning("[UI-LOAD-12] [WARN] C 模式也加载失败");
                 }
                 else
                 {
-                    Log.Warning("[UI-LOAD-13] ⚠️ C 模式不可用（zip 资源不存在）");
+                    Log.Warning("[UI-LOAD-13] [WARN] C 模式不可用（zip 资源不存在）");
                 }
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[UI-LOAD-ERR] ❌ C 模式加载异常");
+                Log.Error(ex, "[UI-LOAD-ERR] [ERR] C 模式加载异常");
             }
         }
 
-        Log.Warning("[UI-LOAD-END] ❌ 所有加载方式都失败了");
+        Log.Warning("[UI-LOAD-END] [ERR] 所有加载方式都失败了");
         return false;
     }
 
@@ -203,25 +203,25 @@ public partial class MainWindow : Window
         {
             if (MainWebView == null)
             {
-                Log.Warning("[UI-TestPage] ⚠️ MainWebView 控件已为 null，放弃加载测试页");
+                Log.Warning("[UI-TestPage] [WARN] MainWebView 控件已为 null，放弃加载测试页");
                 return;
             }
 
             // 初始化防御：CoreWebView2 可能因超时回收、初始化链路被中断而未准备好
             if (MainWebView.CoreWebView2 == null)
             {
-                Log.Warning("[UI-TestPage] ⚠️ CoreWebView2 未初始化，启动测试页前再 Ensure 一次");
+                Log.Warning("[UI-TestPage] [WARN] CoreWebView2 未初始化，启动测试页前再 Ensure 一次");
                 try
                 {
                     await MainWebView.EnsureCoreWebView2Async();
                     // 补最小配置
                     MainWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
                     MainWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
-                    Log.Information("[UI-TestPage] ✅ CoreWebView2 延迟初始化完成");
+                    Log.Information("[UI-TestPage] [OK] CoreWebView2 延迟初始化完成");
                 }
                 catch (Exception initEx)
                 {
-                    Log.Error(initEx, "[UI-TestPage] ❌ CoreWebView2 重新初始化失败，放弃加载测试页");
+                    Log.Error(initEx, "[UI-TestPage] [ERR] CoreWebView2 重新初始化失败，放弃加载测试页");
                     return;
                 }
             }
@@ -232,7 +232,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             // 最后保险：绝对不能冒泡到 UI Dispatcher 变成 FTL
-            Log.Error(ex, "[UI-TestPage] ❌ NavigateToString 测试页失败，已吞掉异常");
+            Log.Error(ex, "[UI-TestPage] [ERR] NavigateToString 测试页失败，已吞掉异常");
         }
     }
 
@@ -478,7 +478,7 @@ public partial class MainWindow : Window
         // Ping - 基础连通性测试
         _bridgeService.RegisterRequestHandler("ping", payload =>
         {
-            Log.Debug("🏓 收到 Ping 请求: {Payload}", payload);
+            Log.Debug("[PING] 收到 Ping 请求: {Payload}", payload);
             return Task.FromResult<object?>(new
             {
                 pong = true,
@@ -1084,10 +1084,10 @@ public partial class MainWindow : Window
                 await vm.StartCurrentServerCommand.ExecuteAsync(null);
 
                 // 不依赖 CurrentServerStatus（会被 RefreshCurrentStatus 异步覆盖），
-                // 直接通过 OperationMessage 判断：成功消息以 ✅ 开头
+                // 直接通过 OperationMessage 判断：成功消息以 [OK] 开头
                 var msg = vm.OperationMessage ?? string.Empty;
-                var started = msg.StartsWith("✅");
-                return new { success = started, message = msg, error = started ? null : (msg.StartsWith("❌") ? msg : "启动失败") };
+                var started = msg.StartsWith("[OK]");
+                return new { success = started, message = msg, error = started ? null : (msg.StartsWith("[ERR]") ? msg : "启动失败") };
             }
             catch (Exception ex)
             {
@@ -1112,8 +1112,8 @@ public partial class MainWindow : Window
 
                 // 通过 OperationMessage 判断停止结果
                 var msg = vm.OperationMessage ?? string.Empty;
-                var stopped = msg.StartsWith("✅");
-                return new { success = stopped, message = msg, error = stopped ? null : (msg.StartsWith("❌") || msg.StartsWith("⚠️") ? msg : "停止失败") };
+                var stopped = msg.StartsWith("[OK]");
+                return new { success = stopped, message = msg, error = stopped ? null : (msg.StartsWith("[ERR]") || msg.StartsWith("[WARN]") ? msg : "停止失败") };
             }
             catch (Exception ex)
             {
@@ -1131,7 +1131,7 @@ public partial class MainWindow : Window
                 {
                     _vm.DetectionPage.BrowseAndImportServerCommand.Execute(null);
                     var msg = _vm.DetectionPage.OperationMessage;
-                    var isSuccess = !msg?.StartsWith("❌") ?? true;
+                    var isSuccess = !msg?.StartsWith("[ERR]") ?? true;
                     return Task.FromResult<object?>(new { success = isSuccess, message = msg });
                 }
                 return Task.FromResult<object?>(new { success = false, error = "未选择服务器" });
@@ -1214,8 +1214,8 @@ public partial class MainWindow : Window
 
                 // 通过 OperationMessage 判断启动结果（与 server:start 一致）
                 var msg = vm.OperationMessage ?? string.Empty;
-                var started = msg.StartsWith("✅");
-                return new { success = started, message = msg, error = started ? null : (msg.StartsWith("❌") ? msg : "启动失败") };
+                var started = msg.StartsWith("[OK]");
+                return new { success = started, message = msg, error = started ? null : (msg.StartsWith("[ERR]") ? msg : "启动失败") };
             }
             catch (Exception ex)
             {
@@ -1264,7 +1264,7 @@ public partial class MainWindow : Window
                 {
                     vm.RemoveKnownServerCommand.Execute(known);
                     var msg = vm.OperationMessage;
-                    var isSuccess = !msg?.StartsWith("❌") ?? true;
+                    var isSuccess = !msg?.StartsWith("[ERR]") ?? true;
                     return Task.FromResult<object?>(new { success = isSuccess, message = msg });
                 }
                 return Task.FromResult<object?>(new { success = false, error = "未找到指定的服务器" });
@@ -1285,7 +1285,7 @@ public partial class MainWindow : Window
                 {
                     _vm.DetectionPage.SaveAsKnownServerCommand.Execute(null);
                     var msg = _vm.DetectionPage.OperationMessage;
-                    var isSuccess = !msg?.StartsWith("❌") ?? true;
+                    var isSuccess = !msg?.StartsWith("[ERR]") ?? true;
                     return Task.FromResult<object?>(new { success = isSuccess, message = msg });
                 }
                 return Task.FromResult<object?>(new { success = false, error = "未选择服务器" });
@@ -1539,10 +1539,10 @@ public partial class MainWindow : Window
         // 订阅来自 JS 的事件（调试用）
         _bridgeService.SubscribeToEvents((action, payload) =>
         {
-            Log.Debug("📨 收到 JS 事件: {Action} = {Payload}", action, payload);
+            Log.Debug("[MSG] 收到 JS 事件: {Action} = {Payload}", action, payload);
         });
 
-        Log.Information("✅ 桥接 API 注册完成");
+        Log.Information("[OK] 桥接 API 注册完成");
     }
 
     /// <summary>
@@ -1703,7 +1703,7 @@ public partial class MainWindow : Window
                         (true, false) => "v6tov4",
                         (false, true) => "v4tov6",
                     };
-                    Log.Information("🔗 未指定协议，根据地址自动推断为 {Protocol} (listen={LA}, connect={CA})",
+                    Log.Information("[LINK] 未指定协议，根据地址自动推断为 {Protocol} (listen={LA}, connect={CA})",
                         protocol, listenAddress, connectAddress);
                 }
 
@@ -1869,7 +1869,7 @@ public partial class MainWindow : Window
             });
         });
 
-        Log.Information("✅ 网络监控 API 注册完成");
+        Log.Information("[OK] 网络监控 API 注册完成");
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -2184,7 +2184,7 @@ public partial class MainWindow : Window
                 //    场景：构造函数 fire-and-forget 刷新尚未完成，或列表被清空后尚未重建
                 if (matched == null)
                 {
-                    Log.Information("🔄 config:selectServer 第一次匹配失败，主动刷新后重试: Name={Name}", name);
+                    Log.Information("[REFRESH] config:selectServer 第一次匹配失败，主动刷新后重试: Name={Name}", name);
                     await cfg.RefreshServerListAsync().ConfigureAwait(true);
 
                     matched = cfg.AvailableServers.FirstOrDefault(s => s.DisplayName == name);
@@ -2206,7 +2206,7 @@ public partial class MainWindow : Window
                 }
 
                 // 真匹配不上：返回 success=false，让前端知道失败（不再假装成功）
-                Log.Warning("❌ config:selectServer 匹配失败（刷新重试后仍无结果）: Name={Name}, AvailableCount={Count}",
+                Log.Warning("[ERR] config:selectServer 匹配失败（刷新重试后仍无结果）: Name={Name}, AvailableCount={Count}",
                     name, cfg.AvailableServers.Count);
                 return (object)new { success = false, error = $"未匹配到服务器: {name}" };
             }
@@ -2319,7 +2319,7 @@ public partial class MainWindow : Window
             }
         });
 
-        Log.Information("✅ 配置编辑 API 注册完成");
+        Log.Information("[OK] 配置编辑 API 注册完成");
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -2792,7 +2792,7 @@ public partial class MainWindow : Window
                     {
                         name = "烟蓝湘",
                         role = "情绪支持",
-                        note = "Special Thanks 💖",
+                        note = "Special Thanks [HEART]",
                         avatar = "",
                         hasHeartIcon = true
                     }
@@ -2829,7 +2829,7 @@ public partial class MainWindow : Window
             });
         });
 
-        Log.Information("✅ 设置 API 注册完成");
+        Log.Information("[OK] 设置 API 注册完成");
     }
 
     // DataContext 变更事件处理
@@ -2936,12 +2936,12 @@ public partial class MainWindow : Window
         if (_isClosing)
             return;
 
-        // ⚠️ P0 修复：先检查服务器运行状态再做关闭确认，之后才清理 _vm 引用
+        // [WARN] P0 修复：先检查服务器运行状态再做关闭确认，之后才清理 _vm 引用
         // 原代码先置空 _vm 再访问 _vm?.AnyServerRunning，导致关闭确认永远不触发
         if (_vm?.AnyServerRunning == true)
         {
             var result = MessageBox.Show(
-                "⚠️ 警告：关闭 MSMC 将导致正在运行的 Minecraft 服务器失去管理，可能直接崩溃或导致数据丢失、存档损坏。确定要关闭吗？",
+                "[WARN] 警告：关闭 MSMC 将导致正在运行的 Minecraft 服务器失去管理，可能直接崩溃或导致数据丢失、存档损坏。确定要关闭吗？",
                 "确认关闭",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);

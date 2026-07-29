@@ -221,7 +221,7 @@ public class MetricsPersistenceService : IMetricsPersistenceService
             }
 
             if (deletedCount > 0)
-                Log.Information("🧹 已清理 {Count} 个过期监控数据文件（保留 {Days} 天）", deletedCount, retainDays);
+                Log.Information("[CLEAN] 已清理 {Count} 个过期监控数据文件（保留 {Days} 天）", deletedCount, retainDays);
         }
         catch (Exception ex)
         {
@@ -259,7 +259,7 @@ public class MetricsPersistenceService : IMetricsPersistenceService
         }
 
         _currentDate = date;
-        Log.Debug("📂 打开监控数据文件: {File}，已有 {Count} 条记录", filePath, _currentRecordCount);
+        Log.Debug("[FS] 打开监控数据文件: {File}，已有 {Count} 条记录", filePath, _currentRecordCount);
     }
 
     /// <summary>
@@ -408,6 +408,6 @@ public class MetricsPersistenceService : IMetricsPersistenceService
             CloseCurrentFile();
         }
 
-        Log.Information("🧹 MetricsPersistenceService 资源释放完成");
+        Log.Information("[CLEAN] MetricsPersistenceService 资源释放完成");
     }
 }

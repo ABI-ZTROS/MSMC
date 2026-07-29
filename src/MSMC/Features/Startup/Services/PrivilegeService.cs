@@ -92,7 +92,7 @@ public class PrivilegeService : IPrivilegeService
     public PrivilegeService()
     {
         _isRunningAsAdmin = CheckIsAdmin();
-        Log.Information("🔐 PrivilegeService 初始化，当前权限: {Level}",
+        Log.Information("[SEC] PrivilegeService 初始化，当前权限: {Level}",
             _isRunningAsAdmin ? "管理员" : "普通用户");
     }
 
@@ -118,7 +118,7 @@ public class PrivilegeService : IPrivilegeService
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ 检查管理员权限失败");
+            Log.Warning(ex, "[WARN] 检查管理员权限失败");
             return false;
         }
     }
@@ -185,7 +185,7 @@ public class PrivilegeService : IPrivilegeService
     {
         if (!IsWindows)
         {
-            Log.Warning("⚠️ 非 Windows 平台，无法提权");
+            Log.Warning("[WARN] 非 Windows 平台，无法提权");
             return false;
         }
 
@@ -200,11 +200,11 @@ public class PrivilegeService : IPrivilegeService
             var processName = Process.GetCurrentProcess().MainModule?.FileName;
             if (string.IsNullOrEmpty(processName))
             {
-                Log.Error("❌ 无法获取当前进程路径");
+                Log.Error("[ERR] 无法获取当前进程路径");
                 return false;
             }
 
-            Log.Information("🔐 请求 UAC 提权...");
+            Log.Information("[SEC] 请求 UAC 提权...");
 
             var startInfo = new ProcessStartInfo
             {
@@ -216,7 +216,7 @@ public class PrivilegeService : IPrivilegeService
 
             Process.Start(startInfo);
 
-            Log.Information("✅ 提权请求已发送，当前实例即将退出");
+            Log.Information("[OK] 提权请求已发送，当前实例即将退出");
 
             _ = Task.Run(async () =>
             {
@@ -228,7 +228,7 @@ public class PrivilegeService : IPrivilegeService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 请求提权失败");
+            Log.Error(ex, "[ERR] 请求提权失败");
             return false;
         }
     }
@@ -247,7 +247,7 @@ public class PrivilegeService : IPrivilegeService
             ? "需要管理员权限才能完整使用所有功能"
             : reason;
 
-        Log.Warning("⚠️ 权限不足: {Reason}", reasonText);
+        Log.Warning("[WARN] 权限不足: {Reason}", reasonText);
         return false;
     }
 

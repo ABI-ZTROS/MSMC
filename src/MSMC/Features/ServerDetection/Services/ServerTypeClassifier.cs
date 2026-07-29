@@ -81,7 +81,7 @@ public static partial class ServerTypeClassifier
     /// </remarks>
     public static ServerType ClassifyByJarName(string jarFileName)
     {
-        Log.Debug("🏷️ 分类服务器类型: JAR={Jar}", jarFileName);
+        Log.Debug("[LABEL] 分类服务器类型: JAR={Jar}", jarFileName);
         if (string.IsNullOrWhiteSpace(jarFileName))
             return ServerType.Unknown;
 
@@ -93,13 +93,13 @@ public static partial class ServerTypeClassifier
             {
                 if (MatchesAny(jarFileName, pattern))
                 {
-                    Log.Debug("✅ JAR 名称匹配: {Pattern} → {Type}", pattern, type);
+                    Log.Debug("[OK] JAR 名称匹配: {Pattern} → {Type}", pattern, type);
                     return type;
                 }
             }
         }
 
-        Log.Debug("❓ JAR 名称未匹配，尝试配置文件推断");
+        Log.Debug("[INFO] JAR 名称未匹配，尝试配置文件推断");
         return ServerType.Unknown;
     }
 
@@ -117,14 +117,14 @@ public static partial class ServerTypeClassifier
     /// </remarks>
     public static ServerType ClassifyByJarNameAndConfigFiles(string jarFileName, string workingDirectory)
     {
-        Log.Debug("🏷️ 综合分类: JAR={Jar} Dir={Dir}", jarFileName, workingDirectory);
+        Log.Debug("[LABEL] 综合分类: JAR={Jar} Dir={Dir}", jarFileName, workingDirectory);
 
         // 第一阶段：JAR 名称匹配
         var type = ClassifyByJarName(jarFileName);
 
         if (type != ServerType.Unknown && type != ServerType.Vanilla)
         {
-            Log.Information("✅ 服务器类型确定为: {Type}", type);
+            Log.Information("[OK] 服务器类型确定为: {Type}", type);
             return type;
         }
 
@@ -136,12 +136,12 @@ public static partial class ServerTypeClassifier
             // 配置文件推断结果优先
             if (configInferred != ServerType.Unknown)
             {
-                Log.Information("✅ 服务器类型确定为: {Type}", configInferred);
+                Log.Information("[OK] 服务器类型确定为: {Type}", configInferred);
                 return configInferred;
             }
         }
 
-        Log.Information("✅ 服务器类型确定为: {Type}", type);
+        Log.Information("[OK] 服务器类型确定为: {Type}", type);
         return type;
     }
 

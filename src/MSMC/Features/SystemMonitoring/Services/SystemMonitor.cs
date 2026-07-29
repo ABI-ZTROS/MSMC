@@ -74,8 +74,8 @@ public class SystemMonitor : ISystemMonitor
         ThreadAnalyzer threadAnalyzer,
         TimeService timeService)
     {
-        Log.Information("📊 SystemMonitor 初始化");
-        Log.Information("🪟 系统版本: {Version}", AdminPrivilegeService.GetWindowsVersion());
+        Log.Information("[METRIC] SystemMonitor 初始化");
+        Log.Information("[UI] 系统版本: {Version}", AdminPrivilegeService.GetWindowsVersion());
         _diskMonitor = diskMonitor;
         _memoryMonitor = memoryMonitor;
         _threadAnalyzer = threadAnalyzer;
@@ -133,7 +133,7 @@ public class SystemMonitor : ISystemMonitor
     /// </remarks>
     public SystemMetrics CollectSnapshot()
     {
-        Log.Debug("📸 采集系统快照...");
+        Log.Debug("[SNAP] 采集系统快照...");
         // v2: 壁钟直接用 DateTime.Now（不再叠加 NTP 偏移）
         var timestamp = DateTime.Now;
 
@@ -155,7 +155,7 @@ public class SystemMonitor : ISystemMonitor
 
         var totalThreads = _threadAnalyzer.GetTotalThreadCount();
 
-        Log.Debug("✅ 快照采集完成: CPU={Cpu}% 内存={Mem}% 磁盘={Disk}%",
+        Log.Debug("[OK] 快照采集完成: CPU={Cpu}% 内存={Mem}% 磁盘={Disk}%",
             cpuUsage, memoryUsagePercent, diskInfo.UsagePercent);
 
         return new SystemMetrics
@@ -539,7 +539,7 @@ public class SystemMonitor : ISystemMonitor
             var elapsed = nowTick - _javaProcessCache.Value.TickMs;
             if (elapsed < JavaCacheTtlMs)
             {
-                Log.Debug("☕ 使用 Java 进程统计缓存（剩余 {RemainingMs}ms）", JavaCacheTtlMs - elapsed);
+                Log.Debug("[JAVA] 使用 Java 进程统计缓存（剩余 {RemainingMs}ms）", JavaCacheTtlMs - elapsed);
                 return (_javaProcessCache.Value.ProcessCount,
                         _javaProcessCache.Value.WorkingSetBytes,
                         _javaProcessCache.Value.PrivateBytes,
@@ -601,7 +601,7 @@ public class SystemMonitor : ISystemMonitor
                 }
 
                 validProcessCount++;
-                Log.Debug("☕ Java 进程: PID={Pid} 工作集={Ws}MB 私有内存={Pm}MB 线程数={Threads}",
+                Log.Debug("[JAVA] Java 进程: PID={Pid} 工作集={Ws}MB 私有内存={Pm}MB 线程数={Threads}",
                     proc.Id,
                     proc.WorkingSet64 >> 20,
                     proc.PrivateMemorySize64 >> 20,
@@ -624,7 +624,7 @@ public class SystemMonitor : ISystemMonitor
 
         // v2: 写入缓存（TickMs 用单调时钟做 TTL；Timestamp 仅用于 UI 展示）
         _javaProcessCache = (nowTick, DateTime.Now, validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);
-        Log.Debug("☕ Java 进程统计已缓存: {Count} 个进程", validProcessCount);
+        Log.Debug("[JAVA] Java 进程统计已缓存: {Count} 个进程", validProcessCount);
 
         return (validProcessCount, totalWorkingSet, totalPrivateBytes, totalThreadCount);
     }
@@ -642,7 +642,7 @@ public class SystemMonitor : ISystemMonitor
         if (_disposed)
             return;
 
-        Log.Information("🧹 释放 SystemMonitor 资源");
+        Log.Information("[CLEAN] 释放 SystemMonitor 资源");
         StopMonitoring();
 
         _cpuCounter?.Dispose();

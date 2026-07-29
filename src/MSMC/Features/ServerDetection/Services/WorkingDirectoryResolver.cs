@@ -44,7 +44,7 @@ public class WorkingDirectoryResolver
     /// </remarks>
     public string Resolve(int processId, string commandLine, string jarName)
     {
-        Log.Information("🗺️ WorkingDirectoryResolver: 解析工作目录 PID={Pid}, CmdLine={Cmd}", processId, 
+        Log.Information("[MAP] WorkingDirectoryResolver: 解析工作目录 PID={Pid}, CmdLine={Cmd}", processId, 
             commandLine?.Length > 150 ? commandLine[..150] + "..." : commandLine);
         string? workingDir = null;
 
@@ -58,7 +58,7 @@ public class WorkingDirectoryResolver
             // 验证目录下是否存在server.properties
             if (ValidateServerDirectory(workingDir))
             {
-                Log.Information("✅ 工作目录解析成功: {Dir}", workingDir);
+                Log.Information("[OK] 工作目录解析成功: {Dir}", workingDir);
                 return workingDir;
             }
 
@@ -66,7 +66,7 @@ public class WorkingDirectoryResolver
                 "方法2验证失败: {Dir} 下没有 server.properties，可能是软链接或者非标准目录",
                 workingDir);
             // 即使未通过验证，仍返回该目录（高置信度候选）
-            Log.Information("✅ 工作目录解析成功: {Dir}", workingDir);
+            Log.Information("[OK] 工作目录解析成功: {Dir}", workingDir);
             return workingDir;
         }
 
@@ -77,7 +77,7 @@ public class WorkingDirectoryResolver
         {
             if (ValidateServerDirectory(scriptDir))
             {
-                Log.Information("✅ 工作目录解析成功: {Dir}", scriptDir);
+                Log.Information("[OK] 工作目录解析成功: {Dir}", scriptDir);
                 return scriptDir;
             }
 
@@ -127,7 +127,7 @@ public class WorkingDirectoryResolver
             {
                 if (ValidateServerDirectory(procWorkingDir))
                 {
-                    Log.Information("✅ 工作目录解析成功: {Dir}", procWorkingDir);
+                    Log.Information("[OK] 工作目录解析成功: {Dir}", procWorkingDir);
                     return procWorkingDir;
                 }
 
@@ -145,12 +145,12 @@ public class WorkingDirectoryResolver
         var found = SearchServerDirectories(jarName);
         if (!string.IsNullOrEmpty(found))
         {
-            Log.Information("✅ 工作目录解析成功: {Dir}", found);
+            Log.Information("[OK] 工作目录解析成功: {Dir}", found);
             return found;
         }
 
         // 所有策略均失败，返回占位符
-        Log.Warning("⚠️ 所有策略均失败，无法解析工作目录");
+        Log.Warning("[WARN] 所有策略均失败，无法解析工作目录");
         return "(无法解析工作目录)";
     }
 
@@ -365,7 +365,7 @@ public class WorkingDirectoryResolver
                     {
                         var escaped = cmdLine.Replace("\t", "\\t").Replace("\f", "\\f").Replace("\b", "\\b")
                             .Replace("\r", "\\r").Replace("\n", "\\n").Replace("\0", "\\0");
-                        Log.Debug("🔧 WorkingDirectoryResolver 获取命令行: {Raw} | 转义后: {Escaped}",
+                        Log.Debug("[CFG] WorkingDirectoryResolver 获取命令行: {Raw} | 转义后: {Escaped}",
                             cmdLine.Length > 100 ? cmdLine[..100] : cmdLine,
                             escaped.Length > 100 ? escaped[..100] : escaped);
                         return cmdLine;

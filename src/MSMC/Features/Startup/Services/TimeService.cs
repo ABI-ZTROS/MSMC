@@ -145,14 +145,14 @@ public class TimeService
         if (Math.Abs(medianOffset) > LargeClockOffsetThreshold.TotalMilliseconds)
         {
             Log.Warning(
-                "⚠️ 系统时钟与 NTP 标准时间偏差较大: {Offset}ms（±{Threshold}s）。" +
+                "[WARN] 系统时钟与 NTP 标准时间偏差较大: {Offset}ms（±{Threshold}s）。" +
                 "请检查 Windows 日期/时间设置，或手动执行「立即同步」。" +
                 "MSMC 已使用系统本地时间，不会被此偏差覆盖。",
                 medianOffset, (int)LargeClockOffsetThreshold.TotalSeconds);
         }
         else
         {
-            Log.Information("⏰ NTP 时钟偏差诊断完成，偏差 {Offset}ms（成功 {Count} 个服务器，系统时钟正常）",
+            Log.Information("[TIME] NTP 时钟偏差诊断完成，偏差 {Offset}ms（成功 {Count} 个服务器，系统时钟正常）",
                 medianOffset, offsets.Count);
         }
 

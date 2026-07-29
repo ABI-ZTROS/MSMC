@@ -1,6 +1,6 @@
-<!-- 🎨 AppResources.xaml —— Material Design 深度定制资源字典 -->
+<!-- [THEME] AppResources.xaml —— Material Design 深度定制资源字典 -->
 <!-- 在这里定义所有自定义颜色、笔刷、导航样式和卡片样式 -->
-<!-- 统一管理视觉风格，改一个地方全家桶都变色 🌈 -->
+<!-- 统一管理视觉风格，改一个地方全家桶都变色 [FX] -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:system="clr-namespace:System;assembly=mscorlib"
@@ -9,7 +9,7 @@
                     xmlns:po="http://schemas.microsoft.com/winfx/2006/xaml/presentation/options">
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 🔧 PackIcon 模板 —— 使用 MahApps 默认模板（Grid>Viewbox>Canvas>Path） -->
+    <!-- [CFG] PackIcon 模板 —— 使用 MahApps 默认模板（Grid>Viewbox>Canvas>Path） -->
     <!--                                                                  -->
     <!-- 之前的崩溃根因已确认是 Color="{DynamicResource ...Brush}"        -->
     <!-- 类型不匹配绑定（已在 MainWindow.xaml 和 ColorPickerControl 修复）， -->
@@ -17,14 +17,14 @@
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- ✨ 统一动画资源 —— 全项目共用，改一处全局生效 -->
+    <!-- [FX] 统一动画资源 —— 全项目共用，改一处全局生效 -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
-    <!-- 🎢 标准缓动函数 -->
+    <!--  标准缓动函数 -->
     <CubicEase x:Key="StandardEase" EasingMode="EaseOut" po:Freeze="True" />
     <QuarticEase x:Key="EmphasizedEase" EasingMode="EaseOut" po:Freeze="True" />
 
-    <!-- 📄 页面入场故事板：淡入 + 从右滑入 -->
+    <!-- [LOG] 页面入场故事板：淡入 + 从右滑入 -->
     <Storyboard x:Key="PageEnterStoryboard" po:Freeze="True">
         <DoubleAnimation Storyboard.TargetProperty="Opacity"
                          From="0" To="1"
@@ -36,7 +36,7 @@
                          EasingFunction="{StaticResource EmphasizedEase}" />
     </Storyboard>
 
-    <!-- 🃏 动画卡片样式：悬停上浮 + 边框高亮（无 DropShadowEffect，GPU 友好） -->
+    <!-- [CARD] 动画卡片样式：悬停上浮 + 边框高亮（无 DropShadowEffect，GPU 友好） -->
     <Style x:Key="AnimatedCardStyle" TargetType="materialDesign:Card">
         <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
         <Setter Property="Margin" Value="4" />
@@ -75,7 +75,7 @@
         </Style.Triggers>
     </Style>
 
-    <!-- 🔘 优化按钮基样式：紧凑 Padding + 主题圆角 + 合适字号，解决文字显示不全 -->
+    <!-- [CTRL] 优化按钮基样式：紧凑 Padding + 主题圆角 + 合适字号，解决文字显示不全 -->
     <Style x:Key="OptimizedButtonBase" TargetType="Button"
            BasedOn="{StaticResource MaterialDesignRaisedButton}">
         <Setter Property="Padding" Value="16,6" />
@@ -103,7 +103,7 @@
         <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
     </Style>
 
-    <!-- 🔘 动画按钮样式：点击缩放反馈 -->
+    <!-- [CTRL] 动画按钮样式：点击缩放反馈 -->
     <Style x:Key="AnimatedButtonStyle" TargetType="Button"
            BasedOn="{StaticResource OptimizedButtonBase}">
         <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
@@ -147,10 +147,10 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 🌈 自定义笔刷 —— 苍穹蓝 + 水蓝色，清新科技感 -->
+    <!-- [FX] 自定义笔刷 —— 苍穹蓝 + 水蓝色，清新科技感 -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
-    <!-- 📐 AppCornerRadius: 三级圆角体系（ThemeService 运行时覆盖，这里是默认值） -->
+    <!-- [LAYOUT] AppCornerRadius: 三级圆角体系（ThemeService 运行时覆盖，这里是默认值） -->
     <!-- CornerRadius 类型，用于 Border.CornerRadius / ButtonAssist.CornerRadius 等 -->
     <CornerRadius x:Key="AppCornerRadius">12</CornerRadius>
     <CornerRadius x:Key="AppCornerRadiusSmall">8</CornerRadius>
@@ -160,95 +160,95 @@
     <system:Double x:Key="AppCornerRadiusSmallValue">8</system:Double>
     <system:Double x:Key="AppCornerRadiusLargeValue">16</system:Double>
 
-    <!-- ✏️ AppFontFamily: 全局字体族（嵌入 Space Grotesk + 简体中文回退） -->
+    <!-- [EDIT] AppFontFamily: 全局字体族（嵌入 Space Grotesk + 简体中文回退） -->
     <!-- 使用 baseUri,familyNames 字符串语法，等价于 new FontFamily(BaseUri, FamilyNames)。
          Space Grotesk 是纯英文字体不含中文字形，必须显式指定 Microsoft YaHei UI 作为中文回退，
          否则 WPF 会走系统字体回退可能选到繁体字体（如 MingLiU）。 -->
     <FontFamily x:Key="AppFontFamily">pack://application:,,,/MSMC;component/Resources/Fonts/,./#Space Grotesk Light,Microsoft YaHei UI</FontFamily>
 
-    <!-- ✏️ AppMonospaceFontFamily: 等宽字体族（终端/代码/日志） -->
+    <!-- [EDIT] AppMonospaceFontFamily: 等宽字体族（终端/代码/日志） -->
     <FontFamily x:Key="AppMonospaceFontFamily">Consolas, Courier New</FontFamily>
 
-    <!-- 🟦 AccentGradientBrush: 苍穹蓝 → 水蓝 渐变，用于标题栏、按钮等高亮区域 -->
+    <!-- [THEME] AccentGradientBrush: 苍穹蓝 → 水蓝 渐变，用于标题栏、按钮等高亮区域 -->
     <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,0" po:Freeze="True">
         <GradientStop Color="#60A5FA" Offset="0" />
         <GradientStop Color="#3B82F6" Offset="1" />
     </LinearGradientBrush>
 
-    <!-- 🃏 CardBackgroundBrush: 深邃蓝卡片背景 -->
+    <!-- [CARD] CardBackgroundBrush: 深邃蓝卡片背景 -->
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="#0F172A" po:Freeze="True" />
 
-    <!-- 🃏 CardHoverBrush: 卡片悬停色，比背景亮一丢丢 -->
+    <!-- [CARD] CardHoverBrush: 卡片悬停色，比背景亮一丢丢 -->
     <SolidColorBrush x:Key="CardHoverBrush" Color="#1E293B" po:Freeze="True" />
 
-    <!-- 🧭 NavItemSelectedBrush: 导航项选中背景，苍穹蓝 -->
+    <!-- [NAV] NavItemSelectedBrush: 导航项选中背景，苍穹蓝 -->
     <SolidColorBrush x:Key="NavItemSelectedBrush" Color="#3B82F6" po:Freeze="True" />
 
-    <!-- 🧭 NavItemHoverBrush: 导航项悬停背景，深蓝灰 -->
+    <!-- [NAV] NavItemHoverBrush: 导航项悬停背景，深蓝灰 -->
     <SolidColorBrush x:Key="NavItemHoverBrush" Color="#1E3A5F" po:Freeze="True" />
 
-    <!-- 🟢 GaugeGreenBrush: 仪表盘绿色 —— 一切正常 🟢 -->
+    <!-- [OK] GaugeGreenBrush: 仪表盘绿色 —— 一切正常 [OK] -->
     <SolidColorBrush x:Key="GaugeGreenBrush" Color="#4CAF50" po:Freeze="True" />
 
-    <!-- 🟡 GaugeYellowBrush: 仪表盘黄色 —— 要注意了 🟡 -->
+    <!-- [WARN] GaugeYellowBrush: 仪表盘黄色 —— 要注意了 [WARN] -->
     <SolidColorBrush x:Key="GaugeYellowBrush" Color="#FFC107" po:Freeze="True" />
 
-    <!-- 🔴 GaugeRedBrush: 仪表盘红色 —— 危险危险！🔴 -->
+    <!-- [ERR] GaugeRedBrush: 仪表盘红色 —— 危险危险！[ERR] -->
     <SolidColorBrush x:Key="GaugeRedBrush" Color="#F4364C" po:Freeze="True" />
 
-    <!-- 🧡 AccentTextBrush: 强调文字色，暖珊瑚 -->
+    <!-- [THEME] AccentTextBrush: 强调文字色，暖珊瑚 -->
     <SolidColorBrush x:Key="AccentTextBrush" Color="#FB7185" po:Freeze="True" />
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 🆕 补齐语义颜色资源键 —— 让主题色覆盖到全项目 -->
+    <!-- [NEW] 补齐语义颜色资源键 —— 让主题色覆盖到全项目 -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
-    <!-- 🎯 SubtleBorderBrush: 柔和边框色（ThemeService 运行时覆盖） -->
+    <!-- [DONE] SubtleBorderBrush: 柔和边框色（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="SubtleBorderBrush" Color="#334155" po:Freeze="True" />
 
-    <!-- 🎯 DeepBackgroundBrush: 更深的背景色（ThemeService 运行时覆盖） -->
+    <!-- [DONE] DeepBackgroundBrush: 更深的背景色（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="DeepBackgroundBrush" Color="#020617" po:Freeze="True" />
 
-    <!-- 🎯 CardSubtleBorderBrush: 卡片半透明边框（ThemeService 运行时覆盖） -->
+    <!-- [DONE] CardSubtleBorderBrush: 卡片半透明边框（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="CardSubtleBorderBrush" Color="#331E293B" po:Freeze="True" />
 
-    <!-- 🎯 PrimarySubtleBorderBrush: 主色半透明边框（ThemeService 运行时覆盖） -->
+    <!-- [DONE] PrimarySubtleBorderBrush: 主色半透明边框（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="PrimarySubtleBorderBrush" Color="#333B82F6" po:Freeze="True" />
 
-    <!-- 🎯 AccentSubtleBorderBrush: 强调色半透明边框（ThemeService 运行时覆盖） -->
+    <!-- [DONE] AccentSubtleBorderBrush: 强调色半透明边框（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="AccentSubtleBorderBrush" Color="#33FB7185" po:Freeze="True" />
 
-    <!-- 🎯 LoadingOverlayBrush: 加载遮罩半透明背景（ThemeService 运行时覆盖） -->
+    <!-- [DONE] LoadingOverlayBrush: 加载遮罩半透明背景（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="LoadingOverlayBrush" Color="#CC0F172A" po:Freeze="True" />
 
-    <!-- 🎯 TerminalBackgroundBrush: 终端深色背景（ThemeService 运行时覆盖） -->
+    <!-- [DONE] TerminalBackgroundBrush: 终端深色背景（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="TerminalBackgroundBrush" Color="#0C1222" po:Freeze="True" />
 
-    <!-- 🎯 SuccessInputForegroundBrush: 成功/终端水蓝前景 -->
+    <!-- [DONE] SuccessInputForegroundBrush: 成功/终端水蓝前景 -->
     <SolidColorBrush x:Key="SuccessInputForegroundBrush" Color="#7DD3FC" po:Freeze="True" />
 
-    <!-- 🎯 InfoInputForegroundBrush: 信息/输入淡蓝前景 -->
+    <!-- [DONE] InfoInputForegroundBrush: 信息/输入淡蓝前景 -->
     <SolidColorBrush x:Key="InfoInputForegroundBrush" Color="#94A3B8" po:Freeze="True" />
 
-    <!-- 🎯 ErrorTextBrush: 错误文字珊瑚红 -->
+    <!-- [DONE] ErrorTextBrush: 错误文字珊瑚红 -->
     <SolidColorBrush x:Key="ErrorTextBrush" Color="#FB7185" po:Freeze="True" />
 
-    <!-- 🎯 DangerBrush: 危险/删除按钮红色（ThemeService 运行时覆盖） -->
+    <!-- [DONE] DangerBrush: 危险/删除按钮红色（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="DangerBrush" Color="#E53935" po:Freeze="True" />
 
-    <!-- 🎯 PrimarySubtleBackgroundBrush: 主色半透明背景（ThemeService 运行时覆盖） -->
+    <!-- [DONE] PrimarySubtleBackgroundBrush: 主色半透明背景（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="PrimarySubtleBackgroundBrush" Color="#1A3B82F6" po:Freeze="True" />
 
-    <!-- 🎯 NavItemSelectedIndicatorBrush: 导航选中竖线指示器（ThemeService 运行时覆盖） -->
+    <!-- [DONE] NavItemSelectedIndicatorBrush: 导航选中竖线指示器（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="NavItemSelectedIndicatorBrush" Color="#3B82F6" po:Freeze="True" />
 
-    <!-- 🎯 NavItemSelectedHoverBrush: 导航选中+悬停叠加（ThemeService 运行时覆盖） -->
+    <!-- [DONE] NavItemSelectedHoverBrush: 导航选中+悬停叠加（ThemeService 运行时覆盖） -->
     <SolidColorBrush x:Key="NavItemSelectedHoverBrush" Color="#2563EB" po:Freeze="True" />
 
-    <!-- 🆔 SwatchHoverBorderBrush: 色板悬停白边框（原硬编码 #FFFFFF） -->
+    <!-- [ID] SwatchHoverBorderBrush: 色板悬停白边框（原硬编码 #FFFFFF） -->
     <SolidColorBrush x:Key="SwatchHoverBorderBrush" Color="#FFFFFF" po:Freeze="True" />
 
-    <!-- ⚠️ 警告红色族 —— 用户协议等法律警示页面专用 -->
+    <!-- [WARN] 警告红色族 —— 用户协议等法律警示页面专用 -->
     <SolidColorBrush x:Key="WarningRedBrush" Color="#8B0000" po:Freeze="True" />
     <SolidColorBrush x:Key="WarningRedDarkBrush" Color="#5c0000" po:Freeze="True" />
     <SolidColorBrush x:Key="WarningRedLightBrush" Color="#b22222" po:Freeze="True" />
@@ -270,11 +270,11 @@
     <SolidColorBrush x:Key="WarningRedHoverBrush" Color="#a52a2a" po:Freeze="True" />
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 🧭 ModernNavListBoxStyle: 现代化侧边导航样式 -->
+    <!-- [NAV] ModernNavListBoxStyle: 现代化侧边导航样式 -->
     <!-- 选中状态带左侧发光竖线 + 背景渐变微光，悬停缩放 + 图标颜色过渡 -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
-    <!-- 🎯 现代导航项 ItemContainerStyle：每个 ListBoxItem 的外观 -->
+    <!-- [DONE] 现代导航项 ItemContainerStyle：每个 ListBoxItem 的外观 -->
     <Style x:Key="ModernNavListBoxItemStyle" TargetType="ListBoxItem">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
@@ -401,7 +401,7 @@
         </Setter>
     </Style>
 
-    <!-- 📋 ModernNavListBoxStyle: ListBox 整体样式 -->
+    <!-- [LOG] ModernNavListBoxStyle: ListBox 整体样式 -->
     <Style x:Key="ModernNavListBoxStyle" TargetType="ListBox">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -414,7 +414,7 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 🧭 NavListBoxStyle: 侧边抽屉导航列表样式（兼容旧版） -->
+    <!-- [NAV] NavListBoxStyle: 侧边抽屉导航列表样式（兼容旧版） -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <Style x:Key="NavListBoxItemStyle" TargetType="ListBoxItem"
            BasedOn="{StaticResource ModernNavListBoxItemStyle}" />
@@ -422,13 +422,13 @@
            BasedOn="{StaticResource ModernNavListBoxStyle}" />
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 🃏 EnhancedCardStyle: 增强卡片样式 -->
+    <!-- [CARD] EnhancedCardStyle: 增强卡片样式 -->
     <!-- 圆角 12px，加深阴影，悬停时微微变亮 + 轻微上浮 -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <Style x:Key="EnhancedCardStyle" TargetType="materialDesign:Card">
         <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
         <Setter Property="Margin" Value="4" />
-        <!-- 📐 圆角由主题系统统一控制 -->
+        <!-- [LAYOUT] 圆角由主题系统统一控制 -->
         <Setter Property="UniformCornerRadius" Value="{DynamicResource AppCornerRadiusValue}" />
         <Setter Property="RenderTransform">
             <Setter.Value>
@@ -436,7 +436,7 @@
             </Setter.Value>
         </Setter>
         <Style.Triggers>
-            <!-- 🖱️ 悬停效果 -->
+            <!-- [MOUSE] 悬停效果 -->
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
                 <Trigger.EnterActions>
@@ -470,10 +470,10 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- ⚙️ 设置页面样式 -->
+    <!-- [CFG] 设置页面样式 -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
-    <!-- 🎯 CardBorderStyle: 设置卡片边框样式 -->
+    <!-- [DONE] CardBorderStyle: 设置卡片边框样式 -->
     <Style x:Key="CardBorderStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
         <Setter Property="CornerRadius" Value="{DynamicResource AppCornerRadius}" />
@@ -483,7 +483,7 @@
         <Setter Property="BorderThickness" Value="1" />
     </Style>
 
-    <!-- 🎯 SectionTitleStyle: 设置区域标题 -->
+    <!-- [DONE] SectionTitleStyle: 设置区域标题 -->
     <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="16" />
         <Setter Property="FontWeight" Value="Bold" />
@@ -491,7 +491,7 @@
         <Setter Property="Margin" Value="0,0,0,12" />
     </Style>
 
-    <!-- 🎯 SettingLabelStyle: 设置项标签 -->
+    <!-- [DONE] SettingLabelStyle: 设置项标签 -->
     <Style x:Key="SettingLabelStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="13" />
         <Setter Property="FontWeight" Value="Medium" />
@@ -499,14 +499,14 @@
         <Setter Property="Margin" Value="0,0,0,6" />
     </Style>
 
-    <!-- 🎯 SettingValueStyle: 设置值显示 -->
+    <!-- [DONE] SettingValueStyle: 设置值显示 -->
     <Style x:Key="SettingValueStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
         <Setter Property="Margin" Value="8,0,0,0" />
     </Style>
 
-    <!-- 🎯 ColorSwatchStyle: 颜色预设按钮样式 -->
+    <!-- [DONE] ColorSwatchStyle: 颜色预设按钮样式 -->
     <Style x:Key="ColorSwatchStyle" TargetType="Button">
         <Setter Property="Width" Value="32" />
         <Setter Property="Height" Value="32" />
@@ -616,7 +616,7 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 🪟 窗口控制按钮样式（最小化/最大化/关闭）                     -->
+    <!-- [UI] 窗口控制按钮样式（最小化/最大化/关闭）                     -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <Style x:Key="WindowControlButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
@@ -662,7 +662,7 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 🧭 窄条导航项样式（折叠状态只显示图标）                       -->
+    <!-- [NAV] 窄条导航项样式（折叠状态只显示图标）                       -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <Style x:Key="CollapsedNavListBoxItemStyle" TargetType="ListBoxItem"
            BasedOn="{StaticResource ModernNavListBoxItemStyle}">

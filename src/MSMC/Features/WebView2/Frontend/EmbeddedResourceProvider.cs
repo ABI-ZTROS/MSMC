@@ -190,7 +190,7 @@ internal static class EmbeddedZipResourceNameResolver
             using var s = asm.GetManifestResourceStream(cand);
             if (s != null)
             {
-                Log.Information("📦 嵌入资源精确命中: {Name}", cand);
+                Log.Information("[PKG] 嵌入资源精确命中: {Name}", cand);
                 return cand;
             }
         }
@@ -202,22 +202,22 @@ internal static class EmbeddedZipResourceNameResolver
 
         if (matched != null)
         {
-            Log.Warning("📦 嵌入资源精确名未命中，回退模糊匹配: {Matched}", matched);
-            Log.Warning("📋 程序集 {Asm} 全部嵌入资源清单（排查 LogicalName 用）:", asmName);
+            Log.Warning("[PKG] 嵌入资源精确名未命中，回退模糊匹配: {Matched}", matched);
+            Log.Warning("[LOG] 程序集 {Asm} 全部嵌入资源清单（排查 LogicalName 用）:", asmName);
             foreach (var n in allNames)
                 Log.Warning("  • {Name}", n);
             return matched;
         }
 
         // 3. 实在找不到：列全部资源名到日志，返回最可能的默认名
-        Log.Warning("📦 程序集 {Asm} 中未找到任何 wwwroot.zip 嵌入资源。", asmName);
+        Log.Warning("[PKG] 程序集 {Asm} 中未找到任何 wwwroot.zip 嵌入资源。", asmName);
         if (allNames.Length == 0)
         {
-            Log.Warning("📋 （程序集没有任何嵌入资源，通常意味着 csproj 的 PackFrontendToZip Target 没有执行）");
+            Log.Warning("[LOG] （程序集没有任何嵌入资源，通常意味着 csproj 的 PackFrontendToZip Target 没有执行）");
         }
         else
         {
-            Log.Warning("📋 程序集 {Asm} 当前所有嵌入资源清单（共 {Count} 项）:", asmName, allNames.Length);
+            Log.Warning("[LOG] 程序集 {Asm} 当前所有嵌入资源清单（共 {Count} 项）:", asmName, allNames.Length);
             foreach (var n in allNames)
                 Log.Warning("  - {Name}", n);
         }

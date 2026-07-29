@@ -92,11 +92,11 @@ public class ToastNotificationService : IToastNotificationService
     {
         try
         {
-            Log.Information("🔔 Toast 通知服务已初始化");
+            Log.Information("[TOAST] Toast 通知服务已初始化");
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ Toast 通知初始化失败，可能是 Windows 版本不支持");
+            Log.Warning(ex, "[WARN] Toast 通知初始化失败，可能是 Windows 版本不支持");
         }
     }
 
@@ -160,11 +160,11 @@ public class ToastNotificationService : IToastNotificationService
                     .AddArgument("action", "open"))
                 .Show();
 
-            Log.Information("🔔 Toast 通知已发送: {Title}", title);
+            Log.Information("[TOAST] Toast 通知已发送: {Title}", title);
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ Toast 通知发送失败");
+            Log.Warning(ex, "[WARN] Toast 通知发送失败");
         }
     }
 
@@ -175,11 +175,11 @@ public class ToastNotificationService : IToastNotificationService
     {
         try
         {
-            Log.Information("🔔 所有 Toast 通知已清除");
+            Log.Information("[TOAST] 所有 Toast 通知已清除");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 清除 Toast 通知失败");
+            Log.Error(ex, "[ERR] 清除 Toast 通知失败");
         }
     }
 }

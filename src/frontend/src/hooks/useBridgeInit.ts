@@ -58,23 +58,23 @@ export function useBridgeInit(): void {
         try {
           const settings = await getSettings()
           applySettingsToCss(settings)
-          log('✅ 设置已应用到 CSS')
+          log('[OK] 设置已应用到 CSS')
         } catch (e) {
-          log(`⚠️ 获取设置失败: ${e}`)
+          log(`[WARN] 获取设置失败: ${e}`)
         }
 
-        log('✅ 应用初始化完成，isReady = true')
+        log('[OK] 应用初始化完成，isReady = true')
       } catch (e) {
-        log(`❌ 获取就绪状态失败: ${e}`)
+        log(`[ERR] 获取就绪状态失败: ${e}`)
         // 失败后重试，最多 10 次
         let retries = 0
         const retry = () => {
           retries++
           if (retries > 10 || cancelled) {
-            log(`❌ 重试 ${retries - 1} 次后放弃`)
+            log(`[ERR] 重试 ${retries - 1} 次后放弃`)
             return
           }
-          log(`🔄 第 ${retries} 次重试...`)
+          log(`[RETRY] 第 ${retries} 次重试...`)
           bridge
             .invoke<AppReadyEvent>('app:getReadyState')
             .then(async (data) => {
@@ -92,7 +92,7 @@ export function useBridgeInit(): void {
                 // ignore
               }
 
-              log(`✅ 第 ${retries} 次重试成功`)
+              log(`[OK] 第 ${retries} 次重试成功`)
             })
             .catch(() => {
               retryTimer = window.setTimeout(retry, 500)

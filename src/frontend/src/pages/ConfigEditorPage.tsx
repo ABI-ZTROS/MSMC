@@ -603,7 +603,7 @@ export function ConfigEditorPage(): JSX.Element {
   return (
     <div className="md-page-enter h-full p-3 flex gap-3">
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* 📁 左侧：配置文件卡片（服务器选择 + 文件树 + 统计） */}
+      {/* [FS] 左侧：配置文件卡片（服务器选择 + 文件树 + 统计） */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <Reveal
         direction="left"
@@ -721,7 +721,7 @@ export function ConfigEditorPage(): JSX.Element {
       </Reveal>
 
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* ✏️ 右侧：编辑区（操作栏 + 配置项分组列表） */}
+      {/* [EDIT] 右侧：编辑区（操作栏 + 配置项分组列表） */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col gap-3 min-w-0">
         {/* 顶部操作栏 */}
@@ -966,7 +966,7 @@ export function ConfigEditorPage(): JSX.Element {
                               marginBottom: 4,
                             }}
                           >
-                            {err.displayName || '⚠️ 配置文件解析失败'}
+                            {err.displayName || '[WARN] 配置文件解析失败'}
                           </div>
                           <div
                             style={{

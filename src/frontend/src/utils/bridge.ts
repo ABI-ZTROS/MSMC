@@ -109,7 +109,7 @@ class Bridge implements MsmcBridge {
       }
     }
     if (cleaned > 0) {
-      rawLog(`🧹 清理了 ${cleaned} 个过期 pending 请求`)
+      rawLog(`[CLEAN] 清理了 ${cleaned} 个过期 pending 请求`)
     }
   }
 
@@ -146,17 +146,17 @@ class Bridge implements MsmcBridge {
                 set: () => { throw new Error('tampered') },
                 configurable: false,
               })
-              rawLog('🔒 postMessage 防篡改保护已启用')
+              rawLog('[SEC] postMessage 防篡改保护已启用')
             }
           } catch {
             // 已锁定或环境不支持，忽略
           }
           window.chrome.webview.addEventListener('message', this.handleMessage.bind(this))
           this.initialized = true
-          rawLog('✅ JS 端桥接初始化完成')
+          rawLog('[OK] JS 端桥接初始化完成')
           resolve()
         } else {
-          rawLog('⚠️ 未检测到 chrome.webview')
+          rawLog('[WARN] 未检测到 chrome.webview')
         }
       }
 
@@ -196,14 +196,14 @@ class Bridge implements MsmcBridge {
             clearTimeout(pending.timeout)
             this.pendingRequests.delete(data.id)
             if (data.success) {
-              rawLog(`✅ 请求 ${data.action} 成功`)
+              rawLog(`[OK] 请求 ${data.action} 成功`)
               pending.resolve(data.payload)
             } else {
-              rawLog(`❌ 请求 ${data.action} 失败: ${data.error}`)
+              rawLog(`[ERR] 请求 ${data.action} 失败: ${data.error}`)
               pending.reject(new Error(data.error || 'Unknown error'))
             }
           } else {
-            rawLog(`⚠️ 未找到待处理请求: ${data.id}`)
+            rawLog(`[WARN] 未找到待处理请求: ${data.id}`)
           }
         }
         break
@@ -211,22 +211,22 @@ class Bridge implements MsmcBridge {
       case 'event': {
         const listeners = this.eventListeners.get(data.action)
         if (listeners) {
-          rawLog(`📢 触发事件: ${data.action} (${listeners.length} 个监听器)`)
+          rawLog(`[MSG] 触发事件: ${data.action} (${listeners.length} 个监听器)`)
           listeners.forEach((fn) => {
             try {
               fn(data.payload)
             } catch (e) {
               console.error('Event handler error:', e)
-              rawLog(`❌ 事件处理错误: ${data.action} - ${e}`)
+              rawLog(`[ERR] 事件处理错误: ${data.action} - ${e}`)
             }
           })
         } else {
-          rawLog(`⚠️ 事件 ${data.action} 没有监听器`)
+          rawLog(`[WARN] 事件 ${data.action} 没有监听器`)
         }
         break
       }
       case 'request': {
-        rawLog('⚠️ 收到 C# 发起的请求（暂不支持）')
+        rawLog('[WARN] 收到 C# 发起的请求（暂不支持）')
         break
       }
       case 'log': {
@@ -234,7 +234,7 @@ class Bridge implements MsmcBridge {
         break
       }
       default: {
-        rawLog(`⚠️ 未知消息类型: ${data.type}`)
+        rawLog(`[WARN] 未知消息类型: ${data.type}`)
         break
       }
     }
@@ -242,10 +242,10 @@ class Bridge implements MsmcBridge {
 
   private postMessage(message: BridgeMessage): void {
     if (window.chrome?.webview) {
-      rawLog(`📤 发送消息: type=${message.type}, action=${message.action}`)
+      rawLog(`[MSG] 发送消息: type=${message.type}, action=${message.action}`)
       window.chrome.webview.postMessage(message)
     } else {
-      rawLog('⚠️ chrome.webview 不可用，无法发送消息')
+      rawLog('[WARN] chrome.webview 不可用，无法发送消息')
     }
   }
 
@@ -260,7 +260,7 @@ class Bridge implements MsmcBridge {
 
       const timeout = window.setTimeout(() => {
         this.pendingRequests.delete(id)
-        rawLog(`⏰ 请求超时: ${action}`)
+        rawLog(`[TIME] 请求超时: ${action}`)
         reject(new Error(`Request timeout: ${action}`))
       }, 10000)
 

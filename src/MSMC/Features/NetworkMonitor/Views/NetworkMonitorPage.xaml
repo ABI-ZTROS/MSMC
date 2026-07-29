@@ -1,4 +1,4 @@
-<!-- 🌐 网络监控页面 —— 端口占用 / 流量统计 / 网速仪表盘 / 每日吞吐量 -->
+<!-- [NET] 网络监控页面 —— 端口占用 / 流量统计 / 网速仪表盘 / 每日吞吐量 -->
 <UserControl x:Class="io.NET.ZTR_OS.Features.NetworkMonitor.Views.NetworkMonitorPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -14,7 +14,7 @@
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 📊 顶部仪表盘行：统计卡片 + 网速仪表盘 + 刷新指示器              -->
+        <!-- [METRIC] 顶部仪表盘行：统计卡片 + 网速仪表盘 + 刷新指示器              -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="16" VerticalAlignment="Center">
             <materialDesign:Card Padding="16" Width="160" Margin="0,0,12,0">
@@ -82,7 +82,7 @@
         </StackPanel>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 📑 中间：左 TabControl + 右可视化面板                            -->
+        <!-- [DOC] 中间：左 TabControl + 右可视化面板                            -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <Grid Grid.Row="1" Margin="16">
             <Grid.ColumnDefinitions>
@@ -91,7 +91,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- ═══════════════════════════════════════════════════════ -->
-            <!-- 📋 左侧 TabControl：端口占用 / 常见端口 / 端口桥接      -->
+            <!-- [LOG] 左侧 TabControl：端口占用 / 常见端口 / 端口桥接      -->
             <!-- ═══════════════════════════════════════════════════════ -->
             <TabControl Grid.Column="0" Margin="0,0,16,0">
 
@@ -248,7 +248,7 @@
             </TabControl>
 
             <!-- ═══════════════════════════════════════════════════════ -->
-            <!-- 📊 右侧：端口分布饼图 + 每日吞吐量柱状图                  -->
+            <!-- [METRIC] 右侧：端口分布饼图 + 每日吞吐量柱状图                  -->
             <!-- ═══════════════════════════════════════════════════════ -->
             <Grid Grid.Column="1">
                 <Grid.RowDefinitions>

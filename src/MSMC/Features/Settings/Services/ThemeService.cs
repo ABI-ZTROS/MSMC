@@ -349,14 +349,14 @@ public class ThemeService : IThemeService
 
             UpdateResources();
 
-            Log.Information("🎨 主题已更新: 主色={Primary}, 强调色={Accent}, 圆角={Radius}",
+            Log.Information("[THEME] 主题已更新: 主色={Primary}, 强调色={Accent}, 圆角={Radius}",
                 _primaryColor, _accentColor, _cornerRadius);
 
             ThemeChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 主题应用失败");
+            Log.Error(ex, "[ERR] 主题应用失败");
         }
     }
 
@@ -606,18 +606,18 @@ public class ThemeService : IThemeService
             }
 
             ApplyTheme();
-            Log.Information("📂 主题设置已加载");
+            Log.Information("[FS] 主题设置已加载");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 加载主题设置失败，使用默认值");
+            Log.Error(ex, "[ERR] 加载主题设置失败，使用默认值");
             try
             {
                 if (File.Exists(SettingsFilePath))
                 {
                     var bakPath = SettingsFilePath + ".corrupt.bak";
                     File.Copy(SettingsFilePath, bakPath, true);
-                    Log.Warning("📦 已备份损坏的主题设置到: {BakPath}", bakPath);
+                    Log.Warning("[PKG] 已备份损坏的主题设置到: {BakPath}", bakPath);
                 }
             }
             catch { /* 备份失败就算了 */ }
@@ -658,11 +658,11 @@ public class ThemeService : IThemeService
 
             File.WriteAllText(SettingsFilePath, json);
 
-            Log.Information("💾 主题设置已保存");
+            Log.Information("[SAVE] 主题设置已保存");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ 保存主题设置失败");
+            Log.Error(ex, "[ERR] 保存主题设置失败");
         }
     }
 
@@ -684,6 +684,6 @@ public class ThemeService : IThemeService
 
         ApplyTheme();
         SaveSettings();
-        Log.Information("🔄 主题已重置为默认值");
+        Log.Information("[REFRESH] 主题已重置为默认值");
     }
 }

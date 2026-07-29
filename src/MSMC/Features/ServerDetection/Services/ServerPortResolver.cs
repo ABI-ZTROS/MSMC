@@ -44,7 +44,7 @@ public sealed class ServerPortResolver
     {
         if (string.IsNullOrWhiteSpace(workingDirectory))
         {
-            Log.Debug("📡 ServerPortResolver: 工作目录为空，使用默认端口 {Port}", ServerConstants.DefaultServerPort);
+            Log.Debug("[BRDG] ServerPortResolver: 工作目录为空，使用默认端口 {Port}", ServerConstants.DefaultServerPort);
             return ServerConstants.DefaultServerPort;
         }
 
@@ -52,7 +52,7 @@ public sealed class ServerPortResolver
 
         if (!File.Exists(propertiesPath))
         {
-            Log.Debug("📡 ServerPortResolver: {Path} 不存在，使用默认端口 {Port}",
+            Log.Debug("[BRDG] ServerPortResolver: {Path} 不存在，使用默认端口 {Port}",
                 propertiesPath, ServerConstants.DefaultServerPort);
             return ServerConstants.DefaultServerPort;
         }
@@ -73,23 +73,23 @@ public sealed class ServerPortResolver
                 && int.TryParse(portStr, out var port)
                 && port is > 0 and <= 65535)
             {
-                Log.Debug("📡 ServerPortResolver: 解析到配置端口 {Port}", port);
+                Log.Debug("[BRDG] ServerPortResolver: 解析到配置端口 {Port}", port);
                 return port;
             }
 
-            Log.Debug("📡 ServerPortResolver: server-port 配置无效，使用默认端口 {Port}",
+            Log.Debug("[BRDG] ServerPortResolver: server-port 配置无效，使用默认端口 {Port}",
                 ServerConstants.DefaultServerPort);
             return ServerConstants.DefaultServerPort;
         }
         catch (FormatException ex)
         {
             // PropertiesParser 对格式错误会抛 FormatException
-            Log.Debug(ex, "📡 ServerPortResolver: server.properties 格式错误，使用默认端口");
+            Log.Debug(ex, "[BRDG] ServerPortResolver: server.properties 格式错误，使用默认端口");
             return ServerConstants.DefaultServerPort;
         }
         catch (Exception ex)
         {
-            Log.Debug(ex, "📡 ServerPortResolver: 读取 server.properties 失败，使用默认端口");
+            Log.Debug(ex, "[BRDG] ServerPortResolver: 读取 server.properties 失败，使用默认端口");
             return ServerConstants.DefaultServerPort;
         }
     }

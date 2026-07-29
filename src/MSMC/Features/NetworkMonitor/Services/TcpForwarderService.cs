@@ -42,7 +42,7 @@ public sealed class TcpForwarderService : ITcpForwarder, IDisposable
         if (_sessions.ContainsKey(key))
         {
             LastError = $"转发规则已存在: {rule.ListenAddress}:{rule.ListenPort}";
-            Log.Information("🔁 TcpForwarder 规则已存在，跳过: {Key}", key);
+            Log.Information("[RETRY] TcpForwarder 规则已存在，跳过: {Key}", key);
             return true; // 幂等
         }
 
@@ -81,7 +81,7 @@ public sealed class TcpForwarderService : ITcpForwarder, IDisposable
             // 启动 Accept 循环（后台 Task，不阻塞调用方）
             _ = Task.Run(() => AcceptLoopAsync(session, connectAddr, rule.ConnectPort, cts.Token));
 
-            Log.Information("✅ TcpForwarder 已启动: {Listen}:{LPort} -> {Connect}:{CPort}",
+            Log.Information("[OK] TcpForwarder 已启动: {Listen}:{LPort} -> {Connect}:{CPort}",
                 rule.ListenAddress, rule.ListenPort, rule.ConnectAddress, rule.ConnectPort);
             return true;
         }
@@ -125,7 +125,7 @@ public sealed class TcpForwarderService : ITcpForwarder, IDisposable
             }
 
             session.Cts.Dispose();
-            Log.Information("🛑 TcpForwarder 已停止: {Listen}:{LPort}", listenAddress, listenPort);
+            Log.Information("[STOP] TcpForwarder 已停止: {Listen}:{LPort}", listenAddress, listenPort);
             return true;
         }
         catch (Exception ex)
@@ -182,7 +182,7 @@ public sealed class TcpForwarderService : ITcpForwarder, IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        Log.Information("🧹 TcpForwarderService 释放资源中，共 {Count} 个活动会话", _sessions.Count);
+        Log.Information("[CLEAN] TcpForwarderService 释放资源中，共 {Count} 个活动会话", _sessions.Count);
 
         // 快照会话列表，避免在遍历时修改字典
         var sessions = _sessions.ToArray();
@@ -214,7 +214,7 @@ public sealed class TcpForwarderService : ITcpForwarder, IDisposable
         }
 
         GC.SuppressFinalize(this);
-        Log.Information("✅ TcpForwarderService 资源释放完成");
+        Log.Information("[OK] TcpForwarderService 资源释放完成");
     }
 
     private static async Task AcceptLoopAsync(ForwardSession session, IPAddress connectAddr, int connectPort, CancellationToken ct)

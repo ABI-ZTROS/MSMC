@@ -557,7 +557,7 @@ public static class JvmArgumentConstants
             ValueType = ArgumentValueType.BooleanFlag,
             Category = ArgumentCategory.Performance,
             Recommended = false,
-            Warning = "⚠️ 该参数在 JDK 17+ 中已被废弃并移除，不建议使用"
+            Warning = "[WARN] 该参数在 JDK 17+ 中已被废弃并移除，不建议使用"
         },
         new()
         {
@@ -567,7 +567,7 @@ public static class JvmArgumentConstants
             ValueType = ArgumentValueType.BooleanFlag,
             Category = ArgumentCategory.Performance,
             Recommended = false,
-            Warning = "⚠️ 现代 JDK 默认启用此优化，显式设置已无意义"
+            Warning = "[WARN] 现代 JDK 默认启用此优化，显式设置已无意义"
         },
         new()
         {

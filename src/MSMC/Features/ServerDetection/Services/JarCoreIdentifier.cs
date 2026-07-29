@@ -116,7 +116,7 @@ public sealed class JarCoreIdentifier
             if (_cache.TryGetValue(jarPath, out var cached)
                 && (DateTime.Now - cached.Timestamp) < CacheTtl)
             {
-                Log.Debug("♻️ JAR Manifest 识别命中缓存: {Jar} → {Type}", jarPath, cached.Type);
+                Log.Debug("[CACHE] JAR Manifest 识别命中缓存: {Jar} → {Type}", jarPath, cached.Type);
                 return cached.Type;
             }
         }
@@ -166,7 +166,7 @@ public sealed class JarCoreIdentifier
                 return ServerType.Unknown;
             }
 
-            Log.Debug("🔬 JAR Main-Class: {MainClass} ({Jar})", mainClass, jarPath);
+            Log.Debug("[SCAN] JAR Main-Class: {MainClass} ({Jar})", mainClass, jarPath);
 
             // 查 MainClassMap 获取基础类型
             if (!MainClassMap.TryGetValue(mainClass, out var baseType))

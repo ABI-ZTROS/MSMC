@@ -71,7 +71,7 @@ public class MemoryOptimizerService : IDisposable
     /// </summary>
     public MemoryOptimizerService()
     {
-        Log.Information("🧹 MemoryOptimizerService 初始化");
+        Log.Information("[CLEAN] MemoryOptimizerService 初始化");
 
         // 定时优化（每 5 分钟执行一次轻量回收）
         _optimizeTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -103,7 +103,7 @@ public class MemoryOptimizerService : IDisposable
     {
         _optimizeTimer.Start();
         _memoryMonitorTimer.Start();
-        Log.Information("🧹 内存优化服务已启动");
+        Log.Information("[CLEAN] 内存优化服务已启动");
     }
 
     /// <summary>
@@ -114,7 +114,7 @@ public class MemoryOptimizerService : IDisposable
     {
         _optimizeTimer.Stop();
         _memoryMonitorTimer.Stop();
-        Log.Information("🧹 内存优化服务已停止");
+        Log.Information("[CLEAN] 内存优化服务已停止");
     }
 
     /// <summary>
@@ -138,7 +138,7 @@ public class MemoryOptimizerService : IDisposable
 
                 if (deep)
                 {
-                    Log.Information("🧹 执行深度垃圾回收 (LOH 压缩)...");
+                    Log.Information("[CLEAN] 执行深度垃圾回收 (LOH 压缩)...");
 
                     // 设置 LOH 压缩模式
                     GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
@@ -150,7 +150,7 @@ public class MemoryOptimizerService : IDisposable
                 }
                 else
                 {
-                    Log.Debug("🧹 执行轻量垃圾回收...");
+                    Log.Debug("[CLEAN] 执行轻量垃圾回收...");
                     GC.Collect(2, GCCollectionMode.Optimized, false, false);
                 }
 
@@ -159,7 +159,7 @@ public class MemoryOptimizerService : IDisposable
 
                 if (freed > 0)
                 {
-                    Log.Information("🧹 垃圾回收完成，释放 {FreedMB:F2} MB ({BeforeMB:F2} → {AfterMB:F2} MB)",
+                    Log.Information("[CLEAN] 垃圾回收完成，释放 {FreedMB:F2} MB ({BeforeMB:F2} → {AfterMB:F2} MB)",
                         freed / (1024.0 * 1024.0),
                         before / (1024.0 * 1024.0),
                         after / (1024.0 * 1024.0));
@@ -170,7 +170,7 @@ public class MemoryOptimizerService : IDisposable
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "🧹 垃圾回收执行异常: {Message}", ex.Message);
+                Log.Error(ex, "[CLEAN] 垃圾回收执行异常: {Message}", ex.Message);
             }
             finally
             {
@@ -203,13 +203,13 @@ public class MemoryOptimizerService : IDisposable
             }
 
             var after = process.WorkingSet64;
-            Log.Debug("🧹 工作集整理: {BeforeMB:F2} → {AfterMB:F2} MB",
+            Log.Debug("[CLEAN] 工作集整理: {BeforeMB:F2} → {AfterMB:F2} MB",
                 before / (1024.0 * 1024.0),
                 after / (1024.0 * 1024.0));
         }
         catch (Exception ex)
         {
-            Log.Debug("🧹 工作集整理失败: {Message}", ex.Message);
+            Log.Debug("[CLEAN] 工作集整理失败: {Message}", ex.Message);
         }
     }
 
@@ -251,7 +251,7 @@ public class MemoryOptimizerService : IDisposable
             // 超过阈值时强制深度回收
             if (currentMB > MemoryThresholdMB && !_isOptimizing)
             {
-                Log.Warning("⚠️ 内存占用超过阈值: {CurrentMB:F2} MB > {ThresholdMB:F2} MB，触发深度回收",
+                Log.Warning("[WARN] 内存占用超过阈值: {CurrentMB:F2} MB > {ThresholdMB:F2} MB，触发深度回收",
                     currentMB, MemoryThresholdMB);
                 ForceGC(deep: true);
                 TrimWorkingSet();
@@ -277,7 +277,7 @@ public class MemoryOptimizerService : IDisposable
                 var status = GC.WaitForFullGCApproach(5000);
                 if (status == GCNotificationStatus.Succeeded)
                 {
-                    Log.Debug("🧹 系统即将触发完整 GC，准备提前优化...");
+                    Log.Debug("[CLEAN] 系统即将触发完整 GC，准备提前优化...");
                     _ = Application.Current?.Dispatcher.InvokeAsync(() =>
                     {
                         if (AutoOptimizeEnabled)
@@ -302,7 +302,7 @@ public class MemoryOptimizerService : IDisposable
     /// <param name="e">退出事件参数</param>
     private void OnApplicationExit(object sender, ExitEventArgs e)
     {
-        Log.Information("🧹 应用退出，停止内存优化服务");
+        Log.Information("[CLEAN] 应用退出，停止内存优化服务");
         Stop();
         // 取消 GC 通知注册，使 MonitorFullGCNotification 的 WaitForFullGCApproach 返回 Canceled 从而退出循环
         try { GC.CancelFullGCNotification(); } catch { /* 未注册时忽略 */ }

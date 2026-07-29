@@ -130,7 +130,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     /// <param name="configManager">配置管理服务</param>
     public ConfigEditorViewModel(IConfigManager configManager)
     {
-        Log.Information("⚙️ ConfigEditorViewModel 初始化");
+        Log.Information("[CFG] ConfigEditorViewModel 初始化");
         _configManager = configManager;
 
         _groupUpdateTimer = new System.Timers.Timer(20);
@@ -280,7 +280,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     {
         // ── 代数保护：记录本次刷新的代号，赋值前校验是否仍是最新代
         var generation = System.Threading.Interlocked.Increment(ref _refreshGeneration);
-        Log.Information("🔄 配置编辑器：刷新可用服务器列表（极简版：仅已知服务器，gen={Gen}）", generation);
+        Log.Information("[REFRESH] 配置编辑器：刷新可用服务器列表（极简版：仅已知服务器，gen={Gen}）", generation);
 
         var servers = new List<ServerInstance>();
 
@@ -290,7 +290,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             if (generation == System.Threading.Volatile.Read(ref _refreshGeneration))
             {
                 AvailableServers = servers;
-                Log.Warning("⚠️ AppConfigService 未注入，可用服务器列表为空");
+                Log.Warning("[WARN] AppConfigService 未注入，可用服务器列表为空");
             }
             return;
         }
@@ -309,7 +309,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                         if (!string.IsNullOrWhiteSpace(derived))
                         {
                             workingDir = derived;
-                            Log.Information("📂 WorkingDirectory 为空，从 JarPath 推导: {Jar} → {Dir}",
+                            Log.Information("[FS] WorkingDirectory 为空，从 JarPath 推导: {Jar} → {Dir}",
                                 ks.ServerJarPath, workingDir);
                         }
                     }
@@ -347,7 +347,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         if (generation == System.Threading.Volatile.Read(ref _refreshGeneration))
         {
             AvailableServers = servers;
-            Log.Information("✅ 配置编辑器服务器列表刷新完成：共 {Count} 台（gen={Gen}）", servers.Count, generation);
+            Log.Information("[OK] 配置编辑器服务器列表刷新完成：共 {Count} 台（gen={Gen}）", servers.Count, generation);
         }
         else
         {
@@ -472,13 +472,13 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         if (best == null)
         {
             Log.Warning(
-                "🔧 ConfigEditor 自动选择失败: DisplayName={DisplayName} WorkDir={WorkDir} Jar={Jar} KnownId={KnownId}",
+                "[CFG] ConfigEditor 自动选择失败: DisplayName={DisplayName} WorkDir={WorkDir} Jar={Jar} KnownId={KnownId}",
                 displayName, workingDirectory, serverJarPath, knownServerId);
             return false;
         }
 
         Log.Information(
-            "🔧 ConfigEditor 自动选择服务器: {DisplayName} (Dir={Dir}, Jar={Jar})",
+            "[CFG] ConfigEditor 自动选择服务器: {DisplayName} (Dir={Dir}, Jar={Jar})",
             best.DisplayName, best.WorkingDirectory, best.ServerJarName);
         Server = best;
         return true;
@@ -506,7 +506,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             var dirPath = Path.GetDirectoryName(jarPath);
             if (!string.IsNullOrEmpty(dirPath) && Directory.Exists(dirPath))
             {
-                Log.Information("📂 用户选择服务器目录: {Path}", dirPath);
+                Log.Information("[FS] 用户选择服务器目录: {Path}", dirPath);
                 LoadServerFromDirectory(dirPath);
             }
         }
@@ -578,12 +578,12 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
         if (string.IsNullOrEmpty(dirPath) || !Directory.Exists(dirPath))
         {
-            Log.Warning("⚠️ 手动定位 JAR 失败：推导的目录无效: {Jar}", jarPath);
+            Log.Warning("[WARN] 手动定位 JAR 失败：推导的目录无效: {Jar}", jarPath);
             return null;
         }
 
         var jarName = Path.GetFileName(jarPath);
-        Log.Information("📂 手动定位 JAR: {Jar} → 目录: {Dir}", jarPath, dirPath);
+        Log.Information("[FS] 手动定位 JAR: {Jar} → 目录: {Dir}", jarPath, dirPath);
 
         // 构造 ServerInstance 并赋值 Server（OnServerChanged 会自动扫目录）
         var server = new ServerInstance
@@ -684,7 +684,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             return;
         }
 
-        Log.Information("🔍 极简扫描配置文件: Root={Path}", rootPath);
+        Log.Information("[FIND] 极简扫描配置文件: Root={Path}", rootPath);
 
         try
         {
@@ -698,7 +698,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
 
             ConfigFiles = flat;
             ConfigFileTree = tree;
-            Log.Information("✅ 极简扫描完成：找到 {Count} 个配置文件", flat.Count);
+            Log.Information("[OK] 极简扫描完成：找到 {Count} 个配置文件", flat.Count);
         }
         catch (Exception ex)
         {
@@ -802,7 +802,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     /// </summary>
     partial void OnSelectedConfigFileChanged(string? value)
     {
-        Log.Debug("📄 选中配置文件: {File}", value);
+        Log.Debug("[LOG] 选中配置文件: {File}", value);
         OnPropertyChanged(nameof(SelectedConfigFileName));
 
         foreach (var oldEntry in ConfigEntries)
@@ -841,7 +841,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     /// </summary>
     private async Task LoadConfigAsync(string fullPath, string fileName)
     {
-        Log.Information("📂 极简加载配置文件: Path={Path}", fullPath);
+        Log.Information("[FS] 极简加载配置文件: Path={Path}", fullPath);
 
         IsLoading = true;
         LoadProgress = 0;
@@ -897,7 +897,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             LoadProgress = 100;
             UpdateGroupedEntries();
 
-            Log.Information("✅ 极简加载完成：{Count} 项配置", entries.Count);
+            Log.Information("[OK] 极简加载完成：{Count} 项配置", entries.Count);
         }
         catch (Exception ex)
         {
@@ -926,7 +926,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         {
             Key = "__ERROR__",
             Value = message,
-            DisplayNameOverride = "⚠️ 文件解析失败",
+            DisplayNameOverride = "[WARN] 文件解析失败",
             Category = "__ERROR__",
             Descriptor = null,
             SourceFile = SelectedConfigFile ?? string.Empty,
@@ -950,11 +950,11 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     {
         if (Server is null || string.IsNullOrEmpty(_currentFilePath))
         {
-            Log.Debug("🔄 SaveConfig 跳过: Server 为空或路径为空");
+            Log.Debug("[REFRESH] SaveConfig 跳过: Server 为空或路径为空");
             return;
         }
 
-        Log.Information("💾 开始保存配置到 {Path}", _currentFilePath);
+        Log.Information("[SAVE] 开始保存配置到 {Path}", _currentFilePath);
 
         try
         {
@@ -973,7 +973,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                 "保存失败 - 文件被占用",
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Warning);
-            Log.Warning(ioEx, "⚠️ 配置文件被占用: {Path}", _currentFilePath);
+            Log.Warning(ioEx, "[WARN] 配置文件被占用: {Path}", _currentFilePath);
             return;
         }
         catch (UnauthorizedAccessException authEx)
@@ -986,7 +986,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                 "保存失败 - 权限不足",
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Error);
-            Log.Warning(authEx, "⚠️ 配置文件无写入权限: {Path}", _currentFilePath);
+            Log.Warning(authEx, "[WARN] 配置文件无写入权限: {Path}", _currentFilePath);
             return;
         }
 
@@ -1011,7 +1011,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             IsSaveError = false;
             SaveErrorType = null;
             SaveStatusMessage = $"配置已保存，共 {currentConfig.Count} 项";
-            Log.Information("✅ 配置保存成功，共保存 {Count} 项配置", currentConfig.Count);
+            Log.Information("[OK] 配置保存成功，共保存 {Count} 项配置", currentConfig.Count);
         }
         catch (IOException ex)
         {
@@ -1023,7 +1023,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                 "保存失败",
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Error);
-            Log.Error(ex, "💥 配置保存失败（IO异常）: {Message}", ex.Message);
+            Log.Error(ex, "[FATAL] 配置保存失败（IO异常）: {Message}", ex.Message);
         }
         catch (Exception ex)
         {
@@ -1035,7 +1035,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
                 "保存失败",
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Error);
-            Log.Error(ex, "💥 配置保存失败: {Message}", ex.Message);
+            Log.Error(ex, "[FATAL] 配置保存失败: {Message}", ex.Message);
         }
     }
 
@@ -1050,7 +1050,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanResetChanges))]
     private void ResetChanges()
     {
-        Log.Information("🔄 重置所有配置变更");
+        Log.Information("[REFRESH] 重置所有配置变更");
         foreach (var entry in ConfigEntries)
         {
             if (entry.Key == "__ERROR__") continue;
@@ -1181,7 +1181,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        Log.Information("🧹 ConfigEditorViewModel 释放资源中...");
+        Log.Information("[CLEAN] ConfigEditorViewModel 释放资源中...");
 
         foreach (var entry in ConfigEntries)
         {
@@ -1201,7 +1201,7 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         }
 
         GC.SuppressFinalize(this);
-        Log.Information("✅ ConfigEditorViewModel 资源释放完成");
+        Log.Information("[OK] ConfigEditorViewModel 资源释放完成");
     }
 
     #endregion

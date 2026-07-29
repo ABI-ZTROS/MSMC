@@ -1,4 +1,4 @@
-<!-- 🎮 服务器管理页面 —— 左侧紧凑列表 + 右侧 Tab 切换 + 底部命令预览 -->
+<!-- [CTRL] 服务器管理页面 —— 左侧紧凑列表 + 右侧 Tab 切换 + 底部命令预览 -->
 <!-- 设计理念：突出主要操作、功能锁防冲突、状态色一目了然 -->
 <UserControl x:Class="io.NET.ZTR_OS.Features.ServerDetection.Views.ServerDetectionPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -17,7 +17,7 @@
 
             <CubicEase x:Key="ServerCardEase" EasingMode="EaseOut" />
 
-            <!-- 🎯 紧凑型服务器列表项模板：图标 + 状态点 + 名称 + 操作按钮 -->
+            <!-- [DONE] 紧凑型服务器列表项模板：图标 + 状态点 + 名称 + 操作按钮 -->
             <Style x:Key="CompactServerItemBorderStyle" TargetType="Border">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="CornerRadius" Value="{DynamicResource AppCornerRadiusSmall}" />
@@ -31,7 +31,7 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- 📋 通用 Section 标题 -->
+            <!-- [LOG] 通用 Section 标题 -->
             <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="11" />
                 <Setter Property="FontWeight" Value="SemiBold" />
@@ -47,7 +47,7 @@
                 <Setter Property="FontSize" Value="12" />
             </Style>
 
-            <!-- 🎯 状态点（圆点 + 颜色 + 图标） -->
+            <!-- [DONE] 状态点（圆点 + 颜色 + 图标） -->
             <Style x:Key="StatusDotStyle" TargetType="Ellipse">
                 <Setter Property="Width" Value="8" />
                 <Setter Property="Height" Value="8" />
@@ -59,12 +59,12 @@
 
     <Grid>
         <!-- ═══════════════════════════════════════════════════════════ -->
-        <!-- 📐 整体布局：DockPanel（顶→底→中）                        -->
+        <!-- [LAYOUT] 整体布局：DockPanel（顶→底→中）                        -->
         <!-- ═══════════════════════════════════════════════════════════ -->
         <DockPanel LastChildFill="True">
 
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <!-- 🎛️ 顶部操作条：检测 + 导入 + 状态点 + 忙碌提示          -->
+            <!-- [CTRL] 顶部操作条：检测 + 导入 + 状态点 + 忙碌提示          -->
             <!-- ═══════════════════════════════════════════════════════════ -->
             <Border DockPanel.Dock="Top"
                     Background="{DynamicResource CardBackgroundBrush}"
@@ -78,7 +78,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- 🎮 主要操作按钮 -->
+                    <!-- [CTRL] 主要操作按钮 -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <Button Command="{Binding DetectCommand}"
                                 IsEnabled="{Binding IsIdle}"
@@ -142,7 +142,7 @@
                                    MaxWidth="280" />
                     </StackPanel>
 
-                    <!-- 🔒 忙碌提示 -->
+                    <!-- [SEC] 忙碌提示 -->
                     <Border Grid.Column="2"
                             Background="{DynamicResource MaterialDesignCardBackgroundBrush}"
                             CornerRadius="{DynamicResource AppCornerRadiusSmall}"
@@ -164,7 +164,7 @@
             </Border>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <!-- 📋 底部固定启动命令预览（永远可见）                       -->
+            <!-- [LOG] 底部固定启动命令预览（永远可见）                       -->
             <!-- ═══════════════════════════════════════════════════════════ -->
             <Border DockPanel.Dock="Bottom"
                     Background="{DynamicResource TerminalBackgroundBrush}"
@@ -203,7 +203,7 @@
                                Foreground="{DynamicResource SuccessInputForegroundBrush}"
                                ToolTip="{Binding StartupCommandPreview}" />
 
-                    <!-- 📋 复制按钮 -->
+                    <!-- [LOG] 复制按钮 -->
                     <Button Grid.Column="2"
                             Command="{Binding CopyStartupCommandCommand}"
                             Style="{StaticResource MaterialDesignIconForegroundButton}"
@@ -216,7 +216,7 @@
             </Border>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <!-- 📑 中间：左 280px 列表 + 右 Tab 切换                      -->
+            <!-- [DOC] 中间：左 280px 列表 + 右 Tab 切换                      -->
             <!-- ═══════════════════════════════════════════════════════════ -->
             <Grid Margin="0">
                 <Grid.ColumnDefinitions>
@@ -225,7 +225,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- ═══════════════════════════════════════════════════════ -->
-                <!-- 📋 左侧：紧凑服务器列表 + 搜索                       -->
+                <!-- [LOG] 左侧：紧凑服务器列表 + 搜索                       -->
                 <!-- ═══════════════════════════════════════════════════════ -->
                 <Border Grid.Column="0"
                         Background="{DynamicResource CardBackgroundBrush}"
@@ -233,7 +233,7 @@
                         BorderThickness="0,0,1,0">
                     <DockPanel LastChildFill="True">
 
-                        <!-- 🔍 搜索框（顶部固定） -->
+                        <!-- [FIND] 搜索框（顶部固定） -->
                         <Border DockPanel.Dock="Top" Padding="8,8,8,4">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -266,11 +266,11 @@
                             </Grid>
                         </Border>
 
-                        <!-- 📜 列表区域 -->
+                        <!-- [LOG] 列表区域 -->
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,0,8,8">
                             <StackPanel>
 
-                                <!-- 🟢 运行中分组 -->
+                                <!-- [OK] 运行中分组 -->
                                 <Expander IsExpanded="True" Margin="0,4,0,0">
                                     <Expander.Header>
                                         <Grid>
@@ -370,7 +370,7 @@
                                     </ScrollViewer>
                                 </Expander>
 
-                                <!-- 📚 已知服务器分组 -->
+                                <!-- [DOC] 已知服务器分组 -->
                                 <Expander IsExpanded="True" Margin="0,8,0,0">
                                     <Expander.Header>
                                         <Grid>
@@ -433,7 +433,7 @@
                                                                        FontSize="9" Opacity="0.6" />
                                                         </StackPanel>
 
-                                                        <!-- ▶ 启动 + 🗑 删除 -->
+                                                        <!-- ▶ 启动 + [TRASH] 删除 -->
                                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0">
                                                             <Button Command="{Binding DataContext.StartKnownServerCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                     CommandParameter="{Binding}"
@@ -482,7 +482,7 @@
                 </Border>
 
                 <!-- ═══════════════════════════════════════════════════════ -->
-                <!-- 📑 右侧：Tab 切换（控制台 / JVM 参数 / 命令预览）      -->
+                <!-- [DOC] 右侧：Tab 切换（控制台 / JVM 参数 / 命令预览）      -->
                 <!-- ═══════════════════════════════════════════════════════ -->
                 <Grid Grid.Column="1">
                     <TabControl SelectedIndex="{Binding SelectedTabIndex}"
@@ -490,7 +490,7 @@
                                 Background="Transparent"
                                 BorderThickness="0">
 
-                        <!-- 🎛️ Tab1：控制台（详情 + 总控按钮） -->
+                        <!-- [CTRL] Tab1：控制台（详情 + 总控按钮） -->
                         <TabItem>
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
@@ -500,10 +500,10 @@
                             </TabItem.Header>
                             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                                 <StackPanel>
-                                    <!-- 🚀 总控按钮（启动/停止/保存） -->
+                                    <!-- [BOOT] 总控按钮（启动/停止/保存） -->
                                     <materialDesign:Card Padding="16" Margin="0,0,0,12">
                                         <StackPanel>
-                                            <TextBlock Text="🚀 服务器控制" FontSize="15" FontWeight="Bold" Margin="0,0,0,12" />
+                                            <TextBlock Text="[BOOT] 服务器控制" FontSize="15" FontWeight="Bold" Margin="0,0,0,12" />
                                             <StackPanel Orientation="Horizontal">
                                                 <Button Command="{Binding StartCurrentServerCommand}"
                                                         Style="{StaticResource OptimizedButtonBase}"
@@ -548,10 +548,10 @@
                                         </StackPanel>
                                     </materialDesign:Card>
 
-                                    <!-- 📊 服务器详情 -->
+                                    <!-- [METRIC] 服务器详情 -->
                                     <materialDesign:Card Padding="16" Margin="0,0,0,12">
                                         <StackPanel>
-                                            <TextBlock Text="📊 服务器详情" FontSize="15" FontWeight="Bold" Margin="0,0,0,12" />
+                                            <TextBlock Text="[METRIC] 服务器详情" FontSize="15" FontWeight="Bold" Margin="0,0,0,12" />
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="100" />
@@ -579,10 +579,10 @@
                                         </StackPanel>
                                     </materialDesign:Card>
 
-                                    <!-- 📝 检测日志 -->
+                                    <!-- [LOG] 检测日志 -->
                                     <materialDesign:Card Padding="16">
                                         <StackPanel>
-                                            <TextBlock Text="📝 检测日志" FontSize="15" FontWeight="Bold" Margin="0,0,0,12" />
+                                            <TextBlock Text="[LOG] 检测日志" FontSize="15" FontWeight="Bold" Margin="0,0,0,12" />
                                             <Border Background="{DynamicResource TerminalBackgroundBrush}" CornerRadius="{DynamicResource AppCornerRadiusSmall}" Padding="8">
                                                 <TextBox Text="{Binding DetectionLog, Mode=OneWay}"
                                                          IsReadOnly="True"
@@ -603,7 +603,7 @@
                             </ScrollViewer>
                         </TabItem>
 
-                        <!-- ⚙️ Tab2：JVM 参数 -->
+                        <!-- [CFG] Tab2：JVM 参数 -->
                         <TabItem>
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
@@ -615,9 +615,9 @@
                                 <StackPanel>
                                     <materialDesign:Card Padding="16">
                                         <StackPanel>
-                                            <TextBlock Text="⚙️ JVM 参数设置" FontSize="15" FontWeight="Bold" Margin="0,0,0,12" />
+                                            <TextBlock Text="[CFG] JVM 参数设置" FontSize="15" FontWeight="Bold" Margin="0,0,0,12" />
 
-                                            <!-- 💾 内存设置 -->
+                                            <!-- [SAVE] 内存设置 -->
                                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="内存设置" />
                                             <Grid Margin="0,0,0,12">
                                                 <Grid.ColumnDefinitions>
@@ -639,7 +639,7 @@
                                                 </StackPanel>
                                             </Grid>
 
-                                            <!-- 🎯 预设 -->
+                                            <!-- [DONE] 预设 -->
                                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="快速预设" />
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                                 <Button Command="{Binding ApplyAikarPresetCommand}" Style="{StaticResource PresetButtonStyle}">
@@ -662,7 +662,7 @@
                                                 </Button>
                                             </StackPanel>
 
-                                            <!-- 📂 参数分类 -->
+                                            <!-- [FS] 参数分类 -->
                                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="参数分类" />
                                             <ItemsControl ItemsSource="{Binding AllArgumentCategories}" Margin="0,0,0,8">
                                                 <ItemsControl.ItemsPanel>
@@ -682,7 +682,7 @@
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
 
-                                            <!-- ➕ 可选参数 -->
+                                            <!-- [ADD] 可选参数 -->
                                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="可选参数（点击添加）" />
                                             <ItemsControl ItemsSource="{Binding FilteredArguments}" Margin="0,0,0,12">
                                                 <ItemsControl.ItemsPanel>
@@ -703,7 +703,7 @@
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
 
-                                            <!-- ✏️ 自定义参数 -->
+                                            <!-- [EDIT] 自定义参数 -->
                                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="自定义参数" />
                                             <DockPanel Margin="0,0,0,12">
                                                 <Button DockPanel.Dock="Right"
@@ -717,7 +717,7 @@
                                                          Style="{StaticResource MaterialDesignOutlinedTextBox}" />
                                             </DockPanel>
 
-                                            <!-- 📋 已选参数列表 -->
+                                            <!-- [LOG] 已选参数列表 -->
                                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="已选参数" />
                                             <ItemsControl ItemsSource="{Binding SelectedArguments}">
                                                 <ItemsControl.ItemTemplate>
@@ -756,7 +756,7 @@
                             </ScrollViewer>
                         </TabItem>
 
-                        <!-- 📋 Tab3：命令预览 -->
+                        <!-- [LOG] Tab3：命令预览 -->
                         <TabItem>
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
@@ -801,7 +801,7 @@
             </Grid>
         </DockPanel>
 
-        <!-- 🔄 检测中遮罩 -->
+        <!-- [REFRESH] 检测中遮罩 -->
         <Border Background="{DynamicResource LoadingOverlayBrush}"
                 CornerRadius="{DynamicResource AppCornerRadius}"
                 Visibility="{Binding CanShowOperation, Converter={StaticResource BoolToVisibilityConverter}}">

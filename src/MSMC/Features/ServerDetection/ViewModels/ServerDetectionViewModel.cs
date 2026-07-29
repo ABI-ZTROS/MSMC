@@ -46,7 +46,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     private bool _disposed;
 
     // ╔══════════════════════════════════════════════════════════════════╗
-    // ║  集合使用策略（🚫 全面放弃 ObservableCollection + ListCollectionView）
+    // ║  集合使用策略（[ERR] 全面放弃 ObservableCollection + ListCollectionView）
     // ╠══════════════════════════════════════════════════════════════════╣
     // ║  从代码中彻底移除 ObservableCollection / CollectionViewSource /
     // ║  ICollectionView / ListCollectionView.Refresh 等所有会触发
@@ -100,7 +100,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// HasKnownServers 基于原始快照 Count。
     /// </summary>
     /// <remarks>
-    /// ⚠️ 重命名：原名 KnownServers。
+    /// [WARN] 重命名：原名 KnownServers。
     /// 社区版 CommunityToolkit.Mvvm 8.x 的 [ObservableProperty] 源生成器若在同一部分类中
     /// 与手动定义的 public 属性同名，会报 CS0229「成员二义性」；且原 MainWindow.xaml.cs
     /// 访问 DetectionPage.KnownServers 时与 Bridge 层某些内部生成器产生的 KnownServers
@@ -117,7 +117,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         IServerManagerService serverManager,
         IServerImporterService serverImporter)
     {
-        Log.Information("📡 ServerDetectionViewModel 初始化");
+        Log.Information("[BRDG] ServerDetectionViewModel 初始化");
         _serverDetector = serverDetector;
         _appConfigService = appConfigService;
         _serverManager = serverManager;
@@ -142,7 +142,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// </summary>
     public void DeferStart()
     {
-        Log.Information("📡 ServerDetectionViewModel 延迟启动自动检测");
+        Log.Information("[BRDG] ServerDetectionViewModel 延迟启动自动检测");
         StartAutoDetect();
     }
 
@@ -309,7 +309,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
 
         _serverDetector.StartAutoDetect();
         IsAutoDetectEnabled = true;
-        Log.Information("⏱️ 自动检测已启动");
+        Log.Information("[TIME] 自动检测已启动");
     }
 
     /// <summary>停止自动检测循环</summary>
@@ -343,12 +343,12 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// <summary>忙碌状态描述文本</summary>
     public string BusyReasonText => ActiveOperation switch
     {
-        ServerOperation.Detecting => "🔍 正在扫描服务器进程...",
-        ServerOperation.Importing => "📦 正在导入服务器...",
-        ServerOperation.Starting => "🚀 正在启动服务器...",
-        ServerOperation.Stopping => "🛑 正在停止服务器...",
-        ServerOperation.SavingConfig => "💾 正在保存配置...",
-        ServerOperation.Deleting => "🗑️ 正在删除...",
+        ServerOperation.Detecting => "[FIND] 正在扫描服务器进程...",
+        ServerOperation.Importing => "[PKG] 正在导入服务器...",
+        ServerOperation.Starting => "[BOOT] 正在启动服务器...",
+        ServerOperation.Stopping => "[STOP] 正在停止服务器...",
+        ServerOperation.SavingConfig => "[SAVE] 正在保存配置...",
+        ServerOperation.Deleting => "[TRASH]️ 正在删除...",
         _ => string.Empty
     };
 
@@ -459,12 +459,12 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// <summary>当前服务器状态描述文本</summary>
     public string CurrentServerStatusText => CurrentServerStatus switch
     {
-        ServerStatus.Running => $"🟢 运行中{(GetActiveServer() is { } s && s.ProcessId > 0 ? $" (PID: {s.ProcessId})" : string.Empty)}",
-        ServerStatus.Starting => "🟡 启动中...",
-        ServerStatus.Stopping => "🟠 停止中...",
-        ServerStatus.Stopped => "⚫ 已停止",
-        ServerStatus.Error => "🔴 异常",
-        _ => "❓ 未知"
+        ServerStatus.Running => $"[OK] 运行中{(GetActiveServer() is { } s && s.ProcessId > 0 ? $" (PID: {s.ProcessId})" : string.Empty)}",
+        ServerStatus.Starting => "[WARN] 启动中...",
+        ServerStatus.Stopping => "[WARN] 停止中...",
+        ServerStatus.Stopped => "[STOP] 已停止",
+        ServerStatus.Error => "[ERR] 异常",
+        _ => "[INFO] 未知"
     };
 
     /// <summary>当前服务器状态对应的画刷颜色</summary>
@@ -721,7 +721,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         if (!SelectedArguments.Contains(fullArg))
         {
             SelectedArguments.Add(fullArg);
-            Log.Debug("➕ 添加参数: {Arg}", fullArg);
+            Log.Debug("[ADD] 添加参数: {Arg}", fullArg);
         }
     }
 
@@ -949,7 +949,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     {
         SelectedArguments.Clear();
         foreach (var flag in flags) SelectedArguments.Add(flag);
-        Log.Information("🎯 应用 {Name} 预设参数", name);
+        Log.Information("[DONE] 应用 {Name} 预设参数", name);
     }
 
     /// <summary>当前操作提示消息</summary>
@@ -974,7 +974,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
 
         using var scope = BeginOperation(ServerOperation.Starting);
         CurrentServerStatus = ServerStatus.Starting;
-        OperationMessage = "🚀 正在启动服务器...";
+        OperationMessage = "[BOOT] 正在启动服务器...";
 
         try
         {
@@ -1006,8 +1006,8 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
                     jarPath: server.ServerJarPath,
                     pid: process.Id);
 
-                OperationMessage = $"✅ 服务器启动成功! PID: {process.Id}";
-                Log.Information("🚀 服务器启动成功: PID={Pid}", process.Id);
+                OperationMessage = $"[OK] 服务器启动成功! PID: {process.Id}";
+                Log.Information("[BOOT] 服务器启动成功: PID={Pid}", process.Id);
                 CurrentServerStatus = ServerStatus.Running;
 
                 await Task.Delay(1500);
@@ -1016,15 +1016,15 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             }
             else
             {
-                OperationMessage = "❌ 服务器启动失败";
-                Log.Error("❌ 服务器启动失败");
+                OperationMessage = "[ERR] 服务器启动失败";
+                Log.Error("[ERR] 服务器启动失败");
                 CurrentServerStatus = ServerStatus.Error;
             }
         }
         catch (Exception ex)
         {
-            OperationMessage = $"❌ 启动异常: {ex.Message}";
-            Log.Error(ex, "💥 启动服务器异常");
+            OperationMessage = $"[ERR] 启动异常: {ex.Message}";
+            Log.Error(ex, "[FATAL] 启动服务器异常");
             CurrentServerStatus = ServerStatus.Error;
         }
         finally
@@ -1071,12 +1071,12 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
 
         using var scope = BeginOperation(ServerOperation.Stopping);
         CurrentServerStatus = ServerStatus.Stopping;
-        OperationMessage = "🛑 正在停止服务器...";
+        OperationMessage = "[STOP] 正在停止服务器...";
 
         try
         {
             var success = await Task.Run(() => _serverManager.StopServer(server));
-            OperationMessage = success ? "✅ 服务器已停止" : "⚠️ 停止失败，进程可能仍在运行，请检查任务管理器";
+            OperationMessage = success ? "[OK] 服务器已停止" : "[WARN] 停止失败，进程可能仍在运行，请检查任务管理器";
 
             if (success)
             {
@@ -1087,8 +1087,8 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            OperationMessage = $"❌ 停止异常: {ex.Message}";
-            Log.Error(ex, "💥 停止服务器异常");
+            OperationMessage = $"[ERR] 停止异常: {ex.Message}";
+            Log.Error(ex, "[FATAL] 停止服务器异常");
         }
         finally
         {
@@ -1202,12 +1202,12 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
 
         if (!File.Exists(jarPath))
         {
-            OperationMessage = "❌ 文件不存在";
+            OperationMessage = "[ERR] 文件不存在";
             return;
         }
 
         using var scope = BeginOperation(ServerOperation.Importing);
-        OperationMessage = "📦 正在导入服务器...";
+        OperationMessage = "[PKG] 正在导入服务器...";
 
         try
         {
@@ -1241,7 +1241,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
                     foreach (var arg in existing.JvmArguments)
                         SelectedArguments.Add(arg);
                 }
-                OperationMessage = $"✅ 已加载已知服务器配置: {existing.Name}";
+                OperationMessage = $"[OK] 已加载已知服务器配置: {existing.Name}";
             }
             else
             {
@@ -1261,7 +1261,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
                 _appConfigService.AddKnownServer(known);
                 LoadKnownServers();
                 SelectedKnownServer = known;
-                OperationMessage = $"✅ 服务器已添加到列表: {serverType}（点击启动按钮开始运行）";
+                OperationMessage = $"[OK] 服务器已添加到列表: {serverType}（点击启动按钮开始运行）";
             }
 
             StartCurrentServerCommand.NotifyCanExecuteChanged();
@@ -1269,8 +1269,8 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            OperationMessage = $"❌ 导入失败: {ex.Message}";
-            Log.Error(ex, "💥 导入服务器异常");
+            OperationMessage = $"[ERR] 导入失败: {ex.Message}";
+            Log.Error(ex, "[FATAL] 导入服务器异常");
         }
         finally
         {
@@ -1298,7 +1298,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     private async Task DetectAsync()
     {
         if (IsBusy) return;
-        Log.Information("🔍 开始扫描服务器进程...");
+        Log.Information("[FIND] 开始扫描服务器进程...");
         using var scope = BeginOperation(ServerOperation.Detecting);
 
         try
@@ -1318,7 +1318,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
                 SelectedServer = null;
             }
 
-            Log.Information("✅ 扫描完成，发现 {Count} 个服务器", DetectionResult.Servers.Count);
+            Log.Information("[OK] 扫描完成，发现 {Count} 个服务器", DetectionResult.Servers.Count);
         }
         catch (Exception ex)
         {
@@ -1327,7 +1327,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
                 IsDetected = false,
                 ErrorMessage = $"检测过程发生异常：{ex.Message}"
             };
-            Log.Error(ex, "💥 服务器扫描失败: {Message}", ex.Message);
+            Log.Error(ex, "[FATAL] 服务器扫描失败: {Message}", ex.Message);
         }
         finally
         {
@@ -1395,7 +1395,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         if (SelectedServer is null) return;
 
         using var scope = BeginOperation(ServerOperation.SavingConfig);
-        OperationMessage = "💾 正在保存配置...";
+        OperationMessage = "[SAVE] 正在保存配置...";
 
         try
         {
@@ -1468,13 +1468,13 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             SelectedServer.KnownServerId = existing.KnownServerId;
             SelectedKnownServer = existing;
 
-            OperationMessage = $"💾 已保存到已知服务器: {SelectedServer.DisplayName}";
-            Log.Information("💾 服务器已保存为已知服务器: {Name}", SelectedServer.DisplayName);
+            OperationMessage = $"[SAVE] 已保存到已知服务器: {SelectedServer.DisplayName}";
+            Log.Information("[SAVE] 服务器已保存为已知服务器: {Name}", SelectedServer.DisplayName);
         }
         catch (Exception ex)
         {
-            OperationMessage = $"❌ 保存失败: {ex.Message}";
-            Log.Error(ex, "💥 保存已知服务器异常");
+            OperationMessage = $"[ERR] 保存失败: {ex.Message}";
+            Log.Error(ex, "[FATAL] 保存已知服务器异常");
         }
         finally
         {
@@ -1512,14 +1512,14 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         {
             if (File.Exists(server.ServerJarPath) && _serverManager.IsServerRunningByJarPath(server.ServerJarPath))
             {
-                OperationMessage = "❌ 服务器正在运行，无法删除";
-                Log.Warning("❌ 拒绝删除正在运行的服务器: {Name}", server.Name);
+                OperationMessage = "[ERR] 服务器正在运行，无法删除";
+                Log.Warning("[ERR] 拒绝删除正在运行的服务器: {Name}", server.Name);
                 return;
             }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ 检查服务器运行状态失败，跳过删除前校验");
+            Log.Warning(ex, "[WARN] 检查服务器运行状态失败，跳过删除前校验");
         }
 
         using var scope = BeginOperation(ServerOperation.Deleting);
@@ -1546,12 +1546,12 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
                 SelectedServer.KnownServerId = null;
             }
 
-            OperationMessage = $"🗑️ 已移除: {server.Name}";
+            OperationMessage = $"[TRASH]️ 已移除: {server.Name}";
         }
         catch (Exception ex)
         {
-            OperationMessage = $"❌ 删除失败: {ex.Message}";
-            Log.Error(ex, "💥 删除已知服务器异常");
+            OperationMessage = $"[ERR] 删除失败: {ex.Message}";
+            Log.Error(ex, "[FATAL] 删除已知服务器异常");
         }
         finally
         {
@@ -1585,20 +1585,20 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
 
         using var scope = BeginOperation(ServerOperation.Starting);
         CurrentServerStatus = ServerStatus.Starting;
-        OperationMessage = "🚀 正在启动服务器...";
+        OperationMessage = "[BOOT] 正在启动服务器...";
 
         try
         {
             if (!File.Exists(server.ServerJarPath))
             {
-                OperationMessage = $"❌ JAR 文件不存在: {server.ServerJarPath}";
+                OperationMessage = $"[ERR] JAR 文件不存在: {server.ServerJarPath}";
                 CurrentServerStatus = ServerStatus.Error;
                 return;
             }
 
             if (!Directory.Exists(server.WorkingDirectory))
             {
-                OperationMessage = $"❌ 工作目录不存在: {server.WorkingDirectory}";
+                OperationMessage = $"[ERR] 工作目录不存在: {server.WorkingDirectory}";
                 CurrentServerStatus = ServerStatus.Error;
                 return;
             }
@@ -1625,8 +1625,8 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
                     jarPath: server.ServerJarPath,
                     pid: process.Id);
 
-                OperationMessage = $"✅ 启动成功！PID: {process.Id}";
-                Log.Information("🚀 已知服务器启动成功: {Name} PID={Pid}", server.Name, process.Id);
+                OperationMessage = $"[OK] 启动成功！PID: {process.Id}";
+                Log.Information("[BOOT] 已知服务器启动成功: {Name} PID={Pid}", server.Name, process.Id);
                 CurrentServerStatus = ServerStatus.Running;
                 server.LastSeenAt = DateTime.Now;
                 _appConfigService.UpdateKnownServer(server);
@@ -1636,16 +1636,16 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             }
             else
             {
-                OperationMessage = "❌ 启动失败";
+                OperationMessage = "[ERR] 启动失败";
                 CurrentServerStatus = ServerStatus.Error;
-                Log.Error("❌ 已知服务器启动失败: {Name}", server.Name);
+                Log.Error("[ERR] 已知服务器启动失败: {Name}", server.Name);
             }
         }
         catch (Exception ex)
         {
-            OperationMessage = $"❌ 启动异常：{ex.Message}";
+            OperationMessage = $"[ERR] 启动异常：{ex.Message}";
             CurrentServerStatus = ServerStatus.Error;
-            Log.Error(ex, "💥 启动已知服务器异常");
+            Log.Error(ex, "[FATAL] 启动已知服务器异常");
         }
         finally
         {
@@ -1728,14 +1728,14 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
             if (!string.IsNullOrEmpty(StartupCommandPreview))
             {
                 Clipboard.SetText(StartupCommandPreview);
-                OperationMessage = "📋 启动命令已复制到剪贴板";
-                Log.Debug("📋 启动命令已复制");
+                OperationMessage = "[LOG] 启动命令已复制到剪贴板";
+                Log.Debug("[LOG] 启动命令已复制");
             }
         }
         catch (Exception ex)
         {
-            OperationMessage = $"❌ 复制失败: {ex.Message}";
-            Log.Error(ex, "💥 复制启动命令异常");
+            OperationMessage = $"[ERR] 复制失败: {ex.Message}";
+            Log.Error(ex, "[FATAL] 复制启动命令异常");
         }
     }
 
@@ -1960,13 +1960,13 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        Log.Information("🧹 ServerDetectionViewModel 释放资源中...");
+        Log.Information("[CLEAN] ServerDetectionViewModel 释放资源中...");
 
         _serverDetector.DetectionCompleted -= OnAutoDetectCompleted;
         StopAutoDetect();
         SelectedArguments.CollectionChanged -= OnSelectedArgumentsChanged;
 
         GC.SuppressFinalize(this);
-        Log.Information("✅ ServerDetectionViewModel 资源释放完成");
+        Log.Information("[OK] ServerDetectionViewModel 资源释放完成");
     }
 }

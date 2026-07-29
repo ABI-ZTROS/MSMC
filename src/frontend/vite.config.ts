@@ -11,7 +11,7 @@ export default defineConfig({
   plugins: [
     react(),
     // ═══════════════════════════════════════════════════════════
-    // 🚨 TROUBLESHOOTING MODE：暂时禁用混淆器验证能否出界面
+    // [WARN] TROUBLESHOOTING MODE：暂时禁用混淆器验证能否出界面
     // 已知：vite-plugin-obfuscator 在某些 WebView2 内核下，
     //       即使关闭 debugProtection/selfDefending，
     //       stringArrayEncoding:rc4 + controlFlowFlattening + deadCodeInjection

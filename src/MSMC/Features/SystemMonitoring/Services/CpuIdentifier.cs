@@ -55,7 +55,7 @@ public class CpuIdentifier
             _cachedInfo = info;
         }
 
-        Log.Information("🖥️ CPU 识别完成: {Model} ({Cores}核{Threads}线程)",
+        Log.Information("[HOST] CPU 识别完成: {Model} ({Cores}核{Threads}线程)",
             info.ModelName, info.PhysicalCores, info.LogicalCores);
 
         return info;
@@ -169,7 +169,7 @@ public class CpuIdentifier
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "💥 WMI CPU 识别失败: {Message}", ex.Message);
+            Log.Error(ex, "[FATAL] WMI CPU 识别失败: {Message}", ex.Message);
         }
 
         return GetFallbackCpuInfo();

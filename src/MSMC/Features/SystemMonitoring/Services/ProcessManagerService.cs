@@ -217,7 +217,7 @@ public class ProcessManagerService : IProcessManagerService
         CleanupStaleCpuSamples(result.Select(p => p.ProcessId).ToHashSet());
 
         _affinityCache = (nowTick, result);
-        Log.Debug("📊 获取到 {Count} 个进程亲和性信息（其中 Java={Java}, Minecraft={Mc}, System={Sys}）",
+        Log.Debug("[METRIC] 获取到 {Count} 个进程亲和性信息（其中 Java={Java}, Minecraft={Mc}, System={Sys}）",
             result.Count,
             result.Count(p => p.IsJavaProcess),
             result.Count(p => p.IsMinecraftServer),

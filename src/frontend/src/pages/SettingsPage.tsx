@@ -429,7 +429,7 @@ export function SettingsPage(): JSX.Element {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* 🎨 外观设置卡片 */}
+      {/* [THEME] 外观设置卡片 */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <div className="md-card md-card-elevated p-5 mb-4 md-stagger-item" style={{ animationDelay: '0ms' }}>
         <h2
@@ -746,7 +746,7 @@ export function SettingsPage(): JSX.Element {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* 🔔 服务器设置卡片 */}
+      {/* [TOAST] 服务器设置卡片 */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <div className="md-card md-card-elevated p-5 mb-4 md-stagger-item" style={{ animationDelay: '80ms' }}>
         <h2
@@ -826,7 +826,7 @@ export function SettingsPage(): JSX.Element {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* ☕ Java 管理卡片 */}
+      {/* [JAVA] Java 管理卡片 */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <div className="md-card md-card-elevated p-5 mb-4 md-stagger-item" style={{ animationDelay: '160ms' }}>
         <h2
@@ -1080,7 +1080,7 @@ export function SettingsPage(): JSX.Element {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* ℹ️ 关于卡片 */}
+      {/* [INFO] 关于卡片 */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <div className="md-card p-5 mb-4">
         <h2
@@ -1742,7 +1742,7 @@ export function SettingsPage(): JSX.Element {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* 📋 底部操作栏 */}
+      {/* [LOG] 底部操作栏 */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <div className="flex" style={{ gap: 8, marginTop: 16 }}>
         <button

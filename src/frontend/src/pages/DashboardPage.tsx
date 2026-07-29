@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { clsx } from 'clsx'
 import { Reveal } from '@/components/ui/Reveal'
+import { IconByName } from '@/utils/icons'
 import {
   getBridge,
   getServerList,
@@ -152,7 +153,7 @@ function RunningServerItem({ server, isSelected, onSelect, onStop }: RunningItem
           className="md-btn md-btn-flat md-btn-icon"
           title="停止"
         >
-          ⏹
+          <IconByName name="stop" size={14} />
         </button>
       </div>
     </div>
@@ -183,7 +184,7 @@ function KnownServerItem({ server, isSelected, onSelect, onStart, onDelete }: Kn
       }}
     >
       <div className="flex items-center" style={{ gap: 6 }}>
-        <span style={{ fontSize: 10, color: 'var(--md-accent-text)' }}>★</span>
+        <IconByName name="star" size={10} style={{ color: 'var(--md-accent-text)' }} />
         <div className="flex-1 min-w-0">
           <div
             style={{
@@ -211,7 +212,7 @@ function KnownServerItem({ server, isSelected, onSelect, onStart, onDelete }: Kn
             title="启动"
             style={{ color: 'var(--md-primary-hue-mid)' }}
           >
-            ▶
+          <IconByName name="play" size={14} />
           </button>
           <button
             onClick={(e) => {
@@ -221,7 +222,7 @@ function KnownServerItem({ server, isSelected, onSelect, onStart, onDelete }: Kn
             className="md-btn md-btn-flat md-btn-icon"
             title="删除"
           >
-            🗑
+            <IconByName name="trash" size={14} />
           </button>
         </div>
       </div>
@@ -244,7 +245,7 @@ function ServerGroup({ title, icon, count, defaultExpanded = true, children }: S
   return (
     <div className="md-expander" style={{ marginTop: 4 }}>
       <div className="md-expander-header" onClick={() => setExpanded(!expanded)}>
-        <span className={clsx('md-expander-icon', expanded && 'md-expander-icon-expanded')}>▶</span>
+        <IconByName name="play" size={10} className={clsx('md-expander-icon', expanded && 'md-expander-icon-expanded')} />
         <span style={{ fontSize: 12 }}>{icon}</span>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--md-body)' }}>{title}</span>
         <span className="md-badge" style={{ marginLeft: 'auto' }}>
@@ -590,7 +591,7 @@ export function DashboardPage(): JSX.Element {
           className="md-btn md-btn-primary"
           title="立即刷新服务器列表"
         >
-          <span className={clsx(isBusy && 'md-spin')}>🔄</span>
+          <span className={clsx(isBusy && 'md-spin')}><IconByName name="refresh" size={14} /></span>
           <span style={{ fontWeight: 600 }}>刷新</span>
         </button>
 
@@ -599,7 +600,7 @@ export function DashboardPage(): JSX.Element {
           className="md-btn md-btn-outlined"
           title={autoDetectEnabled ? '点击停止自动检测' : '点击开始自动检测'}
         >
-          <span>{autoDetectEnabled ? '⏸' : '▶'}</span>
+          <IconByName name={autoDetectEnabled ? 'pause' : 'play'} size={14} />
           <span>{autoDetectEnabled ? '自动检测中' : '开启自动检测'}</span>
         </button>
 
@@ -609,7 +610,7 @@ export function DashboardPage(): JSX.Element {
           className="md-btn md-btn-outlined"
           title="选择 JAR 文件导入到已知服务器列表"
         >
-          <span>➕</span>
+          <IconByName name="add" size={14} />
           <span>导入服务器</span>
         </button>
 
@@ -681,7 +682,7 @@ export function DashboardPage(): JSX.Element {
           {/* 搜索框 */}
           <div style={{ padding: '8px 8px 4px' }}>
             <div className="flex items-center" style={{ gap: 6 }}>
-              <span style={{ fontSize: 12, opacity: 0.6 }}>🔍</span>
+              <IconByName name="search" size={12} style={{ opacity: 0.6 }} />
               <input
                 type="text"
                 value={searchKeyword}
@@ -696,7 +697,7 @@ export function DashboardPage(): JSX.Element {
                   className="md-btn md-btn-flat md-btn-icon"
                   title="清空搜索"
                 >
-                  ✕
+                  <IconByName name="close" size={14} />
                 </button>
               )}
             </div>
@@ -705,7 +706,7 @@ export function DashboardPage(): JSX.Element {
           {/* 列表区 */}
           <div className="flex-1 overflow-y-auto" style={{ padding: '0 8px 8px' }}>
             {/* 运行中分组 */}
-            <ServerGroup title="运行中" icon="🖥" count={runningServers.length}>
+            <ServerGroup title="运行中" icon="" count={runningServers.length}>
               {runningServers.length === 0 ? (
                 <div className="md-empty-state" style={{ padding: '12px 8px' }}>
                   <div className="md-empty-state-text" style={{ fontSize: 11 }}>
@@ -731,11 +732,11 @@ export function DashboardPage(): JSX.Element {
             </ServerGroup>
 
             {/* 已知服务器分组 */}
-            <ServerGroup title="已知服务器" icon="📚" count={knownServers.length}>
+            <ServerGroup title="已知服务器" icon="" count={knownServers.length}>
               {knownServers.length === 0 ? (
                 <div className="md-empty-state" style={{ padding: '20px 8px' }}>
                   <div className="md-empty-state-icon" style={{ fontSize: 32, opacity: 0.3 }}>
-                    📂
+                    <IconByName name="folderOpen" size={32} />
                   </div>
                   <div className="md-empty-state-text" style={{ fontSize: 11 }}>
                     还没有已知服务器
@@ -803,28 +804,28 @@ export function DashboardPage(): JSX.Element {
               className={clsx('md-tab', detailTab === 'console' && 'md-tab-active')}
               onClick={() => setDetailTab('console')}
             >
-              🎛 控制台
+              <IconByName name="sliders" size={12} /> 控制台
             </div>
             <div
               className={clsx('md-tab', detailTab === 'jvm' && 'md-tab-active')}
               onClick={() => setDetailTab('jvm')}
             >
-              ⚙ JVM 参数
+              <IconByName name="gear" size={12} /> JVM 参数
             </div>
             <div
               className={clsx('md-tab', detailTab === 'command' && 'md-tab-active')}
               onClick={() => setDetailTab('command')}
             >
-              📋 命令预览
+              [LOG] 命令预览
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto" style={{ padding: 16 }}>
             {!selectedServer ? (
-              <div className="md-empty-state h-full">
-                <div className="md-empty-state-icon">🎮</div>
-                <div className="md-empty-state-text">选择一个服务器查看详情</div>
-              </div>
+                <div className="md-empty-state h-full">
+                  <div className="md-empty-state-icon"><IconByName name="gamepad" size={64} /></div>
+                  <div className="md-empty-state-text">选择一个服务器查看详情</div>
+                </div>
             ) : (
               <>
                 {/* ─── 控制台 Tab ─── */}
@@ -840,7 +841,7 @@ export function DashboardPage(): JSX.Element {
                           color: 'var(--md-body)',
                         }}
                       >
-                        🚀 服务器控制
+                        [BOOT] 服务器控制
                       </div>
                       <div className="flex items-center" style={{ gap: 8 }}>
                         <button
@@ -849,7 +850,7 @@ export function DashboardPage(): JSX.Element {
                           className="md-btn md-btn-primary"
                           style={{ minHeight: 36, padding: '8px 16px' }}
                         >
-                          <span>▶</span>
+                          <IconByName name="play" size={14} />
                           <span style={{ fontWeight: 600 }}>启动服务器</span>
                         </button>
                         <button
@@ -858,7 +859,7 @@ export function DashboardPage(): JSX.Element {
                           className="md-btn md-btn-danger"
                           style={{ minHeight: 36, padding: '8px 16px' }}
                         >
-                          <span>⏹</span>
+                          <IconByName name="stop" size={14} />
                           <span style={{ fontWeight: 600 }}>停止服务器</span>
                         </button>
                         <button
@@ -880,7 +881,7 @@ export function DashboardPage(): JSX.Element {
                           className="md-btn md-btn-outlined"
                           disabled={isBusy}
                         >
-                          <span>💾</span>
+                          <IconByName name="save" size={12} />
                           <span>保存到已知</span>
                         </button>
                       </div>
@@ -908,7 +909,7 @@ export function DashboardPage(): JSX.Element {
                           color: 'var(--md-body)',
                         }}
                       >
-                        📊 服务器详情
+                        [METRIC] 服务器详情
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', rowGap: 8 }}>
                         <div
@@ -1008,7 +1009,7 @@ export function DashboardPage(): JSX.Element {
                           color: 'var(--md-body)',
                         }}
                       >
-                        📝 检测日志
+                        [LOG] 检测日志
                       </div>
                       <div
                         className="md-terminal"
@@ -1033,7 +1034,7 @@ export function DashboardPage(): JSX.Element {
                           color: 'var(--md-body)',
                         }}
                       >
-                        💾 内存设置
+                        <IconByName name="memory" size={14} /> 内存设置
                       </div>
                       <div className="grid grid-cols-2" style={{ gap: 12 }}>
                         <div>
@@ -1079,7 +1080,7 @@ export function DashboardPage(): JSX.Element {
                       </div>
                       {jvmState?.isRunning && (
                         <div style={{ fontSize: 11, color: 'var(--md-primary-hue-mid)', marginTop: 8 }}>
-                          ⚠️ 服务器运行中无法修改内存设置
+                          [WARN] 服务器运行中无法修改内存设置
                         </div>
                       )}
                     </Reveal>
@@ -1094,7 +1095,7 @@ export function DashboardPage(): JSX.Element {
                           color: 'var(--md-body)',
                         }}
                       >
-                        🚀 快速预设
+                        [BOOT] 快速预设
                       </div>
                       <div className="flex items-center" style={{ gap: 8, flexWrap: 'wrap' }}>
                         <button
@@ -1103,7 +1104,7 @@ export function DashboardPage(): JSX.Element {
                           style={{ fontSize: 'var(--md-font-size-sm)' }}
                           disabled={!jvmState?.hasServer || jvmState.isRunning}
                         >
-                          🌟 Aikar 优化
+                          <IconByName name="star" size={12} /> Aikar 优化
                         </button>
                         <button
                           onClick={() => handleApplyPreset('g1gc')}
@@ -1111,7 +1112,7 @@ export function DashboardPage(): JSX.Element {
                           style={{ fontSize: 'var(--md-font-size-sm)' }}
                           disabled={!jvmState?.hasServer || jvmState.isRunning}
                         >
-                          📊 G1GC 回收器
+                          [METRIC] G1GC 回收器
                         </button>
                         <button
                           onClick={() => handleApplyPreset('zgc')}
@@ -1119,7 +1120,7 @@ export function DashboardPage(): JSX.Element {
                           style={{ fontSize: 'var(--md-font-size-sm)' }}
                           disabled={!jvmState?.hasServer || jvmState.isRunning}
                         >
-                          ⚡ ZGC 回收器
+                          [METRIC] ZGC 回收器
                         </button>
                       </div>
                     </Reveal>
@@ -1134,7 +1135,7 @@ export function DashboardPage(): JSX.Element {
                           color: 'var(--md-body)',
                         }}
                       >
-                        ✅ 已选参数 ({jvmState?.selectedArguments?.length ?? 0})
+                        [OK] 已选参数 ({jvmState?.selectedArguments?.length ?? 0})
                       </div>
                       {!jvmState?.selectedArguments || jvmState.selectedArguments.length === 0 ? (
                         <div className="md-empty-state" style={{ padding: '12px 8px' }}>
@@ -1192,7 +1193,7 @@ export function DashboardPage(): JSX.Element {
                                     style={{ fontSize: 12 }}
                                     disabled={jvmState.isRunning}
                                   >
-                                    ✏️
+                                    <IconByName name="edit" size={12} />
                                   </button>
                                 )}
                                 <button
@@ -1202,7 +1203,7 @@ export function DashboardPage(): JSX.Element {
                                   style={{ fontSize: 12, color: 'var(--md-error)' }}
                                   disabled={jvmState.isRunning}
                                 >
-                                  ✕
+                                  <IconByName name="close" size={12} />
                                 </button>
                               </div>
                             )
@@ -1221,7 +1222,7 @@ export function DashboardPage(): JSX.Element {
                           color: 'var(--md-body)',
                         }}
                       >
-                        ➕ 添加参数
+                        [ADD] 添加参数
                       </div>
 
                       {/* 分类标签 */}
@@ -1374,7 +1375,7 @@ export function DashboardPage(): JSX.Element {
                           color: 'var(--md-body)',
                         }}
                       >
-                        🛠️ 自定义参数
+                        [CFG]️ 自定义参数
                       </div>
                       <div className="flex items-center" style={{ gap: 8 }}>
                         <input
@@ -1471,7 +1472,7 @@ export function DashboardPage(): JSX.Element {
                                 )}
                                 style={{ flex: 1 }}
                               >
-                                ✓ 启用 (+)
+                                <IconByName name="check" size={12} /> 启用 (+)
                               </button>
                               <button
                                 onClick={() =>
@@ -1485,7 +1486,7 @@ export function DashboardPage(): JSX.Element {
                                 )}
                                 style={{ flex: 1 }}
                               >
-                                ✕ 禁用 (-)
+                                <IconByName name="close" size={12} /> 禁用 (-)
                               </button>
                             </div>
                           ) : editingArg.def.valueType === 'Enum' &&
@@ -1575,7 +1576,7 @@ export function DashboardPage(): JSX.Element {
                                 borderRadius: 'var(--md-radius-small)',
                               }}
                             >
-                              ⚠️ {editingArg.def.warning}
+                              [WARN] {editingArg.def.warning}
                             </div>
                           )}
 
@@ -1612,7 +1613,7 @@ export function DashboardPage(): JSX.Element {
                         onClick={handleCopyCommand}
                         className="md-btn md-btn-outlined"
                       >
-                        📋 复制
+                        [LOG] 复制
                       </button>
                     </div>
                     <div
@@ -1655,7 +1656,7 @@ export function DashboardPage(): JSX.Element {
           gap: 6,
         }}
       >
-        <span style={{ color: 'var(--md-success-foreground)', fontSize: 14 }}>▶</span>
+        <IconByName name="terminal" size={14} style={{ color: 'var(--md-success-foreground)' }} />
         <span style={{ color: 'var(--md-success-foreground)', fontSize: 11, fontWeight: 600 }}>
           启动命令
         </span>
@@ -1680,7 +1681,7 @@ export function DashboardPage(): JSX.Element {
           title="复制启动命令到剪贴板"
           disabled={!selectedServer}
         >
-          📋
+          <IconByName name="copy" size={14} />
         </button>
       </div>
 

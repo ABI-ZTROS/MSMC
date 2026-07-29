@@ -91,7 +91,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         IPrivilegeService privilegeService,
         IToastNotificationService toastService)
     {
-        Log.Information("🧠 MainViewModel 初始化，DI 注入 5 个子 VM + 3 个直接服务");
+        Log.Information("[CPU] MainViewModel 初始化，DI 注入 5 个子 VM + 3 个直接服务");
 
         DetectionPage = detectionPage;
         ConfigPage = configPage;
@@ -116,7 +116,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _clockTimer.Tick += OnClockTimerTick;
         _clockTimer.Start();
 
-        // ⚠️ 移除构造函数中的 fire-and-get 首次检测：
+        // [WARN] 移除构造函数中的 fire-and-get 首次检测：
         // 1. ServerDetectionVM 的自动检测循环已覆盖首次检测
         // 2. 两个并行 DetectAllAsync 会双倍消耗 WMI/进程枚举 CPU 资源
         // 3. 自动检测延迟到窗口渲染后启动（DeferStart），避免与 WebView2 竞争
@@ -185,7 +185,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// 状态栏状态文本 —— 反映当前应用级操作状态
     /// </summary>
     [ObservableProperty]
-    private string _statusMessage = "准备就绪，点击「开始检测」寻找 Minecraft 服务器 🎯";
+    private string _statusMessage = "准备就绪，点击「开始检测」寻找 Minecraft 服务器 [DONE]";
 
     /// <summary>
     /// 状态栏实时时钟 —— 每秒刷新一次的时间戳显示
@@ -197,8 +197,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// 当前权限模式描述文本
     /// </summary>
     public string PrivilegeStatusText => _privilegeService.IsRunningAsAdmin
-        ? "🔒 管理员模式"
-        : "⚠️ 受限模式";
+        ? "[SEC] 管理员模式"
+        : "[WARN] 受限模式";
 
     /// <summary>
     /// 获取一个值，指示当前进程是否以管理员权限运行
@@ -213,7 +213,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// 此属性将跳过计数暴露给 UI，帮助用户理解"扫不到"的原因。
     /// </remarks>
     public string ScanSkipWarning => _serverDetector.LastSkippedProcessCount > 0
-        ? $"⚠️ 已跳过 {_serverDetector.LastSkippedProcessCount} 个无法访问的进程（{_serverDetector.LastSkipReason ?? "未知原因"}）"
+        ? $"[WARN] 已跳过 {_serverDetector.LastSkippedProcessCount} 个无法访问的进程（{_serverDetector.LastSkipReason ?? "未知原因"}）"
         : string.Empty;
 
     /// <summary>
@@ -237,7 +237,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void RequestElevation()
     {
-        Log.Information("🔐 用户请求提权...");
+        Log.Information("[SEC] 用户请求提权...");
         _privilegeService.RequestElevation();
     }
 
@@ -269,9 +269,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanDetectServers))]
     private async Task DetectServersAsync()
     {
-        Log.Information("🔍 开始检测服务器...");
+        Log.Information("[FIND] 开始检测服务器...");
         IsDetecting = true;
-        StatusMessage = "正在扫描系统中的 Minecraft 服务器... 🔍";
+        StatusMessage = "正在扫描系统中的 Minecraft 服务器... [FIND]";
 
         try
         {
@@ -280,8 +280,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
             var result = DetectionPage.DetectionResult;
             if (result?.Servers.Count > 0)
             {
-                StatusMessage = $"✅ 检测完成！找到 {result.Servers.Count} 个服务器实例";
-                SnackbarMessages.Enqueue($"🎉 找到 {result.Servers.Count} 个 Minecraft 服务器！");
+                StatusMessage = $"[OK] 检测完成！找到 {result.Servers.Count} 个服务器实例";
+                SnackbarMessages.Enqueue($"[OK] 找到 {result.Servers.Count} 个 Minecraft 服务器！");
 
                 var firstServer = result.Servers[0];
                 ConfigPage.Server = firstServer;
@@ -289,18 +289,18 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
                 DetectionPage.SelectedServer = firstServer;
 
-                Log.Information("✅ 服务器检测完成，发现 {Count} 个服务器", result.Servers.Count);
+                Log.Information("[OK] 服务器检测完成，发现 {Count} 个服务器", result.Servers.Count);
             }
             else
             {
-                StatusMessage = result?.ErrorMessage ?? "未检测到正在运行的 Minecraft 服务器 😢";
-                SnackbarMessages.Enqueue("😔 未检测到正在运行的 Minecraft 服务器");
-                Log.Information("✅ 服务器检测完成，发现 0 个服务器");
+                StatusMessage = result?.ErrorMessage ?? "未检测到正在运行的 Minecraft 服务器 ";
+                SnackbarMessages.Enqueue(" 未检测到正在运行的 Minecraft 服务器");
+                Log.Information("[OK] 服务器检测完成，发现 0 个服务器");
             }
         }
         catch (Exception ex)
         {
-            StatusMessage = $"❌ 检测过程出错：{ex.Message}";
+            StatusMessage = $"[ERR] 检测过程出错：{ex.Message}";
             Log.Error(ex, "服务器检测失败: {Message}", ex.Message);
         }
         finally
@@ -316,7 +316,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// <remarks>用作 <see cref="DetectServersCommand"/> 的 CanExecute 谓词。</remarks>
     private bool CanDetectServers()
     {
-        Log.Debug("🔄 CanDetectServers 检查: IsDetecting={IsDetecting}", IsDetecting);
+        Log.Debug("[REFRESH] CanDetectServers 检查: IsDetecting={IsDetecting}", IsDetecting);
         return !IsDetecting;
     }
 
@@ -330,7 +330,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// </remarks>
     partial void OnSelectedTabIndexChanged(int value)
     {
-        Log.Debug("🔄 SelectedTabIndex 变更为 {TabIndex}", value);
+        Log.Debug("[REFRESH] SelectedTabIndex 变更为 {TabIndex}", value);
 
         // P2 修复：页面切走时停止网络监控（节省 CPU，避免 netsh 每5秒轮询）
         if (SelectedTabIndex == 3)
@@ -348,13 +348,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         StatusMessage = value switch
         {
-            0 => "服务器管理 —— 检测、导入、启动你的 Minecraft 服务器 🎮",
+            0 => "服务器管理 —— 检测、导入、启动你的 Minecraft 服务器 [CTRL]",
             1 => ConfigPage.Server is not null
-                ? $"配置编辑 —— 正在编辑 {ConfigPage.Server.DisplayName} 的配置 ⚙️"
-                : "配置编辑 —— 选择左侧的配置文件即可开始编辑（无需服务器运行）📝",
-            2 => "系统监控 —— 常驻采集 CPU / 内存 / 磁盘 / Java 进程指标 📊",
-            3 => "网络监控 —— 实时监控端口占用、网络桥接和流量统计 🖧",
-            4 => "设置 —— 自定义外观、主题和行为 ⚙️",
+                ? $"配置编辑 —— 正在编辑 {ConfigPage.Server.DisplayName} 的配置 [CFG]"
+                : "配置编辑 —— 选择左侧的配置文件即可开始编辑（无需服务器运行）[LOG]",
+            2 => "系统监控 —— 常驻采集 CPU / 内存 / 磁盘 / Java 进程指标 [METRIC]",
+            3 => "网络监控 —— 实时监控端口占用、网络桥接和流量统计 [NET]",
+            4 => "设置 —— 自定义外观、主题和行为 [CFG]",
             _ => StatusMessage
         };
     }
@@ -407,7 +407,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        Log.Information("🧹 MainViewModel 释放资源中...");
+        Log.Information("[CLEAN] MainViewModel 释放资源中...");
 
         _clockTimer.Stop();
         _clockTimer.Tick -= OnClockTimerTick;
@@ -422,6 +422,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         NetworkPage.Dispose();
 
         GC.SuppressFinalize(this);
-        Log.Information("✅ MainViewModel 资源释放完成");
+        Log.Information("[OK] MainViewModel 资源释放完成");
     }
 }

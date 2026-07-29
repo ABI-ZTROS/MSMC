@@ -55,7 +55,7 @@ if (!rootEl) {
         <App />
       </React.StrictMode>,
     )
-    // ✅ React 挂载成功
+    // [OK] React 挂载成功
     ;(window as any).__msmcReactMounted = true
     // React 挂载成功后，移除启动诊断层（延迟一点让渲染完成，避免闪屏）
     requestAnimationFrame(() => {

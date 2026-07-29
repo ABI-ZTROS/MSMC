@@ -286,7 +286,7 @@ public partial class SettingsViewModel : ObservableObject
         PreferJavaw = _appConfigService.Config.PreferJavaw;
 
         StatusMessage = "设置已加载";
-        Log.Information("⚙️ 设置页面已加载");
+        Log.Information("[CFG] 设置页面已加载");
     }
 
     /// <summary>
@@ -429,12 +429,12 @@ public partial class SettingsViewModel : ObservableObject
             _themeService.EnableAnimations = EnableAnimations;
 
             StatusMessage = "主题已应用";
-            Log.Information("🎨 主题设置已应用");
+            Log.Information("[THEME] 主题设置已应用");
         }
         catch (Exception ex)
         {
             StatusMessage = $"主题应用失败: {ex.Message}";
-            Log.Error(ex, "❌ 主题应用失败");
+            Log.Error(ex, "[ERR] 主题应用失败");
         }
         finally
         {
@@ -461,13 +461,13 @@ public partial class SettingsViewModel : ObservableObject
             _appConfigService.Save();
             StatusMessage = "设置已保存";
             _toastService.ShowSuccess("设置已保存", "所有设置已保存到本地");
-            Log.Information("💾 设置已保存");
+            Log.Information("[SAVE] 设置已保存");
         }
         catch (Exception ex)
         {
             StatusMessage = $"保存失败: {ex.Message}";
             _toastService.ShowError("保存失败", ex.Message);
-            Log.Error(ex, "❌ 设置保存失败");
+            Log.Error(ex, "[ERR] 设置保存失败");
         }
     }
 
@@ -526,7 +526,7 @@ public partial class SettingsViewModel : ObservableObject
                 break;
         }
         StatusMessage = $"已应用预设: {preset}";
-        Log.Information("🎨 已应用预设: {Preset}", preset);
+        Log.Information("[THEME] 已应用预设: {Preset}", preset);
     }
 
     /// <summary>
@@ -562,12 +562,12 @@ public partial class SettingsViewModel : ObservableObject
 
             StatusMessage = "已重置为默认值";
             _toastService.ShowInfo("设置已重置", "所有设置已恢复为默认值");
-            Log.Information("🔄 设置已重置");
+            Log.Information("[REFRESH] 设置已重置");
         }
         catch (Exception ex)
         {
             StatusMessage = $"重置失败: {ex.Message}";
-            Log.Error(ex, "❌ 设置重置失败");
+            Log.Error(ex, "[ERR] 设置重置失败");
         }
     }
 
@@ -583,7 +583,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         _toastService.ShowSuccess("测试通知", "这是一条测试通知，通知功能正常工作！");
         StatusMessage = "测试通知已发送";
-        Log.Information("🔔 测试通知已发送");
+        Log.Information("[TOAST] 测试通知已发送");
     }
 
     /// <summary>
@@ -693,12 +693,12 @@ public partial class SettingsViewModel : ObservableObject
             }
 
             StatusMessage = $"找到 {installations.Count} 个 Java 安装";
-            Log.Information("☕ 找到 {Count} 个 Java 安装", installations.Count);
+            Log.Information("[JAVA] 找到 {Count} 个 Java 安装", installations.Count);
         }
         catch (Exception ex)
         {
             StatusMessage = "Java 扫描失败";
-            Log.Error(ex, "❌ Java 扫描失败");
+            Log.Error(ex, "[ERR] Java 扫描失败");
         }
         finally
         {
@@ -754,7 +754,7 @@ public partial class SettingsViewModel : ObservableObject
         await LoadJavaInstallationsAsync();
         StatusMessage = "已添加 Java 路径";
         _toastService.ShowSuccess("添加成功", $"已添加 {verification.VersionDisplay()}");
-        Log.Information("➕ 已添加自定义 Java 路径: {Path}", path);
+        Log.Information("[ADD] 已添加自定义 Java 路径: {Path}", path);
     }
 
     /// <summary>
@@ -797,7 +797,7 @@ public partial class SettingsViewModel : ObservableObject
 
         StatusMessage = "已设为默认 Java";
         _toastService.ShowSuccess("设置成功", $"{SelectedJava.VersionDisplay} 已设为默认 Java");
-        Log.Information("☕ 默认 Java 已设为: {Version} ({Path})", SelectedJava.VersionDisplay,
+        Log.Information("[JAVA] 默认 Java 已设为: {Version} ({Path})", SelectedJava.VersionDisplay,
             SelectedJava.Installation.JavaPath);
     }
 

@@ -101,7 +101,7 @@
     <Grid Margin="16">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <!-- 🎨 标题 -->
+                <!-- [THEME] 标题 -->
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                     <iconPacks:PackIconFontAwesome6 Kind="GearSolid" Width="32" Height="32" 
                                              Foreground="{DynamicResource AccentTextBrush}" 
@@ -113,7 +113,7 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- 🎨 颜色设置 -->
+                <!-- [THEME] 颜色设置 -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
                         <TextBlock Text="颜色方案" Style="{StaticResource SectionTitleStyle}" />
@@ -321,7 +321,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 🎨 高级颜色 —— 独立控制背景/卡片/文字/边框，让自定义颜色真正覆盖整个软件 -->
+                <!-- [THEME] 高级颜色 —— 独立控制背景/卡片/文字/边框，让自定义颜色真正覆盖整个软件 -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
                         <TextBlock Text="高级颜色" Style="{StaticResource SectionTitleStyle}" />
@@ -338,7 +338,7 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                            <!-- 🪟 背景色 -->
+                            <!-- [UI] 背景色 -->
                             <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,16,16">
                                 <TextBlock Text="背景色" Style="{StaticResource SettingLabelStyle}" />
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -367,7 +367,7 @@
                                 </WrapPanel>
                             </StackPanel>
 
-                            <!-- 🃏 卡片色 -->
+                            <!-- [CARD] 卡片色 -->
                             <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,16">
                                 <TextBlock Text="卡片色" Style="{StaticResource SettingLabelStyle}" />
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -396,7 +396,7 @@
                                 </WrapPanel>
                             </StackPanel>
 
-                            <!-- ✏️ 文字色 -->
+                            <!-- [EDIT] 文字色 -->
                             <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,16,0">
                                 <TextBlock Text="文字色" Style="{StaticResource SettingLabelStyle}" />
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -425,7 +425,7 @@
                                 </WrapPanel>
                             </StackPanel>
 
-                            <!-- 📏 边框色 -->
+                            <!-- [SIZE] 边框色 -->
                             <StackPanel Grid.Row="1" Grid.Column="1">
                                 <TextBlock Text="边框色" Style="{StaticResource SettingLabelStyle}" />
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -457,7 +457,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 📐 圆角设置 -->
+                <!-- [LAYOUT] 圆角设置 -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
                         <TextBlock Text="圆角设置" Style="{StaticResource SectionTitleStyle}" />
@@ -498,7 +498,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 🎬 动画设置 -->
+                <!-- [CMD] 动画设置 -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
                         <TextBlock Text="动画设置" Style="{StaticResource SectionTitleStyle}" />
@@ -526,7 +526,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 🔔 通知设置 -->
+                <!-- [TOAST] 通知设置 -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
                         <TextBlock Text="通知设置" Style="{StaticResource SectionTitleStyle}" />
@@ -557,7 +557,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ☕ Java 运行环境 -->
+                <!-- [JAVA] Java 运行环境 -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
                         <TextBlock Text="Java 运行环境" Style="{StaticResource SectionTitleStyle}" />
@@ -779,7 +779,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ℹ️ 关于 -->
+                <!-- [INFO] 关于 -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
                         <TextBlock Text="关于 MSMC" Style="{StaticResource SectionTitleStyle}" />
@@ -822,7 +822,7 @@
                                    Foreground="{DynamicResource MaterialDesignBody}"
                                    Margin="0,4,0,8" />
 
-                        <!-- ABI-ZTROS + 烟蓝湘 情侣卡片 💖 -->
+                        <!-- ABI-ZTROS + 烟蓝湘 情侣卡片 [HEART] -->
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -871,7 +871,7 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- 💖 中间的爱心 —— 你懂的 -->
+                            <!-- [HEART] 中间的爱心 —— 你懂的 -->
                             <StackPanel Grid.Column="1"
                                         VerticalAlignment="Center"
                                         Margin="8,0"
@@ -881,7 +881,7 @@
                                                         Foreground="{DynamicResource AccentTextBrush}"
                                                         VerticalAlignment="Center"
                                                         HorizontalAlignment="Center" />
-                                <TextBlock Text="💞"
+                                <TextBlock Text="[HEART]"
                                            FontSize="11"
                                            Foreground="{DynamicResource AccentTextBrush}"
                                            Margin="0,2,0,0"
@@ -917,7 +917,7 @@
                                                                      Foreground="{DynamicResource AccentTextBrush}"
                                                                      Opacity="0.7"
                                                                      VerticalAlignment="Center" />
-                                            <TextBlock Text="Special Thanks 💖"
+                                            <TextBlock Text="Special Thanks [HEART]"
                                                        FontSize="11"
                                                        Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                        Margin="4,0,0,0"
@@ -1084,7 +1084,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 📋 操作按钮 -->
+                <!-- [LOG] 操作按钮 -->
                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                     <Button Command="{Binding ResetToDefaultCommand}"
                             Style="{StaticResource OptimizedOutlinedButton}"
@@ -1106,7 +1106,7 @@
                     </Button>
                 </StackPanel>
 
-                <!-- 📊 状态信息 -->
+                <!-- [METRIC] 状态信息 -->
                 <TextBlock Text="{Binding StatusMessage}" 
                            FontSize="12" 
                            Foreground="{DynamicResource AccentTextBrush}" 
@@ -1114,7 +1114,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- 🎨 取色器 Popup -->
+        <!-- [THEME] 取色器 Popup -->
         <Popup x:Name="ColorPickerPopup"
                StaysOpen="False"
                AllowsTransparency="True"

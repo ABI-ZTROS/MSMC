@@ -79,7 +79,7 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
     /// <remarks>构造完成后自动延迟启动常驻监控任务，确保进入页面时已有数据呈现。</remarks>
     public SystemMonitorViewModel(ISystemMonitor systemMonitor, IMetricsPersistenceService persistence)
     {
-        Log.Information("📊 SystemMonitorViewModel 初始化");
+        Log.Information("[METRIC] SystemMonitorViewModel 初始化");
         _systemMonitor = systemMonitor;
         _persistence = persistence;
 
@@ -144,7 +144,7 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
             _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
             {
                 try { StartMonitoring(); }
-                catch (Exception ex) { Log.Error(ex, "💥 常驻监控自动启动失败"); }
+                catch (Exception ex) { Log.Error(ex, "[FATAL] 常驻监控自动启动失败"); }
             });
         });
     }
@@ -274,7 +274,7 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
     /// </remarks>
     partial void OnServerChanged(ServerInstance? value)
     {
-        Log.Information("📡 关注的服务器切换为: {Name}（系统监控不受影响，继续常驻运行）",
+        Log.Information("[BRDG] 关注的服务器切换为: {Name}（系统监控不受影响，继续常驻运行）",
             value is null ? "(无)" : value.ServerType.ToString());
     }
 
@@ -289,7 +289,7 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
     /// </remarks>
     private void OnMetricsUpdate(SystemMetrics metrics)
     {
-        Log.Debug("📈 采集到系统指标: CPU={Cpu}% 内存={Mem}%", metrics.CpuUsagePercent, metrics.MemoryUsagePercent);
+        Log.Debug("[METRIC] 采集到系统指标: CPU={Cpu}% 内存={Mem}%", metrics.CpuUsagePercent, metrics.MemoryUsagePercent);
         CurrentMetrics = metrics;
 
         // 持久化到磁盘（异步避免阻塞 UI）
@@ -363,9 +363,9 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        Log.Information("🧹 SystemMonitorViewModel 释放资源中...");
+        Log.Information("[CLEAN] SystemMonitorViewModel 释放资源中...");
         StopMonitoringInternal();
         GC.SuppressFinalize(this);
-        Log.Information("✅ SystemMonitorViewModel 资源释放完成");
+        Log.Information("[OK] SystemMonitorViewModel 资源释放完成");
     }
 }

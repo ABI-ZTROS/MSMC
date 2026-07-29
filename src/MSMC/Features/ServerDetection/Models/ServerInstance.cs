@@ -154,13 +154,13 @@ public partial class ServerInstance : ObservableObject
 
     /// <summary>
     /// 网络状态文本（用于 UI 展示）。
-    /// 🟢端口开放 | 🟡端口被占用 | 🔴端口未开放
+    /// [OK]端口开放 | [WARN]端口被占用 | [ERR]端口未开放
     /// </summary>
     public string NetworkStatusText => (IsPortOpen, PortConflict) switch
     {
-        (false, _)    => "🔴 端口未开放",
-        (true, false) => "🟢 端口开放",
-        (true, true)  => "🟡 端口被占用",
+        (false, _)    => "[ERR] 端口未开放",
+        (true, false) => "[OK] 端口开放",
+        (true, true)  => "[WARN] 端口被占用",
     };
 
     /// <summary>
