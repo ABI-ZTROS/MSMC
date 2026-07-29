@@ -136,6 +136,21 @@ class Bridge implements MsmcBridge {
 
         if (window.chrome?.webview) {
           rawLog('检测到 chrome.webview，注册消息监听')
+          // 防篡改自检：保护 postMessage 不被外部覆写
+          try {
+            const _wv = window.chrome.webview
+            const _orig = _wv.postMessage
+            if (_orig && typeof _orig === 'function') {
+              Object.defineProperty(_wv, 'postMessage', {
+                get: () => _orig,
+                set: () => { throw new Error('tampered') },
+                configurable: false,
+              })
+              rawLog('🔒 postMessage 防篡改保护已启用')
+            }
+          } catch {
+            // 已锁定或环境不支持，忽略
+          }
           window.chrome.webview.addEventListener('message', this.handleMessage.bind(this))
           this.initialized = true
           rawLog('✅ JS 端桥接初始化完成')
@@ -311,7 +326,14 @@ class Bridge implements MsmcBridge {
   }
 }
 
-export const bridge = new Bridge()
+// 工厂模式：避免全局对象被逆向者直接 inspect
+let _bridge: Bridge | null = null
+export function getBridge(): Bridge {
+  if (!_bridge) _bridge = new Bridge()
+  return _bridge
+}
+// 模块内部引用（不导出），供下方 API 函数使用
+const bridge = getBridge()
 
 // ═════════════════════════════════════════════════════════════════════
 // 基础 API

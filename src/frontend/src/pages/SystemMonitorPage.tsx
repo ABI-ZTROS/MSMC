@@ -4,7 +4,7 @@ import { DualLineChart } from '@/components/ui/DualLineChart'
 import { CpuProcessTree } from '@/components/ui/CpuProcessTree'
 import { Reveal } from '@/components/ui/Reveal'
 import {
-  bridge,
+  getBridge,
   getSystemMetrics,
   getSystemHistory,
   getSystemHistoryRange,
@@ -13,6 +13,8 @@ import {
   killProcessById,
 } from '@/utils/bridge'
 import type { SystemMetrics, HistoryPoint, CpuInfo, ProcessAffinityInfo } from '@/types/bridge'
+
+const bridge = getBridge()
 
 // 字节数转 GB
 function bytesToGB(bytes: number): number {

@@ -1,0 +1,420 @@
+// -----------------------------------------------------------------------------
+// 文件名: MainViewModel.cs
+// 命名空间: io.NET.ZTR_OS.Features.Shared.ViewModels
+// 功能描述: 主窗口视图模型 —— 基于 CommunityToolkit.Mvvm 源生成器的 MVVM 绑定层，
+//           承担子页面导航调度、服务器检测协调与状态分发的核心职责
+// 依赖组件: CommunityToolkit.Mvvm (ObservableProperty/RelayCommand),
+//           MaterialDesignThemes.Wpf (Snackbar), Microsoft.Extensions.DependencyInjection, Serilog
+// 设计模式: MVVM 模式, 命令模式, 发布-订阅 (PropertyChanged 事件)
+// -----------------------------------------------------------------------------
+
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using MahApps.Metro.IconPacks;
+using MaterialDesignThemes.Wpf;
+using io.NET.ZTR_OS.Features.ServerDetection.Models;
+using io.NET.ZTR_OS.Features.Shared.Models;
+using io.NET.ZTR_OS.Features.ConfigEditor.Services;
+using io.NET.ZTR_OS.Features.ServerDetection.Services;
+using io.NET.ZTR_OS.Features.SystemMonitoring.Services;
+using io.NET.ZTR_OS.Features.NetworkMonitor.Services;
+using Serilog;
+
+namespace io.NET.ZTR_OS.Features.Shared.ViewModels;
+
+/// <summary>
+/// 主窗口视图模型 —— 应用 UI 层的核心协调器
+/// </summary>
+/// <remarks>
+/// 作为主窗口的数据上下文，本类负责子页面 ViewModel 的生命周期管理、
+/// 导航状态机维护、跨页面服务器实例分发以及状态栏信息聚合。
+/// 通过订阅 <see cref="ServerDetectionViewModel.PropertyChanged"/> 事件
+/// 实现选中服务器在配置编辑页与系统监控页之间的同步。
+/// </remarks>
+public partial class MainViewModel : ObservableObject, IDisposable
+{
+    /// <summary>
+    /// 服务器检测编排器 —— 直接用于 <see cref="ScanSkipWarning"/> 跳过计数显示，
+    /// 其余职责已下沉至 <see cref="DetectionPage"/>。
+    /// </summary>
+    private readonly IServerDetector _serverDetector;
+
+    /// <summary>
+    /// 权限服务 —— 直接用于 <see cref="PrivilegeStatusText"/> / <see cref="IsAdminMode"/> 状态显示。
+    /// </summary>
+    private readonly IPrivilegeService _privilegeService;
+
+    /// <summary>
+    /// Toast 通知服务 —— 构造时调用 Initialize 注册 Snackbar 宿主。
+    /// </summary>
+    private readonly IToastNotificationService _toastService;
+
+    /// <summary>状态栏实时时钟计时器 —— Dispose 时停止，避免跨页面事件泄漏</summary>
+    private readonly DispatcherTimer _clockTimer;
+
+    /// <summary>指示当前实例是否已释放，防止重复 Dispose 导致资源二次释放</summary>
+    private bool _disposed;
+
+    /// <summary>
+    /// 初始化主窗口视图模型的新实例
+    /// </summary>
+    /// <param name="detectionPage">服务器检测页 ViewModel（DI 注入）</param>
+    /// <param name="configPage">配置编辑页 ViewModel（DI 注入）</param>
+    /// <param name="monitorPage">系统监控页 ViewModel（DI 注入）</param>
+    /// <param name="networkPage">网络监控页 ViewModel（DI 注入）</param>
+    /// <param name="settingsPage">设置页 ViewModel（DI 注入）</param>
+    /// <param name="serverDetector">服务器检测编排器（用于状态栏跳过计数显示）</param>
+    /// <param name="privilegeService">权限服务（用于权限模式状态显示）</param>
+    /// <param name="toastService">Toast 通知服务（用于初始化 Snackbar 宿主）</param>
+    /// <remarks>
+    /// 采用 DI 容器注入子页面 ViewModel，避免手动 new 导致的 God Object。
+    /// 子 VM 各自的依赖（IConfigManager/ISystemMonitor 等）由 DI 容器自动解析，
+    /// MainViewModel 仅保留直接使用的 3 个服务引用。
+    /// </remarks>
+    public MainViewModel(
+        ServerDetectionViewModel detectionPage,
+        ConfigEditorViewModel configPage,
+        SystemMonitorViewModel monitorPage,
+        NetworkMonitorViewModel networkPage,
+        SettingsViewModel settingsPage,
+        IServerDetector serverDetector,
+        IPrivilegeService privilegeService,
+        IToastNotificationService toastService)
+    {
+        Log.Information("🧠 MainViewModel 初始化，DI 注入 5 个子 VM + 3 个直接服务");
+
+        DetectionPage = detectionPage;
+        ConfigPage = configPage;
+        MonitorPage = monitorPage;
+        NetworkPage = networkPage;
+        SettingsPage = settingsPage;
+
+        _serverDetector = serverDetector;
+        _privilegeService = privilegeService;
+        _toastService = toastService;
+
+        // 命名方法订阅 —— Dispose 时可精确取消，避免 Lambda 闭包导致的隐式引用泄漏
+        DetectionPage.PropertyChanged += OnDetectionPagePropertyChanged;
+        NetworkPage.PropertyChanged += OnNetworkPagePropertyChanged;
+
+        _toastService.Initialize();
+
+        _clockTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        _clockTimer.Tick += OnClockTimerTick;
+        _clockTimer.Start();
+
+        // ⚠️ 移除构造函数中的 fire-and-get 首次检测：
+        // 1. ServerDetectionVM 的自动检测循环已覆盖首次检测
+        // 2. 两个并行 DetectAllAsync 会双倍消耗 WMI/进程枚举 CPU 资源
+        // 3. 自动检测延迟到窗口渲染后启动（DeferStart），避免与 WebView2 竞争
+        // 首次检测将由 ServerDetectionViewModel.DeferStart() 统一触发
+    }
+
+    /// <summary>
+    /// Snackbar 消息队列 —— 基于 MaterialDesign 的弹出式通知通道
+    /// </summary>
+    /// <remarks>
+    /// 用于承载检测完成、操作结果等临时性通知，显示时长为 3 秒。
+    /// 与状态栏文本相比具有更高的视觉优先级。
+    /// </remarks>
+    public SnackbarMessageQueue SnackbarMessages { get; } = new(TimeSpan.FromSeconds(3));
+
+    public ServerDetectionViewModel DetectionPage { get; }
+
+    public ConfigEditorViewModel ConfigPage { get; }
+
+    public SystemMonitorViewModel MonitorPage { get; }
+
+    public NetworkMonitorViewModel NetworkPage { get; }
+
+    public SettingsViewModel SettingsPage { get; }
+
+    /// <summary>
+    /// 侧边栏导航项集合 —— 数据驱动渲染导航列表
+    /// </summary>
+    public ObservableCollection<NavItem> NavItems { get; } = new()
+    {
+        new(PackIconFontAwesome6Kind.ServerSolid, "服务器管理", 0),
+        new(PackIconFontAwesome6Kind.FilePenSolid, "配置编辑", 1),
+        new(PackIconFontAwesome6Kind.GaugeHighSolid, "系统监控", 2),
+        new(PackIconFontAwesome6Kind.NetworkWiredSolid, "网络监控", 3),
+        new(PackIconFontAwesome6Kind.GearSolid, "设置", 4),
+    };
+
+    /// <summary>
+    /// 当前选中的 Tab 索引（0=检测, 1=配置, 2=系统监控, 3=网络监控, 4=设置）
+    /// </summary>
+    /// <remarks>
+    /// 由源生成器生成 <c>SelectedTabIndex</c> 属性，变更时触发
+    /// <see cref="OnSelectedTabIndexChanged(int)"/> 部分方法以更新导航状态。
+    /// </remarks>
+    [ObservableProperty]
+    private int _selectedTabIndex;
+
+    /// <summary>
+    /// 当前页面数据上下文 —— 基于 Tab 索引的导航状态机
+    /// </summary>
+    /// <remarks>
+    /// <c>ContentControl</c> 绑定此属性，配合 <c>DataTemplate</c> 资源字典
+    /// 实现子页面的动态切换。
+    /// </remarks>
+    public object CurrentPage => SelectedTabIndex switch
+    {
+        0 => DetectionPage,
+        1 => ConfigPage,
+        2 => MonitorPage,
+        3 => NetworkPage,
+        4 => SettingsPage,
+        _ => DetectionPage
+    };
+
+    /// <summary>
+    /// 状态栏状态文本 —— 反映当前应用级操作状态
+    /// </summary>
+    [ObservableProperty]
+    private string _statusMessage = "准备就绪，点击「开始检测」寻找 Minecraft 服务器 🎯";
+
+    /// <summary>
+    /// 状态栏实时时钟 —— 每秒刷新一次的时间戳显示
+    /// </summary>
+    [ObservableProperty]
+    private string _currentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+    /// <summary>
+    /// 当前权限模式描述文本
+    /// </summary>
+    public string PrivilegeStatusText => _privilegeService.IsRunningAsAdmin
+        ? "🔒 管理员模式"
+        : "⚠️ 受限模式";
+
+    /// <summary>
+    /// 获取一个值，指示当前进程是否以管理员权限运行
+    /// </summary>
+    public bool IsAdminMode => _privilegeService.IsRunningAsAdmin;
+
+    /// <summary>
+    /// 进程扫描跳过警告文本（用于状态栏提示）
+    /// </summary>
+    /// <remarks>
+    /// 当 WMI 查询因权限不足或跨用户访问失败时，ProcessScanner 会跳过对应进程。
+    /// 此属性将跳过计数暴露给 UI，帮助用户理解"扫不到"的原因。
+    /// </remarks>
+    public string ScanSkipWarning => _serverDetector.LastSkippedProcessCount > 0
+        ? $"⚠️ 已跳过 {_serverDetector.LastSkippedProcessCount} 个无法访问的进程（{_serverDetector.LastSkipReason ?? "未知原因"}）"
+        : string.Empty;
+
+    /// <summary>
+    /// 检查是否存在任何正在运行的服务器实例 —— 供 MainWindow 关闭确认透传使用
+    /// </summary>
+    /// <returns>若有服务器正在运行返回 true</returns>
+    /// <remarks>
+    /// 透传至 <see cref="DetectionPage"/> 持有的 <see cref="IServerManagerService"/>，
+    /// 避免 MainWindow 直接通过服务定位器获取 IServerManagerService。
+    /// </remarks>
+    public bool AnyServerRunning => DetectionPage.AnyServerRunning();
+
+    /// <summary>
+    /// 请求管理员权限提升命令
+    /// </summary>
+    /// <remarks>
+    /// 调用 <see cref="IPrivilegeService.RequestElevation"/> 触发 UAC 提权流程。
+    /// 触发条件：用户点击状态栏权限提示区域。
+    /// 副作用：可能启动新的高权限进程实例。
+    /// </remarks>
+    [RelayCommand]
+    private void RequestElevation()
+    {
+        Log.Information("🔐 用户请求提权...");
+        _privilegeService.RequestElevation();
+    }
+
+    /// <summary>
+    /// 指示当前是否正在执行服务器检测
+    /// </summary>
+    /// <remarks>
+    /// 用作检测命令的 CanExecute 判定依据，防止重复触发检测操作。
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isDetecting;
+
+    /// <summary>
+    /// 异步执行服务器检测并将结果分发至各子页面
+    /// </summary>
+    /// <returns>表示异步操作的任务</returns>
+    /// <remarks>
+    /// <para>执行流程：</para>
+    /// <list type="number">
+    /// <item>调用 <see cref="ServerDetectionViewModel.DetectCommand"/> 启动检测</item>
+    /// <item>等待检测结果返回</item>
+    /// <item>若检测到服务器，将首个实例同步至配置页与监控页</item>
+    /// </list>
+    /// <para>触发条件：用户点击「开始检测」按钮或应用启动后自动触发。</para>
+    /// <para>副作用：更新 <see cref="IsDetecting"/>、<see cref="StatusMessage"/>
+    /// 以及各子页面的 Server 属性。</para>
+    /// <para>通过子页面命令而非直接调用 <c>IServerDetector</c>，以确保检测页 UI 状态同步更新。</para>
+    /// </remarks>
+    [RelayCommand(CanExecute = nameof(CanDetectServers))]
+    private async Task DetectServersAsync()
+    {
+        Log.Information("🔍 开始检测服务器...");
+        IsDetecting = true;
+        StatusMessage = "正在扫描系统中的 Minecraft 服务器... 🔍";
+
+        try
+        {
+            await DetectionPage.DetectCommand.ExecuteAsync(null);
+
+            var result = DetectionPage.DetectionResult;
+            if (result?.Servers.Count > 0)
+            {
+                StatusMessage = $"✅ 检测完成！找到 {result.Servers.Count} 个服务器实例";
+                SnackbarMessages.Enqueue($"🎉 找到 {result.Servers.Count} 个 Minecraft 服务器！");
+
+                var firstServer = result.Servers[0];
+                ConfigPage.Server = firstServer;
+                MonitorPage.Server = firstServer;
+
+                DetectionPage.SelectedServer = firstServer;
+
+                Log.Information("✅ 服务器检测完成，发现 {Count} 个服务器", result.Servers.Count);
+            }
+            else
+            {
+                StatusMessage = result?.ErrorMessage ?? "未检测到正在运行的 Minecraft 服务器 😢";
+                SnackbarMessages.Enqueue("😔 未检测到正在运行的 Minecraft 服务器");
+                Log.Information("✅ 服务器检测完成，发现 0 个服务器");
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"❌ 检测过程出错：{ex.Message}";
+            Log.Error(ex, "服务器检测失败: {Message}", ex.Message);
+        }
+        finally
+        {
+            IsDetecting = false;
+        }
+    }
+
+    /// <summary>
+    /// 确定检测命令是否可执行
+    /// </summary>
+    /// <returns>当未处于检测状态时返回 <c>true</c>，否则返回 <c>false</c></returns>
+    /// <remarks>用作 <see cref="DetectServersCommand"/> 的 CanExecute 谓词。</remarks>
+    private bool CanDetectServers()
+    {
+        Log.Debug("🔄 CanDetectServers 检查: IsDetecting={IsDetecting}", IsDetecting);
+        return !IsDetecting;
+    }
+
+    /// <summary>
+    /// Tab 索引变更回调 —— 由 CommunityToolkit.Mvvm 源生成器在属性变更时调用
+    /// </summary>
+    /// <param name="value">新的 Tab 索引值</param>
+    /// <remarks>
+    /// 触发 <see cref="CurrentPage"/> 属性变更通知以驱动 ContentControl 页面切换，
+    /// 并根据当前导航上下文更新状态栏提示文本。
+    /// </remarks>
+    partial void OnSelectedTabIndexChanged(int value)
+    {
+        Log.Debug("🔄 SelectedTabIndex 变更为 {TabIndex}", value);
+
+        // P2 修复：页面切走时停止网络监控（节省 CPU，避免 netsh 每5秒轮询）
+        if (SelectedTabIndex == 3)
+        {
+            NetworkPage.StopMonitoring();
+        }
+
+        OnPropertyChanged(nameof(CurrentPage));
+
+        // 新页面可见时启动对应监控
+        if (value == 3)
+        {
+            NetworkPage.StartMonitoring();
+        }
+
+        StatusMessage = value switch
+        {
+            0 => "服务器管理 —— 检测、导入、启动你的 Minecraft 服务器 🎮",
+            1 => ConfigPage.Server is not null
+                ? $"配置编辑 —— 正在编辑 {ConfigPage.Server.DisplayName} 的配置 ⚙️"
+                : "配置编辑 —— 选择左侧的配置文件即可开始编辑（无需服务器运行）📝",
+            2 => "系统监控 —— 常驻采集 CPU / 内存 / 磁盘 / Java 进程指标 📊",
+            3 => "网络监控 —— 实时监控端口占用、网络桥接和流量统计 🖧",
+            4 => "设置 —— 自定义外观、主题和行为 ⚙️",
+            _ => StatusMessage
+        };
+    }
+
+    /// <summary>
+    /// 服务器检测页属性变更处理 —— 选中服务器时同步分发至配置页与监控页
+    /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="e">属性变更事件参数</param>
+    /// <remarks>命名方法订阅，Dispose 时精确取消，避免 Lambda 闭包隐式持有 this。</remarks>
+    private void OnDetectionPagePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ServerDetectionViewModel.SelectedServer))
+        {
+            var server = DetectionPage.SelectedServer;
+            ConfigPage.Server = server;
+            MonitorPage.Server = server;
+        }
+    }
+
+    /// <summary>
+    /// 网络监控页属性变更处理 —— 将网络页状态消息转发至主状态栏
+    /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="e">属性变更事件参数</param>
+    /// <remarks>网络监控页操作反馈（桥接/结束进程/刷新状态）需在主状态栏可见。</remarks>
+    private void OnNetworkPagePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(NetworkMonitorViewModel.StatusMessage))
+            StatusMessage = NetworkPage.StatusMessage;
+    }
+
+    /// <summary>
+    /// 状态栏时钟计时器 Tick 回调 —— 每秒刷新当前时间字符串
+    /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="e">计时器事件参数</param>
+    private void OnClockTimerTick(object? sender, EventArgs e)
+        => CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+    /// <summary>
+    /// 释放主窗口视图模型占用的所有资源
+    /// </summary>
+    /// <remarks>
+    /// 停止时钟计时器、取消子页面事件订阅、级联释放子 ViewModel 资源。
+    /// 幂等设计：重复调用安全。
+    /// </remarks>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        Log.Information("🧹 MainViewModel 释放资源中...");
+
+        _clockTimer.Stop();
+        _clockTimer.Tick -= OnClockTimerTick;
+
+        DetectionPage.PropertyChanged -= OnDetectionPagePropertyChanged;
+        NetworkPage.PropertyChanged -= OnNetworkPagePropertyChanged;
+
+        // 级联释放子 ViewModel 持有的计时器/事件订阅/取消令牌
+        DetectionPage.Dispose();
+        ConfigPage.Dispose();
+        MonitorPage.Dispose();
+        NetworkPage.Dispose();
+
+        GC.SuppressFinalize(this);
+        Log.Information("✅ MainViewModel 资源释放完成");
+    }
+}

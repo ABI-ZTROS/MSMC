@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
 import { useAppStore } from '@/stores/appStore'
-import { bridge, onStatusUpdate, getSettings, onThemeChanged } from '@/utils/bridge'
+import { getBridge, onStatusUpdate, getSettings, onThemeChanged } from '@/utils/bridge'
 import type { AppReadyEvent } from '@/types/bridge'
 import { applySettingsToCss } from '@/utils/theme'
+
+const bridge = getBridge()
 
 // 简单的日志函数，同时输出到 console 和 C# 日志
 function log(msg: string): void {

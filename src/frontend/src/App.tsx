@@ -1,15 +1,18 @@
+import { lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/AppLayout'
 import { ToastContainer } from '@/components/ui/Toast'
 import { ParticleField } from '@/components/ui/ParticleField'
-import { DashboardPage } from '@/pages/DashboardPage'
-import { ConfigEditorPage } from '@/pages/ConfigEditorPage'
-import { SystemMonitorPage } from '@/pages/SystemMonitorPage'
-import { NetworkMonitorPage } from '@/pages/NetworkMonitorPage'
-import { SettingsPage } from '@/pages/SettingsPage'
 import { useBridgeInit } from '@/hooks/useBridgeInit'
 import { useAppStore } from '@/stores/appStore'
 import { FaShield } from 'react-icons/fa6'
+
+// 路由懒加载 —— 每个页面拆分为独立 chunk，提升首屏加载速度并增加逆向成本
+const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const ConfigEditorPage = lazy(() => import('@/pages/ConfigEditorPage').then(m => ({ default: m.ConfigEditorPage })))
+const SystemMonitorPage = lazy(() => import('@/pages/SystemMonitorPage').then(m => ({ default: m.SystemMonitorPage })))
+const NetworkMonitorPage = lazy(() => import('@/pages/NetworkMonitorPage').then(m => ({ default: m.NetworkMonitorPage })))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
 
 function App(): JSX.Element {
   useBridgeInit()
@@ -158,16 +161,36 @@ function App(): JSX.Element {
   return (
     <>
       <HashRouter>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/config" element={<ConfigEditorPage />} />
-            <Route path="/system" element={<SystemMonitorPage />} />
-            <Route path="/network" element={<NetworkMonitorPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
+        <Suspense
+          fallback={
+            <div
+              className="h-full flex items-center justify-center"
+              style={{ backgroundColor: 'var(--md-deep-background)' }}
+            >
+              <div
+                className="md-breathe"
+                style={{
+                  fontSize: 13,
+                  color: 'var(--md-body-lighter)',
+                  letterSpacing: '0.1em',
+                }}
+              >
+                正在加载页面...
+              </div>
+            </div>
+          }
+        >
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/config" element={<ConfigEditorPage />} />
+              <Route path="/system" element={<SystemMonitorPage />} />
+              <Route path="/network" element={<NetworkMonitorPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </Suspense>
       </HashRouter>
       <ToastContainer />
     </>

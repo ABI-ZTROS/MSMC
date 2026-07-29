@@ -29,31 +29,32 @@ MSMC 是一款基于 .NET 9.0 WPF 的 Minecraft Java Edition 服务器管理桌�
 ```bash
 git clone https://github.com/ABI-ZTROS/MSMC.git
 cd MSMC
-dotnet build McServerGuard.sln
+dotnet build MSMC.sln
 ```
 
 也可从 GitHub Actions 的 [Artifacts](https://github.com/ABI-ZTROS/MSMC/actions) 下载预构建版本。
 
 ## 项目结构
 
+按业务领域（Feature）组织，命名空间统一为 `io.NET.ZTR_OS.Features.{领域}`。
+
 ```
-src/McServerGuard/
-├── Constants/              # 常量定义（服务器类型、JVM 参数）
-├── Models/                 # 数据模型（服务器实例、配置条目、系统指标）
-├── Services/
+src/MSMC/
+├── Features/
+│   ├── ConfigEditor/       # 配置编辑（解析、翻译、校验、模板选择）
+│   ├── JavaInstallation/   # Java 安装发现与 JVM 参数常量
+│   ├── NetworkMonitor/     # 网络监控（端口扫描、端口桥接、流量统计）
 │   ├── ServerDetection/    # 服务器检测（进程扫描、命令行解析、脚本分析）
-│   ├── ConfigManagement/   # 配置管理（解析、翻译、校验）
+│   ├── Settings/           # 应用配置持久化、主题、通知、取色
+│   ├── Shared/             # 共享控件、转换器、主窗口、动画助手
+│   ├── Startup/            # 启动流程（权限检测、UAC 提权、内存优化）
 │   ├── SystemMonitoring/   # 系统监控（CPU / 内存 / 磁盘 / 线程）
-│   ├── HardwareInfo/       # 硬件信息识别
-│   ├── Privilege/          # 权限管理（管理员检测、UAC 提权）
-│   ├── AppConfigService.cs # 应用配置持久化
-│   ├── MemoryOptimizerService.cs  # 内存优化
-│   ├── ThemeService.cs     # 主题管理
-│   └── ToastNotificationService.cs # 通知服务
-├── ViewModels/             # MVVM ViewModel
-├── Views/                  # WPF 界面与自定义控件
-├── Converters/             # 值转换器
-└── Selectors/              # 模板选择器
+│   ├── UserAgreement/      # 用户协议
+│   └── WebView2/           # WebView2 桥接与前端资源加载
+├── Resources/              # 字体、图片等嵌入资源
+├── App.xaml / App.xaml.cs  # 应用入口
+├── MSMC.csproj             # 程序集名 MSMC，根命名空间 io.NET.ZTR_OS
+└── app.manifest            # 需管理员权限
 ```
 
 ## 鸣谢

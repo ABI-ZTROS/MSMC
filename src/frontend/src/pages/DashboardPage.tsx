@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { clsx } from 'clsx'
 import { Reveal } from '@/components/ui/Reveal'
 import {
-  bridge,
+  getBridge,
   getServerList,
   getSelectedServer,
   selectServer,
@@ -15,6 +15,8 @@ import {
   applyJvmPreset,
   addCustomJvmArgument,
 } from '@/utils/bridge'
+
+const bridge = getBridge()
 import type {
   ServerInfo,
   KnownServerInfo,

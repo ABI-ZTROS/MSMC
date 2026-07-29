@@ -1,0 +1,106 @@
+// -----------------------------------------------------------------------------
+// 文件名: IWebView2BridgeService.cs
+// 命名空间: io.NET.ZTR_OS.Features.WebView2.Services
+// 功能描述: WebView2 桥接服务接口契约，定义 C# 与 JavaScript 双向通信能力
+// 依赖组件: Microsoft.Web.WebView2.Wpf, System.Text.Json
+// 设计模式: 服务接口契约 + 观察者模式 + 消息模式
+// -----------------------------------------------------------------------------
+using io.NET.ZTR_OS.Features.WebView2.Frontend;
+using WpfWebView2 = Microsoft.Web.WebView2.Wpf.WebView2;
+
+namespace io.NET.ZTR_OS.Features.WebView2.Services;
+
+/// <summary>
+/// 请求处理程序委托，处理来自 JS 的请求并返回响应
+/// </summary>
+/// <param name="payload">请求负载数据</param>
+/// <returns>响应负载数据</returns>
+public delegate Task<object?> RequestHandler(object? payload);
+
+/// <summary>
+/// 事件处理程序委托，处理来自 C# 的事件推送
+/// </summary>
+/// <param name="action">事件动作名</param>
+/// <param name="payload">事件负载数据</param>
+public delegate void EventHandler(string action, object? payload);
+
+/// <summary>
+/// WebView2 桥接服务接口契约
+/// 提供 C# 与 JavaScript 之间的双向通信能力，支持请求/响应模式和事件推送模式
+/// </summary>
+public interface IWebView2BridgeService
+{
+    /// <summary>
+    /// 是否已初始化并连接到 WebView2 控件
+    /// </summary>
+    bool IsInitialized { get; }
+
+    /// <summary>
+    /// 初始化桥接服务，绑定到指定的 WebView2 控件
+    /// </summary>
+    /// <param name="webView">要绑定的 WebView2 控件</param>
+    Task InitializeAsync(WpfWebView2 webView);
+
+    /// <summary>
+    /// 设置虚拟主机名到本地文件夹的映射
+    /// 用于通过 HTTP 协议访问本地前端资源，避免 file:// 协议的 CORS 限制
+    /// </summary>
+    /// <param name="hostName">虚拟主机名（如 app.local）</param>
+    /// <param name="folderPath">本地文件夹路径</param>
+    void SetVirtualHostMapping(string hostName, string folderPath);
+
+    /// <summary>
+    /// 加载前端资源并导航到主页
+    /// 根据提供器类型自动选择虚拟主机映射或 WebResourceRequested 拦截模式
+    /// </summary>
+    /// <param name="provider">前端资源提供器</param>
+    /// <param name="hostName">虚拟主机名</param>
+    /// <returns>是否加载成功</returns>
+    Task<bool> LoadFrontendAsync(IFrontendResourceProvider provider, string hostName);
+
+    /// <summary>
+    /// 注册请求处理程序（JS 调用 C# 方法）
+    /// </summary>
+    /// <param name="action">动作名称</param>
+    /// <param name="handler">处理程序</param>
+    void RegisterRequestHandler(string action, RequestHandler handler);
+
+    /// <summary>
+    /// 注销请求处理程序
+    /// </summary>
+    /// <param name="action">动作名称</param>
+    void UnregisterRequestHandler(string action);
+
+    /// <summary>
+    /// 向 JS 发送事件推送（C# → JS，单向）
+    /// </summary>
+    /// <param name="action">事件动作名</param>
+    /// <param name="payload">事件负载数据</param>
+    Task SendEventAsync(string action, object? payload = null);
+
+    /// <summary>
+    /// 向 JS 发送请求并等待响应（C# → JS → C#）
+    /// </summary>
+    /// <param name="action">请求动作名</param>
+    /// <param name="payload">请求负载数据</param>
+    /// <param name="timeoutMs">超时时间（毫秒）</param>
+    /// <returns>JS 返回的响应负载</returns>
+    Task<object?> SendRequestAsync(string action, object? payload = null, int timeoutMs = 30000);
+
+    /// <summary>
+    /// 订阅来自 JS 的事件推送（JS → C#，单向）
+    /// </summary>
+    /// <param name="handler">事件处理程序</param>
+    void SubscribeToEvents(EventHandler handler);
+
+    /// <summary>
+    /// 取消事件订阅
+    /// </summary>
+    /// <param name="handler">事件处理程序</param>
+    void UnsubscribeFromEvents(EventHandler handler);
+
+    /// <summary>
+    /// 释放资源
+    /// </summary>
+    void Shutdown();
+}
