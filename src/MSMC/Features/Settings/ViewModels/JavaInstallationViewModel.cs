@@ -6,7 +6,7 @@
 // 设计模式: MVVM 模式
 // -----------------------------------------------------------------------------
 using CommunityToolkit.Mvvm.ComponentModel;
-using io.NET.ZTR_OS.Features.JavaInstallation.Services;
+using JavaInstallationInfo = io.NET.ZTR_OS.Features.JavaInstallation.Services.JavaInstallation;
 
 namespace io.NET.ZTR_OS.Features.Settings.ViewModels;
 
@@ -18,12 +18,12 @@ public partial class JavaInstallationViewModel : ObservableObject
     /// <summary>
     /// 原始 Java 安装信息
     /// </summary>
-    private readonly JavaInstallation _installation;
+    private readonly JavaInstallationInfo _installation;
 
     /// <summary>
     /// Java 安装信息
     /// </summary>
-    public JavaInstallation Installation => _installation;
+    public JavaInstallationInfo Installation => _installation;
 
     /// <summary>
     /// 版本显示文本
@@ -70,7 +70,7 @@ public partial class JavaInstallationViewModel : ObservableObject
     /// </summary>
     /// <param name="installation">Java 安装信息</param>
     /// <param name="isDefault">是否为默认 Java</param>
-    public JavaInstallationViewModel(JavaInstallation installation, bool isDefault = false)
+    public JavaInstallationViewModel(JavaInstallationInfo installation, bool isDefault = false)
     {
         _installation = installation;
         _isDefault = isDefault;
