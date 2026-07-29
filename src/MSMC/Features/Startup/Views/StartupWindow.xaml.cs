@@ -129,9 +129,58 @@ public partial class StartupWindow : Window
                 Log.Information("[Startup-WV2-LOAD] 🔌 WebResourceRequested 拦截器已注册");
             }
 
-            var startupUrl = $"https://{virtualHost}/startup.html";
+            // 【和主窗口一致】改用 http:// 虚拟协议 + 导航完成/失败双事件监听 + 30 秒超时
+            var startupUrl = $"http://{virtualHost}/startup.html";
             Log.Information("[Startup-WV2-LOAD] 🧭 导航到: {Url}", startupUrl);
+
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            void OnCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+            {
+                if (e.IsSuccess)
+                {
+                    Log.Information("[Startup-WV2-LOAD] ✅ 导航成功 HTTP {Code}", e.HttpStatusCode);
+                    tcs.TrySetResult(true);
+                }
+                else
+                {
+                    Log.Error("[Startup-WV2-LOAD] ❌ NavigationCompleted 失败: Status={Status}, HTTP={Code}",
+                        e.WebErrorStatus, e.HttpStatusCode);
+                    tcs.TrySetResult(false);
+                }
+                StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
+                StartupWebView.CoreWebView2.NavigationFailed -= OnFailed;
+            }
+
+            void OnFailed(object? sender, CoreWebView2NavigationFailedEventArgs e)
+            {
+                Log.Error("[Startup-WV2-LOAD] ❌ NavigationFailed: Status={Status}, Uri={Uri}, Code={Code}",
+                    e.WebErrorStatus, e.Uri, e.ErrorCode);
+                tcs.TrySetResult(false);
+                StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
+                StartupWebView.CoreWebView2.NavigationFailed -= OnFailed;
+            }
+
+            StartupWebView.CoreWebView2.NavigationCompleted += OnCompleted;
+            StartupWebView.CoreWebView2.NavigationFailed += OnFailed;
+
             StartupWebView.Source = new Uri(startupUrl);
+
+            var timeout = Task.Delay(TimeSpan.FromSeconds(30));
+            var done = await Task.WhenAny(tcs.Task, timeout);
+            if (done == timeout)
+            {
+                Log.Error("[Startup-WV2-LOAD] ⏰ 启动页加载超时 (30s)，协议已从 https 改为 http；若仍超，请检查路径权限/杀毒拦截");
+                StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
+                StartupWebView.CoreWebView2.NavigationFailed -= OnFailed;
+                LoadFallbackPage("启动页加载超时");
+                return;
+            }
+
+            if (!tcs.Task.Result)
+            {
+                LoadFallbackPage("启动页加载失败");
+            }
         }
         catch (Exception ex)
         {
@@ -142,14 +191,15 @@ public partial class StartupWindow : Window
 
     private void RegisterWebResourceRequested(IFrontendResourceProvider provider, string hostName)
     {
+        // 和主窗口保持一致：全部 http:// 过滤器，避免协议/拦截器错位
         var filters = new[]
         {
-            $"https://{hostName}",
-            $"https://{hostName}/",
-            $"https://{hostName}/*",
-            $"https://{hostName}/*/*",
-            $"https://{hostName}/*/*/*",
-            $"https://{hostName}/*/*/*/*",
+            $"http://{hostName}",
+            $"http://{hostName}/",
+            $"http://{hostName}/*",
+            $"http://{hostName}/*/*",
+            $"http://{hostName}/*/*/*",
+            $"http://{hostName}/*/*/*/*",
         };
 
         foreach (var filter in filters)
@@ -186,7 +236,7 @@ public partial class StartupWindow : Window
         var uri = request.Uri;
         if (string.IsNullOrEmpty(uri)) return;
 
-        var baseUri = $"https://{hostName}";
+        var baseUri = $"http://{hostName}";
         if (!uri.StartsWith(baseUri, StringComparison.OrdinalIgnoreCase))
             return;
 

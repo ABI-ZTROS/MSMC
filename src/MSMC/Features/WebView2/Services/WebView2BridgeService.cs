@@ -202,40 +202,62 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                 Log.Information("[WV2-LOAD] ✅ WebResourceRequested 拦截器注册完成");
             }
 
-            // 导航到主页
-            var appUrl = $"https://{hostName}/index.html";
-            var tcs = new TaskCompletionSource<bool>();
+            // 【修复 1】虚拟主机协议用 http:// 而非 https://
+            // WebView2 对 https 虚拟域名会走 TLS/证书校验链路，可能在用户组策略/杀毒软件拦截下静默卡 10+ 秒
+            // 最终触发超时。虚拟主机映射的就是本地文件，没必要走 HTTPS。
+            var appUrl = $"http://{hostName}/index.html";
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            // 注册一次性导航完成事件
-            void OnNav(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+            // 【修复 2】同时监听 NavigationCompleted（成功/失败 HTTP 码）和 NavigationFailed（导航级错误，
+            // 如 DNS / TLS / 无效 URL）。只要任意一个触发，立刻判结果，避免白等 30 秒。
+            void OnNavCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
             {
                 if (e.IsSuccess)
                 {
-                    Log.Information("[WV2-LOAD] 📨 NavigationCompleted: 成功");
+                    Log.Information("[WV2-LOAD] 📨 NavigationCompleted: 成功 HTTP {Code}", e.HttpStatusCode);
+                    tcs.TrySetResult(true);
                 }
                 else
                 {
-                    // 导航失败用 Error 级别，确保用户在日志中能搜到 ERR
-                    Log.Error("[WV2-LOAD] ❌ NavigationCompleted 失败: WebErrorStatus={Status}", e.WebErrorStatus);
+                    Log.Error("[WV2-LOAD] ❌ NavigationCompleted 失败: WebErrorStatus={Status}, HTTP={Code}",
+                        e.WebErrorStatus, e.HttpStatusCode);
+                    tcs.TrySetResult(false);
                 }
-                tcs.TrySetResult(e.IsSuccess);
-                _webView!.CoreWebView2.NavigationCompleted -= OnNav;
+                _webView!.CoreWebView2.NavigationCompleted -= OnNavCompleted;
+                _webView.CoreWebView2.NavigationFailed -= OnNavFailed;
             }
 
-            _webView.CoreWebView2.NavigationCompleted += OnNav;
+            void OnNavFailed(object? sender, CoreWebView2NavigationFailedEventArgs e)
+            {
+                Log.Error(
+                    "[WV2-LOAD] ❌ NavigationFailed: WebErrorStatus={Status}, Uri={Uri}, ErrorCode={Code}",
+                    e.WebErrorStatus, e.Uri, e.ErrorCode);
+                tcs.TrySetResult(false);
+                _webView!.CoreWebView2.NavigationCompleted -= OnNavCompleted;
+                _webView.CoreWebView2.NavigationFailed -= OnNavFailed;
+            }
+
+            _webView.CoreWebView2.NavigationCompleted += OnNavCompleted;
+            _webView.CoreWebView2.NavigationFailed += OnNavFailed;
 
             // 开始导航
             Log.Information("[WV2-LOAD] 🧭 开始导航到: {Url}", appUrl);
             _webView.Source = new Uri(appUrl);
 
-            // 等待加载完成（超时 10 秒）
-            var timeout = Task.Delay(10000);
+            // 【修复 3】超时 10s → 30s
+            // WebView2 冷启动 + 中文路径虚拟主机首次读取 + 4.6MB vendor.js 加载 + 反混淆初始化，
+            // 低端机上 10 秒是明显不够的。30 秒更稳妥，且真实错误会被 NavigationFailed 提前结束。
+            var timeout = Task.Delay(TimeSpan.FromSeconds(30));
             var completed = await Task.WhenAny(tcs.Task, timeout);
 
             if (completed == timeout)
             {
-                Log.Warning("[WV2-LOAD] ⏰ 前端页面加载超时 (10s)，模式: {Mode}", provider.ModeName);
-                _webView.CoreWebView2.NavigationCompleted -= OnNav;
+                Log.Error(
+                    "[WV2-LOAD] ⏰ 前端页面加载超时 (30s)！模式: {Mode}, Url: {Url}。" +
+                    "若持续出现，请检查: ① 虚拟主机路径是否可读（权限/杀毒拦截）② 手动在浏览器打开该 index.html 是否能正常渲染。",
+                    provider.ModeName, appUrl);
+                _webView.CoreWebView2.NavigationCompleted -= OnNavCompleted;
+                _webView.CoreWebView2.NavigationFailed -= OnNavFailed;
                 return false;
             }
 
@@ -264,14 +286,15 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
         // 注册多层过滤器，确保所有深度的路径都能被拦截
         // WebView2 的 * 通配符不跨路径分隔符，所以需要多层
+        // 注意：统一用 http:// 协议（和上面导航的协议保持一致），避免协议不匹配导致拦截器不生效
         var filters = new[]
         {
-            $"https://{hostName}",
-            $"https://{hostName}/",
-            $"https://{hostName}/*",
-            $"https://{hostName}/*/*",
-            $"https://{hostName}/*/*/*",
-            $"https://{hostName}/*/*/*/*",
+            $"http://{hostName}",
+            $"http://{hostName}/",
+            $"http://{hostName}/*",
+            $"http://{hostName}/*/*",
+            $"http://{hostName}/*/*/*",
+            $"http://{hostName}/*/*/*/*",
         };
 
         foreach (var filter in filters)
@@ -293,7 +316,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             }
         };
 
-        Log.Information("🔌 WebResourceRequested 拦截已注册 ({Count} 个过滤器): https://{HostName}", filters.Length, hostName);
+        Log.Information("🔌 WebResourceRequested 拦截已注册 ({Count} 个过滤器): http://{HostName}", filters.Length, hostName);
     }
 
     /// <summary>
@@ -316,7 +339,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         if (string.IsNullOrEmpty(uri)) return;
 
         // 解析相对路径
-        var baseUri = $"https://{hostName}";
+        var baseUri = $"http://{hostName}";
         if (!uri.StartsWith(baseUri, StringComparison.OrdinalIgnoreCase))
             return;
 
