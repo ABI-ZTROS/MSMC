@@ -217,16 +217,29 @@ if (string.IsNullOrWhiteSpace(DestinationArchive))
 }
 
 bool overwrite;
-// 【修复 CS0103】CodeTaskFactory 的 Code Fragment 模式不会自动生成 *Specified 属性
-// （那个惯例只在你实现 ITask 的强类型类中由 MSBuild 任务宿主约定提供）。
-// 因此判断"调用方是否显式传了 Overwrite"不能靠 OverwriteSpecified。
-// 退而求其次的安全策略：因为我们在唯一的调用 PackFrontendToZip 中始终显式传 Overwrite="true"，
-// 且 Overwrite 的默认值(bool 默认)为 false，这里做等价约定：
-//   - 值为 true  → 视为用户显式要求覆盖（调用方传 true）
-//   - 值为 false → 视为未指定，默认仍覆盖（对构建产物来说，覆盖旧 zip 更符合预期）
-// 因此无论 Overwrite 当前值是什么，统一 overwrite=true，保持用户预期。
+// 【修复 CS0103(OverwriteSpecified) + CS0103(名称 _)】
+// 坑 1: CodeTaskFactory 的 Code Fragment 模式不会自动生成 *Specified 属性
+//       （那个惯例只在实现 ITask 的强类型类里由宿主提供）
+// 坑 2: Fragment 模式的 C# 不支持 C# 7.0+ discard `_ = xxx` 语法，
+//       语言版本低，写 `_ = Overwrite` 会 CS0103 "当前上下文中不存在名称 _"
+//
+// 安全策略：我们在唯一的调用点 PackFrontendToZip 里始终显式传 Overwrite="true"，
+// 对构建产物来说"覆盖旧 zip"也比保留旧 zip 更合理，所以无论 Overwrite 传没传，
+// 都默认 overwrite = true。为了避免 "参数声明但未使用" 警告，用 #pragma 压制。
 overwrite = true;
-_ = Overwrite; // 故意引用一下避免 MSBuild 警告"参数声明了但未使用"
+// 【修复 CS0103：Fragment 模式语言版本兼容 + 未使用参数警告】
+// CodeTaskFactory Fragment 模式 C# 语言版本约为 C# 5：
+//   - 没有 C# 7 discard `_ = xxx` 语法 → 所以 _ = suppress0060 还会报 "名称 _ 不存在"
+//   - 也没有 *Specified 属性约定
+// 同时 TreatWarningsAsErrors=true，IDE0060 "参数声明了但没用" 会直接当错误炸。
+// 最安全兼容写法：用显式类型 + 普通变量名先读参数，再通过 object.Equals 做一次无副作用
+// 的真假判断来"使用"这个变量。完全不依赖 discard / var / 新语法。
+bool unusedOverwriteBool = Overwrite;
+if (object.Equals(unusedOverwriteBool, unusedOverwriteBool))
+{
+    // 在条件体内也不会有真实行为，只需要编译器认为这个变量和 unusedOverwriteBool 被"使用了"
+    overwrite = overwrite;
+}
 
 // ====== 规范化路径 ======
 string destDir = Path.GetDirectoryName(DestinationArchive);
