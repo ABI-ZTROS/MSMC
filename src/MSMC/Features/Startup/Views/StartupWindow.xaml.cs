@@ -151,7 +151,20 @@ public partial class StartupWindow : Window
                         e.WebErrorStatus, e.HttpStatusCode);
                     tcs.TrySetResult(false);
                 }
-                StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
+                // 【修复 NRE】CoreWebView2 可能因 WebView2 内部回收/关闭变成 null，先判空再 -=。
+                // 若这里不判空，超时时第 168 行取消订阅会因对象已释放而炸 NullReferenceException。
+                if (StartupWebView.CoreWebView2 != null)
+                {
+                    StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
+                }
+            }
+
+            // 【修复 NRE】订阅前也先判空（极端情况下 EnsureCoreWebView2Async 返回成功但后续异步回收了）
+            if (StartupWebView.CoreWebView2 == null)
+            {
+                Log.Warning("[Startup-WV2-LOAD] ⚠️ StartupWebView.CoreWebView2 订阅前已为 null，跳过订阅直接走兜底");
+                LoadFallbackPage("WebView2 已释放");
+                return;
             }
 
             StartupWebView.CoreWebView2.NavigationCompleted += OnCompleted;
@@ -165,7 +178,12 @@ public partial class StartupWindow : Window
                 Log.Error(
                     "[Startup-WV2-LOAD] ⏰ 启动页加载超时 (30s)，协议已从 https 改为 http；若仍超，" +
                     "请检查路径权限/中文路径/杀毒软件拦截，或直接在浏览器打开目标 startup.html 验证。");
-                StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
+                // 【修复 NRE】超时时 CoreWebView2 可能已经释放（比如用户关闭了窗口），
+                // 直接取消订阅会炸 NullReferenceException；判空即可。
+                if (StartupWebView.CoreWebView2 != null)
+                {
+                    StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
+                }
                 LoadFallbackPage("启动页加载超时");
                 return;
             }

@@ -229,7 +229,12 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                         e.WebErrorStatus, e.HttpStatusCode);
                     tcs.TrySetResult(false);
                 }
-                _webView!.CoreWebView2.NavigationCompleted -= OnNavCompleted;
+                // 【修复 NRE 同步自 StartupWindow】回调发生时 CoreWebView2 可能因窗口关闭等原因已释放，
+                // 若直接访问 _webView.CoreWebView2 会 NullReferenceException。判空后再取消订阅。
+                if (_webView?.CoreWebView2 != null)
+                {
+                    _webView.CoreWebView2.NavigationCompleted -= OnNavCompleted;
+                }
             }
 
             _webView.CoreWebView2.NavigationCompleted += OnNavCompleted;
@@ -251,7 +256,12 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                     "若持续出现，请检查: ① 虚拟主机路径是否可读（权限/杀毒拦截/中文路径）② 手动在浏览器打开该 index.html 是否能正常渲染。" +
                     "（注：WebView2 1.x SDK 导航失败只走 NavigationCompleted，若此处超时说明该事件一直未触发，通常是 WebView2 初始化被中断或页面脚本死锁）",
                     provider.ModeName, appUrl);
-                _webView.CoreWebView2.NavigationCompleted -= OnNavCompleted;
+                // 【修复 NRE 同步自 StartupWindow】超时时 WebView2 可能已释放（用户已关闭窗口/切页面），
+                // CoreWebView2 变为 null，直接 -= 会 NullReferenceException。判空后再取消订阅。
+                if (_webView?.CoreWebView2 != null)
+                {
+                    _webView.CoreWebView2.NavigationCompleted -= OnNavCompleted;
+                }
                 return false;
             }
 
