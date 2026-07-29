@@ -98,21 +98,60 @@
   <!-- 🌐 前端构建与资源集成                                       -->
   <!-- ═══════════════════════════════════════════════════════════════ -->
 
-  <!-- 确保前端在嵌入资源之前构建完成 -->
-  <Target Name="BuildFrontend" BeforeTargets="PrepareForBuild" Condition="!Exists('..\frontend\dist\index.html')">
+  <!-- 用绝对路径 + MSBuild 属性解析前端根目录，避免相对路径/中文路径乱码问题 -->
+  <PropertyGroup>
+    <FrontendRoot Condition="'$(FrontendRoot)' == ''">$([System.IO.Path]::GetFullPath($(MSBuildProjectDirectory)\..\frontend))</FrontendRoot>
+    <FrontendIndex>$(FrontendRoot)\dist\index.html</FrontendIndex>
+    <FrontendPackageJson>$(FrontendRoot)\package.json</FrontendPackageJson>
+  </PropertyGroup>
+
+  <!-- 诊断输出：编译时能在输出面板看到实际解析到的前端目录路径，便于排错 -->
+  <Target Name="DiagnoseFrontendPaths" BeforeTargets="BuildFrontend;PackFrontendToZip">
+    <Message Text="📍 FrontendRoot = $(FrontendRoot)" Importance="high" />
+    <Message Text="📍 package.json 存在? $(FrontendPackageJson) = $([System.IO.File]::Exists($(FrontendPackageJson)))" Importance="high" />
+    <Message Text="📍 dist\index.html 存在? $(FrontendIndex) = $([System.IO.File]::Exists($(FrontendIndex)))" Importance="high" />
+  </Target>
+
+  <!-- 确保前端在嵌入资源之前构建完成（仅当 package.json 存在且 dist 未构建时才跑 npm） -->
+  <Target Name="BuildFrontend" BeforeTargets="PrepareForBuild"
+          Condition="$([System.IO.File]::Exists($(FrontendPackageJson))) And !$([System.IO.File]::Exists($(FrontendIndex)))">
     <Message Text="🌐 构建前端项目..." Importance="high" />
-    <Exec Command="npm install" WorkingDirectory="..\frontend" ContinueOnError="false" />
-    <Exec Command="npm run build" WorkingDirectory="..\frontend" ContinueOnError="false" />
+    <!--
+      修复说明：
+      1) 用 $(FrontendRoot) 绝对路径替代 ..\frontend 相对路径，避免中文路径乱码导致 ENOENT
+      2) npm install 改为带 --prefix，双保险：既 WorkingDirectory 切换工作目录，也告诉 npm 根在哪
+      3) npm.cmd 显式扩展名：规避 PowerShell 对 .ps1 脚本的执行策略拦截
+    -->
+    <Exec Command="npm.cmd install --prefix &quot;$(FrontendRoot)&quot;"
+          WorkingDirectory="$(FrontendRoot)"
+          ContinueOnError="false"
+          EchoOff="false"
+          StandardOutputImportance="high"
+          StandardErrorImportance="high" />
+    <Exec Command="npm.cmd run build --prefix &quot;$(FrontendRoot)&quot;"
+          WorkingDirectory="$(FrontendRoot)"
+          ContinueOnError="false"
+          EchoOff="false"
+          StandardOutputImportance="high"
+          StandardErrorImportance="high" />
+  </Target>
+
+  <!-- 当 package.json 都找不到时给出明确提示，而不是静默跳过让用户看到降级页 -->
+  <Target Name="WarnFrontendMissing" BeforeTargets="PrepareForBuild"
+          Condition="!$([System.IO.File]::Exists($(FrontendPackageJson))) And !$([System.IO.File]::Exists($(FrontendIndex)))">
+    <Message Text="⚠️  未找到前端 package.json ($(FrontendPackageJson))，且 dist\index.html 也不存在。" Importance="high" />
+    <Message Text="⚠️  应用将显示 WebView2 桥接测试页，请先构建前端或检查项目路径。" Importance="high" />
   </Target>
 
   <!-- 将前端 dist 打包成 zip 后作为嵌入资源
        运行时通过 ZipArchive 从内存读取，避免多文件资源名映射问题 -->
-  <Target Name="PackFrontendToZip" BeforeTargets="BeforeResGen" Condition="Exists('..\frontend\dist\index.html')">
+  <Target Name="PackFrontendToZip" BeforeTargets="BeforeResGen"
+          Condition="$([System.IO.File]::Exists($(FrontendIndex)))">
     <!-- 删除旧 zip -->
     <Delete Files="$(IntermediateOutputPath)wwwroot.zip" />
 
     <!-- 创建 zip 包（用 PowerShell 压缩，兼容性好） -->
-    <Exec Command="powershell -NoProfile -Command &quot;Compress-Archive -Path '..\frontend\dist\*' -DestinationPath '$(IntermediateOutputPath)wwwroot.zip' -Force&quot;"
+    <Exec Command="powershell -NoProfile -Command &quot;Compress-Archive -Path '$(FrontendRoot)\dist\*' -DestinationPath '$(IntermediateOutputPath)wwwroot.zip' -Force&quot;"
           ContinueOnError="false" />
 
     <!-- 将 zip 作为嵌入资源 -->
@@ -126,8 +165,8 @@
   </Target>
 
   <!-- 同时保留文件夹复制方式（开发时用，方便热重载） -->
-  <ItemGroup Condition="Exists('..\frontend\dist\index.html')">
-    <None Include="..\frontend\dist\**" CopyToOutputDirectory="PreserveNewest" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
+  <ItemGroup Condition="$([System.IO.File]::Exists($(FrontendIndex)))">
+    <None Include="$(FrontendRoot)\dist\**" CopyToOutputDirectory="PreserveNewest" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
