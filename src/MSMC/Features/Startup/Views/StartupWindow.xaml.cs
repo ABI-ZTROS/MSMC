@@ -652,9 +652,51 @@ public partial class StartupWindow : Window
 ";
     }
 
-    private void LoadFallbackPage(string errorMessage)
+    /// <summary>
+    /// 加载兜底启动页（WebView2 前端资源不可用时的最后防线）
+    /// 【修复 FTL】调用 NavigateToString 前必须确保 CoreWebView2 已初始化完成，
+    /// 否则会抛 InvalidOperationException 冒泡到 UI 线程变成未处理异常。
+    /// </summary>
+    private async void LoadFallbackPage(string errorMessage)
     {
-        var fallbackHtml = $@"
+        try
+        {
+            // 1) 先确保控件本身还活着（窗口可能已关闭触发 Unloaded）
+            if (StartupWebView == null)
+            {
+                Log.Warning("[Startup-Fallback] ⚠️ StartupWebView 控件已为 null，放弃加载兜底页");
+                return;
+            }
+
+            // 2) 核心修复：CoreWebView2 可能因为超时回收/提前关闭/资源不可用导致变成 null，
+            //    NavigateToString() 要求 Core 必须已存在并初始化完成，
+            //    所以必须显式再调一次 EnsureCoreWebView2Async 做保险。
+            if (StartupWebView.CoreWebView2 == null || !_webViewInitialized)
+            {
+                Log.Warning("[Startup-Fallback] ⚠️ CoreWebView2 未初始化，正在重新初始化... (errorMsg={Error})",
+                    errorMessage);
+                try
+                {
+                    await StartupWebView.EnsureCoreWebView2Async();
+                    // 重新初始化后补一波最小必要配置（脚本注入等），保证兜底页也能响应 C# 调用
+                    var initScript = GenerateBridgeInitScript();
+                    await StartupWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(initScript);
+                    StartupWebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+                    StartupWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                    StartupWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+                    _webViewInitialized = true;
+                    Log.Information("[Startup-Fallback] ✅ CoreWebView2 延迟初始化完成");
+                }
+                catch (Exception initEx)
+                {
+                    // 到这里还失败（用户没装 WebView2 Runtime / 杀毒把 Runtime 卸了），
+                    // 直接吞掉，不要抛到 UI 线程，否则又 FTL。
+                    Log.Error(initEx, "[Startup-Fallback] ❌ CoreWebView2 重新初始化失败，已放弃加载兜底页");
+                    return;
+                }
+            }
+
+            var fallbackHtml = $@"
 <!DOCTYPE html>
 <html lang='zh-CN'>
 <head>
@@ -753,6 +795,13 @@ public partial class StartupWindow : Window
 </html>";
 
         StartupWebView.NavigateToString(fallbackHtml);
+        }
+        catch (Exception ex)
+        {
+            // 最后一层保险：NavigateToString 还失败（CoreWebView2 内部状态不一致），
+            // 直接吞掉写日志，绝对不能冒泡到 UI Dispatcher 变成 FTL。
+            Log.Error(ex, "[Startup-Fallback] ❌ NavigateToString 兜底页失败，已放弃加载 HTML");
+        }
     }
 
     protected override void OnClosed(EventArgs e)

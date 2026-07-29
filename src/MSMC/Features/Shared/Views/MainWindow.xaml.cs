@@ -189,11 +189,46 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// 加载内置测试页面（用于前端未构建时的桥接验证）
+    /// 【修复 FTL】NavigateToString 要求 CoreWebView2 已初始化完成，否则抛 InvalidOperationException
+    /// 冒泡到 UI 线程变成未处理异常。这里补 EnsureCoreWebView2Async + 全局 try/catch。
     /// </summary>
-    private void LoadTestPage()
+    private async void LoadTestPage()
     {
-        var testHtml = GenerateTestHtml();
-        MainWebView.NavigateToString(testHtml);
+        try
+        {
+            if (MainWebView == null)
+            {
+                Log.Warning("[UI-TestPage] ⚠️ MainWebView 控件已为 null，放弃加载测试页");
+                return;
+            }
+
+            // 初始化防御：CoreWebView2 可能因超时回收、初始化链路被中断而未准备好
+            if (MainWebView.CoreWebView2 == null)
+            {
+                Log.Warning("[UI-TestPage] ⚠️ CoreWebView2 未初始化，启动测试页前再 Ensure 一次");
+                try
+                {
+                    await MainWebView.EnsureCoreWebView2Async();
+                    // 补最小配置
+                    MainWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                    MainWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+                    Log.Information("[UI-TestPage] ✅ CoreWebView2 延迟初始化完成");
+                }
+                catch (Exception initEx)
+                {
+                    Log.Error(initEx, "[UI-TestPage] ❌ CoreWebView2 重新初始化失败，放弃加载测试页");
+                    return;
+                }
+            }
+
+            var testHtml = GenerateTestHtml();
+            MainWebView.NavigateToString(testHtml);
+        }
+        catch (Exception ex)
+        {
+            // 最后保险：绝对不能冒泡到 UI Dispatcher 变成 FTL
+            Log.Error(ex, "[UI-TestPage] ❌ NavigateToString 测试页失败，已吞掉异常");
+        }
     }
 
     /// <summary>

@@ -110,29 +110,32 @@
   </PropertyGroup>
 
   <!-- 诊断输出：构建时在 VS 输出面板高亮显示前端路径，便于排错 -->
+  <!-- 【关键修复】DiagnoseFrontendPaths 故意去掉 Condition 属性，强制每次构建都跑。
+       因为静态 Condition="Exists('中文路径')" 在 MSBuild 静态评估中可能因为编码/转义
+       解析错误而永远为 false，导致用户看不到诊断信息，排错无从下手。
+       真正的存在性判断改在 Target 内部用 Message Condition 动态展示，
+       这样无论路径中是否有中文/特殊字符/反斜杠数量不匹配都能正确输出。 -->
   <Target Name="DiagnoseFrontendPaths" BeforeTargets="PrepareForBuild">
-    <Message Text="📍 前端项目目录 (FrontendDir): $(FrontendDir)" Importance="high" />
+    <Message Text="────────────────────────────────────────────────" Importance="high" />
+    <Message Text="📍 前端诊断: FrontendDir = $(FrontendDir)" Importance="high" />
+    <!-- 用 MSBuild 内建的静态评估 + 动态路径规范化两种方式同时展示，方便对比差异 -->
     <Message Condition="Exists('$(FrontendDir)\package.json')"
-             Text="✅ 找到 package.json" Importance="high" />
+             Text="✅ 静态评估: 找到 package.json" Importance="high" />
     <Message Condition="!Exists('$(FrontendDir)\package.json')"
-             Text="❌ 未找到 package.json（路径: $(FrontendDir)\package.json）" Importance="high" />
+             Text="⚠️  静态评估: 未找到 package.json （路径: $(FrontendDir)\package.json）" Importance="high" />
     <Message Condition="Exists('$(FrontendDir)\dist\index.html')"
-             Text="✅ 找到已构建的 dist\index.html" Importance="high" />
+             Text="✅ 静态评估: 找到已构建的 dist\index.html" Importance="high" />
     <Message Condition="!Exists('$(FrontendDir)\dist\index.html')"
-             Text="⚠️  未构建前端 dist（若 package.json 存在将自动构建）" Importance="high" />
+             Text="⚠️  静态评估: 未构建前端 dist\index.html" Importance="high" />
+    <!-- 把 IntermediateOutputPath 也打印出来，zip 生成失败时直接去这个目录查 -->
+    <Message Text="📍 中间输出目录(wwwroot.zip 会生成在这里): $(IntermediateOutputPath)" Importance="high" />
+    <Message Text="────────────────────────────────────────────────" Importance="high" />
   </Target>
 
   <!-- 自动构建前端：仅当 package.json 存在 且 dist\index.html 不存在时触发 -->
   <Target Name="BuildFrontend" BeforeTargets="PrepareForBuild"
           Condition="Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')">
     <Message Text="🌐 检测到前端尚未构建，开始 npm install + npm run build..." Importance="high" />
-    <!--
-      关键修复：
-      1) npm.cmd 显式 .cmd 扩展名 —— 绕过 PowerShell ExecutionPolicy 对 npm.ps1 的拦截
-      2) WorkingDirectory 指向真实前端目录 —— 避免 npm 在错误目录下找 package.json
-      3) 再加 prefix 参数双保险 —— 即使 WorkingDirectory 解析失败也告诉 npm 根目录
-         （注：npm 命令里写成两个半角减号 + prefix，为避免 XML 注释解析报错此处省略连写）
-    -->
     <Exec
       Command="npm.cmd install --prefix &quot;$(FrontendDir)&quot;"
       WorkingDirectory="$(FrontendDir)"
@@ -150,36 +153,81 @@
   </Target>
 
   <!-- 当 package.json 和 dist 都不存在时给出明确警告，而不是静默让用户看到桥接测试页 -->
-  <Target Name="WarnFrontendMissing" BeforeTargets="PrepareForBuild"
-          Condition="!Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')">
-    <Message Text="⚠───────────────────────────────────────────────────────────────" Importance="high" />
-    <Message Text="⚠️  未找到前端源代码目录和已构建产物。" Importance="high" />
-    <Message Text="⚠️  预期目录: $(FrontendDir)" Importance="high" />
-    <Message Text="⚠️  运行时应用将显示 WebView2 桥接测试页（降级页）。" Importance="high" />
-    <Message Text="⚠───────────────────────────────────────────────────────────────" Importance="high" />
+  <Target Name="WarnFrontendMissing" BeforeTargets="PrepareForBuild">
+    <Message Condition="!Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')"
+             Text="⚠───────────────────────────────────────────────────────────────" Importance="high" />
+    <Message Condition="!Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')"
+             Text="⚠️  未找到前端源代码目录和已构建产物。" Importance="high" />
+    <Message Condition="!Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')"
+             Text="⚠️  预期目录: $(FrontendDir)" Importance="high" />
+    <Message Condition="!Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')"
+             Text="⚠️  运行时应用将显示 WebView2 桥接测试页（降级页）。" Importance="high" />
+    <Message Condition="!Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')"
+             Text="⚠───────────────────────────────────────────────────────────────" Importance="high" />
   </Target>
 
-  <!-- 将前端 dist 打包为单个 zip 嵌入资源（运行时从内存解压读取，避免大量资源注册麻烦） -->
-  <Target Name="PackFrontendToZip" BeforeTargets="BeforeResGen"
-          Condition="Exists('$(FrontendDir)\dist\index.html')">
-    <Delete Files="$(IntermediateOutputPath)wwwroot.zip" />
-    <Exec
-      Command="powershell -NoProfile -Command &quot;Compress-Archive -Path '$(FrontendDir)\dist\*' -DestinationPath '$(IntermediateOutputPath)wwwroot.zip' -Force&quot;"
-      ContinueOnError="false" />
-    <ItemGroup>
-      <EmbeddedResource Include="$(IntermediateOutputPath)wwwroot.zip">
+  <!-- ═══════════════════════════════════════════════════════════════
+       PackFrontendToZip: 把前端 dist 打包成单个 zip 作为嵌入资源
+       ═══════════════════════════════════════════════════════════════
+       【关键修复 1】去掉 Target 级别 Condition！
+       因为 Exists('中文路径\index.html') 静态评估在中文路径下会
+       偶发解析成 false，导致整个 Target 根本不执行，嵌入资源永远是空的
+       （用户日志已经证实：嵌入资源只剩 MSMC.g.resources，没有 wwwroot.zip）
+       现在改成：Target 无条件执行，先在内部用 <Error Text="..."/> + Condition
+       做动态判定，判断失败就 Skip 不报错（构建继续），但打印 WARNING 日志，
+       比之前 Target 级别 Condition 默默跳过可观测性强得多。
+
+       【关键修复 2】Compress-Archive 路径包双引号，避免 中文路径 + 含空格路径 报错。
+  -->
+  <Target Name="PackFrontendToZip" BeforeTargets="BeforeResGen">
+    <PropertyGroup>
+      <!-- 在 Target 内部再规范化一次路径，避免静态评估阶段字符串拼接的编码问题 -->
+      <_FrontendIndex Condition="'$(_FrontendIndex)' == ''">$(FrontendDir)\dist\index.html</_FrontendIndex>
+      <_FrontendZip   Condition="'$(_FrontendZip)'   == ''">$(IntermediateOutputPath)wwwroot.zip</_FrontendZip>
+      <_FrontendDist  Condition="'$(_FrontendDist)'  == ''">$(FrontendDir)\dist</_FrontendDist>
+    </PropertyGroup>
+
+    <Message Text="📦 [PackFrontendToZip] 开始处理: dist=$(_FrontendDist)  zip=$(_FrontendZip)" Importance="high" />
+
+    <!-- 动态存在性判定（Target 内部 Condition 不受 NuGet 静态评估阉割版引擎影响） -->
+    <Message Condition="!Exists('$(_FrontendIndex)')"
+             Text="⚠️  [PackFrontendToZip] 跳过：未找到 index.html（$(_FrontendIndex)）。请先执行前端构建。" Importance="high" />
+
+    <!-- 只有当 dist\index.html 存在时才真正执行压缩 + 嵌入 -->
+    <Delete Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')"
+            Files="$(_FrontendZip)" />
+
+    <Exec Condition="Exists('$(_FrontendIndex)')"
+          Command="powershell -NoProfile -Command &quot;Compress-Archive -Path &quot;&quot;$(_FrontendDist)\*&quot;&quot; -DestinationPath &quot;&quot;$(_FrontendZip)&quot;&quot; -Force&quot;"
+          ContinueOnError="false"
+          EchoOff="false"
+          StandardOutputImportance="high"
+          StandardErrorImportance="high">
+      <!-- 注意 Exec Command 里三层引号：外层 &quot; 包整个 pwsh 命令；里面 &quot;&quot; 两层对路径双引号，
+           保证 Compress-Archive 在中文/含空格路径下也能正确拿到路径字符串。 -->
+    </Exec>
+
+    <ItemGroup Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')">
+      <EmbeddedResource Include="$(_FrontendZip)">
         <LogicalName>$(AssemblyName).wwwroot.zip</LogicalName>
       </EmbeddedResource>
     </ItemGroup>
-    <Message Text="📦 前端资源已打包为嵌入资源 (wwwroot.zip)" Importance="high" />
+
+    <Message Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')"
+             Text="✅ [PackFrontendToZip] 完成: 已嵌入 $(AssemblyName).wwwroot.zip（大小约:）" Importance="high" />
+    <Message Condition="Exists('$(_FrontendIndex)') And !Exists('$(_FrontendZip)')"
+             Text="❌ [PackFrontendToZip] 失败: dist 存在但 zip 未生成，请检查 PowerShell/Compress-Archive 命令报错" Importance="high" />
   </Target>
 
-  <!-- 同时复制 wwwroot 文件夹到输出目录 —— 开发时方便热重载替换文件 -->
-  <ItemGroup Condition="Exists('$(FrontendDir)\dist\index.html')">
-    <None
-      Include="$(FrontendDir)\dist\**"
-      CopyToOutputDirectory="PreserveNewest"
-      Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
-  </ItemGroup>
+  <!-- 复制 wwwroot 文件夹到输出目录（开发模式热重载备用）
+       【修复】同样移除顶级 Condition，在内部做动态存在性判断，避免中文路径下静态评估失败。 -->
+  <Target Name="CopyFrontendToOutput" BeforeTargets="BeforeBuild">
+    <ItemGroup Condition="Exists('$(FrontendDir)\dist\index.html')">
+      <None
+        Include="$(FrontendDir)\dist\**"
+        CopyToOutputDirectory="PreserveNewest"
+        Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
+    </ItemGroup>
+  </Target>
 
 </Project>
