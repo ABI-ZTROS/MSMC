@@ -227,8 +227,9 @@ public sealed class ConfigDescriptorRegistry
             }
         }
 
-        // 第四级：叶键匹配 —— 处理 YAML 扁平化丢失父级前缀的场景
-        // 解析键 "allow-end" 可匹配注册键 "settings.allow-end"（叶键相同即可）
+        // 第四级：叶键匹配 —— 处理 YAML 扁平化父级前缀差异的场景
+        // 解析键 "settings.debug" 可匹配注册键 "debug"（叶键相同即可）
+        // 解析键 "debug" 可匹配注册键 "settings.debug"（叶键相同即可）
         foreach (var kvp in _descriptors)
         {
             if (!kvp.Key.ConfigFileName.Equals(configFileName, StringComparison.OrdinalIgnoreCase) &&
@@ -240,7 +241,11 @@ public sealed class ConfigDescriptorRegistry
                 ? registeredKey[(registeredKey.LastIndexOf('.') + 1)..]
                 : registeredKey;
 
-            if (key.Equals(registeredLeaf, StringComparison.OrdinalIgnoreCase))
+            var keyLeaf = key.Contains('.')
+                ? key[(key.LastIndexOf('.') + 1)..]
+                : key;
+
+            if (keyLeaf.Equals(registeredLeaf, StringComparison.OrdinalIgnoreCase))
                 return kvp.Value;
         }
 
@@ -1671,6 +1676,97 @@ public sealed class ConfigDescriptorRegistry
             ValueType = "int",
             RequiresRestart = true,
         });
+
+        // ==================== 杂项设置 ====================
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "warn-on-overload",
+            ConfigFileName = file,
+            DisplayName = "过载警告",
+            Description = "当服务器 TPS 低于阈值时是否在控制台输出警告。\n帮助管理员及时发现性能问题 ⚠️",
+            Category = "杂项",
+            DefaultValue = "true",
+            ValueType = "bool",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "permissions-file",
+            ConfigFileName = file,
+            DisplayName = "权限配置文件",
+            Description = "权限配置文件的路径。\n指定权限配置文件的位置 📄",
+            Category = "杂项",
+            DefaultValue = "permissions.yml",
+            ValueType = "string",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "plugin-profiling",
+            ConfigFileName = file,
+            DisplayName = "插件性能分析",
+            Description = "是否启用插件性能分析。\n开启后可查看各插件的耗时统计 📊",
+            Category = "杂项",
+            DefaultValue = "false",
+            ValueType = "bool",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "query-plugins",
+            ConfigFileName = file,
+            DisplayName = "查询插件信息",
+            Description = "是否在服务器查询（Query）中显示插件列表。\n允许外部工具查询服务器插件信息 🔍",
+            Category = "杂项",
+            DefaultValue = "true",
+            ValueType = "bool",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "deprecated-verbose",
+            ConfigFileName = file,
+            DisplayName = "弃用警告详细度",
+            Description = "废弃 API 警告的详细程度。\n控制弃用 API 警告的输出等级 📢",
+            Category = "杂项",
+            DefaultValue = "default",
+            ValueType = "enum",
+            AllowedValues = ["default", "quiet"],
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "shutdown-message",
+            ConfigFileName = file,
+            DisplayName = "关闭消息",
+            Description = "服务器关闭时显示给玩家的消息。\n玩家会在被踢出时看到这条消息 👋",
+            Category = "杂项",
+            DefaultValue = "Server closed",
+            ValueType = "string",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "minimum-api",
+            ConfigFileName = file,
+            DisplayName = "最低 API 版本",
+            Description = "插件所需的最低 Bukkit API 版本。\n低于此版本的插件将被拒绝加载 📦",
+            Category = "杂项",
+            DefaultValue = "none",
+            ValueType = "string",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "use-map-color-cache",
+            ConfigFileName = file,
+            DisplayName = "使用地图颜色缓存",
+            Description = "是否启用地图颜色缓存。\n开启后可提升地图渲染性能 🗺️",
+            Category = "杂项",
+            DefaultValue = "true",
+            ValueType = "bool",
+        });
     }
 
     /// <summary>
@@ -2267,6 +2363,103 @@ public sealed class ConfigDescriptorRegistry
             DefaultValue = "false",
             ValueType = "bool",
             RequiresRestart = true,
+        });
+
+        // ==================== 基础设置（settings.*） ====================
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "settings.debug",
+            ConfigFileName = file,
+            DisplayName = "调试模式",
+            Description = "是否启用调试模式。\n开启后服务器会输出更详细的调试日志，可能影响性能 🔍",
+            Category = "基础设置",
+            DefaultValue = "false",
+            ValueType = "bool",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "settings.sample-count",
+            ConfigFileName = file,
+            DisplayName = "采样计数",
+            Description = "性能采样的计数。\n用于统计服务器性能数据 📊",
+            Category = "基础设置",
+            DefaultValue = "12",
+            MinValue = 1,
+            ValueType = "int",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "settings.user-cache-size",
+            ConfigFileName = file,
+            DisplayName = "用户缓存大小",
+            Description = "每个玩家的缓存条目数量。\n影响玩家数据存取效率 💾",
+            Category = "基础设置",
+            DefaultValue = "1000",
+            MinValue = 100,
+            ValueType = "int",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "settings.update-folder",
+            ConfigFileName = file,
+            DisplayName = "更新文件夹",
+            Description = "服务器检查更新时使用的文件夹路径。\n指定服务器更新文件存放位置 📁",
+            Category = "基础设置",
+            ValueType = "string",
+        });
+
+        // ==================== 属性设置（attribute.*） ====================
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "attribute.maxabsorption",
+            ConfigFileName = file,
+            DisplayName = "最大吸取等级",
+            Description = "物品可吸取的最大等级。\n影响附魔吸取效果 🧪",
+            Category = "属性设置",
+            DefaultValue = "2048.0",
+            MinValue = 0,
+            ValueType = "double",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "attribute.max",
+            ConfigFileName = file,
+            DisplayName = "属性上限",
+            Description = "玩家属性的最大值。\n限制玩家可达到的属性上限 📈",
+            Category = "属性设置",
+            DefaultValue = "2048.0",
+            MinValue = 0,
+            ValueType = "double",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "attribute.maxhealth",
+            ConfigFileName = file,
+            DisplayName = "最大生命",
+            Description = "玩家可达到的最大生命值。\n限制玩家血量上限 ❤️",
+            Category = "属性设置",
+            DefaultValue = "2048.0",
+            MinValue = 0,
+            ValueType = "double",
+        });
+
+        Register(new ServerConfigDescriptor
+        {
+            Key = "attribute.movementspeed",
+            ConfigFileName = file,
+            DisplayName = "移动速度上限",
+            Description = "玩家可达到的最大移动速度。\n限制玩家移动速度上限 🏃",
+            Category = "属性设置",
+            DefaultValue = "2048.0",
+            MinValue = 0,
+            ValueType = "double",
         });
     }
 
