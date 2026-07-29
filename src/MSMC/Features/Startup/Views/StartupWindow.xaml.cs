@@ -93,7 +93,7 @@ public partial class StartupWindow : Window
         catch (Exception ex)
         {
             Log.Error(ex, "[Startup-WV2-ERR] ❌ WebView2 初始化失败");
-            LoadFallbackPage(ex.Message);
+            _ = LoadFallbackPageAsync(ex.Message);
         }
     }
 
@@ -107,7 +107,7 @@ public partial class StartupWindow : Window
         if (!provider.IsAvailable)
         {
             Log.Warning("[Startup-WV2-LOAD] ⚠️ 前端资源提供器不可用，使用兜底页面");
-            LoadFallbackPage("前端资源未找到");
+            _ = LoadFallbackPageAsync("前端资源未找到");
             return;
         }
 
@@ -115,7 +115,46 @@ public partial class StartupWindow : Window
         {
             var basePath = await provider.GetBasePathAsync();
 
+            // 【和主窗口一致】优先 file:// 直读（Folder / ZipExtract 有真实磁盘路径时），
+            // 完全绕开虚拟主机名 + 中文路径 + 杀毒拦截 30 秒超时死锁链。
+            Uri targetUri;
+            bool useVirtualHost = true;
+            string? directStartupPath = null;
             if (basePath != null)
+            {
+                directStartupPath = Path.GetFullPath(Path.Combine(basePath, "startup.html"));
+                if (!File.Exists(directStartupPath))
+                {
+                    Log.Warning("[Startup-WV2-LOAD] ⚠️ basePath 存在但未找到 startup.html: {Path}", directStartupPath);
+                    directStartupPath = null;
+                }
+                else
+                {
+                    try
+                    {
+                        targetUri = new UriBuilder("file", string.Empty)
+                        {
+                            Path = directStartupPath.Replace('\\', '/')
+                        }.Uri;
+                        useVirtualHost = false;
+                        Log.Information("[Startup-WV2-LOAD] 📎 模式 {Mode} 有真实磁盘路径，改用 file:// 直读: {Uri}",
+                            provider.ModeName, targetUri.AbsoluteUri);
+                    }
+                    catch (Exception uriEx)
+                    {
+                        Log.Warning(uriEx, "[Startup-WV2-LOAD] ⚠️ 构造 file:// Uri 失败（{Path}），回退虚拟主机模式", directStartupPath);
+                        useVirtualHost = true;
+                        targetUri = new Uri($"http://{virtualHost}/startup.html");
+                    }
+                }
+            }
+            else
+            {
+                targetUri = new Uri($"http://{virtualHost}/startup.html");
+                useVirtualHost = true;
+            }
+
+            if (useVirtualHost && basePath != null)
             {
                 StartupWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                     virtualHost,
@@ -123,16 +162,15 @@ public partial class StartupWindow : Window
                     CoreWebView2HostResourceAccessKind.Allow);
                 Log.Information("[Startup-WV2-LOAD] 🔗 虚拟主机映射已设置");
             }
-            else
+            else if (basePath == null)
             {
                 RegisterWebResourceRequested(provider, virtualHost);
                 Log.Information("[Startup-WV2-LOAD] 🔌 WebResourceRequested 拦截器已注册");
             }
+            // else: file 模式下不设映射、不注册拦截器
 
-            // 【和主窗口一致】改用 http:// 虚拟协议 + NavigationCompleted 单监听（覆盖成功/失败）+ 30 秒超时
-            // 注：WebView2 1.x 稳定版没有独立 NavigationFailed 事件，所有错误统一走 NavigationCompleted。
-            var startupUrl = $"http://{virtualHost}/startup.html";
-            Log.Information("[Startup-WV2-LOAD] 🧭 导航到: {Url}", startupUrl);
+            Log.Information("[Startup-WV2-LOAD] 🧭 导航到: {Url} (模式={Mode}, 虚拟主机={UseVH})",
+                targetUri.AbsoluteUri, provider.ModeName, useVirtualHost);
 
             var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -140,63 +178,60 @@ public partial class StartupWindow : Window
             {
                 if (e.IsSuccess)
                 {
-                    Log.Information("[Startup-WV2-LOAD] ✅ 导航成功 HTTP {Code}", e.HttpStatusCode);
+                    Log.Information("[Startup-WV2-LOAD] ✅ 导航成功 HTTP {Code} (Uri={Uri})",
+                        e.HttpStatusCode, targetUri.AbsoluteUri);
                     tcs.TrySetResult(true);
                 }
                 else
                 {
                     Log.Error(
-                        "[Startup-WV2-LOAD] ❌ NavigationCompleted 失败: Status={Status}, HTTP={Code}。" +
+                        "[Startup-WV2-LOAD] ❌ NavigationCompleted 失败: Status={Status}, HTTP={Code} (Uri={Uri})。" +
                         "常见原因: ① 虚拟主机协议不匹配（已从 https 改为 http）② 文件路径被杀毒拦截 ③ startup.html 实际不存在",
-                        e.WebErrorStatus, e.HttpStatusCode);
+                        e.WebErrorStatus, e.HttpStatusCode, targetUri.AbsoluteUri);
                     tcs.TrySetResult(false);
                 }
-                // 【修复 NRE】CoreWebView2 可能因 WebView2 内部回收/关闭变成 null，先判空再 -=。
-                // 若这里不判空，超时时第 168 行取消订阅会因对象已释放而炸 NullReferenceException。
                 if (StartupWebView.CoreWebView2 != null)
                 {
                     StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
                 }
             }
 
-            // 【修复 NRE】订阅前也先判空（极端情况下 EnsureCoreWebView2Async 返回成功但后续异步回收了）
             if (StartupWebView.CoreWebView2 == null)
             {
                 Log.Warning("[Startup-WV2-LOAD] ⚠️ StartupWebView.CoreWebView2 订阅前已为 null，跳过订阅直接走兜底");
-                LoadFallbackPage("WebView2 已释放");
+                _ = LoadFallbackPageAsync("WebView2 已释放");
                 return;
             }
 
             StartupWebView.CoreWebView2.NavigationCompleted += OnCompleted;
+            StartupWebView.Source = targetUri;
 
-            StartupWebView.Source = new Uri(startupUrl);
-
-            var timeout = Task.Delay(TimeSpan.FromSeconds(30));
+            int timeoutSeconds = useVirtualHost ? 30 : 20;
+            var timeout = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds));
             var done = await Task.WhenAny(tcs.Task, timeout);
             if (done == timeout)
             {
                 Log.Error(
-                    "[Startup-WV2-LOAD] ⏰ 启动页加载超时 (30s)，协议已从 https 改为 http；若仍超，" +
-                    "请检查路径权限/中文路径/杀毒软件拦截，或直接在浏览器打开目标 startup.html 验证。");
-                // 【修复 NRE】超时时 CoreWebView2 可能已经释放（比如用户关闭了窗口），
-                // 直接取消订阅会炸 NullReferenceException；判空即可。
+                    "[Startup-WV2-LOAD] ⏰ 启动页加载超时 ({Sec}s)，模式: {Mode}, Uri: {Uri}, 虚拟主机={UseVH}；若仍超，" +
+                    "请检查路径权限/中文路径/杀毒软件拦截，或直接在浏览器打开目标 startup.html 验证。",
+                    timeoutSeconds, provider.ModeName, targetUri.AbsoluteUri, useVirtualHost);
                 if (StartupWebView.CoreWebView2 != null)
                 {
                     StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
                 }
-                LoadFallbackPage("启动页加载超时");
+                _ = LoadFallbackPageAsync("启动页加载超时");
                 return;
             }
 
             if (!tcs.Task.Result)
             {
-                LoadFallbackPage("启动页加载失败");
+                _ = LoadFallbackPageAsync("启动页加载失败");
             }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[Startup-WV2-LOAD-ERR] ❌ 加载启动页失败");
-            LoadFallbackPage(ex.Message);
+            _ = LoadFallbackPageAsync(ex.Message);
         }
     }
 
@@ -654,79 +689,164 @@ public partial class StartupWindow : Window
 
     /// <summary>
     /// 加载兜底启动页（WebView2 前端资源不可用时的最后防线）
-    /// 【修复 FTL】调用 NavigateToString 前必须确保 CoreWebView2 已初始化完成，
-    /// 否则会抛 InvalidOperationException 冒泡到 UI 线程变成未处理异常。
+    /// 【修复 FTL 多层防御链】
+    /// 0. 方法签名从 async void 改为 async Task，外部调用用 _ = LoadFallbackPageAsync(...) 忽略返回值
+    ///    （仍然是 fire-and-forget 但允许内层 await）。
+    /// 1. 若 CoreWebView2 未初始化：
+    ///    - 第一层：尝试 StartupWebView.Source = new Uri("about:blank")，
+    ///      WPF WebView2 控件设置 Source 属性时会自动触发 CoreWebView2 初始化，
+    ///      比直接 EnsureCoreWebView2Async 兼容性更高（MS 官方 Sample 就是这么做的）。
+    ///    - 然后等待 about:blank 的 NavigationCompleted，再 await EnsureCoreWebView2Async
+    ///      做双保险。
+    ///    - 最后捕获本地变量判 null，一行行判空 + try/catch 设置。
+    /// 2. NavigateToString 前再判一次 CoreWebView2 != null，炸了就写日志不冒泡。
+    ///    核心：WebView2 对 NavigateToString 要求 Core 内部状态完全一致，比 Source 属性严格得多。
+    ///    如果仍然 InvalidOperationException，就退化为 Source = "data:text/html,..."（
+    ///    Data URI 也是官方推荐的直传 HTML 方式，和 NavigateToString 效果一致但更宽松）。
     /// </summary>
-    private async void LoadFallbackPage(string errorMessage)
+    private async Task LoadFallbackPageAsync(string errorMessage)
     {
         try
         {
-            // 1) 先确保控件本身还活着（窗口可能已关闭触发 Unloaded）
+            // 0) 控件存活
             if (StartupWebView == null)
             {
                 Log.Warning("[Startup-Fallback] ⚠️ StartupWebView 控件已为 null，放弃加载兜底页");
                 return;
             }
 
-            // 2) 核心修复：CoreWebView2 可能因为超时回收/提前关闭/资源不可用导致变成 null，
-            //    NavigateToString() 要求 Core 必须已存在并初始化完成，
-            //    所以必须显式再调一次 EnsureCoreWebView2Async 做保险。
+            // 1) 【关键修复 line 827 InvalidOperationException】如果 CoreWebView2 还没彻底初始化，
+            //    不能上来就 EnsureCoreWebView2Async（用户环境下经常出现"Ensure 成功但后续访问
+            //    CoreWebView2 属性仍 null + NavigateToString 直接 VerifyCoreWebView2 抛异常"的半初始化状态）。
+            //    改用 MS 官方推荐的"设置 Source = about:blank 触发控件内部标准初始化流程"：
             if (StartupWebView.CoreWebView2 == null || !_webViewInitialized)
             {
-                Log.Warning("[Startup-Fallback] ⚠️ CoreWebView2 未初始化，正在重新初始化... (errorMsg={Error})",
+                Log.Warning("[Startup-Fallback] ⚠️ CoreWebView2 未初始化，用 Source=about:blank 触发初始化 (errorMsg={Error})",
                     errorMessage);
                 try
                 {
+                    var aboutBlankTcs = new TaskCompletionSource<bool>(
+                        TaskCreationOptions.RunContinuationsAsynchronously);
+
+                    void OnBlankNav(object? s, CoreWebView2NavigationCompletedEventArgs e)
+                    {
+                        aboutBlankTcs.TrySetResult(e.IsSuccess);
+                        if (StartupWebView.CoreWebView2 != null)
+                            StartupWebView.CoreWebView2.NavigationCompleted -= OnBlankNav;
+                    }
+
+                    // 【兼容保护】Source 设置前 CoreWebView2 可能还没实例化；
+                    // 如果设置后立刻能拿到 CoreWebView2，就订阅导航完成；
+                    // 如果拿不到，给 3 秒等待 + 再 EnsureCoreWebView2Async 补保险。
+                    try
+                    {
+                        StartupWebView.Source = new Uri("about:blank");
+                    }
+                    catch (Exception sourceEx)
+                    {
+                        Log.Warning(sourceEx, "[Startup-Fallback] ⚠️ 设置 Source=about:blank 失败（非致命，尝试 EnsureCoreWebView2Async）");
+                    }
+
+                    var cwvAfterSource = StartupWebView.CoreWebView2;
+                    if (cwvAfterSource != null)
+                    {
+                        cwvAfterSource.NavigationCompleted += OnBlankNav;
+                        var navDone = await Task.WhenAny(aboutBlankTcs.Task, Task.Delay(3000));
+                        if (navDone != aboutBlankTcs.Task)
+                        {
+                            Log.Warning("[Startup-Fallback] ⚠️ about:blank 3s 未完成导航，继续尝试补 Ensure");
+                            if (StartupWebView.CoreWebView2 != null)
+                                StartupWebView.CoreWebView2.NavigationCompleted -= OnBlankNav;
+                        }
+                    }
+
+                    // 无论 about:blank 导航有没有成功，再显式 Ensure 一次（它幂等，已初始化时瞬时返回）
                     await StartupWebView.EnsureCoreWebView2Async();
-                    // 【修复 line 683 NRE】EnsureCoreWebView2Async() 表面成功后，也有可能
-                    // CoreWebView2 内部因为用户组策略/杀毒拦截/WebView2 版本过旧
-                    // 没有真正可访问，之后任何一行访问 CoreWebView2 属性/方法都可能 NRE。
-                    // 所以从这里开始，每一步访问 CoreWebView2 都先捕获本地变量 + 判 null +
-                    // 用 ?. 条件访问。任何一句失败都要打 WARNING 然后继续往下走，
-                    // 保证即使设置不全，至少能 NavigateToString 把兜底 HTML 显示出来。
-                    var cwv = StartupWebView.CoreWebView2;
-                    if (cwv == null)
-                    {
-                        Log.Warning("[Startup-Fallback] ⚠️ EnsureCoreWebView2Async 表面成功但 CoreWebView2 仍为 null，跳过脚本注入和订阅");
-                    }
-                    else
-                    {
-                        try
-                        {
-                            var initScript = GenerateBridgeInitScript();
-                            if (!string.IsNullOrEmpty(initScript))
-                            {
-                                await cwv.AddScriptToExecuteOnDocumentCreatedAsync(initScript);
-                            }
-                        }
-                        catch (Exception scriptEx)
-                        {
-                            Log.Warning(scriptEx, "[Startup-Fallback] ⚠️ 注入 Bridge Init 脚本失败（不致命，继续）");
-                        }
-
-                        try { cwv.WebMessageReceived += OnWebMessageReceived; }
-                        catch (Exception subEx) { Log.Warning(subEx, "[Startup-Fallback] ⚠️ 订阅 WebMessageReceived 失败（不致命，继续）"); }
-
-                        try { cwv.Settings.AreDevToolsEnabled = false; }
-                        catch (Exception devEx) { Log.Warning(devEx, "[Startup-Fallback] ⚠️ 关闭 DevTools 失败（不致命，继续）"); }
-
-                        try { cwv.Settings.AreDefaultContextMenusEnabled = false; }
-                        catch (Exception ctxEx) { Log.Warning(ctxEx, "[Startup-Fallback] ⚠️ 关闭右键菜单失败（不致命，继续）"); }
-
-                        _webViewInitialized = true;
-                        Log.Information("[Startup-Fallback] ✅ CoreWebView2 延迟初始化完成");
-                    }
                 }
                 catch (Exception initEx)
                 {
-                    // 到这里还失败（用户没装 WebView2 Runtime / 杀毒把 Runtime 卸了），
-                    // 直接吞掉，不要抛到 UI 线程，否则又 FTL。
-                    Log.Error(initEx, "[Startup-Fallback] ❌ CoreWebView2 重新初始化失败，已放弃加载兜底页");
+                    Log.Error(initEx, "[Startup-Fallback] ❌ Source=about:blank + EnsureCoreWebView2Async 组合失败，已彻底放弃初始化 CoreWebView2，兜底页也不会显示（没有可用的 WebView2 Core）");
                     return;
+                }
+
+                // 2) 之后再捕获本地变量 cwv，逐句设置；单句失败 WARNING 继续
+                var cwv = StartupWebView.CoreWebView2;
+                if (cwv == null)
+                {
+                    Log.Warning("[Startup-Fallback] ⚠️ 双重初始化后 CoreWebView2 仍为 null，彻底放弃脚本注入，只尝试显示 HTML");
+                }
+                else
+                {
+                    try
+                    {
+                        var initScript = GenerateBridgeInitScript();
+                        if (!string.IsNullOrEmpty(initScript))
+                        {
+                            await cwv.AddScriptToExecuteOnDocumentCreatedAsync(initScript);
+                        }
+                    }
+                    catch (Exception scriptEx)
+                    {
+                        Log.Warning(scriptEx, "[Startup-Fallback] ⚠️ 注入 Bridge Init 脚本失败（不致命，继续）");
+                    }
+
+                    try { cwv.WebMessageReceived += OnWebMessageReceived; }
+                    catch (Exception subEx) { Log.Warning(subEx, "[Startup-Fallback] ⚠️ 订阅 WebMessageReceived 失败（不致命，继续）"); }
+
+                    try { cwv.Settings.AreDevToolsEnabled = false; }
+                    catch (Exception devEx) { Log.Warning(devEx, "[Startup-Fallback] ⚠️ 关闭 DevTools 失败（不致命，继续）"); }
+
+                    try { cwv.Settings.AreDefaultContextMenusEnabled = false; }
+                    catch (Exception ctxEx) { Log.Warning(ctxEx, "[Startup-Fallback] ⚠️ 关闭右键菜单失败（不致命，继续）"); }
+
+                    _webViewInitialized = true;
+                    Log.Information("[Startup-Fallback] ✅ CoreWebView2 延迟初始化完成（Source=about:blank + Ensure）");
                 }
             }
 
-            var fallbackHtml = $@"
+            // 3) 真正写 HTML —— 优先 NavigateToString，失败再退回 Data URI Source（Source 属性对 Core 状态更宽松）
+            var fallbackHtml = BuildFallbackHtml(errorMessage);
+            try
+            {
+                if (StartupWebView.CoreWebView2 == null)
+                {
+                    Log.Warning("[Startup-Fallback] ⚠️ NavigateToString 前 CoreWebView2 仍为 null，尝试回退 Data URI 方式");
+                    throw new InvalidOperationException("CoreWebView2 is still null before NavigateToString");
+                }
+                StartupWebView.NavigateToString(fallbackHtml);
+                Log.Information("[Startup-Fallback] ✅ NavigateToString 兜底页已触发");
+            }
+            catch (Exception navEx)
+            {
+                Log.Warning(navEx, "[Startup-Fallback] ⚠️ NavigateToString 失败，回退到 Source=data:... Data URI");
+                try
+                {
+                    // Data URI 方案：和 NavigateToString 等效显示一段 HTML，但触发的是"导航到 URL"的
+                    // 常规代码路径，对 WebView2 Core 内部状态半初始化的环境兼容性更高。
+                    var htmlEscaped = Uri.EscapeDataString(fallbackHtml);
+                    StartupWebView.Source = new Uri($"data:text/html;charset=utf-8,{htmlEscaped}");
+                    Log.Information("[Startup-Fallback] ✅ 已通过 Data URI Source 设置兜底页 HTML");
+                }
+                catch (Exception dataEx)
+                {
+                    Log.Error(dataEx, "[Startup-Fallback] ❌ Data URI Source 也失败，已彻底放弃向 WebView2 写任何内容（Core 状态不可用）。用户界面会停留在空白或之前内容。");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // 最后一层保险：任何未预料异常都吞掉写日志，绝对不能冒泡到 UI Dispatcher 变成 FTL。
+            Log.Error(ex, "[Startup-Fallback] ❌ 兜底页整体执行失败，已放弃（不应影响后续主窗口）");
+        }
+    }
+
+    /// <summary>
+    /// 从 LoadFallbackPage 里把"拼 HTML 字符串"单独抽成纯函数，
+    /// 避免外层大 try/catch + 方法里混合流程控制让可读性下降。
+    /// </summary>
+    private static string BuildFallbackHtml(string errorMessage)
+    {
+        return $@"
 <!DOCTYPE html>
 <html lang='zh-CN'>
 <head>
@@ -823,15 +943,6 @@ public partial class StartupWindow : Window
     </script>
 </body>
 </html>";
-
-        StartupWebView.NavigateToString(fallbackHtml);
-        }
-        catch (Exception ex)
-        {
-            // 最后一层保险：NavigateToString 还失败（CoreWebView2 内部状态不一致），
-            // 直接吞掉写日志，绝对不能冒泡到 UI Dispatcher 变成 FTL。
-            Log.Error(ex, "[Startup-Fallback] ❌ NavigateToString 兜底页失败，已放弃加载 HTML");
-        }
     }
 
     protected override void OnClosed(EventArgs e)
