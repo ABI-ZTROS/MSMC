@@ -40,6 +40,13 @@ namespace io.NET.ZTR_OS;
 public partial class App : Application
 {
     /// <summary>
+    /// 死日志路径（进程启动后立即确定，即便 Serilog 挂了也能用）
+    /// </summary>
+    private static readonly string ForceLogPath = Path.Combine(
+        AppContext.BaseDirectory, "logs",
+        $"force-boot-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+
+    /// <summary>
     /// 依赖注入服务提供器
     /// </summary>
     private ServiceProvider? _serviceProvider;
@@ -58,31 +65,153 @@ public partial class App : Application
     }
 
     /// <summary>
+    /// 【最早入口】静态构造函数 —— 比 OnStartup、比 XAML 资源加载、比任何实例构造都早
+    /// 在这里挂载 100% 不依赖任何第三方库的「裸异常处理器」+ 强制死日志
+    /// 只要 CLR 加载了 App 类，这玩意就一定会跑
+    /// </summary>
+    static App()
+    {
+        // 1. 确保死日志目录存在（Directory.CreateDirectory 自带存在性检查，不会抛）
+        try { Directory.CreateDirectory(Path.GetDirectoryName(ForceLogPath)!); } catch { /* 真的连目录都建不了就算了 */ }
+
+        // 2. 第一行死日志：确认 CLR 成功加载了 App 类
+        ForceLog("========================================");
+        ForceLog($"[BOOT-0] ✅ App .cctor 入口已命中  PID={Environment.ProcessId}  Time={DateTime.Now:HH:mm:ss.fff}");
+        ForceLog($"[BOOT-0]    BaseDir = {AppContext.BaseDirectory}");
+        ForceLog($"[BOOT-0]    OS      = {Environment.OSVersion}  /  .NET = {Environment.Version}");
+        ForceLog($"[BOOT-0]    x64     = {Environment.Is64BitProcess}  /  CPU = {Environment.ProcessorCount}");
+
+        // 3. 三层全局异常：全部先 ForceLog 裸写，再尝试 Serilog（如果初始化了的话）
+        //    注意：这是整个进程最早能挂这些事件的时机，比任何 WPF 框架代码都早
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            var ex = e.ExceptionObject as Exception;
+            ForceLog($"💀 AppDomain.UnhandledException  IsTerminating={e.IsTerminating}");
+            ForceLog(ex?.ToString() ?? "(ExceptionObject 不是 Exception 类型，无法序列化)");
+            try { Log.Fatal(ex, "💀 非UI线程致命异常 AppDomain.UnhandledException (终止={IsTerminating})", e.IsTerminating); } catch { /* Serilog 可能还没初始化 */ }
+            try { WriteForceCrashDump(ex); } catch { }
+        };
+
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            ForceLog($"⚠️ TaskScheduler.UnobservedTaskException: {e.Exception}");
+            try { Log.Error(e.Exception, "⚠️ Task 未观察异常 UnobservedTaskException"); } catch { }
+            e.SetObserved();
+        };
+    }
+
+    /// <summary>
+    /// 【强制死日志】完全不依赖 Serilog、不依赖任何外部库
+    /// 三重输出：Console.Error + Debug.WriteLine + 直接写文件
+    /// 进程只要活着（哪怕 GC 崩了一半），这玩意基本都能写出去
+    /// </summary>
+    internal static void ForceLog(string message)
+    {
+        var line = $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}";
+        try { Console.Error.Write(line); } catch { }
+        try { System.Diagnostics.Debug.Write(line); } catch { }
+        try
+        {
+            // File.AppendAllText 是原子的（内部 FileMode.Append + FileShare.ReadWrite）
+            // 同一进程多线程写不会丢行；不同进程写可能乱序但不会崩
+            File.AppendAllText(ForceLogPath, line);
+        }
+        catch { /* 真的写不了文件就彻底放弃，但至少 Console/Debug 已尽力 */ }
+    }
+
+    /// <summary>
+    /// 不依赖 Serilog 版的崩溃转储（在 Serilog 初始化之前也能用）
+    /// </summary>
+    private static string WriteForceCrashDump(Exception? ex)
+    {
+        try
+        {
+            var crashDir = Path.Combine(AppContext.BaseDirectory, "logs", "crashes");
+            Directory.CreateDirectory(crashDir);
+            var fileName = $"force-crash-{DateTime.Now:yyyyMMdd-HHmmss-fff}.log";
+            var filePath = Path.Combine(crashDir, fileName);
+            var dump =
+                $"=== MSMC 强制崩溃转储（Serilog 可能未初始化） ==={Environment.NewLine}" +
+                $"时间：{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}{Environment.NewLine}" +
+                $"进程：{Environment.ProcessId}{Environment.NewLine}" +
+                $"OS：{Environment.OSVersion}{Environment.NewLine}" +
+                $"{Environment.NewLine}--- 异常信息 ---{Environment.NewLine}{ex}{Environment.NewLine}" +
+                $"{Environment.NewLine}--- 内部异常 ---{Environment.NewLine}{ex?.InnerException}{Environment.NewLine}";
+            File.WriteAllText(filePath, dump);
+            ForceLog($"🗂️ 强制崩溃转储已写入: {filePath}");
+            return filePath;
+        }
+        catch (Exception wtf)
+        {
+            ForceLog($"连强制崩溃转储都写不进去了: {wtf.Message}");
+            return "(写入失败)";
+        }
+    }
+
+    /// <summary>
     /// 应用程序启动入口
     /// 执行日志初始化、全局异常配置、DI 容器构建、服务注册与主窗口显示
     /// </summary>
     /// <param name="e">启动事件参数</param>
     protected override void OnStartup(StartupEventArgs e)
     {
-        // 初始化日志系统
-        // 每次启动生成独立日志文件（含启动时间戳），避免单文件过大
-        // 使用 AppContext.BaseDirectory 确保日志路径不依赖工作目录
-        var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
-        Directory.CreateDirectory(logDir);
-        var logFileName = Path.Combine(logDir, $"mcserverguard-{DateTime.Now:yyyyMMdd-HHmmss}.log");
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .MinimumLevel.Override("io.NET.ZTR_OS.Features.ServerDetection", Serilog.Events.LogEventLevel.Warning)
-            .MinimumLevel.Override("io.NET.ZTR_OS.Features.ConfigEditor", Serilog.Events.LogEventLevel.Warning)
-            .MinimumLevel.Override("io.NET.ZTR_OS.Features.SystemMonitoring", Serilog.Events.LogEventLevel.Warning)
-            .MinimumLevel.Override("io.NET.ZTR_OS.Features.NetworkMonitor", Serilog.Events.LogEventLevel.Warning)
-            .MinimumLevel.Override("io.NET.ZTR_OS.Features.NetworkMonitor", Serilog.Events.LogEventLevel.Warning)
-            .WriteTo.File(logFileName)
-            .CreateLogger();
+        ForceLog("[BOOT-1] 🚀 OnStartup 入口命中");
+
+        // ─────────────────────────────────────────────────────
+        // 【防静默退出】显式设置 ShutdownMode = OnExplicitShutdown
+        // 否则默认 OnLastWindowClose：如果 StartupWindow 在 MainWindow.Show 之前
+        // 因为异常 / WebView2 崩溃 / 用户误关 而关闭，进程直接就没了，连 err 都没有
+        // 等 MainWindow 真正 Show 成功之后，我们再切回 OnMainWindowClose
+        // ─────────────────────────────────────────────────────
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        ForceLog("[BOOT-1]    ShutdownMode = OnExplicitShutdown（防静默退出）");
+
+        // 【第二层异常防护】DispatcherUnhandledException 必须在这里就挂
+        // （因为 WPF Dispatcher 实例是在 App 实例构造后、OnStartup 之前才创建的，
+        //  所以 DispatcherUnhandledException 不能放 .cctor 里挂）
+        DispatcherUnhandledException += (_, e2) =>
+        {
+            ForceLog($"💥 DispatcherUnhandledException: {e2.Exception}");
+            try { Log.Fatal(e2.Exception, "💥 UI 线程未处理异常 DispatcherUnhandledException"); } catch { }
+            try { WriteForceCrashDump(e2.Exception); } catch { }
+            // 先不 Handled，让 ShowCrashReport 弹框；如果弹框失败就标记 Handled 防进程裸崩
+            try { ShowCrashReport(e2.Exception); e2.Handled = true; }
+            catch { e2.Handled = true; }
+        };
+        ForceLog("[BOOT-1]    DispatcherUnhandledException 已挂载");
+
+        ForceLog("[BOOT-2] 📝 开始初始化 Serilog...");
+
+        string logFileName = "(未初始化)";
+        try
+        {
+            // 初始化日志系统
+            // 每次启动生成独立日志文件（含启动时间戳），避免单文件过大
+            // 使用 AppContext.BaseDirectory 确保日志路径不依赖工作目录
+            var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
+            Directory.CreateDirectory(logDir);
+            logFileName = Path.Combine(logDir, $"mcserverguard-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .MinimumLevel.Override("io.NET.ZTR_OS.Features.ServerDetection", Serilog.Events.LogEventLevel.Warning)
+                .MinimumLevel.Override("io.NET.ZTR_OS.Features.ConfigEditor", Serilog.Events.LogEventLevel.Warning)
+                .MinimumLevel.Override("io.NET.ZTR_OS.Features.SystemMonitoring", Serilog.Events.LogEventLevel.Warning)
+                .MinimumLevel.Override("io.NET.ZTR_OS.Features.NetworkMonitor", Serilog.Events.LogEventLevel.Warning)
+                .MinimumLevel.Override("io.NET.ZTR_OS.Features.NetworkMonitor", Serilog.Events.LogEventLevel.Warning)
+                .WriteTo.File(logFileName)
+                .CreateLogger();
+            ForceLog($"[BOOT-2] ✅ Serilog OK  日志文件: {logFileName}");
+        }
+        catch (Exception serilogEx)
+        {
+            ForceLog($"[BOOT-2] ❌ Serilog 初始化失败: {serilogEx}");
+            // 注意：即使 Serilog 挂了也不能 return，继续往下走——我们有 ForceLog 兜底
+        }
 
         // 清理 7 天前的旧日志文件
         try
         {
+            var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
             var oldFiles = Directory.GetFiles(logDir, "mcserverguard-*.log")
                 .Select(f => new FileInfo(f))
                 .Where(f => (DateTime.Now - f.CreationTime).TotalDays > 7)
@@ -93,14 +222,18 @@ public partial class App : Application
                 catch { /* 忽略单个文件删除失败 */ }
             }
             if (oldFiles.Count > 0)
-                Log.Information("🧹 已清理 {Count} 个旧日志文件", oldFiles.Count);
+            {
+                ForceLog($"[BOOT-2] 🧹 已清理 {oldFiles.Count} 个旧日志文件");
+                try { Log.Information("🧹 已清理 {Count} 个旧日志文件", oldFiles.Count); } catch { }
+            }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "清理旧日志文件失败");
+            ForceLog($"[BOOT-2] ⚠️ 清理旧日志失败: {ex.Message}");
+            try { Log.Warning(ex, "清理旧日志文件失败"); } catch { }
         }
 
-        // 挂载全局异常处理
+        // 再挂载一次 SetupGlobalExceptionHandling（主要是把 Serilog 版本的也挂上，ForceLog 版本在 .cctor 已经挂了）
         SetupGlobalExceptionHandling();
 
         // 注：之前曾尝试 RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly
@@ -110,7 +243,8 @@ public partial class App : Application
         try
         {
             base.OnStartup(e);
-            Log.Information("🚀 io.NET.ZTR_OS 正在启动...");
+            ForceLog("[BOOT-3] ✅ base.OnStartup(e) 成功返回（XAML 资源字典加载 OK）");
+            try { Log.Information("🚀 io.NET.ZTR_OS 正在启动..."); } catch { }
 
             // ─────────────────────────────────────────────────────
             // 阶段 -1：用户协议前置校验（优先级最高，必须在任何 UI / NTP / 配置 / 启动页之前）
@@ -143,15 +277,55 @@ public partial class App : Application
             // ─────────────────────────────────────────────────────
             // 阶段 1：显示启动窗口
             // ─────────────────────────────────────────────────────
-            Log.Information("🪟 显示启动窗口...");
-            var startupWindow = new StartupWindow(earlyThemeService);
-            startupWindow.Show();
+            ForceLog("[BOOT-4] 🪟 准备 new StartupWindow(earlyThemeService)...");
+            try { Log.Information("🪟 显示启动窗口..."); } catch { }
+            StartupWindow startupWindow;
+            try
+            {
+                startupWindow = new StartupWindow(earlyThemeService);
+            }
+            catch (Exception swCtorEx)
+            {
+                ForceLog($"[BOOT-4] ❌ StartupWindow .ctor 崩溃: {swCtorEx}");
+                WriteForceCrashDump(swCtorEx);
+                MessageBox.Show(
+                    $"启动窗口构造失败：{swCtorEx.Message}\n\n{swCtorEx.StackTrace}",
+                    "MSMC 启动失败 (StartupWindow.ctor)",
+                    MessageBoxButton.OK, MessageBoxImage.Stop);
+                Shutdown(-1);
+                return;
+            }
+            ForceLog("[BOOT-4] ✅ StartupWindow .ctor 成功，准备 Show()...");
+
+            try
+            {
+                startupWindow.Show();
+            }
+            catch (Exception swShowEx)
+            {
+                ForceLog($"[BOOT-4] ❌ StartupWindow.Show() 崩溃: {swShowEx}");
+                WriteForceCrashDump(swShowEx);
+                MessageBox.Show(
+                    $"启动窗口显示失败：{swShowEx.Message}\n\n{swShowEx.StackTrace}",
+                    "MSMC 启动失败 (StartupWindow.Show)",
+                    MessageBoxButton.OK, MessageBoxImage.Stop);
+                Shutdown(-1);
+                return;
+            }
+            ForceLog("[BOOT-4] ✅ StartupWindow.Show() 成功");
 
             // 将启动窗口设为 MainWindow 以便消息循环正常工作
             MainWindow = startupWindow;
 
-            startupWindow.AppendLog("🚀 io.NET.ZTR_OS 启动中...");
-            startupWindow.AppendLog("📋 正在初始化核心服务...");
+            try
+            {
+                startupWindow.AppendLog("🚀 io.NET.ZTR_OS 启动中...");
+                startupWindow.AppendLog("📋 正在初始化核心服务...");
+            }
+            catch (Exception logEx)
+            {
+                ForceLog($"[BOOT-4] ⚠️ startupWindow.AppendLog 失败（不致命，继续）: {logEx.Message}");
+            }
 
             // ─────────────────────────────────────────────────────
             // 阶段 2：后台线程执行重量级初始化
@@ -344,20 +518,32 @@ public partial class App : Application
 
                     // 创建主窗口
                     await Step(92, "正在创建主窗口...", "🪟 正在创建主窗口...");
+                    ForceLog("[BOOT-5] 🪟 准备 new MainWindow + MainViewModel...");
                     MainWindow? mainWindow = null;
                     await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
-                        mainWindow = new MainWindow
+                        try
                         {
-                            DataContext = _serviceProvider.GetRequiredService<MainViewModel>()
-                        };
+                            mainWindow = new MainWindow
+                            {
+                                DataContext = _serviceProvider.GetRequiredService<MainViewModel>()
+                            };
+                            ForceLog("[BOOT-5] ✅ MainWindow .ctor 成功");
+                        }
+                        catch (Exception mwCtorEx)
+                        {
+                            ForceLog($"[BOOT-5] ❌ MainWindow .ctor 崩溃: {mwCtorEx}");
+                            WriteForceCrashDump(mwCtorEx);
+                            throw; // 让外层 catch 接管
+                        }
                     });
 
                     // 启动内存优化服务
                     await Step(96, "正在启动内存优化服务...", "🧹 启动内存优化服务...");
                     await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
-                        _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start();
+                        try { _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start(); }
+                        catch (Exception moEx) { ForceLog($"[BOOT-5] ⚠️ MemoryOptimizer.Start 失败（不致命）: {moEx.Message}"); }
                     });
 
                     startupWindow.MarkCompleted();
@@ -365,30 +551,92 @@ public partial class App : Application
                     // 短暂延迟让用户看到"启动完成"
                     await Task.Delay(600);
 
-                    // 切换到主窗口
+                    // ─────────────────────────────────────────────────────
+                    // 【核心切换点】Show MainWindow → 切 ShutdownMode → Close StartupWindow
+                    // 顺序不能变！必须先 Show 主窗口成功，再切 ShutdownMode，最后才关启动窗口
+                    // 否则 OnLastWindowClose 会直接把进程带走（虽然我们是 OnExplicitShutdown，但防一手）
+                    // ─────────────────────────────────────────────────────
+                    ForceLog("[BOOT-6] 🎯 准备 MainWindow.Show() + ShutdownMode 切换...");
                     await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
-                        mainWindow?.Show();
-                        MainWindow = mainWindow;
-                        startupWindow.Close();
+                        try
+                        {
+                            if (mainWindow == null)
+                            {
+                                ForceLog("[BOOT-6] ❌ mainWindow 是 null，无法 Show！");
+                                throw new InvalidOperationException("MainWindow 实例为 null");
+                            }
+
+                            mainWindow.Show();
+                            ForceLog("[BOOT-6] ✅ MainWindow.Show() 成功");
+
+                            // 主窗口 Show 成功后，把 ShutdownMode 切回正常：主窗口关了程序就退
+                            MainWindow = mainWindow;
+                            ShutdownMode = ShutdownMode.OnMainWindowClose;
+                            ForceLog("[BOOT-6] ✅ ShutdownMode 已切换为 OnMainWindowClose");
+                        }
+                        catch (Exception mwShowEx)
+                        {
+                            ForceLog($"[BOOT-6] ❌ MainWindow.Show 崩溃: {mwShowEx}");
+                            WriteForceCrashDump(mwShowEx);
+                            MessageBox.Show(
+                                $"主窗口显示失败：{mwShowEx.Message}\n\n{mwShowEx.StackTrace}",
+                                "MSMC 启动失败 (MainWindow.Show)",
+                                MessageBoxButton.OK, MessageBoxImage.Stop);
+                            Shutdown(-1);
+                            return;
+                        }
+
+                        // 主窗口 Show 成功了，才能关启动窗口
+                        try
+                        {
+                            startupWindow.Close();
+                            ForceLog("[BOOT-6] ✅ StartupWindow.Close() 成功");
+                        }
+                        catch (Exception swCloseEx)
+                        {
+                            ForceLog($"[BOOT-6] ⚠️ StartupWindow.Close 失败（不致命，主窗口已经出来了）: {swCloseEx.Message}");
+                        }
                     });
 
-                    Log.Information("✅ io.NET.ZTR_OS 启动完成，主窗口已就绪！");
+                    ForceLog("[BOOT-END] 🏁 启动流程全部完成！");
+                    try { Log.Information("✅ io.NET.ZTR_OS 启动完成，主窗口已就绪！"); } catch { }
                 }
                 catch (Exception ex)
                 {
-                    Log.Fatal(ex, "💥 启动过程发生致命异常");
-                    WriteCrashDump(ex);
+                    ForceLog($"💥 [Task.Run 内部] 启动过程致命异常: {ex}");
+                    WriteForceCrashDump(ex);
+                    try { Log.Fatal(ex, "💥 启动过程发生致命异常（Task.Run 内部）"); } catch { }
+                    try { WriteCrashDump(ex); } catch { }
 
+                    bool handled = false;
                     try
                     {
+                        // 不管 StartupWindow 是不是已经关了，直接 try；
+                        // 如果它已经关了，Dispatcher 调用或 MarkFailed 内部会抛，
+                        // 外层 catch 接住然后走 MessageBox 兜底。
                         startupWindow.MarkFailed($"{ex.Message}");
+                        handled = true;
                     }
-                    catch
+                    catch (Exception mwEx)
                     {
-                        MessageBox.Show($"启动失败：{ex.Message}\n\n{ex.StackTrace}",
-                            "MSMC 启动失败", MessageBoxButton.OK, MessageBoxImage.Error);
-                        Current.Shutdown();
+                        ForceLog($"💥 startupWindow.MarkFailed 也崩了（可能窗口已关闭）: {mwEx.Message}");
+                    }
+
+                    if (!handled)
+                    {
+                        try
+                        {
+                            MessageBox.Show(
+                                $"启动失败：{ex.Message}\n\n{ex.StackTrace}\n\n" +
+                                $"强制死日志路径：{ForceLogPath}",
+                                "MSMC 启动失败 (Task.Run catch)",
+                                MessageBoxButton.OK, MessageBoxImage.Stop);
+                        }
+                        finally
+                        {
+                            Shutdown(-1);
+                        }
                     }
                 }
                 }); // end Task.Run
@@ -396,11 +644,22 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Log.Fatal(ex, "💥 启动前期发生致命异常");
-            WriteCrashDump(ex);
-            MessageBox.Show($"启动失败：{ex.Message}\n\n{ex.StackTrace}",
-                "MSMC 启动失败", MessageBoxButton.OK, MessageBoxImage.Error);
-            Current.Shutdown();
+            ForceLog($"💥 [OnStartup 外层 catch] 启动前期致命异常: {ex}");
+            WriteForceCrashDump(ex);
+            try { Log.Fatal(ex, "💥 启动前期发生致命异常（OnStartup 外层）"); } catch { }
+            try { WriteCrashDump(ex); } catch { }
+            try
+            {
+                MessageBox.Show(
+                    $"启动失败：{ex.Message}\n\n{ex.StackTrace}\n\n" +
+                    $"强制死日志路径：{ForceLogPath}",
+                    "MSMC 启动失败 (OnStartup catch)",
+                    MessageBoxButton.OK, MessageBoxImage.Stop);
+            }
+            finally
+            {
+                Shutdown(-1);
+            }
         }
     }
 
@@ -415,7 +674,8 @@ public partial class App : Application
     /// </remarks>
     protected override void OnExit(ExitEventArgs e)
     {
-        Log.Information("👋 应用退出，开始清理资源...");
+        ForceLog($"[EXIT] 👋 OnExit 入口命中  ApplicationExitCode={e.ApplicationExitCode}");
+        try { Log.Information("👋 应用退出，开始清理资源..."); } catch { }
 
         try
         {
@@ -424,7 +684,8 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ MainViewModel 释放时发生异常（已忽略）");
+            ForceLog($"[EXIT] ⚠️ MainViewModel 释放异常: {ex.Message}");
+            try { Log.Warning(ex, "⚠️ MainViewModel 释放时发生异常（已忽略）"); } catch { }
         }
 
         try
@@ -433,11 +694,17 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ ServiceProvider 释放时发生异常（已忽略）");
+            ForceLog($"[EXIT] ⚠️ ServiceProvider 释放异常: {ex.Message}");
+            try { Log.Warning(ex, "⚠️ ServiceProvider 释放时发生异常（已忽略）"); } catch { }
         }
 
-        Log.Information("✅ 资源清理完成，再见！");
-        Log.CloseAndFlush();
+        ForceLog("[EXIT] ✅ 资源清理完成");
+        try
+        {
+            Log.Information("✅ 资源清理完成，再见！");
+            Log.CloseAndFlush();
+        }
+        catch { /* Serilog 可能早就挂了或者压根没初始化 */ }
 
         base.OnExit(e);
     }
@@ -481,13 +748,22 @@ public partial class App : Application
     /// <param name="ex">异常对象</param>
     private static void ShowCrashReport(Exception ex)
     {
+        string? forceCrashPath = null;
+        try
+        {
+            forceCrashPath = WriteForceCrashDump(ex);
+        }
+        catch { /* 已经不能再崩了 */ }
+
         try
         {
             var crashLog = WriteCrashDump(ex);
             var msg = $"💥 哎呀，程序出了点问题！\n\n" +
                       $"错误信息：{ex.Message}\n\n" +
-                      $"详细日志已保存到：{crashLog}\n" +
-                      $"你可以把这个文件发给开发者排查问题。\n\n" +
+                      $"Serilog 日志: {crashLog}\n" +
+                      $"强制死日志: {forceCrashPath ?? "(未写入成功)"}\n" +
+                      $"启动死日志路径：{ForceLogPath}\n\n" +
+                      $"你可以把这些文件发给开发者排查问题。\n\n" +
                       $"点击确定继续使用（不保证稳定），点击取消退出程序。";
 
             var result = MessageBox.Show(msg, "MSMC 崩溃了 🫠",
@@ -495,13 +771,24 @@ public partial class App : Application
 
             if (result == MessageBoxResult.Cancel)
             {
-                Current.Shutdown();
+                Current.Shutdown(-1);
             }
         }
-        catch
+        catch (Exception reportEx)
         {
-            // 崩溃报告本身失败时静默处理
-            Log.Fatal(ex, "连崩溃报告都崩了，我尽力了...");
+            ForceLog($"💥 ShowCrashReport 内部也崩了: {reportEx}");
+            // 连崩溃报告都崩了的时候，最后手段：裸 MessageBox
+            try
+            {
+                MessageBox.Show(
+                    $"崩溃！\n原始错误：{ex.Message}\n崩溃报告也崩了：{reportEx.Message}\n" +
+                    $"强制转储：{forceCrashPath ?? "(无)"}\n死日志：{ForceLogPath}",
+                    "MSMC 双重崩溃",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Stop);
+            }
+            catch { /* 彻底没救了，崩得连 MessageBox 都弹不出 */ }
+            try { Log.Fatal(ex, "连崩溃报告都崩了，我尽力了... reportFail={ReportFail}", reportEx.Message); } catch { }
         }
     }
 
