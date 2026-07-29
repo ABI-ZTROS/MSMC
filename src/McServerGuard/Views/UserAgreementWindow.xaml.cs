@@ -74,16 +74,31 @@ public partial class UserAgreementWindow : Window
     private static readonly Random _random = new();
 
     /// <summary>
-    /// 初始化用户协议窗口
+    /// 初始化用户协议窗口（无参构造：从 DI 容器解析 IUserAgreementService）
     /// </summary>
+    /// <remarks>
+    /// 适用于 DI 容器已构建完成后的正常使用场景。
+    /// </remarks>
+    public UserAgreementWindow() : this(null)
+    {
+    }
+
+    /// <summary>
+    /// 初始化用户协议窗口（显式传入 IUserAgreementService 实例）
+    /// </summary>
+    /// <param name="agreementService">
+    /// 外部注入的协议服务实例；为 null 时从 DI 容器解析。
+    /// 用于 DI 容器尚未构建完成的启动早期场景（如 App.OnStartup 阶段 -1）。
+    /// </param>
     /// <remarks>
     /// 初始化服务依赖、倒计时计时器、视觉警示动画计时器，
     /// 并注册窗口加载事件处理程序。
     /// </remarks>
-    public UserAgreementWindow()
+    public UserAgreementWindow(IUserAgreementService? agreementService)
     {
         InitializeComponent();
-        _userAgreementService = App.Services.GetRequiredService<IUserAgreementService>();
+        _userAgreementService = agreementService
+            ?? App.Services.GetRequiredService<IUserAgreementService>();
         _countdownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _countdownTimer.Tick += CountdownTimer_Tick;
         _shakeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };

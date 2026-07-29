@@ -111,7 +111,7 @@ public partial class App : Application
             if (userAgreementService.RequiresReagreement)
             {
                 Log.Information("📜 需要用户同意协议（首次使用或协议已更新），在启动窗口之前弹出协议窗口...");
-                var earlyAgreementWindow = new UserAgreementWindow();
+                var earlyAgreementWindow = new UserAgreementWindow(userAgreementService);
                 var agreed = earlyAgreementWindow.ShowDialog() == true;
                 if (!agreed)
                 {
