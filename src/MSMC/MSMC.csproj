@@ -97,76 +97,88 @@
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <!-- 🌐 前端构建与资源集成                                       -->
   <!-- ═══════════════════════════════════════════════════════════════ -->
-
-  <!-- 用绝对路径 + MSBuild 属性解析前端根目录，避免相对路径/中文路径乱码问题 -->
+  <!--
+    【兼容性说明】
+    这里刻意不用 MSBuild 属性函数（$([System.IO.Path]::...) / $([System.IO.File]::Exists(...))）。
+    原因：NuGet 在还原阶段的 MSBuild 静态评估引擎不支持完整的属性函数，
+    会导致 NU1105（找不到项目信息），进而让 MSMC.Tests 的 ProjectReference 还原失败。
+    因此这里全部改用原生 Exists('...') 条件 + 简单属性字符串拼接。
+  -->
   <PropertyGroup>
-    <FrontendRoot Condition="'$(FrontendRoot)' == ''">$([System.IO.Path]::GetFullPath($(MSBuildProjectDirectory)\..\frontend))</FrontendRoot>
-    <FrontendIndex>$(FrontendRoot)\dist\index.html</FrontendIndex>
-    <FrontendPackageJson>$(FrontendRoot)\package.json</FrontendPackageJson>
+    <!-- MSBuildProjectDirectory 即 MSMC.csproj 所在目录，前端项目在兄弟目录 ..\frontend -->
+    <FrontendDir>$(MSBuildProjectDirectory)\..\frontend</FrontendDir>
   </PropertyGroup>
 
-  <!-- 诊断输出：编译时能在输出面板看到实际解析到的前端目录路径，便于排错 -->
-  <Target Name="DiagnoseFrontendPaths" BeforeTargets="BuildFrontend;PackFrontendToZip">
-    <Message Text="📍 FrontendRoot = $(FrontendRoot)" Importance="high" />
-    <Message Text="📍 package.json 存在? $(FrontendPackageJson) = $([System.IO.File]::Exists($(FrontendPackageJson)))" Importance="high" />
-    <Message Text="📍 dist\index.html 存在? $(FrontendIndex) = $([System.IO.File]::Exists($(FrontendIndex)))" Importance="high" />
+  <!-- 诊断输出：构建时在 VS 输出面板高亮显示前端路径，便于排错 -->
+  <Target Name="DiagnoseFrontendPaths" BeforeTargets="PrepareForBuild">
+    <Message Text="📍 前端项目目录 (FrontendDir): $(FrontendDir)" Importance="high" />
+    <Message Condition="Exists('$(FrontendDir)\package.json')"
+             Text="✅ 找到 package.json" Importance="high" />
+    <Message Condition="!Exists('$(FrontendDir)\package.json')"
+             Text="❌ 未找到 package.json（路径: $(FrontendDir)\package.json）" Importance="high" />
+    <Message Condition="Exists('$(FrontendDir)\dist\index.html')"
+             Text="✅ 找到已构建的 dist\index.html" Importance="high" />
+    <Message Condition="!Exists('$(FrontendDir)\dist\index.html')"
+             Text="⚠️  未构建前端 dist（若 package.json 存在将自动构建）" Importance="high" />
   </Target>
 
-  <!-- 确保前端在嵌入资源之前构建完成（仅当 package.json 存在且 dist 未构建时才跑 npm） -->
+  <!-- 自动构建前端：仅当 package.json 存在 且 dist\index.html 不存在时触发 -->
   <Target Name="BuildFrontend" BeforeTargets="PrepareForBuild"
-          Condition="$([System.IO.File]::Exists($(FrontendPackageJson))) And !$([System.IO.File]::Exists($(FrontendIndex)))">
-    <Message Text="🌐 构建前端项目..." Importance="high" />
+          Condition="Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')">
+    <Message Text="🌐 检测到前端尚未构建，开始 npm install + npm run build..." Importance="high" />
     <!--
-      修复说明：
-      1) 用 $(FrontendRoot) 绝对路径替代 ..\frontend 相对路径，避免中文路径乱码导致 ENOENT
-      2) npm install 改为带 --prefix，双保险：既 WorkingDirectory 切换工作目录，也告诉 npm 根在哪
-      3) npm.cmd 显式扩展名：规避 PowerShell 对 .ps1 脚本的执行策略拦截
+      关键修复：
+      1) npm.cmd 显式 .cmd 扩展名 —— 绕过 PowerShell ExecutionPolicy 对 npm.ps1 的拦截
+      2) WorkingDirectory 指向真实前端目录 —— 避免 npm 在错误目录下找 package.json
+      3) 再加 --prefix 双保险 —— 即使 WorkingDirectory 解析失败也告诉 npm 根目录
     -->
-    <Exec Command="npm.cmd install --prefix &quot;$(FrontendRoot)&quot;"
-          WorkingDirectory="$(FrontendRoot)"
-          ContinueOnError="false"
-          EchoOff="false"
-          StandardOutputImportance="high"
-          StandardErrorImportance="high" />
-    <Exec Command="npm.cmd run build --prefix &quot;$(FrontendRoot)&quot;"
-          WorkingDirectory="$(FrontendRoot)"
-          ContinueOnError="false"
-          EchoOff="false"
-          StandardOutputImportance="high"
-          StandardErrorImportance="high" />
+    <Exec
+      Command="npm.cmd install --prefix &quot;$(FrontendDir)&quot;"
+      WorkingDirectory="$(FrontendDir)"
+      ContinueOnError="false"
+      EchoOff="false"
+      StandardOutputImportance="high"
+      StandardErrorImportance="high" />
+    <Exec
+      Command="npm.cmd run build --prefix &quot;$(FrontendDir)&quot;"
+      WorkingDirectory="$(FrontendDir)"
+      ContinueOnError="false"
+      EchoOff="false"
+      StandardOutputImportance="high"
+      StandardErrorImportance="high" />
   </Target>
 
-  <!-- 当 package.json 都找不到时给出明确提示，而不是静默跳过让用户看到降级页 -->
+  <!-- 当 package.json 和 dist 都不存在时给出明确警告，而不是静默让用户看到桥接测试页 -->
   <Target Name="WarnFrontendMissing" BeforeTargets="PrepareForBuild"
-          Condition="!$([System.IO.File]::Exists($(FrontendPackageJson))) And !$([System.IO.File]::Exists($(FrontendIndex)))">
-    <Message Text="⚠️  未找到前端 package.json ($(FrontendPackageJson))，且 dist\index.html 也不存在。" Importance="high" />
-    <Message Text="⚠️  应用将显示 WebView2 桥接测试页，请先构建前端或检查项目路径。" Importance="high" />
+          Condition="!Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')">
+    <Message Text="⚠───────────────────────────────────────────────────────────────" Importance="high" />
+    <Message Text="⚠️  未找到前端源代码目录和已构建产物。" Importance="high" />
+    <Message Text="⚠️  预期目录: $(FrontendDir)" Importance="high" />
+    <Message Text="⚠️  运行时应用将显示 WebView2 桥接测试页（降级页）。" Importance="high" />
+    <Message Text="⚠───────────────────────────────────────────────────────────────" Importance="high" />
   </Target>
 
-  <!-- 将前端 dist 打包成 zip 后作为嵌入资源
-       运行时通过 ZipArchive 从内存读取，避免多文件资源名映射问题 -->
+  <!-- 将前端 dist 打包为单个 zip 嵌入资源（运行时从内存解压读取，避免大量资源注册麻烦） -->
   <Target Name="PackFrontendToZip" BeforeTargets="BeforeResGen"
-          Condition="$([System.IO.File]::Exists($(FrontendIndex)))">
-    <!-- 删除旧 zip -->
+          Condition="Exists('$(FrontendDir)\dist\index.html')">
     <Delete Files="$(IntermediateOutputPath)wwwroot.zip" />
-
-    <!-- 创建 zip 包（用 PowerShell 压缩，兼容性好） -->
-    <Exec Command="powershell -NoProfile -Command &quot;Compress-Archive -Path '$(FrontendRoot)\dist\*' -DestinationPath '$(IntermediateOutputPath)wwwroot.zip' -Force&quot;"
-          ContinueOnError="false" />
-
-    <!-- 将 zip 作为嵌入资源 -->
+    <Exec
+      Command="powershell -NoProfile -Command &quot;Compress-Archive -Path '$(FrontendDir)\dist\*' -DestinationPath '$(IntermediateOutputPath)wwwroot.zip' -Force&quot;"
+      ContinueOnError="false" />
     <ItemGroup>
       <EmbeddedResource Include="$(IntermediateOutputPath)wwwroot.zip">
         <LogicalName>$(AssemblyName).wwwroot.zip</LogicalName>
       </EmbeddedResource>
     </ItemGroup>
-
     <Message Text="📦 前端资源已打包为嵌入资源 (wwwroot.zip)" Importance="high" />
   </Target>
 
-  <!-- 同时保留文件夹复制方式（开发时用，方便热重载） -->
-  <ItemGroup Condition="$([System.IO.File]::Exists($(FrontendIndex)))">
-    <None Include="$(FrontendRoot)\dist\**" CopyToOutputDirectory="PreserveNewest" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
+  <!-- 同时复制 wwwroot 文件夹到输出目录 —— 开发时方便热重载替换文件 -->
+  <ItemGroup Condition="Exists('$(FrontendDir)\dist\index.html')">
+    <None
+      Include="$(FrontendDir)\dist\**"
+      CopyToOutputDirectory="PreserveNewest"
+      Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
