@@ -103,6 +103,26 @@ public partial class App : Application
             Log.Information("🚀 McServerGuard 正在启动...");
 
             // ─────────────────────────────────────────────────────
+            // 阶段 -1：用户协议前置校验（优先级最高，必须在任何 UI / NTP / 配置 / 启动页之前）
+            // 未同意协议 → 直接 Shutdown，启动窗口根本不会出现
+            // ─────────────────────────────────────────────────────
+            var userAgreementService = new UserAgreementService();
+            userAgreementService.Load();
+            if (userAgreementService.RequiresReagreement)
+            {
+                Log.Information("📜 需要用户同意协议（首次使用或协议已更新），在启动窗口之前弹出协议窗口...");
+                var earlyAgreementWindow = new UserAgreementWindow();
+                var agreed = earlyAgreementWindow.ShowDialog() == true;
+                if (!agreed)
+                {
+                    Log.Information("❌ 用户未同意协议，终止启动");
+                    Shutdown();
+                    return;
+                }
+                Log.Information("✅ 用户已同意协议 v{Version}", userAgreementService.CurrentAgreementVersion);
+            }
+
+            // ─────────────────────────────────────────────────────
             // 阶段 0：提前初始化主题服务（用于启动窗口主题）
             // ─────────────────────────────────────────────────────
             var earlyThemeService = new ThemeService();
@@ -183,7 +203,9 @@ public partial class App : Application
 
                     await Step(46, "正在注册主题与基础服务...", "🎨 注册主题服务...");
                     services.AddSingleton<IThemeService>(_ => earlyThemeService);
-                    services.AddSingleton<IUserAgreementService, UserAgreementService>();
+                    // 复用「阶段 -1」已 Load、并在必要时已弹出协议窗口的实例，
+                    // 避免再次 new 一个造成版本状态 / 同意状态不一致
+                    services.AddSingleton<IUserAgreementService>(_ => userAgreementService);
                     services.AddSingleton<IAppConfigService, AppConfigService>();
                     services.AddSingleton<IJavaFinderService, JavaFinderService>();
                     services.AddSingleton<IToastNotificationService, ToastNotificationService>();
@@ -303,35 +325,12 @@ public partial class App : Application
                     _serviceProvider.GetRequiredService<IAppConfigService>().Load();
                     AnimationSettings.ThemeService = _serviceProvider.GetRequiredService<IThemeService>();
 
-                    // 加载用户协议
-                    await Step(86, "正在加载用户协议...", "📜 加载用户协议状态...");
-                    var userAgreementService = _serviceProvider.GetRequiredService<IUserAgreementService>();
-                    userAgreementService.Load();
-
-                    if (userAgreementService.RequiresReagreement)
+                    // 用户协议已在「阶段 -1」（启动窗口显示之前）完成校验
+                    // 这里只把结果告诉用户，不再二次弹窗
+                    await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
-                        startupWindow.SetProgress(88, "等待用户同意协议...");
-                        startupWindow.AppendLog("📜 需要用户同意协议（首次使用或协议已更新）...");
-                        bool agreed = false;
-                        await startupWindow.Dispatcher.InvokeAsync(() =>
-                        {
-                            var agreementWindow = new UserAgreementWindow
-                            {
-                                Owner = startupWindow,
-                                WindowStartupLocation = WindowStartupLocation.CenterOwner
-                            };
-                            var result = agreementWindow.ShowDialog();
-                            agreed = result == true;
-                        });
-
-                        if (!agreed)
-                        {
-                            startupWindow.AppendLog("❌ 用户未同意协议");
-                            Shutdown();
-                            return;
-                        }
-                        startupWindow.AppendLog("✅ 用户已同意协议", isSuccess: true);
-                    }
+                        startupWindow.AppendLog($"📜 用户协议 v{userAgreementService.CurrentAgreementVersion} 已同意", isSuccess: true);
+                    });
 
                     // 创建主窗口
                     await Step(92, "正在创建主窗口...", "🪟 正在创建主窗口...");
