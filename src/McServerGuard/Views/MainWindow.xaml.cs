@@ -2071,13 +2071,21 @@ public partial class MainWindow : Window
         });
 
         // 选择服务器（极简版：只赋值 cfg.Server = matched，让 OnServerChanged 自己异步扫目录）
-        _bridgeService.RegisterRequestHandler("config:selectServer", payload =>
+        // 选择服务器（极简版：DisplayName 精确匹配 → 匹配失败主动刷新重试 → 仍失败返回 success=false）
+        // 修复"列表里有但点不中"问题：
+        //   ① 旧版匹配失败时仍返回 success=true（假装成功），前端不知道实际没赋值 Server，不再重试
+        //   ② 旧版列表可能被并发刷新覆盖为空，导致匹配必然失败
+        // 修复后：
+        //   ① RefreshServerListAsync 已加代数保护，不再被旧刷新覆盖
+        //   ② 匹配失败时主动触发一次刷新（可能是列表尚未加载完），然后重试匹配
+        //   ③ 重试仍失败返回 success=false，让前端知道失败（前端可据此做 retry 或提示）
+        _bridgeService.RegisterRequestHandler("config:selectServer", async payload =>
         {
             try
             {
                 var name = ExtractStringPayload(payload);
                 if (cfg == null || string.IsNullOrEmpty(name))
-                    return Task.FromResult<object?>(new { success = true });
+                    return (object)new { success = false, error = "cfg 为空或 name 为空" };
 
                 // ① 精确匹配 DisplayName
                 var matched = cfg.AvailableServers.FirstOrDefault(s => s.DisplayName == name);
@@ -2090,27 +2098,40 @@ public partial class MainWindow : Window
                         matched = cfg.Server;
                 }
 
+                // ③ 第一次匹配失败：主动刷新一次 AvailableServers 然后重试
+                //    场景：构造函数 fire-and-forget 刷新尚未完成，或列表被清空后尚未重建
+                if (matched == null)
+                {
+                    Log.Information("🔄 config:selectServer 第一次匹配失败，主动刷新后重试: Name={Name}", name);
+                    await cfg.RefreshServerListAsync().ConfigureAwait(true);
+
+                    matched = cfg.AvailableServers.FirstOrDefault(s => s.DisplayName == name);
+                    if (matched == null)
+                    {
+                        if (cfg.SelectServerByContext(displayName: name, workingDirectory: null,
+                                serverJarPath: null, knownServerId: null))
+                            matched = cfg.Server;
+                    }
+                }
+
                 if (matched != null)
                 {
                     // 极简：直接赋值 Server。OnServerChanged 会：
                     //   · 同步重置 ConfigEntries/SelectedConfigFile/脏状态
                     //   · fire-and-forget 触发 ScanDirectoryForConfigFilesAsync
-                    // 桥接层不再插手同步 await / 兜底 ConfigFiles 赋值——所有「选完立即 getFileTree 空」的问题，
-                    // 前端改成 200ms 后再拉一次（ConfigEditorPage 已有 120ms retry 逻辑）兜底。
                     cfg.Server = matched;
-                }
-                else
-                {
-                    // 真匹配不上：至少把 SelectedServerName 设上，避免前端被回滚
-                    cfg.SelectedServerName = name;
+                    return (object)new { success = true };
                 }
 
-                return Task.FromResult<object?>(new { success = true });
+                // 真匹配不上：返回 success=false，让前端知道失败（不再假装成功）
+                Log.Warning("❌ config:selectServer 匹配失败（刷新重试后仍无结果）: Name={Name}, AvailableCount={Count}",
+                    name, cfg.AvailableServers.Count);
+                return (object)new { success = false, error = $"未匹配到服务器: {name}" };
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "config:selectServer 失败");
-                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+                return (object)new { success = false, error = ex.Message };
             }
         });
 

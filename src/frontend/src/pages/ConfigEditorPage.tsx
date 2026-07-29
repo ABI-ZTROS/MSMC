@@ -371,7 +371,17 @@ export function ConfigEditorPage(): JSX.Element {
       setExpandedGroups(new Set())
       setSaveStatusMessage(null)
 
-      await selectConfigServer(name)
+      // 调桥接选中服务器。后端匹配失败会返回 success=false（不再假装成功）。
+      const sel = await selectConfigServer(name)
+      if (!sel?.success) {
+        // 后端匹配失败：回滚本地状态，避免下拉框显示了名字但实际没选中
+        console.error('selectConfigServer 失败:', sel?.error ?? '未知错误')
+        setSelectedServerName(null)
+        selectedServerNameRef.current = null
+        setSaveStatusMessage(`选中服务器失败: ${sel?.error ?? '未知错误'}`)
+        return
+      }
+
       await loadFileTree()
 
       // 兜底：后端的 ScanDirectoryForConfigFilesAsync 是异步（fire-and-forget）的。

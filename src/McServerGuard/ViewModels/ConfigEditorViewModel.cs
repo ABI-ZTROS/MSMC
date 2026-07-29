@@ -95,6 +95,11 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     /// <summary>应用配置服务——用户要求核心用它来拿「已保存服务器列表」</summary>
     private readonly IAppConfigService? _appConfigService;
 
+    /// <summary>刷新代数 —— 防止并发的 RefreshServerListAsync 后完成者覆盖先完成者。
+    /// 每次刷新开头 Interlocked.Increment，赋值 AvailableServers 前校验是否仍是最新代。
+    /// 如果不是最新代，直接丢弃结果（说明期间又发起了更新的刷新）。</summary>
+    private int _refreshGeneration;
+
     /// <summary>原始配置快照 —— 用于重置变更与脏数据比对（保存/重置/撤销的基础）</summary>
     private Dictionary<string, string> _originalConfig = new();
 
@@ -266,17 +271,26 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     ///   ② WorkingDirectory 优先；为空时从 ServerJarPath 推导（"多一个调用"）
     ///   ③ 推导出的目录不存在就跳过；存在就加入 AvailableServers
     /// 不再调 ServerDetector —— 用户明确说"直接走已保存服务器的列表然后去访问绝对路径(文件层)"。
+    /// 代数保护：防止构造函数 fire-and-forget 与 getAvailableServers 兜底刷新并发执行时，
+    /// 后完成者（通常是旧的空列表）覆盖先完成者（通常是新的含 Core 列表）。
     /// </summary>
     [RelayCommand]
     public async Task RefreshServerListAsync()
     {
-        Log.Information("🔄 配置编辑器：刷新可用服务器列表（极简版：仅已知服务器）");
+        // ── 代数保护：记录本次刷新的代号，赋值前校验是否仍是最新代
+        var generation = System.Threading.Interlocked.Increment(ref _refreshGeneration);
+        Log.Information("🔄 配置编辑器：刷新可用服务器列表（极简版：仅已知服务器，gen={Gen}）", generation);
+
         var servers = new List<ServerInstance>();
 
         if (_appConfigService == null)
         {
-            AvailableServers = servers;
-            Log.Warning("⚠️ AppConfigService 未注入，可用服务器列表为空");
+            // 代数校验：仍是最新的才赋值
+            if (generation == System.Threading.Volatile.Read(ref _refreshGeneration))
+            {
+                AvailableServers = servers;
+                Log.Warning("⚠️ AppConfigService 未注入，可用服务器列表为空");
+            }
             return;
         }
 
@@ -328,8 +342,17 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             }
         }).ConfigureAwait(true);
 
-        AvailableServers = servers;
-        Log.Information("✅ 配置编辑器服务器列表刷新完成：共 {Count} 台", servers.Count);
+        // ── 代数校验：只有仍是最新的刷新才赋值，避免旧刷新覆盖新刷新
+        if (generation == System.Threading.Volatile.Read(ref _refreshGeneration))
+        {
+            AvailableServers = servers;
+            Log.Information("✅ 配置编辑器服务器列表刷新完成：共 {Count} 台（gen={Gen}）", servers.Count, generation);
+        }
+        else
+        {
+            Log.Information("⏭️ 刷新结果已丢弃（gen={Gen} 已被更新的 gen={Latest} 取代）",
+                generation, System.Threading.Volatile.Read(ref _refreshGeneration));
+        }
     }
 
     /// <summary>
