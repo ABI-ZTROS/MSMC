@@ -170,18 +170,170 @@
        PackFrontendToZip: 把前端 dist 打包成单个 zip 作为嵌入资源
        ═══════════════════════════════════════════════════════════════
        【关键修复 1】去掉 Target 级别 Condition！
-       因为 Exists('中文路径\index.html') 静态评估在中文路径下会
-       偶发解析成 false，导致整个 Target 根本不执行，嵌入资源永远是空的
-       （用户日志已经证实：嵌入资源只剩 MSMC.g.resources，没有 wwwroot.zip）
-       现在改成：Target 无条件执行，先在内部用 <Error Text="..."/> + Condition
-       做动态判定，判断失败就 Skip 不报错（构建继续），但打印 WARNING 日志，
-       比之前 Target 级别 Condition 默默跳过可观测性强得多。
+       Exists('中文路径\index.html') 静态评估在中文路径下会偶发解析成 false，
+       导致整个 Target 根本不执行（用户日志已证实嵌入资源只剩 MSMC.g.resources）。
+       现在改成 Target 无条件进入，在内部做动态存在性判定。
 
-       【关键修复 2】Compress-Archive 路径包双引号，避免 中文路径 + 含空格路径 报错。
+       【关键修复 2】不再 PowerShell Exec！改用 MSBuild 内联 C# 任务 (RoslynCodeTaskFactory)。
+       原因：XML Entity → cmd → PowerShell 三层引号/转义在中文路径下必然出错，
+       之前就是因为 &quot;&quot; 被解成空字符串才报 MSB3073 exit code 1。
+       内联 C# 用 .NET 原生 System.IO.Compression，路径字符串不经过任何 shell 转义，
+       中文路径/空格路径/特殊字符路径全部正确。
   -->
+  <UsingTask TaskName="ZipDirectoryContents" TaskFactory="CodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <SourceDirectory ParameterType="System.String" Required="true" />
+      <DestinationArchive ParameterType="System.String" Required="true" />
+      <Overwrite ParameterType="System.Boolean" Required="false" />
+      <!-- 输出参数：任务结束后可以拿到最终生成的 zip 大小，用于 MSBuild 日志展示 -->
+      <ResultArchiveSize ParameterType="System.Int64" Output="true" />
+      <FilesArchived ParameterType="System.Int32" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Reference Include="System.IO.Compression.FileSystem" />
+      <Reference Include="System.IO.Compression" />
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.IO.Compression" />
+      <Using Namespace="System.Linq" />
+      <Code Type="Fragment" Language="cs">
+<![CDATA[
+// ====== 参数校验 ======
+if (string.IsNullOrWhiteSpace(SourceDirectory))
+{
+    Log.LogError("ZipDirectoryContents: SourceDirectory 不能为空");
+    return false;
+}
+if (!Directory.Exists(SourceDirectory))
+{
+    Log.LogError("ZipDirectoryContents: 源目录不存在: {0}", SourceDirectory);
+    return false;
+}
+if (string.IsNullOrWhiteSpace(DestinationArchive))
+{
+    Log.LogError("ZipDirectoryContents: DestinationArchive 不能为空");
+    return false;
+}
+
+bool overwrite = OverwriteSpecified ? Overwrite : true;
+
+// ====== 规范化路径 ======
+string destDir = Path.GetDirectoryName(DestinationArchive);
+if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+{
+    Directory.CreateDirectory(destDir);
+    Log.LogMessage(MessageImportance.High,
+        "📦 [ZipTask] 创建目标目录: {0}", destDir);
+}
+
+if (File.Exists(DestinationArchive))
+{
+    if (overwrite)
+    {
+        try { File.Delete(DestinationArchive); }
+        catch (Exception ex)
+        {
+            Log.LogError("ZipDirectoryContents: 删除旧 zip 失败 {0}: {1}",
+                DestinationArchive, ex.Message);
+            return false;
+        }
+    }
+    else
+    {
+        Log.LogError("ZipDirectoryContents: 目标已存在且 Overwrite=false: {0}",
+            DestinationArchive);
+        return false;
+    }
+}
+
+// ====== 递归获取文件 ======
+string[] allFiles;
+try
+{
+    allFiles = Directory.GetFiles(SourceDirectory, "*", SearchOption.AllDirectories);
+}
+catch (Exception ex)
+{
+    Log.LogError("ZipDirectoryContents: 枚举源目录文件失败 {0}: {1}",
+        SourceDirectory, ex.Message);
+    return false;
+}
+
+if (allFiles == null || allFiles.Length == 0)
+{
+    Log.LogWarning("ZipDirectoryContents: 源目录为空，生成的 zip 不包含任何文件: {0}",
+        SourceDirectory);
+    // 即使空也生成一个合法的空 zip（ZipArchive 开 Create 后 Dispose 就有 22 字节 zip）
+}
+
+int counter = 0;
+try
+{
+    using (var fs = new FileStream(DestinationArchive, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+    using (var archive = new ZipArchive(fs, ZipArchiveMode.Create, leaveOpen: false))
+    {
+        int srcLen = SourceDirectory.TrimEnd(Path.DirectorySeparatorChar,
+            Path.AltDirectorySeparatorChar).Length + 1;
+
+        foreach (var file in (allFiles ?? Enumerable.Empty<string>()))
+        {
+            // 得到相对路径（压缩包里的 entry 名）
+            string relative = file.Length > srcLen
+                ? file.Substring(srcLen).Replace(Path.DirectorySeparatorChar, '/')
+                : Path.GetFileName(file);
+
+            if (string.IsNullOrEmpty(relative)) continue;
+
+            try
+            {
+                var entry = archive.CreateEntry(relative, CompressionLevel.Optimal);
+                entry.LastWriteTime = File.GetLastWriteTime(file);
+
+                using (var entryStream = entry.Open())
+                using (var srcStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    srcStream.CopyTo(entryStream);
+                }
+                counter++;
+            }
+            catch (Exception inner)
+            {
+                // 单文件失败不阻断整个 zip，但打 error 日志方便定位
+                Log.LogWarning("ZipDirectoryContents: 单文件添加失败，跳过: {0} -> {1} ({2})",
+                    file, relative, inner.Message);
+            }
+        }
+    }
+}
+catch (Exception ex)
+{
+    Log.LogError("ZipDirectoryContents: 创建 zip 失败 {0}: {1}", DestinationArchive, ex);
+    if (File.Exists(DestinationArchive))
+    {
+        try { File.Delete(DestinationArchive); } catch { /* 忽略清理失败 */ }
+    }
+    return false;
+}
+
+// ====== 输出参数 ======
+FilesArchived = counter;
+var info = new FileInfo(DestinationArchive);
+ResultArchiveSize = info.Exists ? info.Length : 0L;
+
+Log.LogMessage(MessageImportance.High,
+    "✅ [ZipTask] 完成: {0} 个文件 -> {1} ({2:N2} KB)",
+    counter, DestinationArchive, ResultArchiveSize / 1024.0);
+
+return true;
+]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
   <Target Name="PackFrontendToZip" BeforeTargets="BeforeResGen">
     <PropertyGroup>
-      <!-- 在 Target 内部再规范化一次路径，避免静态评估阶段字符串拼接的编码问题 -->
+      <!-- Target 内部二次规范化，避免静态评估阶段对中文路径字符串拼接的编码问题 -->
       <_FrontendIndex Condition="'$(_FrontendIndex)' == ''">$(FrontendDir)\dist\index.html</_FrontendIndex>
       <_FrontendZip   Condition="'$(_FrontendZip)'   == ''">$(IntermediateOutputPath)wwwroot.zip</_FrontendZip>
       <_FrontendDist  Condition="'$(_FrontendDist)'  == ''">$(FrontendDir)\dist</_FrontendDist>
@@ -189,7 +341,7 @@
 
     <Message Text="📦 [PackFrontendToZip] 开始处理: dist=$(_FrontendDist)  zip=$(_FrontendZip)" Importance="high" />
 
-    <!-- 动态存在性判定（Target 内部 Condition 不受 NuGet 静态评估阉割版引擎影响） -->
+    <!-- 动态存在性判定（Target 内部 Condition 走完整 MSBuild 引擎，稳定） -->
     <Message Condition="!Exists('$(_FrontendIndex)')"
              Text="⚠️  [PackFrontendToZip] 跳过：未找到 index.html（$(_FrontendIndex)）。请先执行前端构建。" Importance="high" />
 
@@ -197,15 +349,13 @@
     <Delete Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')"
             Files="$(_FrontendZip)" />
 
-    <Exec Condition="Exists('$(_FrontendIndex)')"
-          Command="powershell -NoProfile -Command &quot;Compress-Archive -Path &quot;&quot;$(_FrontendDist)\*&quot;&quot; -DestinationPath &quot;&quot;$(_FrontendZip)&quot;&quot; -Force&quot;"
-          ContinueOnError="false"
-          EchoOff="false"
-          StandardOutputImportance="high"
-          StandardErrorImportance="high">
-      <!-- 注意 Exec Command 里三层引号：外层 &quot; 包整个 pwsh 命令；里面 &quot;&quot; 两层对路径双引号，
-           保证 Compress-Archive 在中文/含空格路径下也能正确拿到路径字符串。 -->
-    </Exec>
+    <ZipDirectoryContents Condition="Exists('$(_FrontendIndex)')"
+      SourceDirectory="$(_FrontendDist)"
+      DestinationArchive="$(_FrontendZip)"
+      Overwrite="true">
+      <Output TaskParameter="FilesArchived" PropertyName="_ZipFileCount" />
+      <Output TaskParameter="ResultArchiveSize" PropertyName="_ZipSizeBytes" />
+    </ZipDirectoryContents>
 
     <ItemGroup Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')">
       <EmbeddedResource Include="$(_FrontendZip)">
@@ -214,9 +364,9 @@
     </ItemGroup>
 
     <Message Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')"
-             Text="✅ [PackFrontendToZip] 完成: 已嵌入 $(AssemblyName).wwwroot.zip（大小约:）" Importance="high" />
+             Text="✅ [PackFrontendToZip] 完成: 已嵌入 $(AssemblyName).wwwroot.zip，文件数=$(_ZipFileCount)，大小=$(_ZipSizeBytes) 字节" Importance="high" />
     <Message Condition="Exists('$(_FrontendIndex)') And !Exists('$(_FrontendZip)')"
-             Text="❌ [PackFrontendToZip] 失败: dist 存在但 zip 未生成，请检查 PowerShell/Compress-Archive 命令报错" Importance="high" />
+             Text="❌ [PackFrontendToZip] 失败: dist 存在但 zip 未生成，请检查上面 ZipTask 的 ERROR 日志" Importance="high" />
   </Target>
 
   <!-- 复制 wwwroot 文件夹到输出目录（开发模式热重载备用）
