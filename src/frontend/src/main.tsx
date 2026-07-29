@@ -55,11 +55,17 @@ if (!rootEl) {
         <App />
       </React.StrictMode>,
     )
-    // React 挂载成功后，移除启动诊断层
-    const bootDiag = document.getElementById('boot-diagnostics')
-    if (bootDiag && bootDiag.parentNode) {
-      bootDiag.parentNode.removeChild(bootDiag)
-    }
+    // ✅ React 挂载成功
+    ;(window as any).__msmcReactMounted = true
+    // React 挂载成功后，移除启动诊断层（延迟一点让渲染完成，避免闪屏）
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const bootDiag = document.getElementById('boot-diagnostics')
+        if (bootDiag && bootDiag.parentNode) {
+          bootDiag.parentNode.removeChild(bootDiag)
+        }
+      })
+    })
   } catch (err) {
     const stack = err instanceof Error ? err.stack : String(err)
     reportToCsharp('Error', `[FE-ERR] React 渲染异常: ${String(err)}`, stack)

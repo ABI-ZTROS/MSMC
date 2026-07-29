@@ -10,35 +10,36 @@ export default defineConfig({
   base: './',
   plugins: [
     react(),
-    // 代码混淆：vite-plugin-obfuscator 1.x 在 transformIndexHtml(post) 阶段
-    // 对所有产物 chunk 执行 javascript-obfuscator，显著提升逆向难度
-    viteObfuscateFile({
-      compact: true,
-      controlFlowFlattening: true,
-      controlFlowFlatteningThreshold: 0.75,
-      deadCodeInjection: true,
-      deadCodeInjectionThreshold: 0.4,
-      // ⚠️ 必须关闭！debugProtection 是检测到 DevTools 打开就 debugger 死循环，
-      // 但 WebView2 在某些版本（尤其是前置版本/内核较老）下，
-      // 即使没开 DevTools，debugProtectionInterval 也可能被误触发导致脚本卡住白屏。
-      // 防逆向够用 selfDefending + stringArray + controlFlowFlattening。
-      debugProtection: false,
-      debugProtectionInterval: 0,
-      // 混淆时禁用 console 会把 console.log/error/warn 全删掉，
-      // 但我们需要 [FE-BOOT]/[FE-ERR] 上报给 C#，所以保留 console。
-      disableConsoleOutput: false,
-      identifierNamesGenerator: 'hexadecimal',
-      renameGlobals: false,
-      // ⚠️ selfDefending 生成的自校验代码在 ES Module + 懒加载组合下，
-      // 个别打包工具/浏览器版本会触发"无法修改只读属性"异常，先关闭，
-      // 其他混淆项足够提升破解成本。等确认前端跑通了可以再按需开。
-      selfDefending: false,
-      stringArray: true,
-      stringArrayEncoding: ['rc4'],
-      stringArrayThreshold: 0.75,
-      transformObjectKeys: true,
-      unicodeEscapeSequence: false,
-    }),
+    // ═══════════════════════════════════════════════════════════
+    // 🚨 TROUBLESHOOTING MODE：暂时禁用混淆器验证能否出界面
+    // 已知：vite-plugin-obfuscator 在某些 WebView2 内核下，
+    //       即使关闭 debugProtection/selfDefending，
+    //       stringArrayEncoding:rc4 + controlFlowFlattening + deadCodeInjection
+    //       三者叠加 + ES Module chunk 懒加载时，
+    //       也可能在 main.js 这种较大 chunk 上产生无法被 window.onerror 捕获的
+    //       早期 SyntaxError / ReferenceError，表现为：
+    //       「NavigationCompleted 成功但 __msmcMainScriptLoaded 永远 false」
+    //       （诊断层显示 Warning 8 秒超时，但没有 ERROR 行）
+    // 定位策略：先 100% 关闭混淆器 → 能出界面 → 再逐条打开。
+    // ═══════════════════════════════════════════════════════════
+    // viteObfuscateFile({
+    //   compact: true,
+    //   controlFlowFlattening: true,
+    //   controlFlowFlatteningThreshold: 0.75,
+    //   deadCodeInjection: true,
+    //   deadCodeInjectionThreshold: 0.4,
+    //   debugProtection: false,
+    //   debugProtectionInterval: 0,
+    //   disableConsoleOutput: false,
+    //   identifierNamesGenerator: 'hexadecimal',
+    //   renameGlobals: false,
+    //   selfDefending: false,
+    //   stringArray: true,
+    //   stringArrayEncoding: ['rc4'],
+    //   stringArrayThreshold: 0.75,
+    //   transformObjectKeys: true,
+    //   unicodeEscapeSequence: false,
+    // }),
   ],
   resolve: {
     alias: {
