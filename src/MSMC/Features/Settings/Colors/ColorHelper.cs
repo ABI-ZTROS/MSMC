@@ -64,4 +64,3 @@ public static class ColorHelper
             return h.Length == 6 || h.Length == 3 || h.Length == 8;
         }
     }
-}

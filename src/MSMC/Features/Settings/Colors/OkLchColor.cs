@@ -154,4 +154,3 @@ public readonly struct OkLchColor
             return Math.Pow(v, 1.0 / 3.0);
         }
     }
-}
