@@ -186,7 +186,7 @@ export function StartupPage(): JSX.Element {
 
   return (
     <div
-      className="w-full h-full flex flex-col"
+      className="w-full h-full flex flex-col min-h-0"
       style={{
         backgroundColor: 'var(--md-deep-background)',
         fontFamily: 'var(--md-font-family)',
@@ -194,7 +194,7 @@ export function StartupPage(): JSX.Element {
       }}
     >
       <div
-        className="flex-1 flex flex-col p-8 cursor-grab active:cursor-grabbing"
+        className="flex-1 flex flex-col p-8 cursor-grab active:cursor-grabbing min-h-0 overflow-hidden"
         onMouseDown={handleWindowDrag}
         style={{
           background: 'var(--md-deep-background)',
@@ -270,7 +270,7 @@ export function StartupPage(): JSX.Element {
         </div>
 
         <div
-          className="flex-1 flex flex-col overflow-hidden rounded-lg"
+          className="flex-1 flex flex-col overflow-hidden rounded-lg min-h-0"
           style={{
             backgroundColor: 'var(--md-card-background)',
             border: '1px solid var(--md-subtle-border)',
@@ -362,16 +362,13 @@ export function StartupPage(): JSX.Element {
           {/* 日志滚动区 */}
           <div
             ref={logContainerRef}
-            className="flex-1 overflow-y-auto"
+            className="flex-1 overflow-y-auto min-h-0"
             style={{
               // ✅ 修复问题 3：给日志区加内边距 + 上下 padding 不对称，让它看起来像终端
               padding: '12px 14px 16px 14px',
               // 内边界：深色填充，和顶部标题栏视觉上分隔
               backgroundColor: 'rgba(0, 0, 0, 0.22)',
               scrollbarWidth: 'thin',
-              // 明确最大高度（父 flex-1 会撑开，但加上 min/max-height 让滚动条在任何分辨率下都有）
-              minHeight: 200,
-              maxHeight: '100%',
             }}
           >
             {logs.length === 0 && (
