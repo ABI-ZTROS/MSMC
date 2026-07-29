@@ -281,8 +281,20 @@ export function ConfigEditorPage(): JSX.Element {
   const loadEntries = useCallback(async (): Promise<ConfigEntriesResponse | null> => {
     setIsFetchingEntries(true)
     try {
-      const resp = await getConfigEntries()
-      // ── 修复：loading 时不覆盖旧 configGroups。resp 到达时才替换，避免"先闪空列表"
+      let resp = await getConfigEntries()
+
+      // ── 后端 LoadConfigAsync 是 fire-and-forget，config:selectFile 立即返回不等待。
+      // 如果拿到 isLoading=true，需要轮询直到加载完成，否则永远卡在 0% 转圈。
+      let attempts = 0
+      while (resp.isLoading && attempts < 50) {
+        setIsLoading(true)
+        setLoadProgress(resp.loadProgress)
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        resp = await getConfigEntries()
+        attempts++
+      }
+
+      // ── 加载完成后（或超时），一次性更新所有状态
       setConfigGroups(resp.groups)
       setHasUnsavedChanges(resp.hasUnsavedChanges)
       setSaveStatusMessage(resp.saveStatusMessage)
