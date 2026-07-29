@@ -187,50 +187,89 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             var basePath = await provider.GetBasePathAsync();
             Log.Information("[WV2-LOAD] 📂 GetBasePathAsync 返回: {Path}", basePath ?? "(null，将使用拦截模式)");
 
+            // 【修复 Folder 30s 超时】核心改动：
+            // 用户环境下 Folder 虚拟主机模式（http://msmc.local/）会经常等 30 秒都没 NavigationCompleted，
+            // 极大概率是中文路径 + 杀毒软件 + WebView2 虚拟主机名解析三者相互作用导致内部链路卡住。
+            // 对于 Folder/ZipExtract 这种「本地已有真实磁盘路径」的模式，直接构造 file:/// 绝对路径
+            // 然后让 WebView2 按文件协议去读，完全绕开虚拟主机名/过滤器/拦截器那一套，
+            // 是兼容性最高、最稳定的方案（WebView2 底层对 file:// 没什么可拦的，和用户直接在资源管理器
+            // 双击 index.html 打开是同一套代码路径）。
+            string? directIndexPath = null;
             if (basePath != null)
+            {
+                directIndexPath = Path.GetFullPath(Path.Combine(basePath, "index.html"));
+                if (!File.Exists(directIndexPath))
+                {
+                    Log.Warning("[WV2-LOAD] ⚠️ basePath 存在但拼接的 index.html 不存在: {Path}", directIndexPath);
+                    directIndexPath = null;
+                }
+            }
+
+            Uri targetUri;
+            bool useVirtualHost = true;
+            if (directIndexPath != null)
+            {
+                // Folder / ZipExtract：优先 file 协议直读，跳过虚拟主机名整个链路
+                try
+                {
+                    targetUri = new UriBuilder("file", string.Empty)
+                    {
+                        Path = directIndexPath.Replace('\\', '/')
+                    }.Uri;
+                    useVirtualHost = false;
+                    Log.Information("[WV2-LOAD] 📎 模式 {Mode} 有真实磁盘路径，改用 file:// 协议直读（绕开虚拟主机名 30s 超时）: {Uri}",
+                        provider.ModeName, targetUri.AbsoluteUri);
+                }
+                catch (Exception uriEx)
+                {
+                    Log.Warning(uriEx, "[WV2-LOAD] ⚠️ 构造 file:// Uri 失败（{Path}），回退到虚拟主机模式", directIndexPath);
+                    useVirtualHost = true;
+                    targetUri = new Uri($"http://{hostName}/index.html");
+                }
+            }
+            else
+            {
+                // EmbeddedResource：basePath==null，只能走拦截模式，还是 http 虚拟主机协议
+                targetUri = new Uri($"http://{hostName}/index.html");
+                useVirtualHost = true;
+            }
+
+            if (useVirtualHost && basePath != null)
             {
                 // 文件夹模式 / Zip 解压模式：用虚拟主机映射
                 Log.Information("[WV2-LOAD] 🔗 设置虚拟主机映射...");
                 SetVirtualHostMapping(hostName, basePath);
                 Log.Information("[WV2-LOAD] ✅ 虚拟主机映射设置完成");
             }
-            else
+            else if (basePath == null)
             {
                 // 嵌入资源模式：注册 WebResourceRequested 拦截
                 Log.Information("[WV2-LOAD] 🔌 注册 WebResourceRequested 拦截器...");
                 RegisterWebResourceRequested(provider, hostName);
                 Log.Information("[WV2-LOAD] ✅ WebResourceRequested 拦截器注册完成");
             }
+            // else：file 模式下不需要虚拟主机也不需要拦截器，天然直接读本地文件
 
-            // 【修复 1】虚拟主机协议用 http:// 而非 https://
-            // WebView2 对 https 虚拟域名会走 TLS/证书校验链路，可能在用户组策略/杀毒软件拦截下静默卡 10+ 秒
-            // 最终触发超时。虚拟主机映射的就是本地文件，没必要走 HTTPS。
-            var appUrl = $"http://{hostName}/index.html";
             var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            // 【修复 2】监听 NavigationCompleted。
             // 【注意】CoreWebView2 早期 1.x 稳定版没有单独的 NavigationFailed 事件，
-            // 所有导航结果（成功/失败/HTTP 4xx/5xx/TLS 错误）都会在 NavigationCompleted 里给出
-            // IsSuccess + WebErrorStatus + HttpStatusCode，因此单监听 NavigationCompleted 已完整覆盖。
-            // 如果 NavigationCompleted 长时间不来，靠下面的 30 秒超时兜底，把当时的 URL 等信息
-            // 打到 ERROR 日志里，足够排查 10 秒级卡死。
+            // 所有导航结果统一在 NavigationCompleted 给出 IsSuccess + WebErrorStatus + HttpStatusCode。
             void OnNavCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
             {
                 if (e.IsSuccess)
                 {
-                    Log.Information("[WV2-LOAD] 📨 NavigationCompleted: 成功 HTTP {Code}", e.HttpStatusCode);
+                    Log.Information("[WV2-LOAD] 📨 NavigationCompleted: 成功 HTTP {Code} (模式={Mode}, Uri={Uri})",
+                        e.HttpStatusCode, provider.ModeName, targetUri.AbsoluteUri);
                     tcs.TrySetResult(true);
                 }
                 else
                 {
                     Log.Error(
-                        "[WV2-LOAD] ❌ NavigationCompleted 失败: WebErrorStatus={Status}, HTTP={Code}。" +
-                        "常见原因: ① https 虚拟主机证书问题（已改 http）② 路径被杀毒/组策略拦截 ③ index.html 不存在",
-                        e.WebErrorStatus, e.HttpStatusCode);
+                        "[WV2-LOAD] ❌ NavigationCompleted 失败: WebErrorStatus={Status}, HTTP={Code} (模式={Mode}, Uri={Uri})。" +
+                        "常见原因: ① https 虚拟主机证书问题（已改 http）② 路径被杀毒/组策略拦截 ③ index.html 不存在 ④ file 协议下相对路径引用出错",
+                        e.WebErrorStatus, e.HttpStatusCode, provider.ModeName, targetUri.AbsoluteUri);
                     tcs.TrySetResult(false);
                 }
-                // 【修复 NRE 同步自 StartupWindow】回调发生时 CoreWebView2 可能因窗口关闭等原因已释放，
-                // 若直接访问 _webView.CoreWebView2 会 NullReferenceException。判空后再取消订阅。
                 if (_webView?.CoreWebView2 != null)
                 {
                     _webView.CoreWebView2.NavigationCompleted -= OnNavCompleted;
@@ -240,24 +279,22 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             _webView.CoreWebView2.NavigationCompleted += OnNavCompleted;
 
             // 开始导航
-            Log.Information("[WV2-LOAD] 🧭 开始导航到: {Url}", appUrl);
-            _webView.Source = new Uri(appUrl);
+            Log.Information("[WV2-LOAD] 🧭 开始导航到: {Url} (模式={Mode}, 虚拟主机={UseVH})",
+                targetUri.AbsoluteUri, provider.ModeName, useVirtualHost);
+            _webView.Source = targetUri;
 
-            // 【修复 3】超时 10s → 30s
-            // WebView2 冷启动 + 中文路径虚拟主机首次读取 + 4.6MB vendor.js 加载 + 反混淆初始化，
-            // 低端机上 10 秒是明显不够的。30 秒更稳妥，真实错误会在 NavigationCompleted 里立刻给出（WebErrorStatus + HTTP 状态码）。
-            var timeout = Task.Delay(TimeSpan.FromSeconds(30));
+            // 超时：虚拟主机模式 30s（保守），file 协议模式 20s（直读更快，超时应该更短）
+            int timeoutSeconds = useVirtualHost ? 30 : 20;
+            var timeout = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds));
             var completed = await Task.WhenAny(tcs.Task, timeout);
 
             if (completed == timeout)
             {
                 Log.Error(
-                    "[WV2-LOAD] ⏰ 前端页面加载超时 (30s)！模式: {Mode}, Url: {Url}。" +
-                    "若持续出现，请检查: ① 虚拟主机路径是否可读（权限/杀毒拦截/中文路径）② 手动在浏览器打开该 index.html 是否能正常渲染。" +
+                    "[WV2-LOAD] ⏰ 前端页面加载超时 ({Sec}s)！模式: {Mode}, Uri: {Url}, 虚拟主机={UseVH}。" +
+                    "若持续出现，请检查: ① 目标 index.html 是否真实存在 ② 手动在浏览器打开该文件是否能正常渲染 ③ 关闭杀毒软件重试。" +
                     "（注：WebView2 1.x SDK 导航失败只走 NavigationCompleted，若此处超时说明该事件一直未触发，通常是 WebView2 初始化被中断或页面脚本死锁）",
-                    provider.ModeName, appUrl);
-                // 【修复 NRE 同步自 StartupWindow】超时时 WebView2 可能已释放（用户已关闭窗口/切页面），
-                // CoreWebView2 变为 null，直接 -= 会 NullReferenceException。判空后再取消订阅。
+                    timeoutSeconds, provider.ModeName, targetUri.AbsoluteUri, useVirtualHost);
                 if (_webView?.CoreWebView2 != null)
                 {
                     _webView.CoreWebView2.NavigationCompleted -= OnNavCompleted;
@@ -266,7 +303,8 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             }
 
             var success = tcs.Task.Result;
-            Log.Information("[WV2-LOAD] 🎯 导航完成，结果: {Result}", success ? "成功" : "失败");
+            Log.Information("[WV2-LOAD] 🎯 导航完成，结果: {Result} (模式={Mode})",
+                success ? "成功" : "失败", provider.ModeName);
             if (!success)
             {
                 Log.Error("[WV2-LOAD] ❌ 前端页面加载失败，模式: {Mode}", provider.ModeName);

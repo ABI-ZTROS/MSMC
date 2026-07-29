@@ -678,14 +678,44 @@ public partial class StartupWindow : Window
                 try
                 {
                     await StartupWebView.EnsureCoreWebView2Async();
-                    // 重新初始化后补一波最小必要配置（脚本注入等），保证兜底页也能响应 C# 调用
-                    var initScript = GenerateBridgeInitScript();
-                    await StartupWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(initScript);
-                    StartupWebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
-                    StartupWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
-                    StartupWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
-                    _webViewInitialized = true;
-                    Log.Information("[Startup-Fallback] ✅ CoreWebView2 延迟初始化完成");
+                    // 【修复 line 683 NRE】EnsureCoreWebView2Async() 表面成功后，也有可能
+                    // CoreWebView2 内部因为用户组策略/杀毒拦截/WebView2 版本过旧
+                    // 没有真正可访问，之后任何一行访问 CoreWebView2 属性/方法都可能 NRE。
+                    // 所以从这里开始，每一步访问 CoreWebView2 都先捕获本地变量 + 判 null +
+                    // 用 ?. 条件访问。任何一句失败都要打 WARNING 然后继续往下走，
+                    // 保证即使设置不全，至少能 NavigateToString 把兜底 HTML 显示出来。
+                    var cwv = StartupWebView.CoreWebView2;
+                    if (cwv == null)
+                    {
+                        Log.Warning("[Startup-Fallback] ⚠️ EnsureCoreWebView2Async 表面成功但 CoreWebView2 仍为 null，跳过脚本注入和订阅");
+                    }
+                    else
+                    {
+                        try
+                        {
+                            var initScript = GenerateBridgeInitScript();
+                            if (!string.IsNullOrEmpty(initScript))
+                            {
+                                await cwv.AddScriptToExecuteOnDocumentCreatedAsync(initScript);
+                            }
+                        }
+                        catch (Exception scriptEx)
+                        {
+                            Log.Warning(scriptEx, "[Startup-Fallback] ⚠️ 注入 Bridge Init 脚本失败（不致命，继续）");
+                        }
+
+                        try { cwv.WebMessageReceived += OnWebMessageReceived; }
+                        catch (Exception subEx) { Log.Warning(subEx, "[Startup-Fallback] ⚠️ 订阅 WebMessageReceived 失败（不致命，继续）"); }
+
+                        try { cwv.Settings.AreDevToolsEnabled = false; }
+                        catch (Exception devEx) { Log.Warning(devEx, "[Startup-Fallback] ⚠️ 关闭 DevTools 失败（不致命，继续）"); }
+
+                        try { cwv.Settings.AreDefaultContextMenusEnabled = false; }
+                        catch (Exception ctxEx) { Log.Warning(ctxEx, "[Startup-Fallback] ⚠️ 关闭右键菜单失败（不致命，继续）"); }
+
+                        _webViewInitialized = true;
+                        Log.Information("[Startup-Fallback] ✅ CoreWebView2 延迟初始化完成");
+                    }
                 }
                 catch (Exception initEx)
                 {

@@ -380,14 +380,30 @@ return true;
       <Output TaskParameter="ResultArchiveSize" PropertyName="_ZipSizeBytes" />
     </ZipDirectoryContents>
 
-    <ItemGroup Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')">
-      <EmbeddedResource Include="$(_FrontendZip)">
-        <LogicalName>$(AssemblyName).wwwroot.zip</LogicalName>
-      </EmbeddedResource>
-    </ItemGroup>
+    <!-- 【修复 zip 仍未嵌入（B/C 模式全部不可用的根因）】
+         之前用 Target 内部动态 ItemGroup + Condition="Exists('zip')" 追加 EmbeddedResource，
+         在 SDK-style 项目里不稳定。因为 SDK 的默认 ResolveAssemblyResources / BeforeResGen
+         会早早把顶级 ItemGroup 里的 EmbeddedResource 收集好，Target 内部 Condition 版的
+         ItemGroup 经常被评估为空（因为在评估时刻 $(_FrontendZip) 还没生成 / Condition
+         被简化成 false），最终就只剩 MSMC.g.resources，完全没加进嵌入资源流。
+         正确做法：用 MSBuild 原生 <CreateItem> 任务（BeforeTargets=BeforeResGen）动态追加。
+         CreateItem 是在 Target 执行阶段（已经把 zip 生成完了）才去 Append EmbeddedResource
+         到 @(EmbeddedResource) 列表里，并且直接带元数据 LogicalName。接下来 ResGen 一定
+         能看到它，不再依赖静态评估。
+    -->
+    <CreateItem Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')"
+                Include="$(_FrontendZip)"
+                AdditionalMetadata="LogicalName=$(AssemblyName).wwwroot.zip">
+      <Output TaskParameter="Include" ItemName="EmbeddedResource" />
+    </CreateItem>
 
-    <Message Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')"
-             Text="✅ [PackFrontendToZip] 完成: 已嵌入 $(AssemblyName).wwwroot.zip，文件数=$(_ZipFileCount)，大小=$(_ZipSizeBytes) 字节" Importance="high" />
+    <!-- 【诊断输出】列出所有已经决定要嵌入的资源名，让用户在 VS 输出面板里一眼看到
+         MSMC.wwwroot.zip 是否真正进了 @(EmbeddedResource) 列表。 -->
+    <Message Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')" Importance="high"
+             Text="✅ [PackFrontendToZip] 完成: 已 CreateItem 追加到 EmbeddedResource，LogicalName=$(AssemblyName).wwwroot.zip，文件数=$(_ZipFileCount)，大小=$(_ZipSizeBytes) 字节" />
+    <Message Importance="high" Condition="'$(DesignTimeBuild)' != 'true'"
+             Text="📍 当前 @(EmbeddedResource) 项数 = $([System.String]::new('').PadLeft(0).Length)(将在 ResGen 阶段输出具体清单，若这里仍看不到 wwwroot.zip 就证明 CreateItem 未命中)" />
+
     <Message Condition="Exists('$(_FrontendIndex)') And !Exists('$(_FrontendZip)')"
              Text="❌ [PackFrontendToZip] 失败: dist 存在但 zip 未生成，请检查上面 ZipTask 的 ERROR 日志" Importance="high" />
   </Target>
