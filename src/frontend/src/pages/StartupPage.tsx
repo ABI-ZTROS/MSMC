@@ -5,11 +5,37 @@ interface LogEntry {
   id: number
   message: string
   type: 'default' | 'success' | 'error'
+  /** 标签前缀，如 [BOOT] [LOAD] [OK] [ERR] [TIME] [DETECT] [NET] [SEC] [CFG] [METRIC] [BASE] [VM] [BUILD] */
+  tag: string
   /** 日志输出的毫秒时间戳，用于显示时分秒 */
   timestamp: number
 }
 
 let logIdCounter = 0
+
+/** 从日志消息里提取 [TAG] 前缀；没有则返回空字符串 */
+function extractTag(message: string): string {
+  const m = message.match(/^\s*\[([A-Z]+)\]/)
+  return m ? m[1] : ''
+}
+
+/** 按标签着色表 —— 不同 IO 模块用不同颜色，装逼用 */
+const TAG_COLOR: Record<string, string> = {
+  BOOT: '#60a5fa',     // 蓝
+  BUILD: '#a78bfa',    // 紫
+  LOAD: '#fbbf24',     // 黄
+  OK: '#34d399',       // 绿
+  ERR: '#f87171',      // 红
+  WARN: '#fb923c',     // 橙
+  TIME: '#22d3ee',     // 青
+  DETECT: '#60a5fa',   // 蓝
+  NET: '#38bdf8',      // 天蓝
+  SEC: '#f472b6',      // 粉
+  CFG: '#a78bfa',      // 紫
+  METRIC: '#4ade80',   // 绿
+  BASE: '#94a3b8',     // 灰
+  VM: '#c084fc',       // 紫
+}
 
 export function StartupPage(): JSX.Element {
   const [progress, setProgress] = useState(0)
@@ -27,7 +53,7 @@ export function StartupPage(): JSX.Element {
   const appendLog = (message: string, type: LogEntry['type'] = 'default'): void => {
     setLogs((prev) => [
       ...prev,
-      { id: ++logIdCounter, message, type, timestamp: Date.now() },
+      { id: ++logIdCounter, message, type, tag: extractTag(message), timestamp: Date.now() },
     ])
   }
 
@@ -384,50 +410,71 @@ export function StartupPage(): JSX.Element {
                 等待启动日志...
               </div>
             )}
-            {logs.map((entry) => (
-              <div
-                key={entry.id}
-                style={{
-                  display: 'flex',
-                  gap: 8,
-                  alignItems: 'flex-start',
-                  fontFamily: 'Consolas, "JetBrains Mono", "Cascadia Code", monospace',
-                  fontSize: 12,
-                  lineHeight: 1.75,
-                  // [OK] 修复问题 3：每条日志一个轻微背景色卡片 + 底边距，不再是散在的纯文本
-                  marginBottom: 3,
-                  padding: '2px 6px',
-                  borderRadius: 3,
-                  backgroundColor: entry.type === 'error'
-                    ? 'rgba(239, 68, 68, 0.06)'
-                    : entry.type === 'success'
-                      ? 'rgba(34, 197, 94, 0.05)'
-                      : 'transparent',
-                  color:
-                    entry.type === 'error'
+            {logs.map((entry) => {
+              const tagColor = TAG_COLOR[entry.tag] || 'var(--md-body)'
+              const isError = entry.type === 'error'
+              const isSuccess = entry.type === 'success'
+              // 把 [TAG] 前缀和正文拆开，前缀独立染色，正文沿用 type 颜色
+              const tagMatch = entry.message.match(/^(\s*\[[A-Z]+\])(.*)$/s)
+              const tagPart = tagMatch ? tagMatch[1] : ''
+              const bodyPart = tagMatch ? tagMatch[2] : entry.message
+              return (
+                <div
+                  key={entry.id}
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    alignItems: 'flex-start',
+                    fontFamily: 'Consolas, "JetBrains Mono", "Cascadia Code", monospace',
+                    fontSize: 12,
+                    lineHeight: 1.75,
+                    marginBottom: 3,
+                    padding: '2px 6px',
+                    borderRadius: 3,
+                    backgroundColor: isError
+                      ? 'rgba(239, 68, 68, 0.06)'
+                      : isSuccess
+                        ? 'rgba(34, 197, 94, 0.05)'
+                        : 'transparent',
+                    color: isError
                       ? 'var(--md-error-text)'
-                      : entry.type === 'success'
+                      : isSuccess
                         ? 'var(--md-gauge-green)'
                         : 'var(--md-body)',
-                  wordBreak: 'break-word',
-                  whiteSpace: 'pre-wrap',
-                }}
-              >
-                {/* 左侧时间戳：淡色 + 等宽，对齐整齐 */}
-                <span
-                  style={{
-                    flexShrink: 0,
-                    fontSize: 10,
-                    color: 'var(--md-body-lighter)',
-                    opacity: 0.55,
-                    userSelect: 'none',
+                    wordBreak: 'break-word',
+                    whiteSpace: 'pre-wrap',
+                    borderLeft: tagPart ? `2px solid ${tagColor}` : 'none',
+                    paddingLeft: tagPart ? 8 : 6,
                   }}
                 >
-                  [{formatTime(entry.timestamp)}]
-                </span>
-                <span style={{ flex: 1 }}>{entry.message}</span>
-              </div>
-            ))}
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      fontSize: 10,
+                      color: 'var(--md-body-lighter)',
+                      opacity: 0.55,
+                      userSelect: 'none',
+                    }}
+                  >
+                    [{formatTime(entry.timestamp)}]
+                  </span>
+                  {tagPart && (
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        color: tagColor,
+                        fontWeight: 700,
+                        fontSize: 11,
+                        userSelect: 'none',
+                      }}
+                    >
+                      {tagPart}
+                    </span>
+                  )}
+                  <span style={{ flex: 1 }}>{bodyPart}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
 

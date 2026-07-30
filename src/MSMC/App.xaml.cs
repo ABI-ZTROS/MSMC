@@ -185,34 +185,84 @@ public partial class App : Application
         string logFileName = "(未初始化)";
         try
         {
-            // 初始化日志系统
-            // 每次启动生成独立日志文件（含启动时间戳），避免单文件过大
-            // 使用 AppContext.BaseDirectory 确保日志路径不依赖工作目录
+            // ─────────────────────────────────────────────────────────────
+            // 【日志精简策略】1.2MB/5s 太吵，分级 + 滚动 + 过滤三管齐下
+            //
+            // 主日志（mcserverguard-.log）：
+            //   - 全局 MinimumLevel = Warning
+            //   - 启动阶段（App 命名空间）Override 到 Information，记录关键启动事件
+            //   - 噪音子模块 Override 到 Error（监控/检测/网络这些每 5s 一刷的）
+            //   - 文件超 5MB 自动滚动到 mcserverguard-_001.log / _002.log ...
+            //     最多保留 5 份（含当前文件），超出自动删最旧的
+            //
+            // 调试日志（debug-.log）：
+            //   - 单独 sink，MinimumLevel = Debug
+            //   - 仅在需要排查时人工查看，2MB 滚动保留 3 份
+            //   - 不污染主日志，不撑爆磁盘
+            // ─────────────────────────────────────────────────────────────
             var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
             Directory.CreateDirectory(logDir);
-            logFileName = Path.Combine(logDir, $"mcserverguard-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+            string mainLogPath = Path.Combine(logDir, "mcserverguard-.log");
+            var debugLogPath = Path.Combine(logDir, "debug-.log");
+            logFileName = mainLogPath;
+
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .MinimumLevel.Override("io.NET.ZTR_OS.Features.ServerDetection", Serilog.Events.LogEventLevel.Warning)
-                .MinimumLevel.Override("io.NET.ZTR_OS.Features.ConfigEditor", Serilog.Events.LogEventLevel.Warning)
-                .MinimumLevel.Override("io.NET.ZTR_OS.Features.SystemMonitoring", Serilog.Events.LogEventLevel.Warning)
-                .MinimumLevel.Override("io.NET.ZTR_OS.Features.NetworkMonitor", Serilog.Events.LogEventLevel.Warning)
-                .MinimumLevel.Override("io.NET.ZTR_OS.Features.NetworkMonitor", Serilog.Events.LogEventLevel.Warning)
-                .WriteTo.File(logFileName)
+                // 全局阈值：Warning+ 才进主日志（大量 Debug/Information 被丢弃）
+                .MinimumLevel.Warning()
+                // 启动流程是关键事件，App 命名空间 Override 到 Information
+                .MinimumLevel.Override("io.NET.ZTR_OS", Serilog.Events.LogEventLevel.Information)
+                // 噪音子模块：每 5s 一刷的检测/监控/网络流，Override 到 Error
+                .MinimumLevel.Override("io.NET.ZTR_OS.Features.ServerDetection", Serilog.Events.LogEventLevel.Error)
+                .MinimumLevel.Override("io.NET.ZTR_OS.Features.ConfigEditor", Serilog.Events.LogEventLevel.Error)
+                .MinimumLevel.Override("io.NET.ZTR_OS.Features.SystemMonitoring", Serilog.Events.LogEventLevel.Error)
+                .MinimumLevel.Override("io.NET.ZTR_OS.Features.NetworkMonitor", Serilog.Events.LogEventLevel.Error)
+                // 主 sink：Warning+ → 5MB 滚动，保留 5 份
+                .WriteTo.File(
+                    path: mainLogPath,
+                    rollOnFileSizeLimit: true,
+                    fileSizeLimitBytes: 5 * 1024 * 1024,        // 5 MB
+                    retainedFileCountLimit: 5,
+                    shared: false,
+                    outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+                // 调试 sink：Debug+ 单独写入 debug-.log，2MB 滚动保留 3 份
+                .WriteTo.Logger(lc => lc
+                    .MinimumLevel.Debug()
+                    .WriteTo.File(
+                        path: debugLogPath,
+                        rollOnFileSizeLimit: true,
+                        fileSizeLimitBytes: 2 * 1024 * 1024,    // 2 MB
+                        retainedFileCountLimit: 3,
+                        outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}"))
                 .CreateLogger();
-            ForceLog($"[BOOT-2] [OK] Serilog OK  日志文件: {logFileName}");
+
+            ForceLog($"[BOOT-2] [OK] Serilog 已精简：主日志 Warning+ (5MB×5份) + 调试日志 Debug+ (2MB×3份)");
+            ForceLog($"[BOOT-2]    主日志: {mainLogPath}");
+            ForceLog($"[BOOT-2]    调试日志: {debugLogPath}");
         }
         catch (Exception serilogEx)
         {
             ForceLog($"[BOOT-2] [ERR] Serilog 初始化失败: {serilogEx}");
-            // 注意：即使 Serilog 挂了也不能 return，继续往下走——我们有 ForceLog 兜底
+            // 兜底：用最简单的配置避免完全无日志
+            try
+            {
+                var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
+                logFileName = Path.Combine(logDir, "mcserverguard-fallback-.log");
+                Log.Logger = new LoggerConfiguration()
+                    .MinimumLevel.Warning()
+                    .WriteTo.File(logFileName, rollOnFileSizeLimit: true, fileSizeLimitBytes: 5 * 1024 * 1024, retainedFileCountLimit: 5)
+                    .CreateLogger();
+                ForceLog("[BOOT-2] [OK] 已用兜底配置初始化 Serilog");
+            }
+            catch { /* 真的连兜底都炸了，继续用 ForceLog */ }
         }
 
-        // 清理 7 天前的旧日志文件
+        // 清理 7 天前的旧日志文件（主日志 + 调试日志归档一起清）
         try
         {
             var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
             var oldFiles = Directory.GetFiles(logDir, "mcserverguard-*.log")
+                .Concat(Directory.GetFiles(logDir, "debug-*.log"))
+                .Concat(Directory.GetFiles(logDir, "mcserverguard-fallback-*.log"))
                 .Select(f => new FileInfo(f))
                 .Where(f => (DateTime.Now - f.CreationTime).TotalDays > 7)
                 .ToList();
@@ -223,7 +273,7 @@ public partial class App : Application
             }
             if (oldFiles.Count > 0)
             {
-                ForceLog($"[BOOT-2] [CLEAN] 已清理 {oldFiles.Count} 个旧日志文件");
+                ForceLog($"[BOOT-2] [CLEAN] 已清理 {oldFiles.Count} 个旧日志文件（主+调试+兜底）");
                 try { Log.Information("[CLEAN] 已清理 {Count} 个旧日志文件", oldFiles.Count); } catch { }
             }
         }
@@ -334,78 +384,160 @@ public partial class App : Application
             Dispatcher.BeginInvoke(new Action(() =>
             {
                 _ = Task.Run(async () =>
-                {
+            {
                 try
                 {
-                    // 辅助：更新进度并追加日志，每步之间强制 100ms 延迟避免竞争态
+                    // ─────────────────────────────────────────────────────────────
+                    // 启动日志体系：把每个 IO 类的注册过程显式打印到启动页
+                    // 装逼专用：日志量从 ~10 条扩到 40+ 条，每条带 [TAG] 前缀
+                    // ─────────────────────────────────────────────────────────────
+                    var bootStats = new BootStats();
                     async Task Step(int percent, string status, string log)
                     {
                         startupWindow.SetProgress(percent, status);
                         startupWindow.AppendLog(log);
-                        await Task.Delay(100);
+                        await Task.Delay(60);   // 60ms 间隔让用户看清每条
                     }
 
-                    await Step(5, "正在搭建 DI 容器...", "[BUILD] 搭建 DI 容器...");
+                    // 注册单个服务并打印加载结果（成功/失败）
+                    async Task Register<TService, TImpl>(int percent, string category, string displayName, string description)
+                        where TService : class
+                        where TImpl : class, TService
+                    {
+                        startupWindow.SetProgress(percent, $"{category} · {displayName}");
+                        startupWindow.AppendLog($"[LOAD] {category} 正在装载 {displayName} ...");
+                        await Task.Delay(40);
+                        try
+                        {
+                            services.AddSingleton<TService, TImpl>();
+                            bootStats.Ok++;
+                            startupWindow.AppendLog($"[OK]   {displayName,-28} ← {typeof(TService).Name}  // {description}", isSuccess: true);
+                        }
+                        catch (Exception ex)
+                        {
+                            bootStats.Fail++;
+                            startupWindow.AppendLog($"[ERR]  {displayName,-28} 加载失败: {ex.Message}", isError: true);
+                        }
+                        await Task.Delay(40);
+                    }
+
+                    // 注册单个实例工厂
+                    async Task RegisterInstance<TService>(int percent, string category, string displayName, string description, Func<IServiceProvider, TService> factory)
+                        where TService : class
+                    {
+                        startupWindow.SetProgress(percent, $"{category} · {displayName}");
+                        startupWindow.AppendLog($"[LOAD] {category} 正在装载 {displayName} ...");
+                        await Task.Delay(40);
+                        try
+                        {
+                            services.AddSingleton<TService>(factory);
+                            bootStats.Ok++;
+                            startupWindow.AppendLog($"[OK]   {displayName,-28} ← {typeof(TService).Name}  // {description}", isSuccess: true);
+                        }
+                        catch (Exception ex)
+                        {
+                            bootStats.Fail++;
+                            startupWindow.AppendLog($"[ERR]  {displayName,-28} 加载失败: {ex.Message}", isError: true);
+                        }
+                        await Task.Delay(40);
+                    }
+
+                    // 注册裸实现类型（无接口）
+                    async Task RegisterType<TImpl>(int percent, string category, string displayName, string description)
+                        where TImpl : class
+                    {
+                        startupWindow.SetProgress(percent, $"{category} · {displayName}");
+                        startupWindow.AppendLog($"[LOAD] {category} 正在装载 {displayName} ...");
+                        await Task.Delay(40);
+                        try
+                        {
+                            services.AddSingleton<TImpl>();
+                            bootStats.Ok++;
+                            startupWindow.AppendLog($"[OK]   {displayName,-28} ← {typeof(TImpl).Name}  // {description}", isSuccess: true);
+                        }
+                        catch (Exception ex)
+                        {
+                            bootStats.Fail++;
+                            startupWindow.AppendLog($"[ERR]  {displayName,-28} 加载失败: {ex.Message}", isError: true);
+                        }
+                        await Task.Delay(40);
+                    }
+
+                    await Step(5, "正在搭建 DI 容器...", "[BOOT] io.NET.ZTR_OS 启动序列开始");
+                    await Step(6, "正在搭建 DI 容器...", "[BUILD] 解析服务契约拓扑...");
                     var services = new ServiceCollection();
+                    await Step(7, "正在搭建 DI 容器...", "[BUILD] ServiceCollection 已实例化，等待注册");
+                    await Task.Delay(80);
 
-                    await Step(8, "正在初始化时间服务...", "[TIME] 初始化时间服务...");
-                    services.AddSingleton<TimeService>();
+                    // ════════════ 时间服务 ════════════
+                    await RegisterType<TimeService>(8, "[TIME]", "TimeService", "系统时钟/NTP 偏差诊断");
 
-                    await Step(12, "正在注册服务器检测服务...", "[DONE] 注册服务器检测服务...");
-                    services.AddSingleton<IServerDetector, ServerDetector>();
-                    services.AddSingleton<IServerImporterService, ServerImporterService>();
-                    services.AddSingleton<IServerManagerService, ServerManagerService>();
-                    services.AddSingleton<ProcessScanner>();
-                    services.AddSingleton<WorkingDirectoryResolver>();
-                    services.AddSingleton<ConfigFileScanner>();
-                    services.AddSingleton<PortScanner>();
-                    services.AddSingleton<PortToProcessMapper>();
-                    services.AddSingleton<ServerPortResolver>();
-                    services.AddSingleton<NetworkService>();
-                    services.AddSingleton<ITcpForwarder, TcpForwarderService>();
-                    services.AddSingleton<NetshPortBridgeService>();
-                    services.AddSingleton<IPortBridgeService, CompositePortBridgeService>();
-                    services.AddSingleton<NetworkTrafficService>();
-                    services.AddSingleton<JarCoreIdentifier>();
+                    // ════════════ 服务器检测模块 ════════════
+                    await Step(10, "正在注册服务器检测服务...", "[DETECT] === 服务器检测模块 ===");
+                    await Register<IServerDetector, ServerDetector>(11, "[DETECT]", "ServerDetector", "进程扫描主入口");
+                    await Register<IServerImporterService, ServerImporterService>(12, "[DETECT]", "ServerImporterService", "外部服务器导入");
+                    await Register<IServerManagerService, ServerManagerService>(13, "[DETECT]", "ServerManagerService", "服务器实例生命周期");
+                    await RegisterType<ProcessScanner>(14, "[DETECT]", "ProcessScanner", "MC 进程枚举");
+                    await RegisterType<WorkingDirectoryResolver>(15, "[DETECT]", "WorkingDirectoryResolver", "工作目录解析");
+                    await RegisterType<ConfigFileScanner>(16, "[DETECT]", "ConfigFileScanner", "配置文件发现");
+                    await RegisterType<PortScanner>(17, "[DETECT]", "PortScanner", "端口扫描器");
+                    await RegisterType<PortToProcessMapper>(18, "[DETECT]", "PortToProcessMapper", "端口→进程映射");
+                    await RegisterType<ServerPortResolver>(19, "[DETECT]", "ServerPortResolver", "服务器端口仲裁");
+                    await RegisterType<JarCoreIdentifier>(20, "[DETECT]", "JarCoreIdentifier", "JAR 核心类型识别");
 
-                    await Step(22, "正在注册权限服务...", "[SEC] 注册权限服务...");
-                    services.AddSingleton<AdminPrivilegeService>();
-                    services.AddSingleton<IPrivilegeService, PrivilegeService>();
+                    // ════════════ 网络监控模块 ════════════
+                    await Step(21, "正在注册网络监控服务...", "[NET] === 网络监控模块 ===");
+                    await RegisterType<NetworkService>(22, "[NET]", "NetworkService", "网络状态查询");
+                    await Register<ITcpForwarder, TcpForwarderService>(23, "[NET]", "TcpForwarderService", "托管 TCP 转发");
+                    await RegisterType<NetshPortBridgeService>(24, "[NET]", "NetshPortBridgeService", "Windows netsh 端口桥");
+                    await Register<IPortBridgeService, CompositePortBridgeService>(25, "[NET]", "CompositePortBridgeService", "复合端口桥接仲裁");
+                    await RegisterType<NetworkTrafficService>(26, "[NET]", "NetworkTrafficService", "网卡流量统计");
 
-                    await Step(30, "正在注册配置管理服务...", "[LOG] 注册配置管理服务...");
-                    services.AddSingleton<IConfigManager, ConfigManager>();
-                    services.AddSingleton<ConfigDescriptorRegistry>();
+                    // ════════════ 权限模块 ════════════
+                    await Step(28, "正在注册权限服务...", "[SEC] === 权限模块 ===");
+                    await RegisterType<AdminPrivilegeService>(29, "[SEC]", "AdminPrivilegeService", "UAC 提权仲裁");
+                    await Register<IPrivilegeService, PrivilegeService>(30, "[SEC]", "PrivilegeService", "权限查询门面");
 
-                    await Step(38, "正在注册系统监控服务...", "[METRIC] 注册系统监控服务...");
-                    services.AddSingleton<ISystemMonitor, SystemMonitor>();
-                    services.AddSingleton<DiskSpaceMonitor>();
-                    services.AddSingleton<MemoryMonitor>();
-                    services.AddSingleton<ThreadAnalyzer>();
-                    services.AddSingleton<CpuIdentifier>();
-                    services.AddSingleton<IMetricsPersistenceService, MetricsPersistenceService>();
-                    services.AddSingleton<IProcessManagerService, ProcessManagerService>();
+                    // ════════════ 配置管理模块 ════════════
+                    await Step(32, "正在注册配置管理服务...", "[CFG] === 配置管理模块 ===");
+                    await Register<IConfigManager, ConfigManager>(33, "[CFG]", "ConfigManager", "配置文件读写");
+                    await RegisterType<ConfigDescriptorRegistry>(34, "[CFG]", "ConfigDescriptorRegistry", "中文描述注册表");
 
-                    await Step(46, "正在注册主题与基础服务...", "[THEME] 注册主题服务...");
-                    services.AddSingleton<IThemeService>(_ => earlyThemeService);
+                    // ════════════ 系统监控模块 ════════════
+                    await Step(36, "正在注册系统监控服务...", "[METRIC] === 系统监控模块 ===");
+                    await Register<ISystemMonitor, SystemMonitor>(37, "[METRIC]", "SystemMonitor", "聚合监控入口");
+                    await RegisterType<DiskSpaceMonitor>(38, "[METRIC]", "DiskSpaceMonitor", "磁盘占用");
+                    await RegisterType<MemoryMonitor>(39, "[METRIC]", "MemoryMonitor", "内存监控");
+                    await RegisterType<ThreadAnalyzer>(40, "[METRIC]", "ThreadAnalyzer", "线程状态分析");
+                    await RegisterType<CpuIdentifier>(41, "[METRIC]", "CpuIdentifier", "CPU 拓扑识别");
+                    await Register<IMetricsPersistenceService, MetricsPersistenceService>(42, "[METRIC]", "MetricsPersistenceService", "指标历史持久化");
+                    await Register<IProcessManagerService, ProcessManagerService>(43, "[METRIC]", "ProcessManagerService", "进程亲和性管理");
+
+                    // ════════════ 主题与基础服务 ════════════
+                    await Step(45, "正在注册主题与基础服务...", "[BASE] === 基础服务 ===");
+                    await RegisterInstance<IThemeService>(46, "[BASE]", "ThemeService", "主题色/暗色模式", _ => earlyThemeService);
                     // 复用「阶段 -1」已 Load、并在必要时已弹出协议窗口的实例，
                     // 避免再次 new 一个造成版本状态 / 同意状态不一致
-                    services.AddSingleton<IUserAgreementService>(_ => userAgreementService);
-                    services.AddSingleton<IAppConfigService, AppConfigService>();
-                    services.AddSingleton<IJavaFinderService, JavaFinderService>();
-                    services.AddSingleton<IToastNotificationService, ToastNotificationService>();
-                    services.AddSingleton<MemoryOptimizerService>();
-                    services.AddSingleton<IWebView2BridgeService, WebView2BridgeService>();
+                    await RegisterInstance<IUserAgreementService>(47, "[BASE]", "UserAgreementService", "用户协议状态", _ => userAgreementService);
+                    await Register<IAppConfigService, AppConfigService>(48, "[BASE]", "AppConfigService", "全局配置持久化");
+                    await Register<IJavaFinderService, JavaFinderService>(49, "[BASE]", "JavaFinderService", "Java 安装发现");
+                    await Register<IToastNotificationService, ToastNotificationService>(50, "[BASE]", "ToastNotificationService", "原生 Toast 通知");
+                    await RegisterType<MemoryOptimizerService>(51, "[BASE]", "MemoryOptimizerService", "工作集 GC 整理");
+                    await Register<IWebView2BridgeService, WebView2BridgeService>(52, "[BASE]", "WebView2BridgeService", "WebView2 ↔ C# 桥接");
 
-                    await Step(56, "正在注册 ViewModel...", "[ASSEMBLE] 注册 ViewModel...");
-                    services.AddSingleton<ServerDetectionViewModel>();
-                    services.AddSingleton<ConfigEditorViewModel>();
-                    services.AddSingleton<SystemMonitorViewModel>();
-                    services.AddSingleton<NetworkMonitorViewModel>();
-                    services.AddSingleton<SettingsViewModel>();
-                    services.AddSingleton<MainViewModel>();
+                    // ════════════ ViewModel ════════════
+                    await Step(55, "正在注册 ViewModel...", "[VM] === ViewModel 装配 ===");
+                    await RegisterType<ServerDetectionViewModel>(56, "[VM]", "ServerDetectionViewModel", "服务器检测页 VM");
+                    await RegisterType<ConfigEditorViewModel>(57, "[VM]", "ConfigEditorViewModel", "配置编辑器 VM");
+                    await RegisterType<SystemMonitorViewModel>(58, "[VM]", "SystemMonitorViewModel", "系统监控 VM");
+                    await RegisterType<NetworkMonitorViewModel>(59, "[VM]", "NetworkMonitorViewModel", "网络监控 VM");
+                    await RegisterType<SettingsViewModel>(60, "[VM]", "SettingsViewModel", "设置页 VM");
+                    await RegisterType<MainViewModel>(61, "[VM]", "MainViewModel", "主窗口 VM");
 
-                    await Step(66, "正在构建服务容器...", "[PKG] 构建服务容器...");
+                    await Step(64, "正在构建服务容器...", "[BUILD] 验证服务契约...");
+                    await Step(65, "正在构建服务容器...", $"[BUILD] 拓扑统计: {bootStats.Ok} OK / {bootStats.Fail} FAIL / 共 {bootStats.Ok + bootStats.Fail} 项");
                     _serviceProvider = services.BuildServiceProvider();
+                    await Step(66, "正在构建服务容器...", $"[OK] ServiceProvider 已构建（解析 {bootStats.Ok} 个服务契约）");
 
                     // 后台启动 NTP 时钟偏差诊断（不阻塞启动流程；v2：不再覆盖系统时间）
                     _ = Task.Run(async () =>
@@ -609,22 +741,19 @@ public partial class App : Application
                     try { Log.Fatal(ex, "[FATAL] 启动过程发生致命异常（Task.Run 内部）"); } catch { }
                     try { WriteCrashDump(ex); } catch { }
 
-                    bool handled = false;
+                    // ─── 统一走 CrashWindow（独立灾难性故障页面） ───
+                    // 先关闭 StartupWindow，再让 ShowCrashReport 打开 CrashWindow
                     try
                     {
-                        // 不管 StartupWindow 是不是已经关了，直接 try；
-                        // 如果它已经关了，Dispatcher 调用或 MarkFailed 内部会抛，
-                        // 外层 catch 接住然后走 MessageBox 兜底。
-                        startupWindow.MarkFailed($"{ex.Message}");
-                        handled = true;
+                        await startupWindow.Dispatcher.InvokeAsync(() =>
+                        {
+                            try { startupWindow.Close(); } catch { /* 忽略 */ }
+                            ShowCrashReport(ex);
+                        });
                     }
-                    catch (Exception mwEx)
+                    catch (Exception cwEx)
                     {
-                        ForceLog($"[FATAL] startupWindow.MarkFailed 也崩了（可能窗口已关闭）: {mwEx.Message}");
-                    }
-
-                    if (!handled)
-                    {
+                        ForceLog($"[FATAL] CrashWindow 也失败，最终回退 MessageBox: {cwEx}");
                         try
                         {
                             MessageBox.Show(
@@ -649,6 +778,10 @@ public partial class App : Application
             try { Log.Fatal(ex, "[FATAL] 启动前期发生致命异常（OnStartup 外层）"); } catch { }
             try { WriteCrashDump(ex); } catch { }
             try
+            {
+                ShowCrashReport(ex);
+            }
+            catch
             {
                 MessageBox.Show(
                     $"启动失败：{ex.Message}\n\n{ex.StackTrace}\n\n" +
@@ -742,8 +875,8 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 显示崩溃报告对话框
-    /// 向用户展示异常信息并提供崩溃转储文件路径
+    /// 显示崩溃报告 —— 优先打开独立的 CrashWindow（WebView2 + React）
+    /// 若 CrashWindow 自身也失败（极少数情况），回退到 MessageBox
     /// </summary>
     /// <param name="ex">异常对象</param>
     private static void ShowCrashReport(Exception ex)
@@ -755,12 +888,50 @@ public partial class App : Application
         }
         catch { /* 已经不能再崩了 */ }
 
+        string? serilogLogPath = null;
         try
         {
-            var crashLog = WriteCrashDump(ex);
+            // 探测最新的 Serilog 日志文件路径
+            var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
+            if (Directory.Exists(logDir))
+            {
+                serilogLogPath = Directory.GetFiles(logDir, "mcserverguard-*.log")
+                    .OrderByDescending(f => f)
+                    .FirstOrDefault();
+            }
+        }
+        catch { /* 忽略 */ }
+
+        string? crashDumpPath = null;
+        try { crashDumpPath = WriteCrashDump(ex); } catch { }
+
+        // ─── 优先走独立 CrashWindow（WebView2 + React 故障页） ───
+        try
+        {
+            // 必须在 UI 线程上 new Window
+            if (Current?.Dispatcher?.CheckAccess() == true)
+            {
+                OpenCrashWindow(ex, forceCrashPath, serilogLogPath, crashDumpPath);
+            }
+            else
+            {
+                Current?.Dispatcher?.Invoke(() =>
+                    OpenCrashWindow(ex, forceCrashPath, serilogLogPath, crashDumpPath));
+            }
+            return;
+        }
+        catch (Exception cwEx)
+        {
+            ForceLog($"[FATAL] CrashWindow 打开失败，回退 MessageBox: {cwEx}");
+            try { Log.Error(cwEx, "[FATAL] CrashWindow 打开失败，回退 MessageBox"); } catch { }
+        }
+
+        // ─── 回退：旧的 MessageBox 流程 ───
+        try
+        {
             var msg = $"[FATAL] 哎呀，程序出了点问题！\n\n" +
                       $"错误信息：{ex.Message}\n\n" +
-                      $"Serilog 日志: {crashLog}\n" +
+                      $"Serilog 日志: {crashDumpPath ?? "(未写入)"}\n" +
                       $"强制死日志: {forceCrashPath ?? "(未写入成功)"}\n" +
                       $"启动死日志路径：{ForceLogPath}\n\n" +
                       $"你可以把这些文件发给开发者排查问题。\n\n" +
@@ -777,7 +948,6 @@ public partial class App : Application
         catch (Exception reportEx)
         {
             ForceLog($"[FATAL] ShowCrashReport 内部也崩了: {reportEx}");
-            // 连崩溃报告都崩了的时候，最后手段：裸 MessageBox
             try
             {
                 MessageBox.Show(
@@ -787,9 +957,25 @@ public partial class App : Application
                     MessageBoxButton.OK,
                     MessageBoxImage.Stop);
             }
-            catch { /* 彻底没救了，崩得连 MessageBox 都弹不出 */ }
+            catch { /* 彻底没救了 */ }
             try { Log.Fatal(ex, "连崩溃报告都崩了，我尽力了... reportFail={ReportFail}", reportEx.Message); } catch { }
         }
+    }
+
+    /// <summary>
+    /// 在 UI 线程上打开 CrashWindow 并设置 ShutdownMode
+    /// </summary>
+    private static void OpenCrashWindow(Exception ex, string? forceCrashPath, string? serilogLogPath, string? crashDumpPath)
+    {
+        var crashWindow = new CrashWindow(
+            ex,
+            forceLogPath: ForceLogPath,
+            serilogLogPath: serilogLogPath,
+            crashDumpPath: crashDumpPath);
+        // 把主窗口指向 CrashWindow，关掉它就退出
+        Current.MainWindow = crashWindow;
+        Current.ShutdownMode = ShutdownMode.OnMainWindowClose;
+        crashWindow.Show();
     }
 
     /// <summary>
@@ -857,4 +1043,13 @@ public partial class App : Application
             return "（崩溃转储写入失败）";
         }
     }
+}
+
+/// <summary>
+/// 启动加载统计（成功/失败计数），用于在启动页输出"DI 容器拓扑统计"
+/// </summary>
+internal sealed class BootStats
+{
+    public int Ok { get; set; }
+    public int Fail { get; set; }
 }

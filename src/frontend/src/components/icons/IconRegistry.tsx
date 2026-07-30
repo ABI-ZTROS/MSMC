@@ -50,6 +50,11 @@ import {
   FaChevronRight,
   FaNetworkWired,
   FaChartLine,
+  FaBug,
+  FaListOl,
+  FaCode,
+  FaLayerGroup,
+  FaMicrochip,
   // Regular 图标
   FaRegFolderOpen,
   // Brands 图标
@@ -107,6 +112,11 @@ const iconMap: Record<string, IconType> = {
   ChevronRightSolid: FaChevronRight,
   NetworkWiredSolid: FaNetworkWired,
   ChartLineSolid: FaChartLine,
+  BugSolid: FaBug,
+  ListOlSolid: FaListOl,
+  CodeSolid: FaCode,
+  LayerGroupSolid: FaLayerGroup,
+  MicrochipSolid: FaMicrochip,
 
   // ─── Regular 图标 ───
   FolderOpenRegular: FaRegFolderOpen,

@@ -58,6 +58,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         startup: path.resolve(__dirname, 'startup.html'),
+        crash: path.resolve(__dirname, 'crash.html'),
       },
       output: {
         manualChunks: {
