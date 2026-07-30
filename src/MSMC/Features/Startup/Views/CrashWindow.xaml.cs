@@ -8,11 +8,9 @@
 // -----------------------------------------------------------------------------
 using System.IO;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Threading;
 using io.NET.ZTR_OS.Features.WebView2.Frontend;
-using io.NET.ZTR_OS.Features.WebView2.Services;
 using Microsoft.Web.WebView2.Core;
 using Serilog;
 
@@ -32,8 +30,6 @@ public partial class CrashWindow : Window
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = false,
-        // JS 端发送的是小写枚举字符串（"event"/"log"），用 CamelCase 策略匹配
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false) },
     };
 
     /// <summary>
@@ -281,18 +277,26 @@ public partial class CrashWindow : Window
         try
         {
             var json = e.WebMessageAsJson;
-            var message = JsonSerializer.Deserialize<BridgeMessage>(json, JsonOptions);
-            if (message == null) return;
+            // 用 JsonDocument 手动解析，避开 BridgeMessageType 枚举反序列化的坑
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
 
-            var action = message.Action ?? string.Empty;
+            var type = root.TryGetProperty("type", out var typeEl) ? typeEl.GetString() : null;
+            var action = root.TryGetProperty("action", out var actionEl) ? actionEl.GetString() ?? string.Empty : string.Empty;
 
-            switch (message.Type)
+            switch (type)
             {
-                case BridgeMessageType.Event:
+                case "event":
                     HandleJsEvent(action);
                     break;
-                case BridgeMessageType.Log:
-                    Log.Information("[CRASH-WIN-JS] {Payload}", message.Payload);
+                case "log":
+                    var payload = root.TryGetProperty("payload", out var payloadEl)
+                        ? payloadEl.GetString() ?? "(null)"
+                        : "(null)";
+                    Log.Information("[CRASH-WIN-JS] {Payload}", payload);
+                    break;
+                default:
+                    Log.Debug("[CRASH-WIN] 收到未知类型的消息: {Type}", type ?? "(null)");
                     break;
             }
         }
@@ -345,6 +349,13 @@ public partial class CrashWindow : Window
     private void SendEvent(string action, object? payload = null)
     {
         if (!_webViewInitialized || CrashWebView?.CoreWebView2 == null) return;
+
+        // 前端未就绪时，把操作挂起，等 crash:ready 后再 flush
+        if (!_frontendLoaded && action != "crash:report")
+        {
+            _pendingOperations.Enqueue(() => SendEvent(action, payload));
+            return;
+        }
 
         try
         {

@@ -399,6 +399,9 @@ public partial class App : Application
                         await Task.Delay(60);   // 60ms 间隔让用户看清每条
                     }
 
+                    // ServiceCollection 必须在辅助方法之前声明，否则 CS0841
+                    var services = new ServiceCollection();
+
                     // 注册单个服务并打印加载结果（成功/失败）
                     async Task Register<TService, TImpl>(int percent, string category, string displayName, string description)
                         where TService : class
@@ -465,7 +468,6 @@ public partial class App : Application
 
                     await Step(5, "正在搭建 DI 容器...", "[BOOT] io.NET.ZTR_OS 启动序列开始");
                     await Step(6, "正在搭建 DI 容器...", "[BUILD] 解析服务契约拓扑...");
-                    var services = new ServiceCollection();
                     await Step(7, "正在搭建 DI 容器...", "[BUILD] ServiceCollection 已实例化，等待注册");
                     await Task.Delay(80);
 
