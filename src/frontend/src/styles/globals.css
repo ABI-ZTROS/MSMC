@@ -9,11 +9,14 @@
 /* ═══════════════════════════════════════════════════════════════ */
 :root:has(> * > [style*="--md-enable-animations:0"]),
 :root[style*="--md-enable-animations:0"] {
+  --md-duration-instant: 0ms;
   --md-duration-fast: 0ms;
   --md-duration-normal: 0ms;
   --md-duration-medium: 0ms;
   --md-duration-slow: 0ms;
   --md-duration-elastic: 0ms;
+  --md-duration-xlarge: 0ms;
+  --md-duration-cinema: 0ms;
 }
 
 :root[style*="--md-enable-animations:0"] *,
@@ -123,15 +126,18 @@
     background-color: var(--md-card-background);
     border: 1px solid var(--md-card-subtle-border);
     border-radius: var(--md-radius);
-    transition: transform var(--md-duration-normal) var(--md-ease-standard),
+    box-shadow: var(--md-shadow-1);
+    transition: transform var(--md-duration-slow) var(--md-ease-spring-soft),
       border-color var(--md-duration-normal) var(--md-ease-standard),
-      background-color var(--md-duration-normal) var(--md-ease-standard);
+      background-color var(--md-duration-normal) var(--md-ease-standard),
+      box-shadow var(--md-duration-slow) var(--md-ease-aquario);
   }
 
   .md-card-hover:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     border-color: var(--md-primary-subtle-border);
     background-color: var(--md-card-hover);
+    box-shadow: var(--md-shadow-3);
   }
 
   /* ═══════════════════════════════════════════════════════════════ */
@@ -193,53 +199,53 @@
   }
 
   .md-btn:active:not(:disabled) {
-    transform: translateY(0) scale(0.96);
-    transition-duration: 80ms;
+    transform: translateY(0.5px) scale(0.96);
+    /* 按下用急停曲线 + 极短时长，释放回弹用 spring-soft（通过 transition 切换实现） */
+    transition-duration: var(--md-duration-instant);
+    transition-timing-function: var(--md-ease-snap);
   }
 
   .md-btn:disabled {
-    opacity: 0.5;
+    opacity: var(--md-state-disabled-opacity);
     cursor: not-allowed;
     transform: none;
   }
 
-  /* 实心按钮（Raised）—— ColorOS 悬浮阴影 */
+  /* 实心按钮（Raised）—— ColorOS 14 彩色 tinted shadow */
   .md-btn-primary {
     background-color: var(--md-primary-hue-mid);
     color: var(--md-white);
-    box-shadow: 0 2px 6px -2px var(--md-primary-hue-mid),
-      0 4px 12px -4px color-mix(in srgb, var(--md-primary-hue-mid) 40%, transparent);
+    box-shadow: var(--md-shadow-primary);
   }
 
   .md-btn-primary:hover:not(:disabled) {
     background-color: var(--md-primary-hue-dark);
-    box-shadow: 0 4px 10px -2px var(--md-primary-hue-mid),
-      0 8px 20px -6px color-mix(in srgb, var(--md-primary-hue-mid) 50%, transparent);
+    box-shadow: 0 12px 28px -6px rgba(59, 130, 246, 0.65),
+                0 6px 14px -3px rgba(59, 130, 246, 0.42);
   }
 
   .md-btn-primary:active:not(:disabled) {
-    box-shadow: 0 1px 3px -1px var(--md-primary-hue-mid),
-      0 2px 6px -2px color-mix(in srgb, var(--md-primary-hue-mid) 30%, transparent);
+    box-shadow: 0 2px 6px -1px rgba(59, 130, 246, 0.45),
+                0 1px 3px -1px rgba(59, 130, 246, 0.30);
   }
 
   /* 危险按钮 */
   .md-btn-danger {
     background-color: var(--md-danger);
     color: var(--md-white);
-    box-shadow: 0 2px 6px -2px var(--md-danger),
-      0 4px 12px -4px color-mix(in srgb, var(--md-danger) 40%, transparent);
+    box-shadow: var(--md-shadow-danger);
   }
 
   .md-btn-danger:hover:not(:disabled) {
     filter: brightness(1.08);
-    box-shadow: 0 4px 10px -2px var(--md-danger),
-      0 8px 20px -6px color-mix(in srgb, var(--md-danger) 50%, transparent);
+    box-shadow: 0 12px 28px -6px rgba(244, 54, 76, 0.65),
+                0 6px 14px -3px rgba(244, 54, 76, 0.42);
   }
 
   .md-btn-danger:active:not(:disabled) {
     filter: brightness(0.92);
-    box-shadow: 0 1px 3px -1px var(--md-danger),
-      0 2px 6px -2px color-mix(in srgb, var(--md-danger) 30%, transparent);
+    box-shadow: 0 2px 6px -1px rgba(244, 54, 76, 0.45),
+                0 1px 3px -1px rgba(244, 54, 76, 0.30);
   }
 
   /* 描边按钮（Outlined） */
@@ -306,6 +312,8 @@
     border-color: var(--md-primary-hue-mid);
     border-width: 2px;
     padding: 0 11px;
+    /* ColorOS 焦点 ring：主色 2px halo */
+    box-shadow: var(--md-ring-focus);
   }
 
   .md-input::placeholder {
@@ -335,6 +343,7 @@
     border-color: var(--md-primary-hue-mid);
     border-width: 2px;
     padding: 9px 11px;
+    box-shadow: var(--md-ring-focus);
   }
 
   /* ═══════════════════════════════════════════════════════════════ */
@@ -345,6 +354,7 @@
     border-bottom: 1px solid var(--md-subtle-border);
   }
 
+  /* ColorOS Tab：指示器用弹簧滑动（4% 过冲），文字色用 aquario 平滑过渡 */
   .md-tab {
     padding: 10px 16px;
     font-size: var(--md-font-size-base);
@@ -353,14 +363,14 @@
     cursor: pointer;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
-    transition: color var(--md-duration-fast) var(--md-ease-standard),
-      border-color var(--md-duration-fast) var(--md-ease-standard),
-      background-color var(--md-duration-fast) var(--md-ease-standard);
+    transition: color var(--md-duration-medium) var(--md-ease-aquario),
+      border-color var(--md-duration-elastic) var(--md-ease-spring-soft),
+      background-color var(--md-duration-fast) var(--md-ease-aquario);
   }
 
   .md-tab:hover {
     color: var(--md-body);
-    background-color: var(--md-card-hover);
+    background-color: var(--md-state-hover);
   }
 
   .md-tab-active {
@@ -435,12 +445,13 @@
     font-size: var(--md-font-size-base);
     font-weight: 500;
     color: var(--md-body);
-    border-radius: var(--md-radius-small);
+    border-radius: var(--md-radius);
     cursor: pointer;
     user-select: none;
-    transition: background-color var(--md-duration-fast) var(--md-ease-standard),
-      transform var(--md-duration-fast) var(--md-ease-spring-soft),
-      box-shadow var(--md-duration-fast) var(--md-ease-standard);
+    /* 多通道并行：背景色 + transform 走不同曲线（ColorOS Aquario 风格） */
+    transition: background-color var(--md-duration-fast) var(--md-ease-aquario),
+      transform var(--md-duration-medium) var(--md-ease-spring-soft),
+      box-shadow var(--md-duration-normal) var(--md-ease-standard);
   }
 
   .md-nav-icon {
@@ -471,6 +482,7 @@
     }
   }
 
+  /* ColorOS 激活指示器：从顶部弹簧滑入，带过冲 */
   .md-nav-item::before {
     content: '';
     position: absolute;
@@ -479,20 +491,22 @@
     transform: translateY(-50%) scaleY(0);
     width: 3px;
     border-radius: 2px;
-    background-color: var(--md-nav-item-selected-indicator);
+    background: var(--md-accent-gradient);
+    box-shadow: 0 0 8px var(--md-nav-item-selected-indicator);
     opacity: 0;
-    transition: opacity var(--md-duration-normal) var(--md-ease-standard),
-      transform var(--md-duration-normal) var(--md-ease-spring-soft);
+    transition: opacity var(--md-duration-medium) var(--md-ease-aquario),
+      transform var(--md-duration-elastic) var(--md-ease-spring-soft);
     transform-origin: center;
   }
 
+  /* hover：X 轴 2px 推挤（ColorOS 风格的"被推一下"） */
   .md-nav-item:hover {
-    background-color: var(--md-nav-item-hover);
+    background-color: var(--md-state-hover);
     transform: translateX(2px);
   }
 
   .md-nav-item-active {
-    background-color: var(--md-primary-subtle-background);
+    background-color: var(--md-state-selected);
   }
 
   .md-nav-item-active::before {
@@ -501,8 +515,15 @@
   }
 
   .md-nav-item-active:hover {
-    background-color: var(--md-primary-subtle-background);
+    background-color: var(--md-state-selected);
     transform: translateX(2px);
+  }
+
+  /* nav-item 按下急停反馈 */
+  .md-nav-item:active {
+    transform: scale(0.97);
+    transition-duration: var(--md-duration-instant);
+    transition-timing-function: var(--md-ease-snap);
   }
 
   /* ═══════════════════════════════════════════════════════════════ */
@@ -551,39 +572,67 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════ */
-  /* 📄 页面入场动画（复刻 WPF PageEnterStoryboard） */
+  /* 📄 页面入场动画 —— ColorOS Aquario：位移 + 缩放 + 模糊消散三通道并行 */
   /* ═══════════════════════════════════════════════════════════════ */
   .md-page-enter {
-    animation: mdPageEnter var(--md-duration-slow) var(--md-ease-emphasized);
+    animation: mdPageEnter var(--md-duration-elastic) var(--md-ease-spring-soft) both;
   }
 
   @keyframes mdPageEnter {
     0% {
       opacity: 0;
-      transform: translateX(20px) scale(0.98);
+      transform: translateY(16px) scale(0.985);
+      filter: blur(6px);
     }
     100% {
       opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+    }
+  }
+
+  /* 页面退场：模糊消散 + 缩放 + 透明度衰减（旧页专用） */
+  .md-page-exit {
+    animation: mdPageExit calc(var(--md-duration-elastic) * 0.8) var(--md-ease-aquario) both;
+    pointer-events: none;
+  }
+
+  @keyframes mdPageExit {
+    0% {
+      opacity: 1;
       transform: translateX(0) scale(1);
+      filter: blur(0) brightness(1);
+    }
+    100% {
+      opacity: var(--md-opacity-exit);
+      transform: translateX(-24%) scale(var(--md-scale-exit));
+      filter: blur(var(--md-blur-exit)) brightness(var(--md-brightness-exit));
     }
   }
 
   /* ═══════════════════════════════════════════════════════════════ */
-  /* 📋 交错列表入场动画 */
+  /* 📋 交错列表入场 —— ColorOS 公式：min(i*40ms, 320ms) * (1 - 0.05i) */
+  /* 用法：<div className="md-stagger-item" style={{ '--md-stagger-i': 0 }}>...</div> */
   /* ═══════════════════════════════════════════════════════════════ */
   .md-stagger-item {
     opacity: 0;
-    animation: mdStaggerIn var(--md-duration-medium) var(--md-ease-emphasized) forwards;
+    animation: mdStaggerIn var(--md-duration-elastic) var(--md-ease-spring-soft) forwards;
+    animation-delay: calc(
+      min(var(--md-stagger-i, 0) * 40ms, 320ms) *
+      (1 - 0.05 * var(--md-stagger-i, 0))
+    );
   }
 
   @keyframes mdStaggerIn {
     0% {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(16px) scale(0.97);
+      filter: blur(3px);
     }
     100% {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateY(0) scale(1);
+      filter: blur(0);
     }
   }
 
@@ -791,8 +840,8 @@
     cursor: pointer;
     inset: 0;
     background-color: var(--md-subtle-border);
-    border-radius: 22px;
-    transition: background-color var(--md-duration-normal) var(--md-ease-standard);
+    border-radius: var(--md-radius-pill);
+    transition: background-color var(--md-duration-medium) var(--md-ease-aquario);
   }
 
   .md-toggle-slider::before {
@@ -804,7 +853,9 @@
     bottom: 3px;
     background-color: var(--md-white);
     border-radius: 50%;
-    transition: transform var(--md-duration-normal) var(--md-ease-standard);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    /* ColorOS 阻尼振荡曲线，圆形滑块滑动时带轻微回弹 */
+    transition: transform var(--md-duration-elastic) var(--md-ease-oscillate);
   }
 
   .md-toggle input:checked + .md-toggle-slider {
@@ -998,14 +1049,17 @@
     padding: 16px;
     background-color: var(--md-card-background);
     border: 1px solid var(--md-card-subtle-border);
-    border-radius: var(--md-radius);
-    transition: transform var(--md-duration-normal) var(--md-ease-standard),
-      border-color var(--md-duration-normal) var(--md-ease-standard);
+    border-radius: var(--md-radius-large);
+    box-shadow: var(--md-shadow-1);
+    transition: transform var(--md-duration-slow) var(--md-ease-spring-soft),
+      border-color var(--md-duration-normal) var(--md-ease-aquario),
+      box-shadow var(--md-duration-slow) var(--md-ease-aquario);
   }
 
   .md-stat-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     border-color: var(--md-primary-subtle-border);
+    box-shadow: var(--md-shadow-3);
   }
 
   .md-stat-label {
@@ -1092,11 +1146,12 @@
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  /* 微交互：按钮/卡片按下回弹 */
+  /* 微交互：按钮/卡片按下回弹 —— ColorOS 双阶段物理模型 */
+  /* 按下走 snap 急停（80ms），释放回弹走 spring-soft（350ms） */
   .md-press {
-    transition: transform var(--md-duration-fast) var(--md-ease-spring),
-      box-shadow var(--md-duration-fast) var(--md-ease-standard),
-      background-color var(--md-duration-fast) var(--md-ease-standard);
+    transition: transform var(--md-duration-slow) var(--md-ease-spring-soft),
+      box-shadow var(--md-duration-normal) var(--md-ease-aquario),
+      background-color var(--md-duration-fast) var(--md-ease-aquario);
   }
 
   .md-press:hover:not(:disabled) {
@@ -1104,10 +1159,12 @@
   }
 
   .md-press:active:not(:disabled) {
-    transform: translateY(0) scale(0.97);
+    transform: scale(0.97) translateY(0.5px);
+    transition-duration: var(--md-duration-instant);
+    transition-timing-function: var(--md-ease-snap);
   }
 
-  /* 涟漪效果容器 */
+  /* ColorOS 涟漪：圆形扩散不溢出元素边界（用 clip-path 限制圆角） */
   .md-ripple {
     position: relative;
     overflow: hidden;
@@ -1117,20 +1174,28 @@
   .md-ripple::after {
     content: '';
     position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%),
-      currentColor 0%, transparent 60%);
+    width: 8px;
+    height: 8px;
+    left: var(--ripple-x, 50%);
+    top: var(--ripple-y, 50%);
+    translate: -50% -50%;
+    scale: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, currentColor 0%, transparent 70%);
     opacity: 0;
-    transform: scale(0);
-    transition: opacity 0.6s var(--md-ease-standard), transform 0.6s var(--md-ease-standard);
     pointer-events: none;
     z-index: 0;
+    /* 按住不淡出（ColorOS 风格），释放后 400ms 淡出 */
+    transition: scale var(--md-duration-elastic) var(--md-ease-aquario),
+      opacity var(--md-duration-medium) var(--md-ease-standard) var(--md-duration-medium);
   }
 
   .md-ripple:active::after {
+    /* JS 通过 useRipple 设置 --ripple-scale（按元素对角线/8 计算） */
+    scale: var(--ripple-scale, 18);
     opacity: 0.18;
-    transform: scale(2.5);
-    transition: opacity 0s, transform 0s;
+    transition: scale var(--md-duration-elastic) var(--md-ease-aquario),
+      opacity 0s;
   }
 
   /* 玻璃态卡片（用于关键面板，配合粒子背景） */
@@ -1319,65 +1384,30 @@
 
 @layer components {
   /* ═══════════════════════════════════════════════════════════════ */
-  /* 🎯 ColorOS 风格增强卡片 —— 物理悬浮 + 光影层次 */
+  /* 🎯 ColorOS 风格增强卡片 —— 柔和长衰减阴影 + 弹簧悬浮 */
   /* ═══════════════════════════════════════════════════════════════ */
   .md-card-elevated {
     background-color: var(--md-card-background);
     border: 1px solid var(--md-card-subtle-border);
-    border-radius: var(--md-radius);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25),
-      0 0 0 1px rgba(255, 255, 255, 0.02) inset;
-    transition: transform var(--md-duration-normal) var(--md-ease-spring-soft),
-      border-color var(--md-duration-normal) var(--md-ease-standard),
-      box-shadow var(--md-duration-normal) var(--md-ease-standard),
-      background-color var(--md-duration-normal) var(--md-ease-standard);
+    border-radius: var(--md-radius-large);
+    box-shadow: var(--md-shadow-2), var(--md-edge-hairline);
+    transition: transform var(--md-duration-slow) var(--md-ease-spring-soft),
+      border-color var(--md-duration-normal) var(--md-ease-aquario),
+      box-shadow var(--md-duration-slow) var(--md-ease-aquario),
+      background-color var(--md-duration-normal) var(--md-ease-aquario);
   }
 
   .md-card-elevated:hover {
-    transform: translateY(-3px);
+    transform: translateY(-4px);
     border-color: var(--md-primary-subtle-border);
-    box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.7),
-      0 4px 12px -4px rgba(0, 0, 0, 0.3),
-      0 0 0 1px var(--md-primary-subtle-border);
+    box-shadow: var(--md-shadow-modal), var(--md-edge-hairline);
   }
 
-  /* ═══════════════════════════════════════════════════════════════ */
-  /* ✨ ColorOS 页面入场 —— 阻尼曲线 + 模糊消散 + 轻微缩放 */
-  /* ═══════════════════════════════════════════════════════════════ */
-  .md-page-enter {
-    animation: mdPageEnter var(--md-duration-elastic) var(--md-ease-emphasized) both;
-  }
-
-  @keyframes mdPageEnter {
-    0% {
-      opacity: 0;
-      transform: translateY(16px) scale(0.985);
-      filter: blur(6px);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-      filter: blur(0);
-    }
-  }
-
-  /* ═══════════════════════════════════════════════════════════════ */
-  /* 📋 交错列表入场 —— ColorOS 弹性时间轴 */
-  /* ═══════════════════════════════════════════════════════════════ */
-  .md-stagger-item {
-    opacity: 0;
-    animation: mdStaggerIn var(--md-duration-medium) var(--md-ease-spring-soft) forwards;
-  }
-
-  @keyframes mdStaggerIn {
-    0% {
-      opacity: 0;
-      transform: translateY(12px) scale(0.97);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
+  /* ColorOS 按压模型：按下陷落感 */
+  .md-card-elevated:active {
+    transform: translateY(-1px) scale(0.99);
+    transition-duration: var(--md-duration-instant);
+    transition-timing-function: var(--md-ease-snap);
   }
 
   /* ═══════════════════════════════════════════════════════════════ */

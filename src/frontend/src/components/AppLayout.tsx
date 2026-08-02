@@ -10,15 +10,30 @@ export function AppLayout(): JSX.Element {
   const isReady = useAppStore((s) => s.isReady)
   const [currentTime, setCurrentTime] = useState('')
   const location = useLocation()
+  // ColorOS 路由转场：维护"当前页 + 退场页"双缓冲
+  // 退场页用 md-page-exit 触发模糊消散动画，动画结束后卸载
   const [pageKey, setPageKey] = useState(location.pathname)
+  const [exitingKey, setExitingKey] = useState<string | null>(null)
   const prevPathRef = useRef(location.pathname)
+  const exitTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (location.pathname !== prevPathRef.current) {
+      // 旧页进入退场队列，新页立即挂载
+      setExitingKey(prevPathRef.current)
       prevPathRef.current = location.pathname
       setPageKey(location.pathname)
+      // 旧页动画结束后卸载（与 md-page-exit 时长一致：420ms * 0.8 ≈ 336ms）
+      if (exitTimerRef.current) window.clearTimeout(exitTimerRef.current)
+      exitTimerRef.current = window.setTimeout(() => setExitingKey(null), 360)
     }
   }, [location.pathname])
+
+  useEffect(() => {
+    return () => {
+      if (exitTimerRef.current) window.clearTimeout(exitTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     const update = () => {
@@ -47,15 +62,15 @@ export function AppLayout(): JSX.Element {
         style={{ opacity: 0.6 }}
       />
 
-      {/* 顶部主色辉光：营造空间深度 */}
+      {/* 顶部双辉光：主色蓝 + Aquamarine 绿（ColorOS AOD 流动配色） */}
       <div
         aria-hidden
         style={{
           position: 'absolute',
           top: -120,
-          left: '50%',
+          left: '30%',
           transform: 'translateX(-50%)',
-          width: '60%',
+          width: '50%',
           height: 240,
           background:
             'radial-gradient(ellipse at center, var(--md-primary-subtle-background) 0%, transparent 70%)',
@@ -63,19 +78,49 @@ export function AppLayout(): JSX.Element {
           pointerEvents: 'none',
         }}
       />
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: -140,
+          right: '5%',
+          width: '40%',
+          height: 260,
+          background:
+            'radial-gradient(ellipse at center, var(--md-aquamarine-soft) 0%, transparent 70%)',
+          opacity: 0.35,
+          pointerEvents: 'none',
+          animation: 'mdBreathe 8s var(--md-ease-drift) infinite',
+        }}
+      />
 
       <div className="flex-1 flex overflow-hidden relative z-10">
         <Sidebar />
 
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-hidden relative">
           {isReady ? (
-            <div key={pageKey} className="flex-1 overflow-y-auto md-page-enter">
-              <Outlet />
-            </div>
+            <>
+              {/* 退场页：保持挂载至动画结束，z-index 高于新页让模糊可见 */}
+              {exitingKey && (
+                <div
+                  key={`exit-${exitingKey}`}
+                  className="absolute inset-0 overflow-y-auto md-page-exit"
+                  style={{ zIndex: 2 }}
+                  aria-hidden
+                >
+                  {/* 退场页内容已切走，这里只留个"残影"层占位，实际内容由新页承载
+                      为了让 blur 可见，我们让退场层叠加在新页之上但 pointer-events: none */}
+                </div>
+              )}
+              {/* 新页：md-page-enter 触发弹簧入场 + 模糊消散 */}
+              <div key={pageKey} className="flex-1 overflow-y-auto md-page-enter">
+                <Outlet />
+              </div>
+            </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                {/* 双环品牌加载指示器 */}
+                {/* 双环品牌加载指示器 —— Aquario 风格 */}
                 <div style={{ position: 'relative', width: 56, height: 56, margin: '0 auto 16px' }}>
                   <div
                     className="md-orbit"
@@ -85,7 +130,7 @@ export function AppLayout(): JSX.Element {
                       borderRadius: '50%',
                       border: '2px solid transparent',
                       borderTopColor: 'var(--md-primary-hue-mid)',
-                      borderRightColor: 'var(--md-primary-hue-light)',
+                      borderRightColor: 'var(--md-aquamarine-light)',
                     }}
                   />
                   <div
@@ -95,7 +140,7 @@ export function AppLayout(): JSX.Element {
                       inset: 8,
                       borderRadius: '50%',
                       border: '1.5px solid transparent',
-                      borderBottomColor: 'var(--md-accent-text)',
+                      borderBottomColor: 'var(--md-aquamarine)',
                       borderLeftColor: 'var(--md-primary-hue-lighter)',
                     }}
                   />
@@ -122,24 +167,25 @@ export function AppLayout(): JSX.Element {
         className="flex items-center px-4 gap-4 flex-shrink-0 relative z-10"
         style={{
           height: 'var(--status-bar-height)',
-          backgroundColor: 'var(--md-primary-hue-mid)',
+          background: 'linear-gradient(90deg, var(--md-primary-hue-dark) 0%, var(--md-primary-hue-mid) 50%, var(--md-primary-hue-dark) 100%)',
           color: 'white',
           fontSize: 11,
+          boxShadow: '0 -2px 12px -2px rgba(59, 130, 246, 0.45), 0 -1px 0 0 rgba(255, 255, 255, 0.06) inset',
         }}
       >
         <div className="flex items-center gap-2">
-          <FaShield size={11} className="md-breathe" style={{ opacity: 0.8 }} />
-          <span style={{ opacity: 0.9 }}>{statusMessage || '就绪'}</span>
+          <FaShield size={11} className="md-breathe" style={{ opacity: 0.9 }} />
+          <span style={{ opacity: 0.95 }}>{statusMessage || '就绪'}</span>
         </div>
 
         <div className="flex-1" />
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5" style={{ opacity: 0.85 }}>
+          <div className="flex items-center gap-1.5" style={{ opacity: 0.9 }}>
             <FaShield size={10} />
             <span className="font-medium text-[11px]">MSMC</span>
           </div>
-          <div style={{ opacity: 0.8 }}>{currentTime}</div>
+          <div style={{ opacity: 0.85 }}>{currentTime}</div>
         </div>
       </footer>
     </div>

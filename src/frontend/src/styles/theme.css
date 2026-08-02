@@ -87,10 +87,12 @@
   --md-info-foreground: #94A3B8;
   --md-white: #FFFFFF;
 
-  /* ─── 圆角体系 ─── */
+  /* ─── 圆角体系（ColorOS 风格：层级越深圆角越小，整体无锐角） ─── */
   --md-radius-small: 8px;
   --md-radius: 12px;
   --md-radius-large: 16px;
+  --md-radius-xl: 24px;       /* ColorOS 大容器 / Sheet / 全屏卡片 */
+  --md-radius-pill: 9999px;   /* ColorOS Pill 按钮 / Chip / 开关 */
 
   /* ─── 间距体系 ─── */
   --md-spacing-1: 4px;
@@ -115,7 +117,7 @@
   --md-font-family: 'Segoe UI', 'Microsoft YaHei UI', '微软雅黑', system-ui, sans-serif;
   --md-font-mono: 'Consolas', 'Courier New', monospace;
 
-  /* ─── 动画缓动（ColorOS 风格：非线性阻尼 + 物理真实感） ─── */
+  /* ─── 动画缓动（ColorOS 14 / Aquario 量子动画引擎风格） ─── */
   /* 标准减速：初始微粘滞 → 快速收敛，模拟物理阻尼 */
   --md-ease-standard: cubic-bezier(0.2, 0.9, 0.2, 1);
   /* 强调减速：更明显的初始粘滞感 + 后期快速到位，ColorOS 标志性曲线 */
@@ -124,26 +126,68 @@
   --md-ease-standard-decelerate: cubic-bezier(0, 0, 0.2, 1);
   /* 加速曲线：仅入向动画使用 */
   --md-ease-standard-accelerate: cubic-bezier(0.4, 0, 1, 1);
-  /* 弹簧回弹：按钮按压 / 卡片悬浮，模拟橡皮筋物理模型 */
+  /* 弹簧回弹：按钮按压 / 卡片悬浮，模拟橡皮筋物理模型（过冲 12%） */
   --md-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* 柔和弹簧：卡片进场 / 列表项揭示，轻微回弹不夸张 */
-  --md-ease-spring-soft: cubic-bezier(0.22, 1.2, 0.36, 1);
+  /* 柔和弹簧：卡片进场 / 列表项揭示，轻微回弹不夸张（过冲 5%） */
+  --md-ease-spring-soft: cubic-bezier(0.22, 1.05, 0.36, 1);
+  /* Aquario 平滑减速（无过冲，量子引擎默认曲线，用于转场退场） */
+  --md-ease-aquario: cubic-bezier(0.16, 1, 0.3, 1);
+  /* 按下急停：按下瞬间反馈的快速阻尼曲线 */
+  --md-ease-snap: cubic-bezier(0.4, 0, 0.2, 1);
+  /* 阻尼振荡：侧栏滑入 / Sheet 弹出，带负值回弹 */
+  --md-ease-oscillate: cubic-bezier(0.68, -0.3, 0.32, 1.3);
+  /* 物理弹回：仅回弹动作（拖拽取消） */
+  --md-ease-bounce-back: cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  /* 图标 micro 动画（强过冲） */
+  --md-ease-pop: cubic-bezier(0.5, 1.6, 0.4, 0.85);
+  /* AOD 流动 / 长周期柔和（对称缓入缓出） */
+  --md-ease-drift: cubic-bezier(0.37, 0, 0.63, 1);
 
-  /* ─── 动画时长 ─── */
-  --md-duration-fast: 150ms;
-  --md-duration-normal: 200ms;
-  --md-duration-medium: 280ms;
-  --md-duration-slow: 350ms;
-  --md-duration-elastic: 420ms;
+  /* ─── 动画时长（ColorOS 分档：5 档细化） ─── */
+  --md-duration-instant: 80ms;    /* 状态切换即时反馈（ripple 起手、focus ring） */
+  --md-duration-fast: 150ms;      /* 微交互 hover 色阶 */
+  --md-duration-normal: 200ms;    /* 按钮 pressed 回弹、toggle */
+  --md-duration-medium: 280ms;    /* 卡片展开、tab 切换 */
+  --md-duration-slow: 350ms;      /* 卡片悬浮完整动画 */
+  --md-duration-elastic: 420ms;   /* 页面 push/pop、Dialog 入场 */
+  --md-duration-xlarge: 560ms;    /* shared element / hero */
+  --md-duration-cinema: 1200ms;   /* 启动动画 / 品牌动画 */
 
   /* ─── 动画开关（1=启用, 0=禁用） ─── */
   --md-enable-animations: 1;
 
-  /* ─── 阴影 ─── */
-  --md-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15);
-  --md-shadow-2: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-  --md-shadow-3: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
-  --md-shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.3);
+  /* ─── 阴影（ColorOS 风格：柔和长衰减 + 彩色 tinted shadow） ─── */
+  /* 暗色模式下阴影 alpha 整体降低，blur 远大于 offset 营造漂浮感 */
+  --md-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.12);
+  --md-shadow-2: 0 2px 8px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.14);
+  --md-shadow-3: 0 6px 16px rgba(0, 0, 0, 0.28), 0 2px 6px rgba(0, 0, 0, 0.16);
+  --md-shadow-modal: 0 12px 32px rgba(0, 0, 0, 0.42), 0 4px 12px rgba(0, 0, 0, 0.22);
+  /* 彩色阴影：主色按钮 / 强调元素（ColorOS 14 标志性） */
+  --md-shadow-primary: 0 8px 20px -4px rgba(59, 130, 246, 0.55),
+                       0 4px 10px -2px rgba(59, 130, 246, 0.35);
+  --md-shadow-danger: 0 8px 20px -4px rgba(244, 54, 76, 0.55),
+                      0 4px 10px -2px rgba(244, 54, 76, 0.35);
+  /* 边缘内描边（暗色模式补层级，代替高对比阴影） */
+  --md-edge-hairline: 0 0 0 1px rgba(255, 255, 255, 0.04);
+
+  /* ─── 状态层（ColorOS 用纯色 alpha 叠加，不改变底色） ─── */
+  --md-state-hover: rgba(255, 255, 255, 0.06);      /* 暗色模式 hover 叠加白 */
+  --md-state-press: rgba(255, 255, 255, 0.10);      /* 暗色模式 pressed 叠加白 */
+  --md-state-focus: rgba(255, 255, 255, 0.08);      /* 暗色模式 focused 叠加白 */
+  --md-state-selected: rgba(59, 130, 246, 0.18);    /* 选中态主色叠加 */
+  --md-ring-focus: 0 0 0 2px rgba(59, 130, 246, 0.55); /* 焦点 ring */
+  --md-state-disabled-opacity: 0.38;                /* ColorOS 统一禁用透明度 */
+
+  /* ─── 转场专属（页面 push/pop 模糊消散） ─── */
+  --md-blur-exit: 12px;        /* 旧页模糊量 */
+  --md-scale-exit: 0.96;       /* 旧页缩放 */
+  --md-brightness-exit: 0.7;   /* 旧页亮度衰减 */
+  --md-opacity-exit: 0.6;      /* 旧页透明度 */
+
+  /* ─── ColorOS 辅助色（Aquamarine 绿，AOD 流动 / 强调辅色） ─── */
+  --md-aquamarine: #00C2A8;
+  --md-aquamarine-light: #4DE0CE;
+  --md-aquamarine-soft: rgba(0, 194, 168, 0.18);
 
   /* ─── 模态/遮罩 ─── */
   --md-modal-backdrop: rgba(0, 0, 0, 0.5);

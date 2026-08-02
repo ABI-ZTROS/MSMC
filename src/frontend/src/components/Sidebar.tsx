@@ -41,16 +41,25 @@ export function Sidebar() {
       onMouseEnter={() => setExpanded(true)}
       onMouseLeave={() => setExpanded(false)}
     >
-      {/* 顶部品牌区 */}
-      <div className="p-3">
+      {/* 顶部品牌区 —— ColorOS 风格呼吸光晕 */}
+      <div className="p-3 md-stagger-item" style={{ '--md-stagger-i': 0 } as React.CSSProperties}>
         <div
           className={clsx('flex items-center gap-3', expanded ? '' : 'justify-center')}
         >
           <div
-            className="w-8 h-8 flex items-center justify-center flex-shrink-0 rounded-md md-brand-pulse"
+            className="w-8 h-8 flex items-center justify-center flex-shrink-0 rounded-md md-brand-pulse relative"
             style={{ backgroundColor: 'var(--md-primary-subtle-background)' }}
           >
             <FaShield size={16} style={{ color: 'var(--md-nav-item-selected)' }} />
+            {/* Aquamarine 辅色光晕：ColorOS AOD 流动配色点缀 */}
+            <div
+              aria-hidden
+              className="absolute inset-0 rounded-md"
+              style={{
+                boxShadow: '0 0 12px 1px var(--md-aquamarine-soft)',
+                pointerEvents: 'none',
+              }}
+            />
           </div>
           <div
             className={clsx(
@@ -75,7 +84,7 @@ export function Sidebar() {
         <div className="h-px bg-[var(--md-subtle-border)] opacity-30" />
       </div>
 
-      {/* 导航列表 */}
+      {/* 导航列表 —— 交错入场（ColorOS 公式） */}
       <nav className="flex-1 px-1 py-2 overflow-y-auto">
         <div className="space-y-0">
           {navItems.map((item, index) => {
@@ -89,26 +98,20 @@ export function Sidebar() {
                 key={item.path}
                 to={item.path}
                 end={item.path === '/'}
-                className={clsx('md-nav-item', isActive && 'md-nav-item-active')}
+                className={clsx(
+                  'md-nav-item md-stagger-item',
+                  isActive && 'md-nav-item-active'
+                )}
                 title={item.label}
-                style={
-                  !expanded
-                    ? {
-                        justifyContent: 'center',
-                        paddingLeft: 0,
-                        paddingRight: 0,
-                        marginLeft: 'auto',
-                        marginRight: 'auto',
-                        width: 'calc(100% - 4px)',
-                      }
-                    : {}
-                }
+                style={{
+                  // 交错入场延迟（ColorOS 公式由 CSS 计算，这里只传 index）
+                  '--md-stagger-i': index + 1,
+                  // 折叠态保留 padding 让 ::before 指示器位置正确，仅居中内容
+                  justifyContent: expanded ? undefined : 'center',
+                } as React.CSSProperties}
               >
                 <span
                   className={clsx('flex-shrink-0 md-nav-icon', isActive && 'md-nav-icon-active')}
-                  style={{
-                    transitionDelay: `${index * 20}ms`,
-                  }}
                 >
                   {item.icon}
                 </span>
@@ -124,7 +127,8 @@ export function Sidebar() {
                   <FaChevronRight
                     size={10}
                     className="ml-auto md-nav-chevron"
-                    style={{ color: 'var(--md-nav-item-selected)' }}
+                    // ColorOS 辅色：激活态 chevron 用 Aquamarine 点缀
+                    style={{ color: 'var(--md-aquamarine-light)' }}
                   />
                 )}
               </NavLink>
@@ -133,14 +137,17 @@ export function Sidebar() {
         </div>
       </nav>
 
-      {/* 底部信息卡 */}
+      {/* 底部信息卡 —— Aquamarine 微光描边 */}
       <div className="p-3 border-t border-[var(--md-card-subtle-border)]">
         <div
           className={clsx(
             'flex items-center gap-2 px-2 py-2 rounded-md md-sidebar-footer',
             expanded ? '' : 'justify-center px-1'
           )}
-          style={{ backgroundColor: 'var(--md-primary-subtle-background)' }}
+          style={{
+            backgroundColor: 'var(--md-primary-subtle-background)',
+            boxShadow: 'inset 0 0 0 1px var(--md-aquamarine-soft)',
+          }}
         >
           <FaShield
             size={14}
