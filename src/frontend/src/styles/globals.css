@@ -499,7 +499,7 @@
     transform-origin: center;
   }
 
-  /* hover：X 轴 2px 推挤（ColorOS 风格的"被推一下"） */
+  /* hover：X 轴 2px 推挤（ColorOS 风格的"被推一下"）—— 仅展开态 */
   .md-nav-item:hover {
     background-color: var(--md-state-hover);
     transform: translateX(2px);
@@ -517,6 +517,28 @@
   .md-nav-item-active:hover {
     background-color: var(--md-state-selected);
     transform: translateX(2px);
+  }
+
+  /* ─── Sidebar 折叠态：禁用 X 轴推挤，改为轻微 scale（避免破坏居中） ─── */
+  .md-sidebar-collapsed .md-nav-item:hover {
+    transform: scale(1.04);
+  }
+  .md-sidebar-collapsed .md-nav-item-active:hover {
+    transform: scale(1.04);
+  }
+  /* 折叠态：左侧竖条指示器改为底部居中发光小圆点（更符合磁吸居中美学） */
+  .md-sidebar-collapsed .md-nav-item::before {
+    left: 50%;
+    top: auto;
+    bottom: 2px;
+    transform: translateX(-50%) scaleY(0) scaleX(0);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+  }
+  .md-sidebar-collapsed .md-nav-item-active::before {
+    opacity: 1;
+    transform: translateX(-50%) scaleY(1) scaleX(1);
   }
 
   /* nav-item 按下急停反馈 */

@@ -33,7 +33,8 @@ export function Sidebar() {
     <aside
       className={clsx(
         'h-full flex flex-col bg-[var(--md-card-background)] border-r border-[var(--md-card-subtle-border)] relative',
-        'md-sidebar-transition'
+        'md-sidebar-transition',
+        !expanded && 'md-sidebar-collapsed'
       )}
       style={{
         width: expanded ? 'var(--sidebar-width-expanded)' : 'var(--sidebar-width-collapsed)',
@@ -42,7 +43,10 @@ export function Sidebar() {
       onMouseLeave={() => setExpanded(false)}
     >
       {/* 顶部品牌区 —— ColorOS 风格呼吸光晕 */}
-      <div className="p-3 md-stagger-item" style={{ '--md-stagger-i': 0 } as React.CSSProperties}>
+      <div
+        className="p-3 md-stagger-item w-full"
+        style={{ '--md-stagger-i': 0 } as React.CSSProperties}
+      >
         <div
           className={clsx('flex items-center gap-3', expanded ? '' : 'justify-center')}
         >
@@ -85,8 +89,8 @@ export function Sidebar() {
       </div>
 
       {/* 导航列表 —— 交错入场（ColorOS 公式） */}
-      <nav className="flex-1 px-1 py-2 overflow-y-auto">
-        <div className="space-y-0">
+      <nav className="flex-1 px-1 py-2 overflow-y-auto w-full">
+        <div className="space-y-0 w-full">
           {navItems.map((item, index) => {
             const isActive =
               item.path === '/'
@@ -99,15 +103,19 @@ export function Sidebar() {
                 to={item.path}
                 end={item.path === '/'}
                 className={clsx(
-                  'md-nav-item md-stagger-item',
+                  'md-nav-item md-stagger-item w-full',
                   isActive && 'md-nav-item-active'
                 )}
                 title={item.label}
                 style={{
                   // 交错入场延迟（ColorOS 公式由 CSS 计算，这里只传 index）
                   '--md-stagger-i': index + 1,
-                  // 折叠态保留 padding 让 ::before 指示器位置正确，仅居中内容
-                  justifyContent: expanded ? undefined : 'center',
+                  // 展开态左对齐；折叠态水平居中 + 左右对称 padding 保证图标磁吸居中
+                  justifyContent: expanded ? 'flex-start' : 'center',
+                  paddingLeft: expanded ? undefined : 0,
+                  paddingRight: expanded ? undefined : 0,
+                  marginLeft: expanded ? undefined : 2,
+                  marginRight: expanded ? undefined : 2,
                 } as React.CSSProperties}
               >
                 <span
@@ -138,15 +146,18 @@ export function Sidebar() {
       </nav>
 
       {/* 底部信息卡 —— Aquamarine 微光描边 */}
-      <div className="p-3 border-t border-[var(--md-card-subtle-border)]">
+      <div className="p-3 border-t border-[var(--md-card-subtle-border)] w-full">
         <div
           className={clsx(
-            'flex items-center gap-2 px-2 py-2 rounded-md md-sidebar-footer',
-            expanded ? '' : 'justify-center px-1'
+            'flex items-center gap-2 px-2 py-2 rounded-md md-sidebar-footer w-full',
+            expanded ? '' : 'justify-center px-0'
           )}
           style={{
             backgroundColor: 'var(--md-primary-subtle-background)',
             boxShadow: 'inset 0 0 0 1px var(--md-aquamarine-soft)',
+            // 折叠态：去除左右内边距，确保真正居中
+            paddingLeft: expanded ? undefined : 0,
+            paddingRight: expanded ? undefined : 0,
           }}
         >
           <FaShield

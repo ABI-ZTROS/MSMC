@@ -387,7 +387,7 @@ export function SystemMonitorPage(): JSX.Element {
     : null
 
   return (
-    <div className="md-page-enter h-full overflow-auto" style={{ padding: 8 }}>
+    <div className="md-page-enter h-full overflow-auto" style={{ padding: 16 }}>
       {/* ═══ 控制按钮：开始 / 停止监控 ═══ */}
       <div className="flex items-center" style={{ gap: 8, marginBottom: 12 }}>
         <button
