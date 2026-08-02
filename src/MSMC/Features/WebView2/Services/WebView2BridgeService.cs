@@ -33,6 +33,16 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     };
 
     /// <summary>
+    /// 当前请求 ID（基于 AsyncLocal，跨 await 流转，供 handler 内部日志关联）
+    /// </summary>
+    private static readonly AsyncLocal<string?> _currentRequestId = new();
+
+    /// <summary>
+    /// 获取当前请求 ID（在 HandleRequestAsync 入口设置，handler 内部可读取用于日志关联）
+    /// </summary>
+    public static string? CurrentRequestId => _currentRequestId.Value;
+
+    /// <summary>
     /// 绑定的 WebView2 控件引用
     /// </summary>
     private WpfWebView2? _webView;
@@ -657,64 +667,73 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     {
         Log.Information("[WV2-REQ] [MSG] 处理请求: {Action} (ID={Id})", message.Action, message.Id);
 
-        var response = new BridgeMessage
-        {
-            Type = BridgeMessageType.Response,
-            Id = message.Id,
-            Action = message.Action,
-        };
-
+        var previousRequestId = _currentRequestId.Value;
+        _currentRequestId.Value = message.Id;
         try
         {
-            if (_requestHandlers.TryGetValue(message.Action, out var handler))
+            var response = new BridgeMessage
             {
-                Log.Information("[WV2-REQ] [FIND] 找到处理程序: {Action}", message.Action);
+                Type = BridgeMessageType.Response,
+                Id = message.Id,
+                Action = message.Action,
+            };
 
-                object? result;
-                // 封送到 UI 线程执行（防止跨线程访问 WPF 控件导致的外部异常）
-                if (_uiDispatcher != null && !_uiDispatcher.CheckAccess())
+            try
+            {
+                if (_requestHandlers.TryGetValue(message.Action, out var handler))
                 {
-                    Log.Debug("[WV2-REQ] [REFRESH] 封送到 UI 线程执行: {Action}", message.Action);
-                    var tcs = new TaskCompletionSource<object?>();
-                    _ = _uiDispatcher.BeginInvoke(async () =>
+                    Log.Information("[WV2-REQ] [FIND] 找到处理程序: {Action}", message.Action);
+
+                    object? result;
+                    // 封送到 UI 线程执行（防止跨线程访问 WPF 控件导致的外部异常）
+                    if (_uiDispatcher != null && !_uiDispatcher.CheckAccess())
                     {
-                        try
+                        Log.Debug("[WV2-REQ] [REFRESH] 封送到 UI 线程执行: {Action}", message.Action);
+                        var tcs = new TaskCompletionSource<object?>();
+                        _ = _uiDispatcher.BeginInvoke(async () =>
                         {
-                            var r = await handler(message.Payload);
-                            tcs.SetResult(r);
-                        }
-                        catch (Exception ex)
-                        {
-                            tcs.SetException(ex);
-                        }
-                    }, System.Windows.Threading.DispatcherPriority.Normal);
-                    result = await tcs.Task;
+                            try
+                            {
+                                var r = await handler(message.Payload);
+                                tcs.SetResult(r);
+                            }
+                            catch (Exception ex)
+                            {
+                                tcs.SetException(ex);
+                            }
+                        }, System.Windows.Threading.DispatcherPriority.Normal);
+                        result = await tcs.Task;
+                    }
+                    else
+                    {
+                        result = await handler(message.Payload);
+                    }
+
+                    response.Payload = result;
+                    response.Success = true;
+                    Log.Information("[WV2-REQ] [OK] 请求处理成功: {Action}", message.Action);
                 }
                 else
                 {
-                    result = await handler(message.Payload);
+                    response.Success = false;
+                    response.Error = $"未找到请求处理程序: {message.Action}";
+                    Log.Warning("[WV2-REQ] [WARN] 未找到请求处理程序: {Action}", message.Action);
                 }
-
-                response.Payload = result;
-                response.Success = true;
-                Log.Information("[WV2-REQ] [OK] 请求处理成功: {Action}", message.Action);
             }
-            else
+            catch (Exception ex)
             {
                 response.Success = false;
-                response.Error = $"未找到请求处理程序: {message.Action}";
-                Log.Warning("[WV2-REQ] [WARN] 未找到请求处理程序: {Action}", message.Action);
+                response.Error = ex.Message;
+                Log.Error(ex, "[WV2-REQ-ERR] [ERR] 处理请求 {Action} 时发生异常", message.Action);
             }
-        }
-        catch (Exception ex)
-        {
-            response.Success = false;
-            response.Error = ex.Message;
-            Log.Error(ex, "[WV2-REQ-ERR] [ERR] 处理请求 {Action} 时发生异常", message.Action);
-        }
 
-        Log.Information("[WV2-REQ] [MSG] 发送响应: {Action} (Success={Success})", message.Action, response.Success);
-        await SendMessageAsync(response);
+            Log.Information("[WV2-REQ] [MSG] 发送响应: {Action} (ID={Id}, Success={Success})", message.Action, message.Id, response.Success);
+            await SendMessageAsync(response);
+        }
+        finally
+        {
+            _currentRequestId.Value = previousRequestId;
+        }
     }
 
     /// <summary>

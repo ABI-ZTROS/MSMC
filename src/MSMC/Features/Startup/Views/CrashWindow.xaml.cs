@@ -614,6 +614,9 @@ button {{ padding:8px 16px; background:#2563eb; color:#fff; border:none; border-
             }
         }
         catch { /* 忽略 */ }
+
+        // P1 修复：关闭时释放 WebView2 控件，防止 Chromium 子进程残留
+        try { CrashWebView.Dispose(); } catch (Exception ex) { Log.Debug(ex, "WebView2 Dispose 异常（可忽略）"); }
         base.OnClosed(e);
     }
 }

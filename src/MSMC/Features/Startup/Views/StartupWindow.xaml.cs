@@ -394,6 +394,9 @@ public partial class StartupWindow : Window
                 case "log":
                     Log.Information("[Startup-WV2-JS] [MSG] {Payload}", message.Payload);
                     break;
+                case "request":
+                    HandleJsRequest(message);
+                    break;
             }
         }
         catch (Exception ex)
@@ -592,6 +595,50 @@ public partial class StartupWindow : Window
         catch (Exception ex)
         {
             Log.Warning(ex, "[Startup-WV2] 发送事件失败: {Action}", action);
+        }
+    }
+
+    /// <summary>
+    /// 处理来自 JS 的请求（启动页仅支持 log:write，其余返回 not supported）
+    /// </summary>
+    private void HandleJsRequest(BridgeMessage message)
+    {
+        var action = message.Action ?? string.Empty;
+
+        if (action == "log:write")
+        {
+            Log.Information("[FE-LOG] {Payload}", message.Payload);
+            SendResponse(message.Id, success: true);
+            return;
+        }
+
+        Log.Debug("[Startup-WV2] [MSG] 启动页不支持的请求: {Action}", action);
+        SendResponse(message.Id, success: false, error: "not supported in startup window");
+    }
+
+    /// <summary>
+    /// 向 JS 回送请求响应
+    /// </summary>
+    private void SendResponse(string? id, bool success, string? error = null)
+    {
+        if (!_webViewInitialized || StartupWebView?.CoreWebView2 == null) return;
+
+        try
+        {
+            var message = new
+            {
+                type = "response",
+                id,
+                success,
+                error,
+                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            };
+            var json = JsonSerializer.Serialize(message, JsonOptions);
+            StartupWebView.CoreWebView2.PostWebMessageAsJson(json);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[Startup-WV2] 发送响应失败: {Id}", id);
         }
     }
 
@@ -997,6 +1044,9 @@ public partial class StartupWindow : Window
             }
         }
         catch { /* 忽略释放异常 */ }
+
+        // P1 修复：关闭时释放 WebView2 控件，防止 Chromium 子进程残留
+        try { StartupWebView.Dispose(); } catch (Exception ex) { Log.Debug(ex, "WebView2 Dispose 异常（可忽略）"); }
 
         base.OnClosed(e);
     }

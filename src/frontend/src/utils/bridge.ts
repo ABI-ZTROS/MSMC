@@ -49,6 +49,7 @@ declare global {
 
 export interface MsmcBridge {
   invoke: <T = unknown>(action: string, payload?: unknown) => Promise<T>
+  invokeWithTimeout: <T = unknown>(action: string, payload: unknown, timeoutMs: number) => Promise<T>
   sendEvent: (action: string, payload?: unknown) => void
   on: (action: string, handler: (payload: unknown) => void) => () => void
   log: (message: unknown) => void
@@ -250,6 +251,10 @@ class Bridge implements MsmcBridge {
   }
 
   async invoke<T = unknown>(action: string, payload?: unknown): Promise<T> {
+    return this.invokeWithTimeout<T>(action, payload, 30000)
+  }
+
+  async invokeWithTimeout<T = unknown>(action: string, payload: unknown, timeoutMs: number): Promise<T> {
     rawLog(`invoke 开始: ${action}`)
     await this.init()
     rawLog(`init 完成，准备发送请求: ${action}`)
@@ -262,7 +267,7 @@ class Bridge implements MsmcBridge {
         this.pendingRequests.delete(id)
         rawLog(`[TIME] 请求超时: ${action}`)
         reject(new Error(`Request timeout: ${action}`))
-      }, 10000)
+      }, timeoutMs)
 
       this.pendingRequests.set(id, {
         resolve: resolve as (value: unknown) => void,
@@ -349,6 +354,11 @@ export function getAppTime(): Promise<string> {
 
 export function getAppInfo(): Promise<AppInfo> {
   return bridge.invoke<AppInfo>('app:getInfo')
+}
+
+// 慢操作（如 network:*、server:*）可用更长超时调用
+export function invokeWithTimeout<T = unknown>(action: string, payload: unknown, timeoutMs: number): Promise<T> {
+  return bridge.invokeWithTimeout<T>(action, payload, timeoutMs)
 }
 
 export function onAppReady(handler: (data: AppReadyEvent) => void): () => void {
