@@ -275,60 +275,36 @@ jobs:
       # ═══════════════════════════════════════════════════════════════
       # 🎁 7z 自解压 SFX exe（双击即用，无需预装 7z）
       # ═══════════════════════════════════════════════════════════════
-      # 用 7zSD.sfx 安装器 stub + config.txt 实现：
-      #   双击 SFX exe → 解压到 %TEMP%\7zSxxxx.tmp\ → 运行 MSMC.exe
-      #   → MSMC.exe 退出后自动清理临时目录
-      #
-      # 7zSD.sfx 不在标准 7-Zip 安装目录，也不在 7z_extra 包里
-      # 需从 7z 安装包（7z2501-x64.exe）解压提取
-      # 7zSD.sfx ~140KB（动态链接 MSVCRT，所有现代 Windows 自带）
-      #
-      # 创建 SFX 必须用 copy /b 二进制拼接（不能用 7z -sfx）：
-      #   copy /b 7zSD.sfx + config.txt + archive.7z output.exe
+      # 用 7z.sfx 基础版 stub 创建自解压 exe
+      # 7z.sfx 在 CI 已安装的 7-Zip 目录里（C:\Program Files\7-Zip\7z.sfx）
+      # 用户双击 SFX exe → 弹对话框选解压目录 → 解压完成
+      # 注：7z.sfx 是基础版，不支持 config.txt 自动运行
+      #     7zSD.sfx（高级版）只在 LZMA SDK 里，7z 安装包/extra 包都不含
+      #     如需自动运行，后续可考虑 vendor 7zSD.sfx 进仓库
       # ═══════════════════════════════════════════════════════════════
 
-      - name: Download 7zSD.sfx stub
+      - name: Locate 7z.sfx stub
         if: success() || failure()
         shell: pwsh
         run: |
-          # 7zSD.sfx 不在 7z_extra 包里（extra 只含 7za.exe/dll）
-          # 7zSD.sfx 在 7z 安装包（7z2501-x64.exe）里，需要解压提取
-          # 安装包本身是 7z SFX 格式，用已装的 7z.exe 即可解压
-          $url = "https://www.7-zip.org/a/7z2501-x64.exe"
-          Invoke-WebRequest -Uri $url -OutFile 7z-installer.exe
-          & $env:SEVEN_ZIP x 7z-installer.exe -o7z-installed -y
-          # 通配符搜索 7zSD.sfx（支持自动运行的安装器 stub）
-          $sfxStub = Get-ChildItem -Path 7z-installed -Filter "7zSD.sfx" -Recurse | Select-Object -First 1
+          # 7z.sfx 在 CI 已装的 7-Zip 目录里（100% 可靠，零网络依赖）
+          $candidates = @(
+            "C:\Program Files\7-Zip\7z.sfx",
+            "C:\Program Files (x86)\7-Zip\7z.sfx"
+          )
+          $sfxStub = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $sfxStub) {
-            echo "❌ 7zSD.sfx 未找到！7z 安装包目录结构："
-            Get-ChildItem -Path 7z-installed -Recurse | Select-Object FullName
+            # 兜底：搜索系统所有 7z.sfx
+            $sfxStub = (Get-ChildItem -Path "C:\Program Files*\7-Zip" -Filter "7z.sfx" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          }
+          if (-not $sfxStub) {
+            echo "❌ 7z.sfx 未找到！7-Zip 安装目录内容："
+            Get-ChildItem -Path "C:\Program Files\7-Zip" | Select-Object Name
             exit 1
           }
-          $sfxPath = $sfxStub.FullName
-          $stubSize = [math]::Round($sfxStub.Length/1KB, 1)
-          echo "✅ 7zSD.sfx 已提取 ($stubSize KB): $sfxPath"
-          echo "SFX_STUB=$sfxPath" >> $env:GITHUB_ENV
-
-      - name: Write SFX config.txt (UTF-8 no BOM)
-        if: success() || failure()
-        shell: pwsh
-        run: |
-          # config.txt 必须是 UTF-8 无 BOM 编码
-          # 省略 BeginPrompt → 不弹确认框
-          # Progress 默认 yes → 显示进度条
-          # Directory="%%T" → 工作目录=临时解压目录（避免 WPF 依赖 CWD）
-          # 不写 InstallPath → 自动用 %TEMP% 并在退出后清理
-          $cfg = @"
-          ;!@Install@!UTF-8!
-          Title="MSMC - Minecraft Server Management Client"
-          RunProgram="MSMC.exe"
-          Directory="%%T"
-          ;!@InstallEnd@!
-          "@
-          $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-          [System.IO.File]::WriteAllText("$PWD/config.txt", $cfg, $utf8NoBom)
-          echo "✅ config.txt 已写入（UTF-8 无 BOM）"
-          Get-Content config.txt
+          $stubSize = [math]::Round((Get-Item $sfxStub).Length/1KB, 1)
+          echo "✅ 7z.sfx 已定位 ($stubSize KB): $sfxStub"
+          echo "SFX_STUB=$sfxStub" >> $env:GITHUB_ENV
 
       - name: Assemble SFX exe (Full + Lite)
         if: success() || failure()
@@ -338,8 +314,9 @@ jobs:
           foreach ($variant in @("full", "lite")) {
             $archive = "MSMC-win-x64-$variant.7z"
             $output = "MSMC-win-x64-$variant-sfx.exe"
-            # copy /b 二进制拼接：stub + config.txt + archive.7z
-            cmd /c copy /b `"$env:SFX_STUB`" + `"$PWD\config.txt`" + `"$archive`" `"$output`"
+            # 用 7z.exe -sfx 创建自解压 exe
+            # 7z.sfx 是基础版，用户双击后弹对话框选解压目录
+            & $env:SEVEN_ZIP a -sfx`"$env:SFX_STUB`" $output $archive
             if (-not (Test-Path $output)) {
               echo "❌ [$variant] SFX exe 创建失败！"
               exit 1
@@ -358,7 +335,8 @@ jobs:
           $liteSfx = "${{ steps.sfx.outputs.lite_sfx_mb }}"
           echo "## 🎁 7z SFX 自解压 exe 报告" >> $env:GITHUB_STEP_SUMMARY
           echo "" >> $env:GITHUB_STEP_SUMMARY
-          echo "用户双击 SFX exe → 自动解压到 %TEMP% → 运行 MSMC.exe → 退出后清理" >> $env:GITHUB_STEP_SUMMARY
+          echo "用户双击 SFX exe → 弹对话框选解压目录 → 解压完成" >> $env:GITHUB_STEP_SUMMARY
+          echo "（基础版 7z.sfx，不支持自动运行；如需自动运行需 vendor 7zSD.sfx）" >> $env:GITHUB_STEP_SUMMARY
           echo "" >> $env:GITHUB_STEP_SUMMARY
           echo "| 版本 | SFX exe 体积 |" >> $env:GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $env:GITHUB_STEP_SUMMARY
