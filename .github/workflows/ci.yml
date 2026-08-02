@@ -66,10 +66,15 @@ jobs:
           path: src/MSMC.Tests/TestResults/
 
       # ═══════════════════════════════════════════════════════════════
-      # 📦 双版本发布：完整版（自包含 ~70MB）+ 精简版（框架依赖 ~8MB）
+      # 📦 双版本发布 + UPX 加壳压缩
+      # ═══════════════════════════════════════════════════════════════
+      # 策略：Full 版禁用 .NET 内置压缩(EnableCompressionInSingleFile=false)，
+      # 让 UPX 接管压缩——单层 UPX 比双重压缩(gzip+UPX)体积更小且启动更快。
+      # Lite 版本来就没有 EnableCompressionInSingleFile(框架依赖模式不支持)，
+      # 直接 UPX 压缩即可。
       # ═══════════════════════════════════════════════════════════════
 
-      - name: Publish Full (self-contained, ~70MB)
+      - name: Publish Full (self-contained, pre-UPX)
         if: success() || failure()
         run: |
           dotnet publish src/MSMC/MSMC.csproj `
@@ -77,11 +82,11 @@ jobs:
             -p:RuntimeIdentifier=win-x64 `
             -p:SelfContained=true `
             -p:PublishSingleFile=true `
-            -p:EnableCompressionInSingleFile=true `
+            -p:EnableCompressionInSingleFile=false `
             -o publish/full
         shell: pwsh
 
-      - name: Publish Lite (framework-dependent, ~8MB)
+      - name: Publish Lite (framework-dependent, pre-UPX)
         if: success() || failure()
         run: |
           dotnet publish src/MSMC/MSMC.csproj `
@@ -92,7 +97,7 @@ jobs:
             -o publish/lite
         shell: pwsh
 
-      - name: Verify Artifacts
+      - name: Verify Artifacts (pre-UPX)
         if: success() || failure()
         shell: pwsh
         run: |
@@ -104,7 +109,7 @@ jobs:
             }
             $size = (Get-Item $exe).Length
             $sizeMB = [math]::Round($size/1MB, 2)
-            echo "📦 [$variant] MSMC.exe 大小: $sizeMB MB"
+            echo "📦 [$variant] pre-UPX MSMC.exe 大小: $sizeMB MB"
             if ($variant -eq "full" -and $size -lt 10MB) {
               echo "❌ [full] EXE 太小 ($sizeMB MB)，自包含发布可能失败！"
               exit 1
@@ -115,6 +120,130 @@ jobs:
             }
             echo "✅ [$variant] 发布产物检查通过！"
           }
+
+      # ═══════════════════════════════════════════════════════════════
+      # 🗜️ UPX 加壳压缩
+      # ═══════════════════════════════════════════════════════════════
+      # UPX 5.2.0 + --best --force --overlay=copy --no-lzma
+      # - --force: .NET 单文件含特殊节，UPX 默认会拒绝，需强制
+      # - --overlay=copy: 保留 .NET bundle 尾部数据（禁止 strip，会破坏单文件）
+      # - --no-lzma: 避免 LZMA 慢解压拖累 .NET 冷启动（已有 bundle 解压开销）
+      # - --compress-icons=0: WPF exe 含图标，避免资源节问题
+      # - --no-antidebug: 不写反调试 stub，降低 AV 误报概率
+      # ═══════════════════════════════════════════════════════════════
+
+      - name: Install UPX 5.2.0
+        if: success() || failure()
+        shell: pwsh
+        run: |
+          $url = "https://github.com/upx/upx/releases/download/v5.2.0/upx-5.2.0-win64.zip"
+          Invoke-WebRequest -Uri $url -OutFile upx.zip
+          Expand-Archive -Path upx.zip -DestinationPath upx-extract -Force
+          $upxExe = Get-ChildItem -Path upx-extract -Filter "upx.exe" -Recurse | Select-Object -First 1
+          Copy-Item $upxExe.FullName -Destination "$env:GITHUB_WORKSPACE/upx.exe"
+          & "$env:GITHUB_WORKSPACE/upx.exe" --version | Select-Object -First 1
+          echo "UPX installed to $env:GITHUB_WORKSPACE/upx.exe"
+
+      - name: Record pre-UPX sizes
+        if: success() || failure()
+        id: pre_upx
+        shell: pwsh
+        run: |
+          $fullSize = (Get-Item "publish/full/MSMC.exe").Length
+          $liteSize = (Get-Item "publish/lite/MSMC.exe").Length
+          $fullMB = [math]::Round($fullSize/1MB, 2)
+          $liteMB = [math]::Round($liteSize/1MB, 2)
+          echo "full_pre_bytes=$fullSize" >> $env:GITHUB_OUTPUT
+          echo "lite_pre_bytes=$liteSize" >> $env:GITHUB_OUTPUT
+          echo "full_pre_mb=$fullMB" >> $env:GITHUB_OUTPUT
+          echo "lite_pre_mb=$liteMB" >> $env:GITHUB_OUTPUT
+          echo "📊 Pre-UPX sizes: Full=$fullMB MB, Lite=$liteMB MB"
+
+      - name: UPX compress Full
+        if: success() || failure()
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE/upx.exe" `
+            --best --force --overlay=copy --no-lzma `
+            --compress-icons=0 --compress-exports=0 --no-antidebug --no-color `
+            "publish/full/MSMC.exe"
+
+      - name: UPX compress Lite
+        if: success() || failure()
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE/upx.exe" `
+            --best --force --overlay=copy --no-lzma `
+            --compress-icons=0 --compress-exports=0 --no-antidebug --no-color `
+            "publish/lite/MSMC.exe"
+
+      - name: UPX integrity test + post-UPX sizes
+        if: success() || failure()
+        id: post_upx
+        shell: pwsh
+        run: |
+          foreach ($variant in @("full", "lite")) {
+            $exe = "publish/$variant/MSMC.exe"
+            # UPX 完整性测试（验证压缩数据可还原）
+            & "$env:GITHUB_WORKSPACE/upx.exe" -t $exe
+            if ($LASTEXITCODE -ne 0) {
+              echo "❌ [$variant] UPX 完整性测试失败！"
+              exit 1
+            }
+            # 列出压缩信息（确认壳已应用）
+            echo "📋 [$variant] UPX 压缩信息:"
+            & "$env:GITHUB_WORKSPACE/upx.exe" -l $exe
+          }
+          $fullSize = (Get-Item "publish/full/MSMC.exe").Length
+          $liteSize = (Get-Item "publish/lite/MSMC.exe").Length
+          $fullMB = [math]::Round($fullSize/1MB, 2)
+          $liteMB = [math]::Round($liteSize/1MB, 2)
+          $fullPre = [int64]${{ steps.pre_upx.outputs.full_pre_bytes }}
+          $litePre = [int64]${{ steps.pre_upx.outputs.lite_pre_bytes }}
+          $fullRatio = [math]::Round((1 - $fullSize/$fullPre)*100, 1)
+          $liteRatio = [math]::Round((1 - $liteSize/$litePre)*100, 1)
+          echo "full_post_bytes=$fullSize" >> $env:GITHUB_OUTPUT
+          echo "lite_post_bytes=$liteSize" >> $env:GITHUB_OUTPUT
+          echo "full_post_mb=$fullMB" >> $env:GITHUB_OUTPUT
+          echo "lite_post_mb=$liteMB" >> $env:GITHUB_OUTPUT
+          echo "full_ratio=$fullRatio" >> $env:GITHUB_OUTPUT
+          echo "lite_ratio=$liteRatio" >> $env:GITHUB_OUTPUT
+          echo "📊 Post-UPX sizes: Full=$fullMB MB (-$fullRatio%), Lite=$liteMB MB (-$liteRatio%)"
+
+      - name: UPX size reduction gate
+        if: success() || failure()
+        shell: pwsh
+        run: |
+          $fullRatio = [double]${{ steps.post_upx.outputs.full_ratio }}
+          $liteRatio = [double]${{ steps.post_upx.outputs.lite_ratio }}
+          # 期望 Full 版至少压缩 30%（禁用了 .NET 压缩，UPX 接管）
+          # 期望 Lite 版至少压缩 20%（本来无 .NET 压缩，UPX 直接压）
+          if ($fullRatio -lt 30) {
+            echo "⚠️ [full] UPX 压缩率仅 $fullRatio%（期望 >=30%），可能 EnableCompressionInSingleFile 未正确禁用"
+          }
+          if ($liteRatio -lt 20) {
+            echo "⚠️ [lite] UPX 压缩率仅 $liteRatio%（期望 >=20%）"
+          }
+          if ($fullRatio -ge 30 -and $liteRatio -ge 20) {
+            echo "✅ UPX 压缩率达标: Full=$fullRatio%, Lite=$liteRatio%"
+          }
+
+      - name: Job summary
+        if: always()
+        shell: pwsh
+        run: |
+          $fullPre = "${{ steps.pre_upx.outputs.full_pre_mb }}"
+          $fullPost = "${{ steps.post_upx.outputs.full_post_mb }}"
+          $fullRatio = "${{ steps.post_upx.outputs.full_ratio }}"
+          $litePre = "${{ steps.pre_upx.outputs.lite_pre_mb }}"
+          $litePost = "${{ steps.post_upx.outputs.lite_post_mb }}"
+          $liteRatio = "${{ steps.post_upx.outputs.lite_ratio }}"
+          echo "## 🗜️ UPX 加壳压缩报告" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "| 版本 | Pre-UPX | Post-UPX | 压缩率 |" >> $env:GITHUB_STEP_SUMMARY
+          echo "|---|---|---|---|" >> $env:GITHUB_STEP_SUMMARY
+          echo "| Full (self-contained) | $fullPre MB | $fullPost MB | -$fullRatio% |" >> $env:GITHUB_STEP_SUMMARY
+          echo "| Lite (framework-dependent) | $litePre MB | $litePost MB | -$liteRatio% |" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Upload Full Artifact (~70MB, self-contained)
         if: success() || failure()
