@@ -65,7 +65,11 @@ jobs:
           name: test-results
           path: src/MSMC.Tests/TestResults/
 
-      - name: Publish (single-file)
+      # ═══════════════════════════════════════════════════════════════
+      # 📦 双版本发布：完整版（自包含 ~70MB）+ 精简版（框架依赖 ~8MB）
+      # ═══════════════════════════════════════════════════════════════
+
+      - name: Publish Full (self-contained, ~70MB)
         if: success() || failure()
         run: |
           dotnet publish src/MSMC/MSMC.csproj `
@@ -74,42 +78,71 @@ jobs:
             -p:SelfContained=true `
             -p:PublishSingleFile=true `
             -p:EnableCompressionInSingleFile=true `
-            -o publish/win-x64
+            -o publish/full
         shell: pwsh
 
-      - name: Verify Artifact
+      - name: Publish Lite (framework-dependent, ~8MB)
+        if: success() || failure()
+        run: |
+          dotnet publish src/MSMC/MSMC.csproj `
+            --configuration Release `
+            -p:RuntimeIdentifier=win-x64 `
+            -p:SelfContained=false `
+            -p:PublishSingleFile=true `
+            -p:EnableCompressionInSingleFile=true `
+            -o publish/lite
+        shell: pwsh
+
+      - name: Verify Artifacts
         if: success() || failure()
         shell: pwsh
         run: |
-          $exe = "publish/win-x64/MSMC.exe"
-          if (-not (Test-Path $exe)) {
-            echo "❌ 发布产物中找不到 MSMC.exe！"
-            exit 1
+          foreach ($variant in @("full", "lite")) {
+            $exe = "publish/$variant/MSMC.exe"
+            if (-not (Test-Path $exe)) {
+              echo "❌ [$variant] 发布产物中找不到 MSMC.exe！"
+              exit 1
+            }
+            $size = (Get-Item $exe).Length
+            $sizeMB = [math]::Round($size/1MB, 2)
+            echo "📦 [$variant] MSMC.exe 大小: $sizeMB MB"
+            if ($variant -eq "full" -and $size -lt 10MB) {
+              echo "❌ [full] EXE 太小 ($sizeMB MB)，自包含发布可能失败！"
+              exit 1
+            }
+            if ($variant -eq "lite" -and $size -lt 1MB) {
+              echo "❌ [lite] EXE 太小 ($sizeMB MB)，框架依赖发布可能失败！"
+              exit 1
+            }
+            echo "✅ [$variant] 发布产物检查通过！"
           }
-          $size = (Get-Item $exe).Length
-          echo "📦 MSMC.exe 大小: $([math]::Round($size/1MB, 2)) MB"
-          if ($size -lt 1MB) {
-            echo "❌ EXE 文件太小（$([math]::Round($size/1KB, 2)) KB），可能发布失败！"
-            exit 1
-          }
-          echo "✅ 发布产物检查通过！"
 
-      - name: Upload Artifact
+      - name: Upload Full Artifact (~70MB, self-contained)
         if: success() || failure()
-        id: upload-artifact
+        id: upload-full
         continue-on-error: true
         uses: actions/upload-artifact@v5
         with:
-          name: MSMC-win-x64-singlefile
-          path: publish/win-x64/
+          name: MSMC-win-x64-full
+          path: publish/full/
+          retention-days: 30
+
+      - name: Upload Lite Artifact (~8MB, framework-dependent)
+        if: success() || failure()
+        id: upload-lite
+        continue-on-error: true
+        uses: actions/upload-artifact@v5
+        with:
+          name: MSMC-win-x64-lite
+          path: publish/lite/
           retention-days: 30
 
       - name: Artifact upload fallback notice
-        if: steps.upload-artifact.outcome == 'failure'
+        if: steps.upload-full.outcome == 'failure' || steps.upload-lite.outcome == 'failure'
         shell: pwsh
         run: |
           echo "⚠️ Artifact 上传失败（GitHub 网络问题 ECONNRESET）"
-          echo "   构建本身已成功，产物已通过 Verify Artifact 检查"
+          echo "   构建本身已成功，产物已通过 Verify Artifacts 检查"
           echo "   可重新运行 CI 或从 Release 页面下载"
 
       - name: Final status check
