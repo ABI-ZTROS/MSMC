@@ -23,6 +23,8 @@ using io.NET.ZTR_OS.Features.ConfigEditor.ViewModels;
 using io.NET.ZTR_OS.Features.NetworkMonitor.ViewModels;
 using io.NET.ZTR_OS.Features.ServerDetection.ViewModels;
 using io.NET.ZTR_OS.Features.Settings.ViewModels;
+using io.NET.ZTR_OS.Features.Shared.Native;
+using io.NET.ZTR_OS.Features.Shared.Native.Services;
 using io.NET.ZTR_OS.Features.Shared.ViewModels;
 using io.NET.ZTR_OS.Features.SystemMonitoring.ViewModels;
 using io.NET.ZTR_OS.Features.Shared.Views;
@@ -514,6 +516,11 @@ public partial class App : Application
                     await RegisterType<CpuIdentifier>(41, "[METRIC]", "CpuIdentifier", "CPU 拓扑识别");
                     await Register<IMetricsPersistenceService, MetricsPersistenceService>(42, "[METRIC]", "MetricsPersistenceService", "指标历史持久化");
                     await Register<IProcessManagerService, ProcessManagerService>(43, "[METRIC]", "ProcessManagerService", "进程亲和性管理");
+                    await Register<IProcessSupervisorService, ProcessSupervisorService>(44, "[METRIC]", "ProcessSupervisorService", "Job进程监管/崩溃重启/睡眠防止");
+
+                    // ════════════ 原生窗口效果模块 ════════════
+                    await Step(44, "正在注册原生窗口效果服务...", "[WINFX] === 原生窗口效果模块 ===");
+                    await Register<IWindowEffectsService, WindowEffectsService>(44, "[WINFX]", "WindowEffectsService", "DWM/Mica/深色标题栏/圆角");
 
                     // ════════════ 主题与基础服务 ════════════
                     await Step(45, "正在注册主题与基础服务...", "[BASE] === 基础服务 ===");
@@ -703,6 +710,21 @@ public partial class App : Application
 
                             mainWindow.Show();
                             ForceLog("[BOOT-6] [OK] MainWindow.Show() 成功");
+
+                            // 应用 ColorOS 视觉包：Mica 云母背景 + 深色标题栏 + 小圆角
+                            try
+                            {
+                                var hWnd = new System.Windows.Interop.WindowInteropHelper(mainWindow).EnsureHandle();
+                                var effects = _serviceProvider!.GetRequiredService<IWindowEffectsService>();
+                                var theme = _serviceProvider.GetRequiredService<IThemeService>();
+                                effects.ApplyColorOSVisualPack(hWnd, darkTitleBar: theme.IsDarkMode);
+                                ForceLog("[BOOT-6] [OK] ColorOS Visual Pack 已应用");
+                            }
+                            catch (Exception fxEx)
+                            {
+                                ForceLog($"[BOOT-6] [WARN] ColorOS Visual Pack 应用失败（不致命，降级为默认）：{fxEx.Message}");
+                                try { Log.Warning(fxEx, "[WindowFX] ColorOS Visual Pack 应用失败（已降级）"); } catch { /* ignore */ }
+                            }
 
                             // 主窗口 Show 成功后，把 ShutdownMode 切回正常：主窗口关了程序就退
                             MainWindow = mainWindow;
