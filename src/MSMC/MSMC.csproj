@@ -180,183 +180,13 @@
        内联 C# 用 .NET 原生 System.IO.Compression，路径字符串不经过任何 shell 转义，
        中文路径/空格路径/特殊字符路径全部正确。
   -->
-  <UsingTask TaskName="ZipDirectoryContents" TaskFactory="CodeTaskFactory"
-             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
-    <ParameterGroup>
-      <SourceDirectory ParameterType="System.String" Required="true" />
-      <DestinationArchive ParameterType="System.String" Required="true" />
-      <Overwrite ParameterType="System.Boolean" Required="false" />
-      <!-- 输出参数：任务结束后可以拿到最终生成的 zip 大小，用于 MSBuild 日志展示 -->
-      <ResultArchiveSize ParameterType="System.Int64" Output="true" />
-      <FilesArchived ParameterType="System.Int32" Output="true" />
-    </ParameterGroup>
-    <Task>
-      <Reference Include="System.IO.Compression.FileSystem" />
-      <Reference Include="System.IO.Compression" />
-      <Using Namespace="System" />
-      <Using Namespace="System.IO" />
-      <Using Namespace="System.IO.Compression" />
-      <Using Namespace="System.Linq" />
-      <Code Type="Fragment" Language="cs">
-<![CDATA[
-// ====== 参数校验 ======
-if (string.IsNullOrWhiteSpace(SourceDirectory))
-{
-    Log.LogError("ZipDirectoryContents: SourceDirectory 不能为空");
-    return false;
-}
-if (!Directory.Exists(SourceDirectory))
-{
-    Log.LogError("ZipDirectoryContents: 源目录不存在: {0}", SourceDirectory);
-    return false;
-}
-if (string.IsNullOrWhiteSpace(DestinationArchive))
-{
-    Log.LogError("ZipDirectoryContents: DestinationArchive 不能为空");
-    return false;
-}
-
-bool overwrite;
-// 【修复 CS0103(OverwriteSpecified) + CS0103(名称 _)】
-// 坑 1: CodeTaskFactory 的 Code Fragment 模式不会自动生成 *Specified 属性
-//       （那个惯例只在实现 ITask 的强类型类里由宿主提供）
-// 坑 2: Fragment 模式的 C# 不支持 C# 7.0+ discard `_ = xxx` 语法，
-//       语言版本低，写 `_ = Overwrite` 会 CS0103 "当前上下文中不存在名称 _"
-//
-// 安全策略：我们在唯一的调用点 PackFrontendToZip 里始终显式传 Overwrite="true"，
-// 对构建产物来说"覆盖旧 zip"也比保留旧 zip 更合理，所以无论 Overwrite 传没传，
-// 都默认 overwrite = true。为了避免 "参数声明但未使用" 警告，用 #pragma 压制。
-overwrite = true;
-// 【修复 CS0103：Fragment 模式语言版本兼容 + 未使用参数警告】
-// CodeTaskFactory Fragment 模式 C# 语言版本约为 C# 5：
-//   - 没有 C# 7 discard `_ = xxx` 语法 → 所以 _ = suppress0060 还会报 "名称 _ 不存在"
-//   - 也没有 *Specified 属性约定
-// 同时 TreatWarningsAsErrors=true，IDE0060 "参数声明了但没用" 会直接当错误炸。
-// 最安全兼容写法：用显式类型 + 普通变量名先读参数，再通过 object.Equals 做一次无副作用
-// 的真假判断来"使用"这个变量。完全不依赖 discard / var / 新语法。
-bool unusedOverwriteBool = Overwrite;
-if (object.Equals(unusedOverwriteBool, unusedOverwriteBool))
-{
-    // 在条件体内也不会有真实行为，只需要编译器认为这个变量和 unusedOverwriteBool 被"使用了"
-    overwrite = overwrite;
-}
-
-// ====== 规范化路径 ======
-string destDir = Path.GetDirectoryName(DestinationArchive);
-if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
-{
-    Directory.CreateDirectory(destDir);
-    Log.LogMessage(MessageImportance.High,
-        "📦 [ZipTask] 创建目标目录: {0}", destDir);
-}
-
-if (File.Exists(DestinationArchive))
-{
-    if (overwrite)
-    {
-        try { File.Delete(DestinationArchive); }
-        catch (Exception ex)
-        {
-            Log.LogError("ZipDirectoryContents: 删除旧 zip 失败 {0}: {1}",
-                DestinationArchive, ex.Message);
-            return false;
-        }
-    }
-    else
-    {
-        Log.LogError("ZipDirectoryContents: 目标已存在且 Overwrite=false: {0}",
-            DestinationArchive);
-        return false;
-    }
-}
-
-// ====== 递归获取文件 ======
-string[] allFiles;
-try
-{
-    allFiles = Directory.GetFiles(SourceDirectory, "*", SearchOption.AllDirectories);
-}
-catch (Exception ex)
-{
-    Log.LogError("ZipDirectoryContents: 枚举源目录文件失败 {0}: {1}",
-        SourceDirectory, ex.Message);
-    return false;
-}
-
-if (allFiles == null || allFiles.Length == 0)
-{
-    Log.LogWarning("ZipDirectoryContents: 源目录为空，生成的 zip 不包含任何文件: {0}",
-        SourceDirectory);
-    // 即使空也生成一个合法的空 zip（ZipArchive 开 Create 后 Dispose 就有 22 字节 zip）
-}
-
-int counter = 0;
-try
-{
-    using (var fs = new FileStream(DestinationArchive, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-    using (var archive = new ZipArchive(fs, ZipArchiveMode.Create, leaveOpen: false))
-    {
-        int srcLen = SourceDirectory.TrimEnd(Path.DirectorySeparatorChar,
-            Path.AltDirectorySeparatorChar).Length + 1;
-
-        foreach (var file in (allFiles ?? Enumerable.Empty<string>()))
-        {
-            // 得到相对路径（压缩包里的 entry 名）
-            string relative = file.Length > srcLen
-                ? file.Substring(srcLen).Replace(Path.DirectorySeparatorChar, '/')
-                : Path.GetFileName(file);
-
-            if (string.IsNullOrEmpty(relative)) continue;
-
-            try
-            {
-                var entry = archive.CreateEntry(relative, CompressionLevel.Optimal);
-                entry.LastWriteTime = File.GetLastWriteTime(file);
-
-                using (var entryStream = entry.Open())
-                using (var srcStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    srcStream.CopyTo(entryStream);
-                }
-                counter++;
-            }
-            catch (Exception inner)
-            {
-                // 单文件失败不阻断整个 zip，但打 error 日志方便定位
-                Log.LogWarning("ZipDirectoryContents: 单文件添加失败，跳过: {0} -> {1} ({2})",
-                    file, relative, inner.Message);
-            }
-        }
-    }
-}
-catch (Exception ex)
-{
-    Log.LogError("ZipDirectoryContents: 创建 zip 失败 {0}: {1}", DestinationArchive, ex);
-    if (File.Exists(DestinationArchive))
-    {
-        try { File.Delete(DestinationArchive); } catch { /* 忽略清理失败 */ }
-    }
-    return false;
-}
-
-// ====== 输出参数 ======
-FilesArchived = counter;
-var info = new FileInfo(DestinationArchive);
-ResultArchiveSize = info.Exists ? info.Length : 0L;
-
-Log.LogMessage(MessageImportance.High,
-    "✅ [ZipTask] 完成: {0} 个文件 -> {1} ({2:N2} KB)",
-    counter, DestinationArchive, ResultArchiveSize / 1024.0);
-
-return true;
-]]>
-      </Code>
-    </Task>
-  </UsingTask>
-
+  <!--
+    使用 MSBuild 内置 ZipDirectory 任务替代 CodeTaskFactory 自定义任务。
+    CodeTaskFactory 在 .NET SDK 版 MSBuild (dotnet build) 上不支持 (MSB4801)，
+    ZipDirectory 是 MSBuild 16.0+ 内置任务，在 dotnet build 和 VS MSBuild 上都可用。
+  -->
   <Target Name="PackFrontendToZip" BeforeTargets="BeforeResGen">
     <PropertyGroup>
-      <!-- Target 内部二次规范化，避免静态评估阶段对中文路径字符串拼接的编码问题 -->
       <_FrontendIndex Condition="'$(_FrontendIndex)' == ''">$(FrontendDir)\dist\index.html</_FrontendIndex>
       <_FrontendZip   Condition="'$(_FrontendZip)'   == ''">$(IntermediateOutputPath)wwwroot.zip</_FrontendZip>
       <_FrontendDist  Condition="'$(_FrontendDist)'  == ''">$(FrontendDir)\dist</_FrontendDist>
@@ -364,48 +194,31 @@ return true;
 
     <Message Text="📦 [PackFrontendToZip] 开始处理: dist=$(_FrontendDist)  zip=$(_FrontendZip)" Importance="high" />
 
-    <!-- 动态存在性判定（Target 内部 Condition 走完整 MSBuild 引擎，稳定） -->
     <Message Condition="!Exists('$(_FrontendIndex)')"
              Text="⚠️  [PackFrontendToZip] 跳过：未找到 index.html（$(_FrontendIndex)）。请先执行前端构建。" Importance="high" />
 
-    <!-- 只有当 dist\index.html 存在时才真正执行压缩 + 嵌入 -->
+    <!-- 先删除旧 zip（ZipDirectory 的 Overwrite=true 也能覆盖，但显式 Delete 更安全） -->
     <Delete Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')"
             Files="$(_FrontendZip)" />
 
-    <ZipDirectoryContents Condition="Exists('$(_FrontendIndex)')"
+    <!-- 使用 MSBuild 内置 ZipDirectory 任务（dotnet build 兼容） -->
+    <ZipDirectory Condition="Exists('$(_FrontendIndex)')"
       SourceDirectory="$(_FrontendDist)"
-      DestinationArchive="$(_FrontendZip)"
-      Overwrite="true">
-      <Output TaskParameter="FilesArchived" PropertyName="_ZipFileCount" />
-      <Output TaskParameter="ResultArchiveSize" PropertyName="_ZipSizeBytes" />
-    </ZipDirectoryContents>
+      DestinationFile="$(_FrontendZip)"
+      Overwrite="true" />
 
-    <!-- 【修复 zip 仍未嵌入（B/C 模式全部不可用的根因）】
-         之前用 Target 内部动态 ItemGroup + Condition="Exists('zip')" 追加 EmbeddedResource，
-         在 SDK-style 项目里不稳定。因为 SDK 的默认 ResolveAssemblyResources / BeforeResGen
-         会早早把顶级 ItemGroup 里的 EmbeddedResource 收集好，Target 内部 Condition 版的
-         ItemGroup 经常被评估为空（因为在评估时刻 $(_FrontendZip) 还没生成 / Condition
-         被简化成 false），最终就只剩 MSMC.g.resources，完全没加进嵌入资源流。
-         正确做法：用 MSBuild 原生 <CreateItem> 任务（BeforeTargets=BeforeResGen）动态追加。
-         CreateItem 是在 Target 执行阶段（已经把 zip 生成完了）才去 Append EmbeddedResource
-         到 @(EmbeddedResource) 列表里，并且直接带元数据 LogicalName。接下来 ResGen 一定
-         能看到它，不再依赖静态评估。
-    -->
+    <!-- 用 CreateItem 动态追加 EmbeddedResource（Target 执行阶段才追加，不依赖静态评估） -->
     <CreateItem Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')"
                 Include="$(_FrontendZip)"
                 AdditionalMetadata="LogicalName=$(AssemblyName).wwwroot.zip">
       <Output TaskParameter="Include" ItemName="EmbeddedResource" />
     </CreateItem>
 
-    <!-- 【诊断输出】列出所有已经决定要嵌入的资源名，让用户在 VS 输出面板里一眼看到
-         MSMC.wwwroot.zip 是否真正进了 @(EmbeddedResource) 列表。 -->
     <Message Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')" Importance="high"
-             Text="✅ [PackFrontendToZip] 完成: 已 CreateItem 追加到 EmbeddedResource，LogicalName=$(AssemblyName).wwwroot.zip，文件数=$(_ZipFileCount)，大小=$(_ZipSizeBytes) 字节" />
-    <Message Importance="high" Condition="'$(DesignTimeBuild)' != 'true'"
-             Text="📍 当前 @(EmbeddedResource) 项数 = $([System.String]::new('').PadLeft(0).Length)(将在 ResGen 阶段输出具体清单，若这里仍看不到 wwwroot.zip 就证明 CreateItem 未命中)" />
+             Text="✅ [PackFrontendToZip] 完成: 已追加到 EmbeddedResource，LogicalName=$(AssemblyName).wwwroot.zip" />
 
     <Message Condition="Exists('$(_FrontendIndex)') And !Exists('$(_FrontendZip)')"
-             Text="❌ [PackFrontendToZip] 失败: dist 存在但 zip 未生成，请检查上面 ZipTask 的 ERROR 日志" Importance="high" />
+             Text="❌ [PackFrontendToZip] 失败: dist 存在但 zip 未生成" Importance="high" />
   </Target>
 
   <!-- 复制 wwwroot 文件夹到输出目录（开发模式热重载备用）
