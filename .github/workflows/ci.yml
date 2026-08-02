@@ -129,7 +129,6 @@ jobs:
       # - --overlay=copy: 保留 .NET bundle 尾部数据（禁止 strip，会破坏单文件）
       # - --no-lzma: 避免 LZMA 慢解压拖累 .NET 冷启动（已有 bundle 解压开销）
       # - --compress-icons=0: WPF exe 含图标，避免资源节问题
-      # - --no-antidebug: 不写反调试 stub，降低 AV 误报概率
       # ═══════════════════════════════════════════════════════════════
 
       - name: Install UPX 5.2.0
@@ -165,7 +164,7 @@ jobs:
         run: |
           & "$env:GITHUB_WORKSPACE/upx.exe" `
             --best --force --overlay=copy --no-lzma `
-            --compress-icons=0 --compress-exports=0 --no-antidebug --no-color `
+            --compress-icons=0 --compress-exports=0 --no-color `
             "publish/full/MSMC.exe"
 
       - name: UPX compress Lite
@@ -174,7 +173,7 @@ jobs:
         run: |
           & "$env:GITHUB_WORKSPACE/upx.exe" `
             --best --force --overlay=copy --no-lzma `
-            --compress-icons=0 --compress-exports=0 --no-antidebug --no-color `
+            --compress-icons=0 --compress-exports=0 --no-color `
             "publish/lite/MSMC.exe"
 
       - name: UPX integrity test + post-UPX sizes
