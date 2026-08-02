@@ -272,6 +272,94 @@ jobs:
           echo "| Full (self-contained) | $fullPre MB | $fullPost MB | -$fullRatio% |" >> $env:GITHUB_STEP_SUMMARY
           echo "| Lite (framework-dependent) | $litePre MB | $litePost MB | -$liteRatio% |" >> $env:GITHUB_STEP_SUMMARY
 
+      # ═══════════════════════════════════════════════════════════════
+      # 🎁 7z 自解压 SFX exe（双击即用，无需预装 7z）
+      # ═══════════════════════════════════════════════════════════════
+      # 用 7zSD.sfx 安装器 stub + config.txt 实现：
+      #   双击 SFX exe → 解压到 %TEMP%\7zSxxxx.tmp\ → 运行 MSMC.exe
+      #   → MSMC.exe 退出后自动清理临时目录
+      #
+      # 7zSD.sfx 不在标准 7-Zip 安装目录，需从 7z_extra 包获取：
+      #   https://www.7-zip.org/a/7z2501-extra.7z
+      # 7zSD.sfx ~140KB（动态链接 MSVCRT，所有现代 Windows 自带）
+      #
+      # 创建 SFX 必须用 copy /b 二进制拼接（不能用 7z -sfx）：
+      #   copy /b 7zSD.sfx + config.txt + archive.7z output.exe
+      # ═══════════════════════════════════════════════════════════════
+
+      - name: Download 7zSD.sfx stub
+        if: success() || failure()
+        shell: pwsh
+        run: |
+          # 7z_extra 包含 7zSD.sfx（标准 7-Zip 安装目录没有）
+          $url = "https://www.7-zip.org/a/7z2501-extra.7z"
+          Invoke-WebRequest -Uri $url -OutFile 7z-extra.7z
+          & $env:SEVEN_ZIP x 7z-extra.7z -o7z-extra -y
+          $sfxStub = "7z-extra/bin/7zSD.sfx"
+          if (-not (Test-Path $sfxStub)) {
+            echo "❌ 7zSD.sfx 未找到！"
+            exit 1
+          }
+          $stubSize = [math]::Round((Get-Item $sfxStub).Length/1KB, 1)
+          echo "✅ 7zSD.sfx 已下载 ($stubSize KB): $sfxStub"
+          echo "SFX_STUB=$sfxStub" >> $env:GITHUB_ENV
+
+      - name: Write SFX config.txt (UTF-8 no BOM)
+        if: success() || failure()
+        shell: pwsh
+        run: |
+          # config.txt 必须是 UTF-8 无 BOM 编码
+          # 省略 BeginPrompt → 不弹确认框
+          # Progress 默认 yes → 显示进度条
+          # Directory="%%T" → 工作目录=临时解压目录（避免 WPF 依赖 CWD）
+          # 不写 InstallPath → 自动用 %TEMP% 并在退出后清理
+          $cfg = @"
+          ;!@Install@!UTF-8!
+          Title="MSMC - Minecraft Server Management Client"
+          RunProgram="MSMC.exe"
+          Directory="%%T"
+          ;!@InstallEnd@!
+          "@
+          $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+          [System.IO.File]::WriteAllText("$PWD/config.txt", $cfg, $utf8NoBom)
+          echo "✅ config.txt 已写入（UTF-8 无 BOM）"
+          Get-Content config.txt
+
+      - name: Assemble SFX exe (Full + Lite)
+        if: success() || failure()
+        id: sfx
+        shell: pwsh
+        run: |
+          foreach ($variant in @("full", "lite")) {
+            $archive = "MSMC-win-x64-$variant.7z"
+            $output = "MSMC-win-x64-$variant-sfx.exe"
+            # copy /b 二进制拼接：stub + config.txt + archive.7z
+            cmd /c copy /b `"$env:SFX_STUB`" + `"$PWD\config.txt`" + `"$archive`" `"$output`"
+            if (-not (Test-Path $output)) {
+              echo "❌ [$variant] SFX exe 创建失败！"
+              exit 1
+            }
+            $size = (Get-Item $output).Length
+            $sizeMB = [math]::Round($size/1MB, 2)
+            echo "🎁 [$variant] SFX exe 大小: $sizeMB MB"
+            echo "$($variant)_sfx_mb=$sizeMB" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: SFX summary
+        if: always()
+        shell: pwsh
+        run: |
+          $fullSfx = "${{ steps.sfx.outputs.full_sfx_mb }}"
+          $liteSfx = "${{ steps.sfx.outputs.lite_sfx_mb }}"
+          echo "## 🎁 7z SFX 自解压 exe 报告" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "用户双击 SFX exe → 自动解压到 %TEMP% → 运行 MSMC.exe → 退出后清理" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "| 版本 | SFX exe 体积 |" >> $env:GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $env:GITHUB_STEP_SUMMARY
+          echo "| Full (self-contained) | $fullSfx MB |" >> $env:GITHUB_STEP_SUMMARY
+          echo "| Lite (framework-dependent) | $liteSfx MB |" >> $env:GITHUB_STEP_SUMMARY
+
       - name: Upload Full Artifact (EXE, self-contained)
         if: success() || failure()
         id: upload-full
@@ -312,8 +400,28 @@ jobs:
           path: MSMC-win-x64-lite.7z
           retention-days: 30
 
+      - name: Upload Full SFX exe (self-extracting, double-click to run)
+        if: success() || failure()
+        id: upload-full-sfx
+        continue-on-error: true
+        uses: actions/upload-artifact@v5
+        with:
+          name: MSMC-win-x64-full-sfx
+          path: MSMC-win-x64-full-sfx.exe
+          retention-days: 30
+
+      - name: Upload Lite SFX exe (self-extracting, double-click to run)
+        if: success() || failure()
+        id: upload-lite-sfx
+        continue-on-error: true
+        uses: actions/upload-artifact@v5
+        with:
+          name: MSMC-win-x64-lite-sfx
+          path: MSMC-win-x64-lite-sfx.exe
+          retention-days: 30
+
       - name: Artifact upload fallback notice
-        if: steps.upload-full.outcome == 'failure' || steps.upload-lite.outcome == 'failure' || steps.upload-full-7z.outcome == 'failure' || steps.upload-lite-7z.outcome == 'failure'
+        if: steps.upload-full.outcome == 'failure' || steps.upload-lite.outcome == 'failure' || steps.upload-full-7z.outcome == 'failure' || steps.upload-lite-7z.outcome == 'failure' || steps.upload-full-sfx.outcome == 'failure' || steps.upload-lite-sfx.outcome == 'failure'
         shell: pwsh
         run: |
           echo "⚠️ 部分产物上传失败（可能是 GitHub 网络问题 ECONNRESET）"
