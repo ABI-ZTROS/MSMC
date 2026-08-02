@@ -89,7 +89,6 @@ jobs:
             -p:RuntimeIdentifier=win-x64 `
             -p:SelfContained=false `
             -p:PublishSingleFile=true `
-            -p:EnableCompressionInSingleFile=true `
             -o publish/lite
         shell: pwsh
 
