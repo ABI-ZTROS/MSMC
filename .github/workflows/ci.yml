@@ -292,17 +292,21 @@ jobs:
         shell: pwsh
         run: |
           # 7z_extra 包含 7zSD.sfx（标准 7-Zip 安装目录没有）
+          # 7z 23.x 在 bin/ 下，7z 24.x 可能直接在根目录，用通配符搜索兜底
           $url = "https://www.7-zip.org/a/7z2501-extra.7z"
           Invoke-WebRequest -Uri $url -OutFile 7z-extra.7z
           & $env:SEVEN_ZIP x 7z-extra.7z -o7z-extra -y
-          $sfxStub = "7z-extra/bin/7zSD.sfx"
-          if (-not (Test-Path $sfxStub)) {
-            echo "❌ 7zSD.sfx 未找到！"
+          # 通配符搜索 7zSD.sfx（不依赖具体目录结构）
+          $sfxStub = Get-ChildItem -Path 7z-extra -Filter "7zSD.sfx" -Recurse | Select-Object -First 1
+          if (-not $sfxStub) {
+            echo "❌ 7zSD.sfx 未找到！7z-extra 包目录结构："
+            Get-ChildItem -Path 7z-extra -Recurse | Select-Object FullName
             exit 1
           }
-          $stubSize = [math]::Round((Get-Item $sfxStub).Length/1KB, 1)
-          echo "✅ 7zSD.sfx 已下载 ($stubSize KB): $sfxStub"
-          echo "SFX_STUB=$sfxStub" >> $env:GITHUB_ENV
+          $sfxPath = $sfxStub.FullName
+          $stubSize = [math]::Round($sfxStub.Length/1KB, 1)
+          echo "✅ 7zSD.sfx 已下载 ($stubSize KB): $sfxPath"
+          echo "SFX_STUB=$sfxPath" >> $env:GITHUB_ENV
 
       - name: Write SFX config.txt (UTF-8 no BOM)
         if: success() || failure()
