@@ -304,7 +304,9 @@ jobs:
           }
           $stubSize = [math]::Round((Get-Item $sfxStub).Length/1KB, 1)
           echo "✅ 7z.sfx 已定位 ($stubSize KB): $sfxStub"
-          echo "SFX_STUB=$sfxStub" >> $env:GITHUB_ENV
+          # 复制到工作目录，避免路径带空格导致 -sfx 参数解析失败
+          Copy-Item $sfxStub -Destination "$PWD\7z.sfx" -Force
+          echo "SFX_STUB_LOCAL=$PWD\7z.sfx" >> $env:GITHUB_ENV
 
       - name: Assemble SFX exe (Full + Lite)
         if: success() || failure()
@@ -314,9 +316,11 @@ jobs:
           foreach ($variant in @("full", "lite")) {
             $archive = "MSMC-win-x64-$variant.7z"
             $output = "MSMC-win-x64-$variant-sfx.exe"
-            # 用 7z.exe -sfx 创建自解压 exe
-            # 7z.sfx 是基础版，用户双击后弹对话框选解压目录
-            & $env:SEVEN_ZIP a -sfx`"$env:SFX_STUB`" $output $archive
+            # 用 copy /b 二进制拼接：7z.sfx + archive.7z = output.exe
+            # 7z.sfx 在文件末尾查找 7z 签名，支持直接拼接
+            # 比 7z -sfx 参数更可靠（-sfx 对带空格路径处理有问题）
+            $stub = $env:SFX_STUB_LOCAL
+            cmd /c copy /b `"$stub`" + `"$archive`" `"$output`"
             if (-not (Test-Path $output)) {
               echo "❌ [$variant] SFX exe 创建失败！"
               exit 1
