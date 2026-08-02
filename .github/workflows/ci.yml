@@ -125,7 +125,154 @@ jobs:
             echo "✅ [$variant] 发布产物检查通过！"
           }
 
-      - name: Upload Full Artifact (~70MB, self-contained)
+      # ═══════════════════════════════════════════════════════════════
+      # 🗜️ 7z 极限压缩分发包
+      # ═══════════════════════════════════════════════════════════════
+      # UPX 对 .NET 单文件 exe 无效（PE overlay 不压缩），
+      # 改用 7z LZMA2 极限压缩打包发布目录作为分发格式。
+      # 用户下载 7z 解压后即可运行，无需安装器。
+      #
+      # 参数说明：
+      # -t7z           7z 格式（比 zip 压缩率高 10-30%）
+      # -mx=9          最高压缩级别
+      # -m0=lzma2      LZMA2 算法（对 .NET 二进制效果好）
+      # -ms=on         固实压缩（把所有文件当一个流压缩，提升比率）
+      # -mf=on         过滤可执行文件（提升 PE 压缩率）
+      # -mfb=273       最大字典大小（FB=273 触发 LZMA2 极限模式）
+      # -mtc=off       不存储创建时间（减小元数据）
+      # -mtm=off       不存储修改时间
+      # -mta=off       不存储访问时间
+      # ═══════════════════════════════════════════════════════════════
+
+      - name: Install 7-Zip (Windows)
+        if: success() || failure()
+        shell: pwsh
+        run: |
+          # Windows runner 自带 7z，但路径可能不同，统一安装官方最新版
+          $url = "https://www.7-zip.org/a/7z2407-x64.exe"
+          Invoke-WebRequest -Uri $url -OutFile 7z-installer.exe
+          Start-Process -FilePath "7z-installer.exe" -ArgumentList "/S" -Wait
+          $sevenZip = "C:\Program Files\7-Zip\7z.exe"
+          if (-not (Test-Path $sevenZip)) {
+            # 兜底：用 runner 自带的 7z
+            $sevenZip = (Get-Command 7z -ErrorAction SilentlyContinue).Source
+            if (-not $sevenZip) { $sevenZip = "7z" }
+          }
+          echo "7z path: $sevenZip"
+          & $sevenZip --help | Select-Object -First 2
+          echo "SEVEN_ZIP=$sevenZip" >> $env:GITHUB_ENV
+
+      - name: Record pre-7z sizes
+        if: success() || failure()
+        id: pre_7z
+        shell: pwsh
+        run: |
+          $fullSize = (Get-Item "publish/full/MSMC.exe").Length
+          $liteSize = (Get-Item "publish/lite/MSMC.exe").Length
+          $fullMB = [math]::Round($fullSize/1MB, 2)
+          $liteMB = [math]::Round($liteSize/1MB, 2)
+          echo "full_pre_bytes=$fullSize" >> $env:GITHUB_OUTPUT
+          echo "lite_pre_bytes=$liteSize" >> $env:GITHUB_OUTPUT
+          echo "full_pre_mb=$fullMB" >> $env:GITHUB_OUTPUT
+          echo "lite_pre_mb=$liteMB" >> $env:GITHUB_OUTPUT
+          echo "📊 Pre-7z sizes: Full=$fullMB MB, Lite=$liteMB MB"
+
+      - name: 7z compress Full (LZMA2 ultra)
+        if: success() || failure()
+        shell: pwsh
+        run: |
+          & $env:SEVEN_ZIP a -t7z -mx=9 -m0=lzma2 -ms=on -mf=on -mfb=273 `
+            -mtc=off -mtm=off -mta=off -mmt=on `
+            "MSMC-win-x64-full.7z" "publish/full/*"
+          if ($LASTEXITCODE -ne 0) {
+            echo "❌ [full] 7z 压缩失败！"
+            exit 1
+          }
+
+      - name: 7z compress Lite (LZMA2 ultra)
+        if: success() || failure()
+        shell: pwsh
+        run: |
+          & $env:SEVEN_ZIP a -t7z -mx=9 -m0=lzma2 -ms=on -mf=on -mfb=273 `
+            -mtc=off -mtm=off -mta=off -mmt=on `
+            "MSMC-win-x64-lite.7z" "publish/lite/*"
+          if ($LASTEXITCODE -ne 0) {
+            echo "❌ [lite] 7z 压缩失败！"
+            exit 1
+          }
+
+      - name: 7z integrity test + post-7z sizes
+        if: success() || failure()
+        id: post_7z
+        shell: pwsh
+        run: |
+          foreach ($variant in @("full", "lite")) {
+            $archive = "MSMC-win-x64-$variant.7z"
+            if (-not (Test-Path $archive)) {
+              echo "❌ [$variant] 7z 包不存在！"
+              exit 1
+            }
+            # 7z 完整性测试
+            & $env:SEVEN_ZIP t $archive
+            if ($LASTEXITCODE -ne 0) {
+              echo "❌ [$variant] 7z 完整性测试失败！"
+              exit 1
+            }
+            echo "✅ [$variant] 7z 完整性测试通过"
+          }
+          $fullSize = (Get-Item "MSMC-win-x64-full.7z").Length
+          $liteSize = (Get-Item "MSMC-win-x64-lite.7z").Length
+          $fullMB = [math]::Round($fullSize/1MB, 2)
+          $liteMB = [math]::Round($liteSize/1MB, 2)
+          $fullPre = [int64]${{ steps.pre_7z.outputs.full_pre_bytes }}
+          $litePre = [int64]${{ steps.pre_7z.outputs.lite_pre_bytes }}
+          $fullRatio = [math]::Round((1 - $fullSize/$fullPre)*100, 1)
+          $liteRatio = [math]::Round((1 - $liteSize/$litePre)*100, 1)
+          echo "full_post_bytes=$fullSize" >> $env:GITHUB_OUTPUT
+          echo "lite_post_bytes=$liteSize" >> $env:GITHUB_OUTPUT
+          echo "full_post_mb=$fullMB" >> $env:GITHUB_OUTPUT
+          echo "lite_post_mb=$liteMB" >> $env:GITHUB_OUTPUT
+          echo "full_ratio=$fullRatio" >> $env:GITHUB_OUTPUT
+          echo "lite_ratio=$liteRatio" >> $env:GITHUB_OUTPUT
+          echo "📊 Post-7z sizes: Full=$fullMB MB (-$fullRatio%), Lite=$liteMB MB (-$liteRatio%)"
+
+      - name: 7z size reduction gate
+        if: success() || failure()
+        shell: pwsh
+        run: |
+          $fullRatio = [double]${{ steps.post_7z.outputs.full_ratio }}
+          $liteRatio = [double]${{ steps.post_7z.outputs.lite_ratio }}
+          # 期望至少 40% 压缩（.NET 二进制对 LZMA2 友好）
+          if ($fullRatio -lt 40) {
+            echo "⚠️ [full] 7z 压缩率仅 $fullRatio%（期望 >=40%）"
+          }
+          if ($liteRatio -lt 40) {
+            echo "⚠️ [lite] 7z 压缩率仅 $liteRatio%（期望 >=40%）"
+          }
+          if ($fullRatio -ge 40 -and $liteRatio -ge 40) {
+            echo "✅ 7z 压缩率达标: Full=$fullRatio%, Lite=$liteRatio%"
+          }
+
+      - name: Job summary
+        if: always()
+        shell: pwsh
+        run: |
+          $fullPre = "${{ steps.pre_7z.outputs.full_pre_mb }}"
+          $fullPost = "${{ steps.post_7z.outputs.full_post_mb }}"
+          $fullRatio = "${{ steps.post_7z.outputs.full_ratio }}"
+          $litePre = "${{ steps.pre_7z.outputs.lite_pre_mb }}"
+          $litePost = "${{ steps.post_7z.outputs.lite_post_mb }}"
+          $liteRatio = "${{ steps.post_7z.outputs.lite_ratio }}"
+          echo "## 🗜️ 7z 极限压缩报告" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "参数: -t7z -mx=9 -m0=lzma2 -ms=on -mf=on -mfb=273" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "| 版本 | Pre-7z (EXE) | Post-7z (7z) | 压缩率 |" >> $env:GITHUB_STEP_SUMMARY
+          echo "|---|---|---|---|" >> $env:GITHUB_STEP_SUMMARY
+          echo "| Full (self-contained) | $fullPre MB | $fullPost MB | -$fullRatio% |" >> $env:GITHUB_STEP_SUMMARY
+          echo "| Lite (framework-dependent) | $litePre MB | $litePost MB | -$liteRatio% |" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload Full Artifact (EXE, self-contained)
         if: success() || failure()
         id: upload-full
         continue-on-error: true
@@ -135,7 +282,7 @@ jobs:
           path: publish/full/
           retention-days: 30
 
-      - name: Upload Lite Artifact (~8MB, framework-dependent)
+      - name: Upload Lite Artifact (EXE, framework-dependent)
         if: success() || failure()
         id: upload-lite
         continue-on-error: true
@@ -145,11 +292,31 @@ jobs:
           path: publish/lite/
           retention-days: 30
 
+      - name: Upload Full 7z Archive (LZMA2 ultra compressed)
+        if: success() || failure()
+        id: upload-full-7z
+        continue-on-error: true
+        uses: actions/upload-artifact@v5
+        with:
+          name: MSMC-win-x64-full-7z
+          path: MSMC-win-x64-full.7z
+          retention-days: 30
+
+      - name: Upload Lite 7z Archive (LZMA2 ultra compressed)
+        if: success() || failure()
+        id: upload-lite-7z
+        continue-on-error: true
+        uses: actions/upload-artifact@v5
+        with:
+          name: MSMC-win-x64-lite-7z
+          path: MSMC-win-x64-lite.7z
+          retention-days: 30
+
       - name: Artifact upload fallback notice
-        if: steps.upload-full.outcome == 'failure' || steps.upload-lite.outcome == 'failure'
+        if: steps.upload-full.outcome == 'failure' || steps.upload-lite.outcome == 'failure' || steps.upload-full-7z.outcome == 'failure' || steps.upload-lite-7z.outcome == 'failure'
         shell: pwsh
         run: |
-          echo "⚠️ Artifact 上传失败（GitHub 网络问题 ECONNRESET）"
+          echo "⚠️ 部分产物上传失败（可能是 GitHub 网络问题 ECONNRESET）"
           echo "   构建本身已成功，产物已通过 Verify Artifacts 检查"
           echo "   可重新运行 CI 或从 Release 页面下载"
 
