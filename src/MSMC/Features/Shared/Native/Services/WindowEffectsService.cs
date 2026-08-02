@@ -85,6 +85,12 @@ public interface IWindowEffectsService
 
     /// <summary>把主窗口一套完整的「ColorOS 美学」效果一次性打上去</summary>
     void ApplyColorOSVisualPack(IntPtr hWnd, bool darkTitleBar = true);
+
+    /// <summary>
+    /// 某窗口句柄是否已经 ApplyColorOSVisualPack 过（用于 ThemeService 深浅切换时去重调用）。
+    /// Windows 以外的平台或句柄无效时返回 false。
+    /// </summary>
+    bool IsApplied(IntPtr hWnd);
 }
 
 [SupportedOSPlatform("windows")]
@@ -97,6 +103,10 @@ public sealed class WindowEffectsService : IWindowEffectsService
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;  // Win11 22H2+
     private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;        // Win11 22H2+
     // 2 = UseImmersiveDarkMode (Win10 1809+)
+
+    // 记录哪些 hWnd 已经 ApplyColorOSVisualPack 过；弱引用集，避免窗口关闭后句柄被长期占用
+    private readonly HashSet<IntPtr> _appliedHandles = new();
+    private readonly object _appliedLock = new();
 
     public bool IsCompositionEnabled
     {
@@ -249,6 +259,19 @@ public sealed class WindowEffectsService : IWindowEffectsService
         {
             _log.Debug("[WindowFX] 当前系统不支持 Mica（Win11 22H2- 或 DWM 未启用），跳过");
         }
+
+        // 4) 记录已应用句柄，后续 ThemeService 深浅切换时可查询
+        lock (_appliedLock)
+        {
+            _appliedHandles.Add(hWnd);
+        }
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    public bool IsApplied(IntPtr hWnd)
+    {
+        if (hWnd == IntPtr.Zero) return false;
+        lock (_appliedLock) return _appliedHandles.Contains(hWnd);
     }
 
     // ───────────────────────────────────────────────────────────────────────

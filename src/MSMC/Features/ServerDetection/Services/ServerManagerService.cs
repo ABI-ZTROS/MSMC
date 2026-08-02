@@ -1,8 +1,12 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Management;
 using io.NET.ZTR_OS.Features.JavaInstallation.Services;
+using io.NET.ZTR_OS.Features.Settings.Services;
+using io.NET.ZTR_OS.Features.Shared.Native.Services;
+using io.NET.ZTR_OS.Features.SystemMonitoring.Services;
 using JavaInstallationInfo = io.NET.ZTR_OS.Features.JavaInstallation.Services.JavaInstallation;
 using io.NET.ZTR_OS.Features.ServerDetection.Models;
 using Serilog;
@@ -33,11 +37,31 @@ public interface IServerManagerService
     public bool IsServerRunningByJarPath(string jarFilePath);
 
     /// <summary>
-    /// 启动指定的 Minecraft 服务器实例
+    /// 启动指定的 Minecraft 服务器实例（旧版兼容同步 API：走 Supervisor，不可用则降级裸 Process.Start）。
     /// </summary>
     /// <param name="server">服务器实例，包含启动所需的全部配置</param>
     /// <returns>启动后的进程对象；启动失败返回 null</returns>
     public Process? StartServer(ServerInstance server);
+
+    /// <summary>
+    /// 以「进程监管模式」启动 Minecraft 服务器（推荐异步 API）。
+    /// 监管模式：Job Object 绑死子进程树 + 崩溃自动重启 + 优先级 + 内存上限 + 防睡眠。
+    /// </summary>
+    /// <param name="server">服务器实例</param>
+    /// <param name="ct">用户取消令牌（取消=放弃启动尝试，而非停止已启动进程）</param>
+    /// <returns>监管句柄（可订阅 StatusChanged 事件监听重启/崩溃）；启动失败返回 null</returns>
+    Task<SupervisedProcessHandle?> StartServerSupervisedAsync(ServerInstance server, CancellationToken ct = default);
+
+    /// <summary>
+    /// 根据 JAR 路径查询当前正在被监管的服务器句柄（未监管返回 null）。
+    /// </summary>
+    SupervisedProcessHandle? TryGetSupervisedHandle(string jarFilePath);
+
+    /// <summary>
+    /// 当前所有正在被 ProcessSupervisorService 监管的服务器句柄快照（只读）。
+    /// Key = 规范化后的 ServerJarPath（ToLowerInvariant）。
+    /// </summary>
+    IReadOnlyDictionary<string, SupervisedProcessHandle> SupervisedServers { get; }
 
     /// <summary>
     /// 停止指定的 Minecraft 服务器实例
@@ -104,10 +128,29 @@ public interface IServerManagerService
 public class ServerManagerService : IServerManagerService
 {
     private readonly IJavaFinderService _javaFinderService;
+    private readonly IProcessSupervisorService? _supervisor; // 非 Windows / 禁用原生服务时为 null
+    private readonly IAppConfigService? _config;             // 可选：若配置服务不可用则走默认策略
 
-    public ServerManagerService(IJavaFinderService javaFinderService)
+    /// <summary>
+    /// 当前被监管的服务器句柄字典。
+    /// Key = 规范化后的 JAR 完整路径（ToLowerInvariant）。
+    /// Value = ProcessSupervisorService 返回的 SupervisedProcessHandle。
+    /// </summary>
+    private readonly ConcurrentDictionary<string, SupervisedProcessHandle> _supervisedHandles = new();
+
+    public ServerManagerService(
+        IJavaFinderService javaFinderService,
+        IProcessSupervisorService? supervisor = null,
+        IAppConfigService? config = null)
     {
         _javaFinderService = javaFinderService;
+        _supervisor = supervisor;
+        _config = config;
+
+        if (_supervisor != null)
+            Log.Information("[SUP] ProcessSupervisorService 已注入，服务器启动将默认走监管模式");
+        else
+            Log.Warning("[SUP] ProcessSupervisorService 未注入（非 Windows 平台或服务未注册），启动降级为裸 Process.Start");
     }
     /// <summary>
     /// 检测指定服务器实例是否正在运行
@@ -228,555 +271,6 @@ public class ServerManagerService : IServerManagerService
             return true;
 
         return false;
-    }
-
-    /// <summary>
-    /// 启动指定的 Minecraft 服务器实例
-    /// </summary>
-    /// <param name="server">服务器实例，包含启动所需的全部配置</param>
-    /// <returns>启动后的进程对象；启动失败返回 null</returns>
-    /// <remarks>
-    /// 启动流程：
-    /// 1. 前置校验 —— 服务器未运行、JAR 文件存在、工作目录存在
-    /// 2. Java 环境检测 —— 查找并验证 Java 可执行文件
-    /// 3. JVM 参数规范化 —— 校验并标准化启动参数
-    /// 4. 进程启动 —— 以指定工作目录启动 Java 进程
-    /// 所有异常均被捕获并记录，确保方法不会向上抛出异常。
-    /// </remarks>
-    public Process? StartServer(ServerInstance server)
-    {
-        Log.Information("[BOOT] 尝试启动服务器: {JarName}", server.ServerJarName);
-
-        if (IsServerRunning(server))
-        {
-            Log.Warning("[WARN] 服务器已经在运行中，跳过启动");
-            return null;
-        }
-
-        if (!File.Exists(server.ServerJarPath))
-        {
-            Log.Error("[ERR] JAR 文件不存在: {JarPath}", server.ServerJarPath);
-            return null;
-        }
-
-        if (!Directory.Exists(server.WorkingDirectory))
-        {
-            Log.Error("[ERR] 工作目录不存在: {Dir}", server.WorkingDirectory);
-            return null;
-        }
-
-        try
-        {
-            string? javaExe = null;
-            JavaInstallationInfo? javaInfo = null;
-
-            // 始终使用 java.exe（而非 javaw.exe），确保服务器控制台窗口可见，
-            // 玩家可查看日志输出并输入控制台命令（stop、op、say 等）。
-            // javaw.exe 属于 GUI 子系统，会丢弃 stdout/stderr，导致服务器日志完全丢失。
-            if (!string.IsNullOrEmpty(server.JavaPath))
-            {
-                javaInfo = _javaFinderService.Verify(server.JavaPath);
-                if (javaInfo != null)
-                    javaExe = javaInfo.JavaPath;
-            }
-
-            if (javaExe == null)
-            {
-                javaInfo = _javaFinderService.FindDefault();
-                if (javaInfo != null)
-                    javaExe = javaInfo.JavaPath;
-            }
-
-            if (string.IsNullOrEmpty(javaExe))
-            {
-                Log.Error("[ERR] 找不到 Java 可执行文件，请确保已安装 Java 并配置环境变量");
-                return null;
-            }
-
-            if (!File.Exists(javaExe))
-            {
-                Log.Error("[ERR] Java 可执行文件不存在: {JavaPath}", javaExe);
-                return null;
-            }
-
-            if (javaInfo != null)
-            {
-                Log.Information("[JAVA] 使用 Java: {Version} ({Vendor})", javaInfo.VersionString, javaInfo.Vendor);
-
-                if (javaInfo.Version != null)
-                {
-                    var major = javaInfo.Version.Major;
-                    if (major < 21)
-                    {
-                        Log.Warning("[WARN] Java 版本较低 ({Version})，Minecraft 1.20.5+ / Paper 1.20.5+ 需要 Java 21 或更高版本", javaInfo.VersionString);
-                        Log.Warning("   如果服务器闪退，请先升级到 Java 21");
-                    }
-                    else if (major < 17)
-                    {
-                        Log.Error("[ERR] Java 版本过低 ({Version})，Minecraft 1.17+ 需要 Java 17 以上", javaInfo.VersionString);
-                    }
-
-                    if (major < 11)
-                    {
-                        Log.Error("[ERR] Java {Version} 太旧了，几乎所有现代 Minecraft 服务器都无法运行", javaInfo.VersionString);
-                    }
-                }
-
-                if (!javaInfo.Is64Bit)
-                {
-                    Log.Warning("[WARN] 检测到 32 位 Java，内存将被限制在 2GB 以内，强烈建议使用 64 位 Java");
-                }
-            }
-
-            var normalizationResult = JvmArgumentNormalizer.Normalize(server.JvmArguments);
-            var normalizedServer = new ServerInstance
-            {
-                ProcessId = server.ProcessId,
-                ServerType = server.ServerType,
-                WorkingDirectory = server.WorkingDirectory,
-                JavaPath = javaExe,
-                ServerJarPath = server.ServerJarPath,
-                ServerJarName = server.ServerJarName,
-                FullCommandLine = server.FullCommandLine,
-                JvmArguments = normalizationResult.Arguments,
-                InitialHeapMemoryBytes = server.InitialHeapMemoryBytes,
-                MaxHeapMemoryBytes = server.MaxHeapMemoryBytes,
-                ConfigFiles = server.ConfigFiles,
-                UsesAikarFlags = server.UsesAikarFlags,
-                GcType = server.GcType,
-                ServerPort = server.ServerPort
-            };
-
-            foreach (var warning in normalizationResult.Warnings)
-            {
-                Log.Warning("[WARN] 参数警告: {Warning}", warning);
-            }
-
-            var arguments = BuildStartupArguments(normalizedServer);
-            
-            var fullCommand = $"{javaExe} {arguments}";
-            
-            Log.Information("[LOG] 启动命令: {Cmd}", fullCommand);
-            Log.Information("[FS] 工作目录: {Dir}", server.WorkingDirectory);
-            
-            var processStartInfo = new ProcessStartInfo
-            {
-                FileName = javaExe,
-                Arguments = arguments,
-                WorkingDirectory = server.WorkingDirectory,
-                UseShellExecute = true,
-            };
-
-            var process = Process.Start(processStartInfo);
-            if (process != null)
-            {
-                Log.Information("[OK] 服务器进程已启动! PID={Pid}", process.Id);
-                server.ProcessId = process.Id;
-
-                _ = Task.Run(() =>
-                {
-                    try
-                    {
-                        // 同步等待最多 2 秒，捕获 JVM 启动即崩溃的情况
-                        // （原 5 秒延迟过长，且异步 Delay 期间进程可能已被系统回收导致 ExitCode 丢失）
-                        if (process.WaitForExit(2000))
-                        {
-                            var exitCode = process.ExitCode;
-                            Log.Warning("[WARN] 服务器进程在 2 秒内异常退出! PID={Pid}, ExitCode={ExitCode}", process.Id, exitCode);
-
-                            if (exitCode == 1)
-                            {
-                                Log.Error("[FATAL] 退出码 1：通常是 JVM 启动失败，常见原因：");
-                                Log.Error("   1. Java 版本不兼容（Minecraft 1.20.5+ 需要 Java 21）");
-                                Log.Error("   2. JVM 参数有拼写错误或不支持的参数");
-                                Log.Error("   3. 内存分配超出系统可用物理内存");
-                                Log.Error("   4. JAR 文件损坏或路径不正确");
-                            }
-                            else if (exitCode == -1 || exitCode == unchecked((int)0xC0000005))
-                            {
-                                Log.Error("[FATAL] 进程崩溃（退出码 {ExitCode}）：可能是 Java 本身故障、系统内存不足或杀毒软件拦截", exitCode);
-                            }
-
-                            // 读取服务器日志文件，输出崩溃详情（UseShellExecute=true 时无法重定向 stderr，
-                            // 只能从事后写入的日志文件中提取错误信息）
-                            LogServerCrashDetails(server.WorkingDirectory);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Debug(ex, "监视服务器进程启动状态时出错");
-                    }
-                });
-
-                return process;
-            }
-            
-            Log.Error("[ERR] 启动进程返回 null");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[ERR] 启动服务器失败: {Message}", ex.Message);
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// 读取服务器日志文件，输出崩溃详情
-    /// </summary>
-    /// <param name="workingDirectory">服务器工作目录</param>
-    /// <remarks>
-    /// 由于 StartServer 使用 UseShellExecute=true（为显示服务器控制台窗口），
-    /// 无法重定向 stderr，只能在进程崩溃后从日志文件中提取错误信息。
-    /// 检查路径：logs/latest.log, crash-reports/*.txt
-    /// </remarks>
-    private static void LogServerCrashDetails(string workingDirectory)
-    {
-        try
-        {
-            // 1. 读取 logs/latest.log 的最后 30 行
-            var latestLogPath = System.IO.Path.Combine(workingDirectory, "logs", "latest.log");
-            if (System.IO.File.Exists(latestLogPath))
-            {
-                var lines = System.IO.File.ReadAllLines(latestLogPath);
-                var tail = lines.Length > 30 ? lines[^30..] : lines;
-                Log.Error("[LOG] 服务器日志最后 {Count} 行（{Path}）：", tail.Length, latestLogPath);
-                foreach (var line in tail)
-                {
-                    Log.Error("   {Line}", line);
-                }
-            }
-
-            // 2. 检查 crash-reports 目录中最新的崩溃报告
-            var crashDir = System.IO.Path.Combine(workingDirectory, "crash-reports");
-            if (System.IO.Directory.Exists(crashDir))
-            {
-                var crashFile = System.IO.Directory.GetFiles(crashDir, "*.txt")
-                    .OrderByDescending(System.IO.File.GetLastWriteTime)
-                    .FirstOrDefault();
-                if (crashFile != null)
-                {
-                    var crashTime = System.IO.File.GetLastWriteTime(crashFile);
-                    if (crashTime > DateTime.Now.AddMinutes(-1))
-                    {
-                        var crashContent = System.IO.File.ReadAllText(crashFile);
-                        var preview = crashContent.Length > 2000 ? crashContent[..2000] + "..." : crashContent;
-                        Log.Error("[FATAL] 检测到最新的崩溃报告（{Path}）：\n{Content}", crashFile, preview);
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Debug(ex, "读取服务器崩溃日志失败");
-        }
-    }
-
-    /// <summary>
-    /// 停止指定的 Minecraft 服务器实例
-    /// </summary>
-    /// <param name="server">服务器实例</param>
-    /// <returns>true 表示停止操作执行成功（或进程本就未运行）</returns>
-    /// <remarks>
-    /// 停止策略：
-    /// 1. 优先通过 JAR 文件名匹配查找当前运行进程并终止
-    /// 2. 匹配失败时，使用记录的 PID 直接终止
-    /// 3. 若两者均无效，视为目标状态已达成（进程已停止），返回成功
-    /// </remarks>
-    public bool StopServer(ServerInstance server)
-    {
-        Log.Information("[STOP] 尝试停止服务器: {JarName}", server.ServerJarName);
-
-        // 优先通过 JAR 名匹配当前运行中的进程
-        var process = FindServerProcess(server);
-        if (process != null)
-        {
-            return StopProcessTree(process.Id);
-        }
-
-        // JAR 名匹配失败，降级为 PID 直接终止
-        if (server.ProcessId > 0)
-        {
-            return StopServerByProcessId(server.ProcessId);
-        }
-
-        // 未找到运行中的进程 —— 目标状态（服务器停止）已达成，视为成功
-        Log.Information("[INFO] 未找到运行中的服务器进程，视为已停止: {JarName}", server.ServerJarName);
-        return true;
-    }
-
-    /// <summary>
-    /// 通过进程 ID 停止服务器进程及其子进程树
-    /// </summary>
-    /// <param name="processId">父进程 ID</param>
-    /// <returns>true 表示停止操作执行成功</returns>
-    /// <remarks>
-    /// 终止整个进程树，防止 java.exe 的子进程继续运行。
-    /// 采用防御式编程，进程不存在或已退出均视为成功。
-    /// </remarks>
-    public bool StopServerByProcessId(int processId)
-    {
-        Log.Information("[STOP] 尝试终止进程: PID={Pid}", processId);
-
-        try
-        {
-            return StopProcessTree(processId);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[ERR] 终止进程失败 PID={Pid}", processId);
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// 查找与指定服务器实例匹配的运行中进程
-    /// </summary>
-    /// <param name="server">服务器实例</param>
-    /// <returns>匹配的进程对象；未找到返回 null</returns>
-    /// <remarks>
-    /// 通过枚举所有 java.exe 进程，匹配命令行中包含目标 JAR 文件名的进程。
-    /// 返回新的 Process 对象实例，调用方负责释放。
-    /// 处理进程枚举过程中的竞态条件——进程可能随时退出。
-    /// </remarks>
-    public Process? FindServerProcess(ServerInstance server)
-    {
-        var jarName = Path.GetFileName(server.ServerJarPath).ToLowerInvariant();
-        
-        try
-        {
-            foreach (var process in Process.GetProcessesByName("java"))
-            {
-                using (process)
-                {
-                    try
-                    {
-                        var cmdLine = GetProcessCommandLine(process.Id);
-                        if (!string.IsNullOrEmpty(cmdLine) && 
-                            cmdLine.ToLowerInvariant().Contains(jarName))
-                        {
-                            // 返回新的 Process 对象，避免 using 块释放
-                            try { return Process.GetProcessById(process.Id); }
-                            catch (Exception ex) { Log.Debug(ex, "获取进程 PID={Pid} 失败（可能已退出）", process.Id); return null; }
-                        }
-                    }
-                    catch
-                    {
-                        // 进程可能已退出，跳过
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[ERR] 查找 Java 进程失败");
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// 获取指定 JAR 文件对应的服务器进程 ID
-    /// </summary>
-    /// <param name="jarFilePath">JAR 文件完整路径</param>
-    /// <returns>进程 ID；未找到返回 null</returns>
-    /// <remarks>
-    /// 通过枚举所有 java.exe 进程，匹配命令行中包含目标 JAR 文件名的进程。
-    /// 处理进程枚举过程中的竞态条件。
-    /// </remarks>
-    public int? GetServerProcessId(string jarFilePath)
-    {
-        var jarName = Path.GetFileName(jarFilePath).ToLowerInvariant();
-
-        try
-        {
-            foreach (var process in Process.GetProcessesByName("java"))
-            {
-                using (process)
-                {
-                    try
-                    {
-                        var cmdLine = GetProcessCommandLine(process.Id);
-                        if (!string.IsNullOrEmpty(cmdLine) && 
-                            cmdLine.ToLowerInvariant().Contains(jarName))
-                        {
-                            return process.Id;
-                        }
-                    }
-                    catch
-                    {
-                        // 进程可能已退出，跳过
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[ERR] 获取服务器进程 ID 失败");
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// 检测 JAR 文件是否被进程独占锁定（公共静态版，供 ServerDetector 等其他组件复用）。
-    /// </summary>
-    /// <param name="jarFilePath">JAR 文件绝对路径</param>
-    /// <returns>true 表示文件被其他进程以共享冲突方式打开（典型：Java 加载 JAR）</returns>
-    /// <remarks>
-    /// 原理：尝试以 FileShare.None 打开文件读取，若抛出 IOException（ERROR_SHARING_VIOLATION）
-    /// 则判定为被锁定。仅作为快速存在性检测，不依赖管理员权限。
-    /// 文件不存在时返回 false（调用方应预先 File.Exists 判断）。
-    /// </remarks>
-    public static bool IsJarFileLocked(string jarFilePath)
-    {
-        if (string.IsNullOrWhiteSpace(jarFilePath))
-            return false;
-        try
-        {
-            using var stream = new FileStream(jarFilePath, FileMode.Open, FileAccess.Read, FileShare.None);
-            return false;
-        }
-        catch (FileNotFoundException) { return false; }
-        catch (DirectoryNotFoundException) { return false; }
-        catch (IOException)
-        {
-            // ERROR_SHARING_VIOLATION (0x80070020)：文件被其他进程占用
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[ERR] 检查 JAR 文件锁定状态失败: {JarPath}", jarFilePath);
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// 通过 JAR 文件路径与工作目录，在所有 java/javaw 进程中查找匹配的服务器进程。
-    /// 优先用命令行包含 JAR 文件名匹配，其次用 JAR 完整路径匹配，最后降级为工作目录匹配。
-    /// （公共静态版，供 ServerDetector 等复用）
-    /// </summary>
-    /// <param name="jarFilePath">目标 JAR 绝对路径</param>
-    /// <param name="workingDirectory">预期工作目录（可空）</param>
-    /// <returns>匹配到的 Process 对象（调用方负责 Dispose）；未找到返回 null</returns>
-    /// <remarks>
-    /// 枚举进程与命令行读取失败均静默跳过，不会向上抛出异常。
-    /// </remarks>
-    public static Process? FindJavaProcessByJarPath(string jarFilePath, string? workingDirectory)
-    {
-        if (string.IsNullOrWhiteSpace(jarFilePath))
-            return null;
-
-        var jarName = Path.GetFileName(jarFilePath).ToLowerInvariant();
-        var jarFullLower = jarFilePath.ToLowerInvariant();
-        var workDirLower = string.IsNullOrWhiteSpace(workingDirectory)
-            ? null
-            : workingDirectory.TrimEnd('\\', '/').ToLowerInvariant();
-
-        // 同时枚举 java.exe 与 javaw.exe（MSMC 启动时可配置 preferJavaw）
-        var processNames = new[] { "java", "javaw" };
-
-        Process? bestMatch = null;
-        int bestScore = 0;
-
-        foreach (var procName in processNames)
-        {
-            Process[] procs;
-            try { procs = Process.GetProcessesByName(procName); }
-            catch (Exception ex)
-            {
-                Log.Debug(ex, "枚举 {ProcName} 进程失败", procName);
-                continue;
-            }
-
-            foreach (var proc in procs)
-            {
-                try
-                {
-                    if (proc.HasExited)
-                    {
-                        proc.Dispose();
-                        continue;
-                    }
-
-                    int score = 0;
-
-                    // 策略 1：命令行包含 JAR 文件名（最强信号）
-                    var cmdLine = GetProcessCommandLineStatic(proc.Id);
-                    if (!string.IsNullOrEmpty(cmdLine))
-                    {
-                        var cmdLower = cmdLine.ToLowerInvariant();
-                        if (cmdLower.Contains(jarName))
-                            score += 100;
-                        if (cmdLower.Contains(jarFullLower))
-                            score += 200; // 完整路径匹配，优先级最高
-                    }
-
-                    // 策略 2：进程工作目录匹配（降级信号）
-                    if (workDirLower != null && score == 0)
-                    {
-                        try
-                        {
-                            var procWorkDir = proc.StartInfo.WorkingDirectory;
-                            if (!string.IsNullOrWhiteSpace(procWorkDir)
-                                && procWorkDir.TrimEnd('\\', '/').ToLowerInvariant() == workDirLower)
-                            {
-                                score += 50;
-                            }
-                        }
-                        catch { /* StartInfo.WorkingDirectory 可能拿不到，忽略 */ }
-                    }
-
-                    if (score > bestScore)
-                    {
-                        bestMatch?.Dispose();
-                        bestMatch = proc;
-                        bestScore = score;
-                    }
-                    else
-                    {
-                        proc.Dispose();
-                    }
-                }
-                catch (InvalidOperationException)
-                {
-                    // 进程在检查期间退出
-                    proc.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    Log.Debug(ex, "检查进程 PID={Pid} 时出错", proc.Id);
-                    proc.Dispose();
-                }
-            }
-        }
-
-        return bestScore > 0 ? bestMatch : null;
-    }
-
-    /// <summary>
-    /// 获取指定进程的完整命令行（WMI Win32_Process 静态版，供 FindJavaProcessByJarPath 复用）。
-    /// </summary>
-    private static string? GetProcessCommandLineStatic(int processId)
-    {
-        try
-        {
-            // 复用 Windows 专用的 WMI 查询方式（与 ProcessScanner 逻辑一致）
-            using var searcher = new System.Management.ManagementObjectSearcher(
-                $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {processId}");
-            using var results = searcher.Get();
-            foreach (var mo in results)
-            {
-                var cmd = mo["CommandLine"]?.ToString();
-                if (!string.IsNullOrEmpty(cmd))
-                    return cmd;
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Debug(ex, "读取进程 PID={Pid} 命令行失败", processId);
-        }
-        return null;
     }
 
     /// <summary>
@@ -1010,6 +504,524 @@ public class ServerManagerService : IServerManagerService
         {
             return false;
         }
+    }
+
+    /// <inheritdoc cref="IServerManagerService.SupervisedServers"/>
+    public IReadOnlyDictionary<string, SupervisedProcessHandle> SupervisedServers
+        => _supervisedHandles;
+
+    /// <inheritdoc cref="IServerManagerService.TryGetSupervisedHandle"/>
+    public SupervisedProcessHandle? TryGetSupervisedHandle(string jarFilePath)
+        => string.IsNullOrWhiteSpace(jarFilePath)
+            ? null
+            : _supervisedHandles.TryGetValue(NormalizeJarKey(jarFilePath), out var h) ? h : null;
+
+    /// <summary>JAR 路径规范化：全小写 + TrimEnd(Path.DirectorySeparatorChar)。</summary>
+    private static string NormalizeJarKey(string jarPath)
+        => (jarPath ?? string.Empty).Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .ToLowerInvariant();
+
+    /// <summary>
+    /// 合并「全局策略」与「服务器级覆盖策略」，得到最终 ProcessSupervisorOptions。
+    /// 每一个字段优先使用服务器级非 null 值，否则走全局。
+    /// </summary>
+    private ProcessSupervisorOptions MergePolicies(ServerInstance server)
+    {
+        var globalPolicy = _config?.Config.Supervisor ?? new ProcessSupervisorPolicy();
+        PerServerSupervisorPolicy? perServer = null;
+        if (!string.IsNullOrWhiteSpace(server.ServerJarPath))
+            perServer = _config?.FindByJarPath(server.ServerJarPath)?.Supervisor;
+
+        var enableCrashRestart = perServer?.EnableCrashRestart ?? globalPolicy.EnableCrashRestart;
+        var perHour = perServer?.MaxRestartAttemptsPerHour ?? globalPolicy.MaxRestartAttemptsPerHour;
+        var coolDownSec = perServer?.RestartCooldownSeconds ?? globalPolicy.RestartCooldownSeconds;
+        var preventSleep = perServer?.PreventSystemSleepWhenRunning ?? globalPolicy.PreventSystemSleepWhenRunning;
+        var priority = perServer?.ProcessPriority ?? globalPolicy.ProcessPriority;
+        var maxMem = perServer?.MaxProcessMemoryBytes ?? globalPolicy.MaxProcessMemoryBytes;
+        var maxTotal = perServer?.MaxTotalRestartAttempts ?? globalPolicy.MaxTotalRestartAttempts;
+
+        // 转译 AppConfig 策略 → ProcessSupervisorOptions（后者更底层，只看 MaxAutoRestartCount/RestartCooldownMs）
+        // 「无限重启」→ int.MaxValue；「永不重启」→ 0；
+        // 「每小时最多 N 次」与「总共最多 N 次」，我们取两者中更小的那个作为 MaxAutoRestartCount，
+        // 因为 ProcessSupervisorOptions 目前只有单一的「重启次数上限」维度（跨所有时间窗口）。
+        int maxRestartCount;
+        if (maxTotal == 0)
+            maxRestartCount = 0;                     // 永不重启
+        else if (!enableCrashRestart)
+            maxRestartCount = 0;                     // 开关禁用
+        else if (maxTotal < 0)
+            maxRestartCount = perHour > 0 ? perHour : int.MaxValue; // 无限总次数 → 退化为每小时窗口
+        else
+            maxRestartCount = perHour > 0
+                ? Math.Min(maxTotal, perHour)
+                : maxTotal;
+
+        // 冷却时间：AppConfig 的 RestartCooldownSeconds × 1000 → ProcessSupervisorOptions 的 RestartCooldownMs
+        var cooldownMs = Math.Clamp(coolDownSec, 0, 3600) * 1000;
+
+        return new ProcessSupervisorOptions
+        {
+            MaxAutoRestartCount = maxRestartCount,
+            RestartCooldownMs = cooldownMs,
+            AllowBreakaway = true,
+            Priority = priority,
+            MaxProcessMemoryBytes = Math.Max(0, maxMem),
+            PreventSystemSleep = preventSleep,
+            BindToJobObject = true,
+            // CPU 亲和性：初期不开放全局配置（需要 CPU 拓扑可视化），保持 null = 全核
+            PreferredCores = null,
+        };
+    }
+
+    /// <summary>
+    /// 启动服务器（旧版同步兼容实现）。
+    /// - Supervisor 可用 → 走监管模式（StartServerSupervisedAsync 同步等待）
+    /// - 不可用       → 走裸 Process.Start 旧流程
+    /// </summary>
+    public Process? StartServer(ServerInstance server)
+    {
+        // Case A: 监管模式可用
+        if (_supervisor != null)
+        {
+            try
+            {
+                var handle = StartServerSupervisedAsync(server, CancellationToken.None)
+                    .ConfigureAwait(false).GetAwaiter().GetResult();
+                if (handle == null) return null;
+                try { return handle.Process; }
+                catch (ObjectDisposedException) { return null; }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[SUP] 监管模式启动失败，降级为裸 Process.Start");
+                // Fall through → 旧版实现
+            }
+        }
+
+        // Case B: 旧版裸 Process.Start 流程（保持与原实现完全一致）
+        return StartServerLegacy(server);
+    }
+
+    /// <summary>
+    /// 原 StartServer 的裸 Process.Start 实现，完整保留用于兼容降级。
+    /// </summary>
+    private Process? StartServerLegacy(ServerInstance server)
+    {
+        Log.Information("[BOOT] 尝试启动服务器: {JarName}", server.ServerJarName);
+
+        if (IsServerRunning(server))
+        {
+            Log.Warning("[WARN] 服务器已经在运行中，跳过启动");
+            return null;
+        }
+
+        if (!File.Exists(server.ServerJarPath))
+        {
+            Log.Error("[ERR] JAR 文件不存在: {JarPath}", server.ServerJarPath);
+            return null;
+        }
+
+        if (!Directory.Exists(server.WorkingDirectory))
+        {
+            Log.Error("[ERR] 工作目录不存在: {Dir}", server.WorkingDirectory);
+            return null;
+        }
+
+        try
+        {
+            string? javaExe = null;
+            JavaInstallationInfo? javaInfo = null;
+
+            if (!string.IsNullOrEmpty(server.JavaPath))
+            {
+                javaInfo = _javaFinderService.Verify(server.JavaPath);
+                if (javaInfo != null)
+                    javaExe = javaInfo.JavaPath;
+            }
+
+            if (javaExe == null)
+            {
+                javaInfo = _javaFinderService.FindDefault();
+                if (javaInfo != null)
+                    javaExe = javaInfo.JavaPath;
+            }
+
+            if (string.IsNullOrEmpty(javaExe))
+            {
+                Log.Error("[ERR] 找不到 Java 可执行文件，请确保已安装 Java 并配置环境变量");
+                return null;
+            }
+
+            if (!File.Exists(javaExe))
+            {
+                Log.Error("[ERR] Java 可执行文件不存在: {JavaPath}", javaExe);
+                return null;
+            }
+
+            if (javaInfo != null)
+            {
+                Log.Information("[JAVA] 使用 Java: {Version} ({Vendor})", javaInfo.VersionString, javaInfo.Vendor);
+
+                if (javaInfo.Version != null)
+                {
+                    var major = javaInfo.Version.Major;
+                    if (major < 21)
+                    {
+                        Log.Warning("[WARN] Java 版本较低 ({Version})，Minecraft 1.20.5+ / Paper 1.20.5+ 需要 Java 21 或更高版本", javaInfo.VersionString);
+                    }
+                    else if (major < 17)
+                    {
+                        Log.Error("[ERR] Java 版本过低 ({Version})，Minecraft 1.17+ 需要 Java 17 以上", javaInfo.VersionString);
+                    }
+
+                    if (major < 11)
+                    {
+                        Log.Error("[ERR] Java {Version} 太旧了，几乎所有现代 Minecraft 服务器都无法运行", javaInfo.VersionString);
+                    }
+                }
+
+                if (!javaInfo.Is64Bit)
+                {
+                    Log.Warning("[WARN] 检测到 32 位 Java，内存将被限制在 2GB 以内，强烈建议使用 64 位 Java");
+                }
+            }
+
+            var normalizationResult = JvmArgumentNormalizer.Normalize(server.JvmArguments);
+            var normalizedServer = new ServerInstance
+            {
+                ProcessId = server.ProcessId,
+                ServerType = server.ServerType,
+                WorkingDirectory = server.WorkingDirectory,
+                JavaPath = javaExe,
+                ServerJarPath = server.ServerJarPath,
+                ServerJarName = server.ServerJarName,
+                FullCommandLine = server.FullCommandLine,
+                JvmArguments = normalizationResult.Arguments,
+                InitialHeapMemoryBytes = server.InitialHeapMemoryBytes,
+                MaxHeapMemoryBytes = server.MaxHeapMemoryBytes,
+                ConfigFiles = server.ConfigFiles,
+                UsesAikarFlags = server.UsesAikarFlags,
+                GcType = server.GcType,
+                ServerPort = server.ServerPort
+            };
+
+            foreach (var warning in normalizationResult.Warnings)
+                Log.Warning("[WARN] 参数警告: {Warning}", warning);
+
+            var arguments = BuildStartupArguments(normalizedServer);
+            var fullCommand = $"{javaExe} {arguments}";
+            Log.Information("[LOG] 启动命令: {Cmd}", fullCommand);
+            Log.Information("[FS] 工作目录: {Dir}", server.WorkingDirectory);
+
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = javaExe,
+                Arguments = arguments,
+                WorkingDirectory = server.WorkingDirectory,
+                UseShellExecute = true,
+            };
+
+            var process = Process.Start(processStartInfo);
+            if (process != null)
+            {
+                Log.Information("[OK] 服务器进程已启动! PID={Pid}", process.Id);
+                server.ProcessId = process.Id;
+
+                _ = Task.Run(() =>
+                {
+                    try
+                    {
+                        if (process.WaitForExit(2000))
+                        {
+                            var exitCode = process.ExitCode;
+                            Log.Warning("[WARN] 服务器进程在 2 秒内异常退出! PID={Pid}, ExitCode={ExitCode}", process.Id, exitCode);
+                            ReadServerCrashDetailsLegacy(server.WorkingDirectory);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "监视服务器进程启动状态时出错");
+                    }
+                });
+
+                return process;
+            }
+
+            Log.Error("[ERR] 启动进程返回 null");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[ERR] 启动服务器失败: {Message}", ex.Message);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 读取服务器日志文件输出崩溃详情（降级裸启动时使用；监管模式下由 Supervisor 内部事件处理）。
+    /// </summary>
+    private static void ReadServerCrashDetailsLegacy(string workingDirectory)
+    {
+        try
+        {
+            var latestLogPath = System.IO.Path.Combine(workingDirectory, "logs", "latest.log");
+            if (System.IO.File.Exists(latestLogPath))
+            {
+                var lines = System.IO.File.ReadAllLines(latestLogPath);
+                var tail = lines.Length > 30 ? lines[^30..] : lines;
+                Log.Error("[LOG] 服务器日志最后 {Count} 行（{Path}）：", tail.Length, latestLogPath);
+                foreach (var line in tail)
+                    Log.Error("   {Line}", line);
+            }
+
+            var crashDir = System.IO.Path.Combine(workingDirectory, "crash-reports");
+            if (System.IO.Directory.Exists(crashDir))
+            {
+                var crashFile = System.IO.Directory.GetFiles(crashDir, "*.txt")
+                    .OrderByDescending(System.IO.File.GetLastWriteTime)
+                    .FirstOrDefault();
+                if (crashFile != null)
+                {
+                    var crashTime = System.IO.File.GetLastWriteTime(crashFile);
+                    if (crashTime > DateTime.Now.AddMinutes(-1))
+                    {
+                        var crashContent = System.IO.File.ReadAllText(crashFile);
+                        var preview = crashContent.Length > 2000 ? crashContent[..2000] + "..." : crashContent;
+                        Log.Error("[FATAL] 检测到最新的崩溃报告（{Path}）：\n{Content}", crashFile, preview);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "读取服务器崩溃日志失败");
+        }
+    }
+
+    /// <summary>
+    /// 核心异步 API：以监管模式启动 Minecraft 服务器。
+    /// </summary>
+    /// <remarks>
+    /// 流程：
+    /// 1. 复用 Legacy 的 Java 检测 + 参数规范化逻辑（不重复造轮子）
+    /// 2. 合并「全局 AppConfig.Supervisor」+「KnownServer.Supervisor」得到最终策略
+    /// 3. 调用 IProcessSupervisorService.LaunchSupervisedAsync（Job Object + 崩溃重启 + 优先级 + 内存上限）
+    /// 4. 进入 _supervisedHandles 字典，订阅 StatusChanged 实现防睡眠引用计数 & 任务栏闪烁
+    /// 5. StopServer 时先 Dispose 监管句柄（会取消重启监控 + Kill Job Object），再走旧版 StopProcessTree 作为兜底
+    /// </remarks>
+    public async Task<SupervisedProcessHandle?> StartServerSupervisedAsync(ServerInstance server, CancellationToken ct = default)
+    {
+        if (_supervisor == null)
+        {
+            Log.Warning("[SUP] ProcessSupervisorService 不可用（非 Windows），返回 null；可调用 StartServer 走裸启动");
+            return null;
+        }
+
+        Log.Information("[SUP] 尝试以监管模式启动服务器: {JarName}", server.ServerJarName);
+
+        // ---------- 复用 Legacy 版的前置校验 & Java 检测 & 参数规范化 ----------
+        if (IsServerRunning(server))
+        {
+            Log.Warning("[WARN] 服务器已经在运行中，跳过启动");
+            return TryGetSupervisedHandle(server.ServerJarPath);
+        }
+
+        if (!File.Exists(server.ServerJarPath))
+        {
+            Log.Error("[ERR] JAR 文件不存在: {JarPath}", server.ServerJarPath);
+            return null;
+        }
+
+        if (!Directory.Exists(server.WorkingDirectory))
+        {
+            Log.Error("[ERR] 工作目录不存在: {Dir}", server.WorkingDirectory);
+            return null;
+        }
+
+        string? javaExe = null;
+        JavaInstallationInfo? javaInfo = null;
+        if (!string.IsNullOrEmpty(server.JavaPath))
+        {
+            javaInfo = _javaFinderService.Verify(server.JavaPath);
+            if (javaInfo != null) javaExe = javaInfo.JavaPath;
+        }
+        if (javaExe == null)
+        {
+            javaInfo = _javaFinderService.FindDefault();
+            if (javaInfo != null) javaExe = javaInfo.JavaPath;
+        }
+        if (string.IsNullOrEmpty(javaExe) || !File.Exists(javaExe))
+        {
+            Log.Error("[ERR] Java 可执行文件不可用: {JavaPath}", javaExe);
+            return null;
+        }
+
+        if (javaInfo != null)
+        {
+            Log.Information("[JAVA] 使用 Java: {Version} ({Vendor})", javaInfo.VersionString, javaInfo.Vendor);
+            if (javaInfo.Version != null)
+            {
+                var major = javaInfo.Version.Major;
+                if (major < 17)
+                    Log.Warning("[WARN] Java 版本偏低（{Version}），现代 Minecraft 服务器需要 Java 17+，推荐 Java 21", javaInfo.VersionString);
+            }
+            if (!javaInfo.Is64Bit)
+                Log.Warning("[WARN] 32 位 Java 已不推荐，请更换 64 位 Java 以获得完整内存支持");
+        }
+
+        var normalizationResult = JvmArgumentNormalizer.Normalize(server.JvmArguments);
+        var normalizedServer = new ServerInstance
+        {
+            ProcessId = server.ProcessId,
+            ServerType = server.ServerType,
+            WorkingDirectory = server.WorkingDirectory,
+            JavaPath = javaExe,
+            ServerJarPath = server.ServerJarPath,
+            ServerJarName = server.ServerJarName,
+            FullCommandLine = server.FullCommandLine,
+            JvmArguments = normalizationResult.Arguments,
+            InitialHeapMemoryBytes = server.InitialHeapMemoryBytes,
+            MaxHeapMemoryBytes = server.MaxHeapMemoryBytes,
+            ConfigFiles = server.ConfigFiles,
+            UsesAikarFlags = server.UsesAikarFlags,
+            GcType = server.GcType,
+            ServerPort = server.ServerPort
+        };
+        foreach (var w in normalizationResult.Warnings) Log.Warning("[WARN] 参数警告: {W}", w);
+
+        var arguments = BuildStartupArguments(normalizedServer);
+        Log.Information("[SUP] 启动命令: java.exe {Args}", arguments);
+
+        // ---------- 合并监管策略 ----------
+        var options = MergePolicies(server);
+        Log.Information("[SUP] 监管策略：MaxRestart={Max}, Cooldown={Cool}ms, Priority={Prio}, MemCap={MemCap}B, PreventSleep={Sleep}, Job={Job}",
+            options.MaxAutoRestartCount == int.MaxValue ? "∞" : options.MaxAutoRestartCount.ToString(),
+            options.RestartCooldownMs,
+            options.Priority,
+            options.MaxProcessMemoryBytes == 0 ? "∞" : options.MaxProcessMemoryBytes.ToString(),
+            options.PreventSystemSleep,
+            options.BindToJobObject);
+
+        // ---------- 启动（走 Supervisor） ----------
+        var handle = await _supervisor.LaunchSupervisedAsync(
+            executablePath: javaExe,
+            arguments: arguments,
+            workingDirectory: server.WorkingDirectory,
+            options: options,
+            ct: ct).ConfigureAwait(false);
+
+        if (handle == null)
+        {
+            Log.Error("[SUP] LaunchSupervisedAsync 返回 null，启动失败（可查 Serilog 日志定位具体失败步骤）");
+            return null;
+        }
+
+        server.ProcessId = handle.ProcessId;
+        Log.Information("[SUP] 服务器监管已就绪！PID={Pid}（Job Object 已绑定，关闭 MSMC 时子进程会被一起清理）", handle.ProcessId);
+
+        // 订阅崩溃/退出事件
+        handle.ProcessCrashedAndWillRestart += (_, exitCode) =>
+        {
+            Log.Warning("[SUP] 服务器异常崩溃 exitCode={Code}（第 {Count} 次，Max={Max}，将在 {Cool}ms 后自动重启）",
+                exitCode, handle.CrashCount, options.MaxAutoRestartCount, options.RestartCooldownMs);
+            try { _supervisor?.FlashMainWindowTaskbar(IntPtr.Zero, count: 5, intervalMs: 250); } catch { /* ignore */ }
+            ReadServerCrashDetailsLegacy(server.WorkingDirectory);
+        };
+        handle.ProcessExited += (_, exitCode) =>
+        {
+            if (exitCode == 0)
+                Log.Information("[SUP] 服务器优雅退出 exitCode=0（不会自动重启）");
+            else
+                Log.Warning("[SUP] 服务器退出 exitCode={Code}，累计崩溃 {Count} 次，到达 MaxAutoRestartCount 后不再重启",
+                    exitCode, handle.CrashCount);
+        };
+
+        // 进入字典（先移除过期的同 Key 句柄，防止同 JAR 路径重复监管）
+        var key = NormalizeJarKey(server.ServerJarPath);
+        if (_supervisedHandles.TryRemove(key, out var old))
+        {
+            try { old.Dispose(); } catch { /* ignore */ }
+        }
+        _supervisedHandles[key] = handle;
+
+        // 「防睡眠」注意：ProcessSupervisorService 内部已经实现了引用计数 +
+        // LaunchSupervisedAsync 时已经按 options.PreventSystemSleep=true 自动调用 PreventSystemSleep(true)，
+        // Dispose 时自动反向释放。这里不再额外套一层引用计数，避免双重加锁/释放。
+        // 仅在 ServerManagerService 层暴露「当前是否有监管服需要防睡眠」的查询接口方便 UI 展示。
+
+        // 订阅句柄 Disposed → 退出字典（SupervisedProcessHandle 没有公开 event，我们用一个后台 Task 轮询 HasExited 配合字典清理）
+        _ = MonitorHandleLifetimeAsync(handle, key, server.ServerJarName);
+
+        return handle;
+    }
+
+    /// <summary>
+    /// 后台跟踪监管句柄的生命周期：当底层 Process 退出（HasExited）时，
+    /// 若它仍在 _supervisedHandles 字典中就移除（保证 UI 层 SupervisedServers 快照的准确性）。
+    /// </summary>
+    private async Task MonitorHandleLifetimeAsync(SupervisedProcessHandle handle, string key, string displayName)
+    {
+        try
+        {
+            // 轮询间隔 1s 足够（Process.HasExited 是内核事件，轮询成本几乎为 0）
+            while (!handle.HasExited)
+            {
+                await Task.Delay(1000).ConfigureAwait(false);
+                if (handle.HasExited) break;
+            }
+        }
+        catch (ObjectDisposedException) { /* 正常 Dispose 路径 */ }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "[SUP] 监管句柄生命周期跟踪异常: {Name}", displayName);
+        }
+        finally
+        {
+            if (_supervisedHandles.TryRemove(key, out _))
+                Log.Information("[SUP] 服务器监管句柄已从活动字典移除: {Name}", displayName);
+        }
+    }
+
+    /// <summary>停止服务器（监管模式增强版：先 Terminate 监管句柄取消重启 + Kill Job，再走旧版 StopProcessTree 兜底）。</summary>
+    public bool StopServer(ServerInstance server)
+    {
+        Log.Information("[STOP] 尝试停止服务器: {JarName}", server.ServerJarName);
+
+        // Step 1: 若是监管启动 → 先取消重启 + Kill Job Object（= 整个子进程树一起死，比 WMI 更干净）
+        if (!string.IsNullOrWhiteSpace(server.ServerJarPath))
+        {
+            var handle = TryGetSupervisedHandle(server.ServerJarPath);
+            if (handle != null)
+            {
+                try
+                {
+                    Log.Information("[STOP] 检测到服务器受监管（PID={Pid}），通过 SupervisedProcessHandle.Terminate 终止（含 Job Object）", handle.ProcessId);
+                    handle.Terminate(0);
+                    handle.Dispose();
+                    Log.Information("[STOP] SupervisedProcessHandle 已 Dispose");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "[STOP] SupervisedProcessHandle 终止报错，继续走旧版 StopProcessTree 兜底");
+                }
+            }
+        }
+
+        // Step 2: 旧版停止流程作为兜底（Find → Kill 进程树）
+        var process = FindServerProcess(server);
+        if (process != null)
+        {
+            bool ok = StopProcessTree(process.Id);
+            Log.Information("[STOP] 进程树终止结果: {OK}", ok ? "成功" : "失败");
+            return ok;
+        }
+        if (server.ProcessId > 0)
+        {
+            return StopServerByProcessId(server.ProcessId);
+        }
+
+        Log.Information("[INFO] 未找到运行中的服务器进程，视为已停止: {JarName}", server.ServerJarName);
+        return true;
     }
 
     /// <summary>

@@ -14,6 +14,10 @@ import {
   FaPlus,
   FaTrashCan,
   FaStar,
+  FaShieldHalved,
+  FaBolt,
+  FaMoon,
+  FaMemory,
 } from 'react-icons/fa6'
 import {
   getSettings,
@@ -111,6 +115,43 @@ export function SettingsPage(): JSX.Element {
     return saved ? saved === 'true' : false
   })
 
+  // ─── 进程监管策略（崩溃重启/防睡眠/优先级/内存上限） ───
+  // 后端 AppConfig.Supervisor 已扩展，前端走 localStorage 持久化 + 保存时 updateSettings 回传
+  const DEFAULT_SUPERVISOR: SettingsData['supervisor'] = {
+    enableCrashRestart: true,
+    maxRestartAttemptsPerHour: 10,
+    restartCooldownSeconds: 30,
+    preventSystemSleepWhenRunning: true,
+    processPriority: 'Normal',
+    maxProcessMemoryBytes: 0,
+    maxTotalRestartAttempts: -1,
+  }
+
+  const [supervisor, setSupervisor] = useState<SettingsData['supervisor']>(() => {
+    try {
+      const saved = localStorage.getItem('msmc_supervisor')
+      if (saved) return { ...DEFAULT_SUPERVISOR, ...(JSON.parse(saved) as Partial<SettingsData['supervisor']>) }
+    } catch { /* ignore */ }
+    return DEFAULT_SUPERVISOR
+  })
+
+  const patchSupervisor = (patch: Partial<SettingsData['supervisor']>): void => {
+    setSupervisor((prev) => {
+      const next = { ...prev, ...patch }
+      try { localStorage.setItem('msmc_supervisor', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }
+
+  const processPriorityOptions: Array<{ value: SettingsData['supervisor']['processPriority']; label: string; hint: string }> = [
+    { value: 'Idle', label: '最低 (Idle)', hint: '只在系统完全空闲时运行，几乎不影响前台任务' },
+    { value: 'BelowNormal', label: '低于标准 (BelowNormal)', hint: '轻度后台任务，推荐不影响游戏体验时使用' },
+    { value: 'Normal', label: '标准 (Normal)', hint: '默认均衡调度，推荐绝大部分服主' },
+    { value: 'AboveNormal', label: '高于标准 (AboveNormal)', hint: '大服/多人在线服，抢占更多 CPU 时间片' },
+    { value: 'High', label: '高 (High)', hint: '竞技服或高 TPS 要求，可能轻微影响鼠标键盘响应' },
+    { value: 'RealTime', label: '实时 (RealTime)', hint: '不推荐！抢占鼠标键盘/音频驱动，极端场景才用' },
+  ]
+
   const loadSettings = useCallback(async (): Promise<void> => {
     try {
       const resp = await getSettings()
@@ -121,6 +162,8 @@ export function SettingsPage(): JSX.Element {
       setPreferJavaw(resp.preferJavaw)
       setStatusMessage(resp.statusMessage)
       applySettingsToCss(resp)
+      // 如果后端有带 supervisor 字段 → 覆盖 localStorage 默认值（确保后端 C# AppConfig.Supervisor 是真·源）
+      if (resp.supervisor) patchSupervisor(resp.supervisor)
     } catch (e) {
       console.error('获取设置失败:', e)
     }
@@ -352,7 +395,8 @@ export function SettingsPage(): JSX.Element {
         enableAnimations: settings?.enableAnimations ?? true,
         enableWindowsNotifications,
         preferJavaw,
-      })
+        supervisor,
+      } as any)
       if (!updateResult?.success) {
         setStatusMessage(`应用设置失败: ${updateResult?.error || '未知错误'}`)
         return
@@ -375,7 +419,8 @@ export function SettingsPage(): JSX.Element {
         enableAnimations: settings?.enableAnimations ?? true,
         enableWindowsNotifications,
         preferJavaw,
-      })
+        supervisor,
+      } as any)
       if (!updateResult?.success) {
         setStatusMessage(`应用设置失败: ${updateResult?.error || '未知错误'}`)
         return
@@ -821,6 +866,208 @@ export function SettingsPage(): JSX.Element {
             >
               无控制台窗口启动（不推荐，服务器日志将不可见）
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* [SUPERVISOR] 进程监管策略卡片 */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div className="md-card md-card-elevated p-5 mb-4 md-stagger-item" style={{ animationDelay: '140ms' }}>
+        <div className="flex items-center mb-2">
+          <FaShieldHalved size={18} style={{ color: 'var(--md-accent-text)', marginRight: 8 }} />
+          <h2
+            className="md-section-title"
+            style={{ color: 'var(--md-accent-text)', margin: 0, lineHeight: 1.2 }}
+          >
+            进程监管策略
+          </h2>
+        </div>
+        <div
+          style={{
+            fontSize: 12,
+            color: 'var(--md-body-light)',
+            margin: '4px 0 16px 26px',
+            lineHeight: 1.55,
+          }}
+        >
+          基于 Win32 Job Object 实现：崩溃自动重启、防止系统睡眠、设置进程优先级/内存硬上限。关闭 MSMC
+          时所有服务器进程会被一并终止，不会像老版本出现“幽灵 Java。
+        </div>
+
+        {/* ✅ 1. 崩溃自动重启开关 */}
+        <div className="md-field">
+          <label className="md-switch md-switch-lg">
+            <input
+              type="checkbox"
+              checked={supervisor.enableCrashRestart}
+              onChange={(e) => patchSupervisor({ enableCrashRestart: e.target.checked })}
+            />
+            <span className="md-slider md-slider-lg" />
+            <div className="md-switch-label">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FaRotate size={13} style={{ color: 'var(--md-primary)' }} />
+                <span style={{ fontSize: 13, color: 'var(--md-body)', fontWeight: 500 }}>
+                  崩溃自动重启
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--md-body-lighter)', marginTop: 2 }}>
+                服务器意外崩溃后按冷却时间自动拉起，直到达到次数上限后停止
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {/* ✅ 2. 每小时最大重启次数 */}
+        <div className="md-field md-stacked">
+          <div className="md-label">
+          <FaBolt size={12} style={{ marginRight: 6, color: 'var(--md-warning)' }} />
+          每小时最大重启次数
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min={0}
+            max={120}
+            step={1}
+            value={supervisor.maxRestartAttemptsPerHour}
+            onChange={(e) => patchSupervisor({ maxRestartAttemptsPerHour: Number(e.target.value) })}
+            className="md-range"
+            style={{ flex: 1 }}
+            disabled={!supervisor.enableCrashRestart}
+          />
+          <div style={{ minWidth: 56, textAlign: 'right', fontSize: 14, fontWeight: 600, color: 'var(--md-body)' }}>
+            {supervisor.maxRestartAttemptsPerHour === 0 ? '不限' : supervisor.maxRestartAttemptsPerHour + ' 次/时'}
+          </div>
+          </div>
+        </div>
+
+        {/* ✅ 3. 重启冷却时间（秒） */}
+        <div className="md-field md-stacked">
+          <div className="md-label">
+          <FaMemory size={12} style={{ marginRight: 6, color: 'var(--md-info)' }} />
+          重启冷却时间
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min={0}
+            max={600}
+            step={1}
+            value={supervisor.restartCooldownSeconds}
+            onChange={(e) => patchSupervisor({ restartCooldownSeconds: Number(e.target.value) })}
+            className="md-range"
+            style={{ flex: 1 }}
+            disabled={!supervisor.enableCrashRestart}
+          />
+          <div style={{ minWidth: 72, textAlign: 'right', fontSize: 14, fontWeight: 600, color: 'var(--md-body)' }}>
+            {supervisor.restartCooldownSeconds} 秒
+          </div>
+          </div>
+        </div>
+
+        {/* ✅ 4. 防睡眠开关 */}
+        <div className="md-field">
+          <label className="md-switch md-switch-lg">
+            <input
+              type="checkbox"
+              checked={supervisor.preventSystemSleepWhenRunning}
+              onChange={(e) => patchSupervisor({ preventSystemSleepWhenRunning: e.target.checked })}
+            />
+            <span className="md-slider md-slider-lg" />
+            <div className="md-switch-label">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FaMoon size={13} style={{ color: 'var(--md-accent)' }} />
+                <span style={{ fontSize: 13, color: 'var(--md-body)', fontWeight: 500 }}>
+                  服务器运行时阻止系统睡眠
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--md-body-lighter)', marginTop: 2 }}>
+                只要有一台监管的服务器在运行，Windows 就不会进入 Modern Standby / S3 睡眠
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {/* ✅ 5. 进程优先级下拉 */}
+        <div className="md-field md-stacked">
+          <div className="md-label">
+          <FaBolt size={12} style={{ marginRight: 6, color: 'var(--md-primary)' }} />
+          进程优先级 (Process Priority)
+        </div>
+        <select
+          className="md-select"
+          value={supervisor.processPriority}
+          onChange={(e) => patchSupervisor({ processPriority: e.target.value as SettingsData['supervisor']['processPriority'] })}
+          style={{ maxWidth: 480 }}
+        >
+          {processPriorityOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <div style={{ fontSize: 11, color: 'var(--md-body-lighter)', marginTop: 6, lineHeight: 1.6 }}>
+          {processPriorityOptions.find((o) => o.value === supervisor.processPriority)?.hint}
+        </div>
+        </div>
+
+        {/* ✅ 6. 进程内存硬上限（GB） */}
+        <div className="md-field md-stacked">
+          <div className="md-label">
+          <FaMemory size={12} style={{ marginRight: 6, color: 'var(--md-danger)' }} />
+          进程内存硬上限 (Job Object 级别，超出内核直接 Kill)
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min={0}
+            max={128}
+            step={1}
+            value={Math.round(supervisor.maxProcessMemoryBytes / (1024 ** 3))}
+            onChange={(e) => {
+              const gb = Number(e.target.value)
+              patchSupervisor({ maxProcessMemoryBytes: gb === 0 ? 0 : gb * (1024 ** 3) })
+            }}
+            className="md-range"
+            style={{ flex: 1 }}
+          />
+          <div style={{ minWidth: 72, textAlign: 'right', fontSize: 14, fontWeight: 600, color: 'var(--md-body)' }}>
+            {supervisor.maxProcessMemoryBytes === 0
+              ? '不限'
+              : `${Math.round(supervisor.maxProcessMemoryBytes / (1024 ** 3))} GB`}
+          </div>
+          </div>
+        <div style={{ fontSize: 11, color: 'var(--md-body-lighter)', marginTop: 4, lineHeight: 1.6 }}>
+          在 JVM <code>-Xmx</code> 之外再套一层 OS 级别硬上限，防止内存泄漏直接打爆整机（推荐设置为略大于 -Xmx 2-4GB）
+        </div>
+        </div>
+
+        {/* ✅ 7. 总重启次数上限 */}
+        <div className="md-field md-stacked">
+          <div className="md-label">
+          <FaShield size={12} style={{ marginRight: 6, color: 'var(--md-success)' }} />
+          总重启次数上限（防止一次性地图损坏导致无限重启）
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min={-1}
+            max={1000}
+            step={1}
+            value={supervisor.maxTotalRestartAttempts}
+            onChange={(e) => patchSupervisor({ maxTotalRestartAttempts: Number(e.target.value) })}
+            className="md-range"
+            style={{ flex: 1 }}
+            disabled={!supervisor.enableCrashRestart}
+          />
+          <div style={{ minWidth: 96, textAlign: 'right', fontSize: 14, fontWeight: 600, color: 'var(--md-body)' }}>
+            {supervisor.maxTotalRestartAttempts === -1
+              ? '不限次数'
+              : supervisor.maxTotalRestartAttempts === 0
+                ? '永不重启'
+                : `${supervisor.maxTotalRestartAttempts} 次`}
+          </div>
           </div>
         </div>
       </div>

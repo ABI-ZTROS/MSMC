@@ -43,16 +43,33 @@ public sealed class SupervisedProcessHandle : IAsyncDisposable, IDisposable
     public event EventHandler<int>? ProcessExited;
     public event EventHandler<int>? ProcessCrashedAndWillRestart;
 
+    /// <summary>启动时复制的监管策略（用于 UI 展示 & 序列化）</summary>
+    public ProcessSupervisorOptions Options { get; }
+
+    /// <summary>
+    /// 崩溃后计划下次重启的 UTC 时间戳；
+    /// 不在重启等待阶段（例如进程在运行中 / 已放弃重启 / 重启循环中）则为 null。
+    /// </summary>
+    public DateTime? ScheduledRestartAtUtc { get; internal set; }
+
+    /// <summary>从 psapi 查询的最新 WorkingSet 字节数（0 表示不可用/未刷新）。</summary>
+    public long LastWorkingSetBytes { get; internal set; }
+
+    /// <summary>近 1 秒 CPU 百分比估算（0-100，-1 表示不可用）。</summary>
+    public double LastCpuPercent { get; internal set; } = -1;
+
     internal SupervisedProcessHandle(
         SafeJobHandle job,
         Process process,
         CancellationTokenSource lifetimeCts,
-        ILogger log)
+        ILogger log,
+        ProcessSupervisorOptions options)
     {
         _job = job;
         _process = process;
         _lifetimeCts = lifetimeCts;
         _log = log;
+        Options = options;
         _process.EnableRaisingEvents = true;
         _process.Exited += OnProcessExited;
     }
@@ -239,7 +256,7 @@ public sealed class ProcessSupervisorService : IProcessSupervisorService
 
             var handle = new SupervisedProcessHandle(
                 job ?? new SafeJobHandle(), // 没绑 Job 时给个空句柄（Dispose 不会空引用）
-                process, lifetimeCts, _log);
+                process, lifetimeCts, _log, options);
             handle.ProcessCrashedAndWillRestart += async (_, exitCode) =>
                 await OnRestartAsync(handle, executablePath, arguments, workingDirectory, options, exitCode).ConfigureAwait(false);
             return handle;
@@ -263,6 +280,7 @@ public sealed class ProcessSupervisorService : IProcessSupervisorService
         // 超过最大重启次数：解锁睡眠，发通知，不再拉
         if (handle.CrashCount > opts.MaxAutoRestartCount)
         {
+            handle.ScheduledRestartAtUtc = null;
             _log.Error("[Supervisor] PID={Pid} 累计崩溃 {N} 次，超过上限 {Max}，放弃自动重启",
                 handle.ProcessId, handle.CrashCount, opts.MaxAutoRestartCount);
             if (opts.PreventSystemSleep) PreventSystemSleep(enabled: false);
@@ -271,8 +289,19 @@ public sealed class ProcessSupervisorService : IProcessSupervisorService
 
         try
         {
+            // ✅ 先写入「计划下次重启时间」，UI 层可显示倒数
+            handle.ScheduledRestartAtUtc = DateTime.UtcNow.AddMilliseconds(opts.RestartCooldownMs);
+
             // 冷却时间：避免 1s 10 次重启打爆磁盘/CPU
             await Task.Delay(opts.RestartCooldownMs).ConfigureAwait(false);
+
+            // 如果此时句柄已经被 Dispose（用户主动点 Stop），立刻退出，不再拉起
+            if (handle.HasExited && handle.CrashCount == 0)
+            {
+                handle.ScheduledRestartAtUtc = null;
+                return;
+            }
+
             var psi = new ProcessStartInfo(exe, args)
             {
                 WorkingDirectory = cwd,
@@ -280,7 +309,12 @@ public sealed class ProcessSupervisorService : IProcessSupervisorService
                 CreateNoWindow = true,
             };
             var newProc = Process.Start(psi);
-            if (newProc == null) { _log.Error("[Supervisor] 重启失败：Process.Start 返回 null"); return; }
+            if (newProc == null)
+            {
+                _log.Error("[Supervisor] 重启失败：Process.Start 返回 null");
+                handle.ScheduledRestartAtUtc = null;
+                return;
+            }
             _log.Information("[Supervisor] 第 {N} 次重启成功 → 新 PID={NewPid}", handle.CrashCount, newProc.Id);
             // 新进程也进 Job
             using var job = CreateBoundJob(opts);
@@ -289,9 +323,13 @@ public sealed class ProcessSupervisorService : IProcessSupervisorService
                 var err = Marshal.GetLastWin32Error();
                 _log.Warning("[Supervisor] 重启进程 Job 绑定失败 win32={E}", err);
             }
+
+            // 重启成功，清除「计划重启时间」
+            handle.ScheduledRestartAtUtc = null;
         }
         catch (Exception ex)
         {
+            handle.ScheduledRestartAtUtc = null;
             _log.Error(ex, "[Supervisor] 自动重启失败 code={Code}", exitCode);
         }
     }
@@ -344,7 +382,7 @@ public sealed class ProcessSupervisorService : IProcessSupervisorService
         }
         if (options.PreferredCores?.Count > 0) SetProcessAffinity(pid, options.PreferredCores);
         try { proc.PriorityClass = options.Priority; } catch { /* ignore */ }
-        return new SupervisedProcessHandle(job, proc, new CancellationTokenSource(), _log);
+        return new SupervisedProcessHandle(job, proc, new CancellationTokenSource(), _log, options);
     }
 
     // ───────────────────────────────────────────────────────────────────────

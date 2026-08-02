@@ -116,6 +116,17 @@ export interface ServerInfo {
   // Q3: 选中服务器的关联「已知服务器」ID。可空。
   // 仅当服务器在后端被成功关联到 KnownServers 列表时才填充，未关联时不传。
   knownServerId?: string
+  // ── 监管运行时状态（可空，未被监管时不传）──
+  isSupervised?: boolean
+  crashCount?: number
+  // 崩溃后计划下次重启的 ISO 时间戳；非重启等待阶段不传
+  scheduledRestartAt?: string
+  // 当前物理工作集（Working Set）字节数
+  currentWorkingSetBytes?: number
+  // 近几秒采样的 CPU 百分比 (0-100)，未监控时不传
+  cpuPercent?: number
+  // 监管内的进程优先级，对齐 ProcessPriorityClass 字符串
+  supervisedPriority?: 'Idle' | 'BelowNormal' | 'Normal' | 'AboveNormal' | 'High' | 'RealTime'
 }
 
 export interface KnownServerInfo {
@@ -134,6 +145,13 @@ export interface KnownServerInfo {
   addedAt?: string
   lastSeenAt: string
   status?: string
+  // ── 监管运行时状态（可空，未被监管时不传）──
+  isSupervised?: boolean
+  crashCount?: number
+  scheduledRestartAt?: string
+  currentWorkingSetBytes?: number
+  cpuPercent?: number
+  supervisedPriority?: 'Idle' | 'BelowNormal' | 'Normal' | 'AboveNormal' | 'High' | 'RealTime'
 }
 
 export interface ServerListResponse {
@@ -310,6 +328,17 @@ export interface ConfigSaveResult {
 // 设置类型
 // ─────────────────────────────────────────────────────────────────────
 
+export interface ProcessSupervisorPolicy {
+  enableCrashRestart: boolean
+  maxRestartAttemptsPerHour: number
+  restartCooldownSeconds: number
+  preventSystemSleepWhenRunning: boolean
+  // 对应 System.Diagnostics.ProcessPriorityClass，枚举化为字符串方便前端显示/选择
+  processPriority: 'Idle' | 'BelowNormal' | 'Normal' | 'AboveNormal' | 'High' | 'RealTime'
+  maxProcessMemoryBytes: number
+  maxTotalRestartAttempts: number
+}
+
 export interface SettingsData {
   primaryColorHex: string
   accentColorHex: string
@@ -324,6 +353,8 @@ export interface SettingsData {
   preferJavaw: boolean
   statusMessage: string
   isDarkMode: boolean
+  // ✅ 进程监管策略（崩溃重启 + 防睡眠 + 优先级 + 内存上限），本地 localStorage 持久化
+  supervisor: ProcessSupervisorPolicy
 }
 
 export interface JavaInstallationInfo {

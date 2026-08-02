@@ -105,4 +105,39 @@ public class KnownServer
     /// 收藏的服务器在 UI 中置顶或高亮显示。
     /// </summary>
     public bool IsFavorite { get; set; }
+
+    /// <summary>
+    /// 服务器级进程监管策略覆盖。
+    /// 仅非 null 的字段会覆盖全局 <see cref="io.NET.ZTR_OS.Features.Settings.Services.AppConfig.Supervisor"/>，
+    /// 其余字段走全局默认（实现字段级而非整对象级覆盖）。
+    /// </summary>
+    public PerServerSupervisorPolicy? Supervisor { get; set; }
+}
+
+/// <summary>
+/// 服务器级监管策略覆盖 —— 所有字段均为可空，null 表示继承全局策略。
+/// 目的：用户想仅对某台服改「崩溃不重启」时，不必复制整个策略对象。
+/// </summary>
+public class PerServerSupervisorPolicy
+{
+    /// <summary>服务器级覆盖：是否启用崩溃自动重启（null = 走全局）。</summary>
+    public bool? EnableCrashRestart { get; set; }
+
+    /// <summary>服务器级覆盖：每小时最多重启次数（null = 走全局）。</summary>
+    public int? MaxRestartAttemptsPerHour { get; set; }
+
+    /// <summary>服务器级覆盖：冷却秒数（null = 走全局）。</summary>
+    public int? RestartCooldownSeconds { get; set; }
+
+    /// <summary>服务器级覆盖：是否阻止系统睡眠（注意：此开关本质是「只要有服在跑就锁」，更推荐走全局）。</summary>
+    public bool? PreventSystemSleepWhenRunning { get; set; }
+
+    /// <summary>服务器级覆盖：进程优先级类（null = 走全局）。</summary>
+    public System.Diagnostics.ProcessPriorityClass? ProcessPriority { get; set; }
+
+    /// <summary>服务器级覆盖：单服提交内存上限字节（null = 走全局；0 = 不限制）。</summary>
+    public long? MaxProcessMemoryBytes { get; set; }
+
+    /// <summary>服务器级覆盖：总重启次数上限（null = 走全局；-1 = 无限；0 = 永不重启）。</summary>
+    public int? MaxTotalRestartAttempts { get; set; }
 }

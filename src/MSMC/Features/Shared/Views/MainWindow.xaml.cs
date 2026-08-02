@@ -857,54 +857,75 @@ public partial class MainWindow : Window
         {
             var running = _vm?.DetectionPage?.DetectionResult?.Servers ?? [];
             var known = _vm?.DetectionPage?.AllKnownServers ?? [];
+            var detectionVm = _vm?.DetectionPage;
+
+            // 辅助：按 JAR 路径拿运行时监管快照（未被监管则返回 null，前端不渲染角标）
+            object? SupervisorSnapByJar(string? jarPath)
+                => detectionVm == null
+                    ? null
+                    : detectionVm.GetSupervisorStatusSnapshot(detectionVm.TryGetSupervisedHandleByJarPath(jarPath));
 
             return Task.FromResult<object?>(new
             {
-                running = running.Select(s => new
+                running = running.Select(s =>
                 {
-                    processId = s.ProcessId,
-                    serverType = s.ServerType.ToString(),
-                    workingDirectory = s.WorkingDirectory,
-                    serverJarPath = s.ServerJarPath,
-                    serverJarName = s.ServerJarName,
-                    javaPath = s.JavaPath,
-                    fullCommandLine = s.FullCommandLine,
-                    serverPort = s.ServerPort,
-                    isPortOpen = s.IsPortOpen,
-                    portConflict = s.PortConflict,
-                    displayName = s.DisplayName,
-                    status = "Running",
-                    maxHeapMemoryBytes = s.MaxHeapMemoryBytes,
-                    initialHeapMemoryBytes = s.InitialHeapMemoryBytes,
-                    usesAikarFlags = s.UsesAikarFlags,
-                    gcType = s.GcType,
-                    configFiles = s.ConfigFiles,
-                    networkStatusText = s.NetworkStatusText,
-                    formattedMaxMemory = s.FormattedMaxMemory,
-                    isKnown = !string.IsNullOrEmpty(s.KnownServerId),
-                    // Pattern2 修复：运行中实例补 knownServerId 精确关联字段。
-                    // 没补之前，前端列表里只能拿到 isKnown 布尔，拿不到精确 ID，
-                    // 进入 ConfigEditor / Jvm 参数页时只能靠 displayName 回查，匹配非常脆弱。
-                    knownServerId = s.KnownServerId,
+                    var supervisorSnap = SupervisorSnapByJar(s.ServerJarPath);
+                    return new
+                    {
+                        processId = s.ProcessId,
+                        serverType = s.ServerType.ToString(),
+                        workingDirectory = s.WorkingDirectory,
+                        serverJarPath = s.ServerJarPath,
+                        serverJarName = s.ServerJarName,
+                        javaPath = s.JavaPath,
+                        fullCommandLine = s.FullCommandLine,
+                        serverPort = s.ServerPort,
+                        isPortOpen = s.IsPortOpen,
+                        portConflict = s.PortConflict,
+                        displayName = s.DisplayName,
+                        status = "Running",
+                        maxHeapMemoryBytes = s.MaxHeapMemoryBytes,
+                        initialHeapMemoryBytes = s.InitialHeapMemoryBytes,
+                        usesAikarFlags = s.UsesAikarFlags,
+                        gcType = s.GcType,
+                        configFiles = s.ConfigFiles,
+                        networkStatusText = s.NetworkStatusText,
+                        formattedMaxMemory = s.FormattedMaxMemory,
+                        isKnown = !string.IsNullOrEmpty(s.KnownServerId),
+                        // Pattern2 修复：运行中实例补 knownServerId 精确关联字段。
+                        // 没补之前，前端列表里只能拿到 isKnown 布尔，拿不到精确 ID，
+                        // 进入 ConfigEditor / Jvm 参数页时只能靠 displayName 回查，匹配非常脆弱。
+                        knownServerId = s.KnownServerId,
+                        // ✅ 监管运行时状态角标
+                        isSupervised = supervisorSnap == null ? null : (bool?)true,
+                        __supervisor = supervisorSnap,
+                    };
                 }).ToList(),
-                known = known.Select(k => new
+                known = known.Select(k =>
                 {
-                    id = k.Id,
-                    // Pattern2 修复：返回统一 knownServerId 命名，ServerInfo 上同名对应。
-                    // 旧字段 id 保留做兼容。
-                    knownServerId = k.KnownServerId,
-                    name = k.Name,
-                    workingDirectory = k.WorkingDirectory,
-                    serverJarPath = k.ServerJarPath,
-                    javaPath = k.JavaPath,
-                    port = k.Port,
-                    initialHeapMemoryBytes = k.InitialHeapMemoryBytes,
-                    maxHeapMemoryBytes = k.MaxHeapMemoryBytes,
-                    group = k.Group,
-                    isFavorite = k.IsFavorite,
-                    addedAt = k.AddedAt,
-                    lastSeenAt = k.LastSeenAt,
-                    status = "Stopped",
+                    var supervisorSnap = SupervisorSnapByJar(k.ServerJarPath);
+                    return new
+                    {
+                        id = k.Id,
+                        // Pattern2 修复：返回统一 knownServerId 命名，ServerInfo 上同名对应。
+                        // 旧字段 id 保留做兼容。
+                        knownServerId = k.KnownServerId,
+                        name = k.Name,
+                        workingDirectory = k.WorkingDirectory,
+                        serverJarPath = k.ServerJarPath,
+                        javaPath = k.JavaPath,
+                        port = k.Port,
+                        initialHeapMemoryBytes = k.InitialHeapMemoryBytes,
+                        maxHeapMemoryBytes = k.MaxHeapMemoryBytes,
+                        group = k.Group,
+                        isFavorite = k.IsFavorite,
+                        addedAt = k.AddedAt,
+                        lastSeenAt = k.LastSeenAt,
+                        status = supervisorSnap != null ? "Running" : "Stopped",
+                        // ✅ 监管运行时状态角标
+                        isSupervised = supervisorSnap == null ? null : (bool?)true,
+                        __supervisor = supervisorSnap,
+                    };
                 }).ToList(),
                 isBusy = _vm?.DetectionPage?.IsBusy ?? false,
                 isAutoDetectEnabled = _vm?.DetectionPage?.IsAutoDetectEnabled ?? false,

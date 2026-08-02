@@ -1,5 +1,13 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
-import { clsx } from 'clsx'
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+import {
+  FaBolt,
+  FaMemory,
+  FaShieldHalved,
+  FaRotate,
+  FaServer,
+} from 'react-icons/fa6'
 import { Reveal } from '@/components/ui/Reveal'
 import { IconByName } from '@/utils/icons'
 import { useToastStore } from '@/stores/toastStore'
@@ -19,6 +27,166 @@ import {
 } from '@/utils/bridge'
 
 const bridge = getBridge()
+
+function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs))
+}
+
+// ─── 辅助：把字节数格式化为人类可读（B/KB/MB/GB/TB）───
+function formatBytes(bytes?: number | null, digits = 1): string {
+  if (bytes == null || Number.isNaN(bytes) || bytes === 0) return '—'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+  let i = 0
+  let n = bytes as number
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024
+    i++
+  }
+  return `${n.toFixed(digits)} ${units[i]}`
+}
+
+// ─── 辅助：显示「崩溃后计划重启的倒计时」───
+function useRestartCountdown(iso?: string | null): { text: string; remainingMs: number } | null {
+  const [now, setNow] = useState<number>(() => Date.now())
+  useEffect(() => {
+    if (!iso) return
+    const t = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(t)
+  }, [iso])
+  if (!iso) return null
+  const target = new Date(iso).getTime()
+  if (Number.isNaN(target)) return null
+  const remainingMs = Math.max(0, target - now)
+  const totalSec = Math.ceil(remainingMs / 1000)
+  const mm = Math.floor(totalSec / 60).toString().padStart(2, '0')
+  const ss = (totalSec % 60).toString().padStart(2, '0')
+  return { text: `${mm}:${ss}`, remainingMs }
+}
+
+// ─── 子组件：监管角标（盾牌 + 崩溃数 badge + 倒计时 + 内存/CPU 微指标）───
+
+interface SupervisorBadgeProps {
+  server: {
+    isSupervised?: boolean
+    crashCount?: number
+    scheduledRestartAt?: string | null
+    currentWorkingSetBytes?: number | null
+    cpuPercent?: number | null
+    supervisedPriority?: string | null
+  }
+  size?: 'sm' | 'md'
+}
+
+function SupervisorBadge({ server, size = 'sm' }: SupervisorBadgeProps): JSX.Element | null {
+  if (!server.isSupervised) return null
+
+  const countdown = useRestartCountdown(server.scheduledRestartAt)
+  const crashCount = server.crashCount ?? 0
+  const priority = server.supervisedPriority ?? undefined
+  const priorityShort: Record<string, string> = {
+    Idle: 'IDLE',
+    BelowNormal: 'BELOW',
+    Normal: 'NORM',
+    AboveNormal: 'ABOVE',
+    High: 'HIGH',
+    RealTime: 'RT',
+  }
+
+  const iconSize = size === 'sm' ? 11 : 13
+  const pillBase = cn(
+    'inline-flex items-center gap-1 rounded-full px-1.5',
+    size === 'sm' ? 'h-5 text-[10px]' : 'h-6 text-[11px]',
+    'font-semibold tracking-tight',
+    crashCount > 0
+      ? 'text-white'
+      : countdown
+        ? 'text-[var(--md-warning-contrast,white)]'
+        : 'text-white',
+  )
+  const pillBg = crashCount > 0
+    ? { background: 'linear-gradient(135deg, var(--md-danger, #EF4444), var(--md-danger-hue-mid, #B91C1C))' }
+    : countdown
+      ? { background: 'linear-gradient(135deg, var(--md-warning, #F59E0B), var(--md-warning-hue-mid, #D97706))' }
+      : { background: 'linear-gradient(135deg, var(--md-accent, #6366F1), var(--md-accent-hue-mid, #4F46E5))' }
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap" style={{ marginLeft: 4 }}>
+      {/* 盾牌 + 崩溃数 */}
+      <div className={pillBase} style={pillBg} title={`已被监管${crashCount > 0 ? `，累计崩溃 ${crashCount} 次` : '（Job Object + 崩溃重启 + 防睡眠 + 优先级）'}`}>
+        <FaShieldHalved size={iconSize - 1} />
+        {crashCount > 0 && <span>×{crashCount}</span>}
+      </div>
+
+      {/* 重启倒计时 */}
+      {countdown && (
+        <div
+          className={cn(
+            'inline-flex items-center gap-1 rounded-full px-1.5 h-5 text-[10px] font-semibold tracking-tight text-white md-pulse-soft',
+          )}
+          style={{
+            background:
+              'linear-gradient(135deg, var(--md-warning, #F59E0B), var(--md-accent, #6366F1))',
+          }}
+          title={`崩溃中，预计 ${countdown.text} 后自动重启`}
+        >
+          <FaRotate size={9} />
+          <span>{countdown.text}</span>
+        </div>
+      )}
+
+      {/* 实时 Working Set */}
+      {(server.currentWorkingSetBytes ?? 0) > 0 && (
+        <div
+          className="inline-flex items-center gap-1 rounded-full px-1.5 h-5 text-[10px] font-medium"
+          style={{
+            background: 'color-mix(in srgb, var(--md-info) 15%, transparent)',
+            color: 'var(--md-info-contrast, #075985)',
+          }}
+          title={`当前物理内存 Working Set = ${formatBytes(server.currentWorkingSetBytes, 2)}`}
+        >
+          <FaMemory size={9} />
+          <span>{formatBytes(server.currentWorkingSetBytes, 1)}</span>
+        </div>
+      )}
+
+      {/* 实时 CPU% */}
+      {(server.cpuPercent ?? -1) >= 0 && (
+        <div
+          className="inline-flex items-center gap-1 rounded-full px-1.5 h-5 text-[10px] font-medium"
+          style={{
+            background: 'color-mix(in srgb, var(--md-success) 15%, transparent)',
+            color: 'var(--md-success-contrast, #065F46)',
+          }}
+          title={`近 1 秒 CPU 占用 ≈ ${Number(server.cpuPercent).toFixed(1)}%`}
+        >
+          <FaBolt size={9} />
+          <span>{Number(server.cpuPercent).toFixed(0)}%</span>
+        </div>
+      )}
+
+      {/* 优先级标签（非 Normal 才显示，避免冗余） */}
+      {priority && priority !== 'Normal' && (
+        <div
+          className="inline-flex items-center rounded-full px-1.5 h-5 text-[10px] font-bold tracking-tight"
+          style={{
+            background:
+              priority === 'High' || priority === 'RealTime'
+                ? 'color-mix(in srgb, var(--md-danger) 18%, transparent)'
+                : 'color-mix(in srgb, var(--md-primary) 18%, transparent)',
+            color:
+              priority === 'High' || priority === 'RealTime'
+                ? 'var(--md-danger, #B91C1C)'
+                : 'var(--md-primary, #1D4ED8)',
+          }}
+          title={`进程优先级 = ${priority}`}
+        >
+          <FaServer size={8} style={{ marginRight: 3 }} />
+          {priorityShort[priority] ?? priority}
+        </div>
+      )}
+    </div>
+  )
+}
 import type {
   ServerInfo,
   KnownServerInfo,
@@ -139,9 +307,12 @@ function RunningServerItem({ server, isSelected, onSelect, onStop, isBusy }: Run
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
-            {server.displayName}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{server.displayName}</span>
+            <SupervisorBadge server={server} size="sm" />
           </div>
           <div style={{ fontSize: 9, opacity: 0.6, color: 'var(--md-body-light)' }}>
             {`内存 ${server.formattedMaxMemory} | ${server.networkStatusText}`}
@@ -176,6 +347,7 @@ interface KnownItemProps {
 }
 
 function KnownServerItem({ server, isSelected, onSelect, onStart, onDelete, isBusy }: KnownItemProps): JSX.Element {
+  const running = !!server.isSupervised || server.status === 'Running'
   return (
     <div
       onClick={onSelect}
@@ -199,12 +371,18 @@ function KnownServerItem({ server, isSelected, onSelect, onStart, onDelete, isBu
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
-            {server.name}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{server.name}</span>
+            {/* 已知服务器正在运行时也显示监管角标（例如被 ProcessSupervisor 拉起的场景） */}
+            <SupervisorBadge server={server} size="sm" />
           </div>
           <div style={{ fontSize: 9, opacity: 0.6, color: 'var(--md-body-light)' }}>
-            {`端口 ${server.port}`}
+            {running
+              ? `端口 ${server.port} · 运行中`
+              : `端口 ${server.port}`}
           </div>
         </div>
         <div className="flex items-center">
@@ -215,14 +393,14 @@ function KnownServerItem({ server, isSelected, onSelect, onStart, onDelete, isBu
               onStart()
             }}
             className="md-btn md-btn-flat md-btn-icon"
-            title={isBusy ? '处理中，请稍候' : '启动该已知服务器'}
+            title={isBusy ? '处理中，请稍候' : running ? '服务器运行中，点击切换到运行中列表' : '启动该已知服务器'}
             style={{
-              color: 'var(--md-primary-hue-mid)',
+              color: running ? 'var(--md-success, #10B981)' : 'var(--md-primary-hue-mid)',
               opacity: isBusy ? 0.5 : undefined,
               pointerEvents: isBusy ? 'none' : undefined,
             }}
           >
-          <IconByName name="play" size={14} />
+          <IconByName name={running ? 'play' : 'play'} size={14} />
           </button>
           <button
             onClick={(e) => {
@@ -231,10 +409,10 @@ function KnownServerItem({ server, isSelected, onSelect, onStart, onDelete, isBu
               onDelete()
             }}
             className="md-btn md-btn-flat md-btn-icon"
-            title={isBusy ? '处理中，请稍候' : '从已知列表删除'}
+            title={isBusy ? '处理中，请稍候' : running ? '服务器运行中，无法删除' : '从已知列表删除'}
             style={{
-              opacity: isBusy ? 0.5 : undefined,
-              pointerEvents: isBusy ? 'none' : undefined,
+              opacity: isBusy || running ? 0.5 : undefined,
+              pointerEvents: isBusy || running ? 'none' : undefined,
             }}
           >
             <IconByName name="trash" size={14} />

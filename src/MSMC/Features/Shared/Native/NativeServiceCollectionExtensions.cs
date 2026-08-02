@@ -90,4 +90,5 @@ internal sealed class NullWindowEffectsService : IWindowEffectsService
     public bool ApplyCornerPreference(IntPtr hWnd, WindowCornerPreference corner) => false;
     public bool SetDisplayAffinity(IntPtr hWnd, DisplayAffinity affinity) => false;
     public void ApplyColorOSVisualPack(IntPtr hWnd, bool darkTitleBar = true) { /* no-op */ }
+    public bool IsApplied(IntPtr hWnd) => false;
 }

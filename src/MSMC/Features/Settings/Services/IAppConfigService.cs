@@ -10,6 +10,50 @@ using io.NET.ZTR_OS.Features.ServerDetection.Models;
 namespace io.NET.ZTR_OS.Features.Settings.Services;
 
 /// <summary>
+/// 进程监管策略（崩溃重启 + 防睡眠 + 优先级 + 内存上限）。
+/// 可同时存在于 <see cref="AppConfig"/>（全局默认）
+/// 和 <see cref="KnownServer.Supervisor"/>（服务器级覆盖，未设置字段走全局）。
+/// </summary>
+public class ProcessSupervisorPolicy
+{
+    /// <summary>是否启用崩溃自动重启（Job Object 监控 + 冷却退避）。</summary>
+    public bool EnableCrashRestart { get; set; } = true;
+
+    /// <summary>每小时最多重启次数（0 表示不限制，超过则冷却 1 小时）。</summary>
+    public int MaxRestartAttemptsPerHour { get; set; } = 10;
+
+    /// <summary>连续重启之间的最小冷却秒数（指数退避：实际 = CooldownSeconds × 2^attempt，上限 300s）。</summary>
+    public int RestartCooldownSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// 有服务器运行时阻止系统睡眠/休眠。
+    /// true 时调用 SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED)
+    /// 防止 Windows 进入 Modern Standby / S3 睡眠。
+    /// </summary>
+    public bool PreventSystemSleepWhenRunning { get; set; } = true;
+
+    /// <summary>
+    /// 默认进程优先级类：Idle / BelowNormal / Normal / AboveNormal / High / RealTime。
+    /// 推荐 Normal；大服推荐 AboveNormal；不建议 RealTime（会抢占鼠标键盘响应）。
+    /// </summary>
+    public System.Diagnostics.ProcessPriorityClass ProcessPriority { get; set; } =
+        System.Diagnostics.ProcessPriorityClass.Normal;
+
+    /// <summary>
+    /// 单个服务器进程提交内存上限（字节），0 = 不限制。
+    /// 限制通过 Job Object 的 JOBOBJECT_EXTENDED_LIMIT_INFORMATION.JobMemoryLimit 实现，
+    /// 超过会在 Windows 内核层直接杀掉进程（比 JVM -Xmx 更外层，防内存泄漏打爆整机）。
+    /// </summary>
+    public long MaxProcessMemoryBytes { get; set; }
+
+    /// <summary>
+    /// 崩溃后尝试重启的总次数上限（-1 表示无限；0 表示永不重启）。
+    /// 独立于每小时窗口计数；主要用来防止一次性故障（如地图损坏）进入无限循环。
+    /// </summary>
+    public int MaxTotalRestartAttempts { get; set; } = -1;
+}
+
+/// <summary>
 /// 应用配置数据模型，承载应用全局持久化配置。
 /// 包含已知服务器列表与当前活动服务器标识。
 /// </summary>
@@ -51,6 +95,12 @@ public class AppConfig
     /// javaw.exe 属于 GUI 子系统，会丢弃 stdout/stderr，导致服务器输出完全丢失。
     /// </summary>
     public bool PreferJavaw { get; set; } = false;
+
+    /// <summary>
+    /// 全局进程监管策略 —— 所有服务器启动时默认采用。
+    /// 服务器级可通过 <see cref="KnownServer.Supervisor"/> 进行字段级覆盖（null 字段走全局）。
+    /// </summary>
+    public ProcessSupervisorPolicy Supervisor { get; set; } = new();
 }
 
 /// <summary>

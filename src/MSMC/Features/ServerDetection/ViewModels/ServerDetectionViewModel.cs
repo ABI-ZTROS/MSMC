@@ -13,6 +13,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.Versioning;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
@@ -22,6 +23,7 @@ using io.NET.ZTR_OS.Features.JavaInstallation.Constants;
 using io.NET.ZTR_OS.Features.ServerDetection.Models;
 using io.NET.ZTR_OS.Features.Settings.Services;
 using io.NET.ZTR_OS.Features.ServerDetection.Services;
+using io.NET.ZTR_OS.Features.SystemMonitoring.Services;
 using Microsoft.Win32;
 using Serilog;
 
@@ -41,6 +43,7 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     private readonly IAppConfigService _appConfigService;
     private readonly IServerManagerService _serverManager;
     private readonly IServerImporterService _serverImporter;
+    private readonly IProcessSupervisorService? _supervisor; // 非 Windows 平台为 null
 
     /// <summary>指示当前实例是否已释放，防止重复 Dispose 导致资源二次释放</summary>
     private bool _disposed;
@@ -115,13 +118,15 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
         IServerDetector serverDetector,
         IAppConfigService appConfigService,
         IServerManagerService serverManager,
-        IServerImporterService serverImporter)
+        IServerImporterService serverImporter,
+        IProcessSupervisorService? supervisor = null)
     {
         Log.Information("[BRDG] ServerDetectionViewModel 初始化");
         _serverDetector = serverDetector;
         _appConfigService = appConfigService;
         _serverManager = serverManager;
         _serverImporter = serverImporter;
+        _supervisor = supervisor;
 
         SelectedArguments = new ObservableCollection<string>();
         AllArgumentCategories = new ObservableCollection<ArgumentCategory>(Enum.GetValues<ArgumentCategory>());
@@ -1114,6 +1119,46 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
     /// </summary>
     /// <returns>若有服务器正在运行返回 true</returns>
     public bool AnyServerRunning() => _serverManager.AnyServerRunning();
+
+    // ───────────────────────────────────────────────────────────────────────
+    // 监管句柄运行时快照（供 server:list 桥接 → 前端 Dashboard 卡片展示角标）
+    // ───────────────────────────────────────────────────────────────────────
+
+    /// <summary>按 JAR 路径尝试获取正在监管的句柄（找不到返回 null）。</summary>
+    public SupervisedProcessHandle? TryGetSupervisedHandleByJarPath(string jarPath)
+        => _serverManager.TryGetSupervisedHandle(jarPath);
+
+    /// <summary>
+    /// 从 SupervisedProcessHandle 中取出 UI 友好的「监管运行时快照」对象（可直接匿名类序列化到前端）。
+    /// handle 为 null 时返回 null（前端据此不渲染角标）。
+    /// </summary>
+    public object? GetSupervisorStatusSnapshot(SupervisedProcessHandle? handle)
+    {
+        if (handle is null) return null;
+
+        // 尝试刷新一次 WorkingSet（psapi 级精确查询；进程退出则静默跳过）
+        if (_supervisor != null)
+        {
+            try
+            {
+                var mem = _supervisor.QueryProcessMemory(handle.ProcessId);
+                handle.LastWorkingSetBytes = mem.WorkingSet;
+            }
+            catch { /* ignore */ }
+        }
+
+        return new
+        {
+            isSupervised = true,
+            crashCount = handle.CrashCount,
+            // UTC → 本地 ISO 字符串，前端直接 new Date(...) 渲染倒计时
+            scheduledRestartAt = handle.ScheduledRestartAtUtc?.ToLocalTime().ToString("O"),
+            currentWorkingSetBytes = handle.LastWorkingSetBytes > 0 ? handle.LastWorkingSetBytes : (long?)null,
+            cpuPercent = handle.LastCpuPercent >= 0 ? (double?)Math.Round(handle.LastCpuPercent, 1) : null,
+            // 进程优先级字符串化，直接对齐前端 SettingsPage 下拉的 6 个值
+            supervisedPriority = Enum.GetName(typeof(ProcessPriorityClass), handle.Options.Priority),
+        };
+    }
 
     /// <summary>
     /// 获取当前活动的服务器实例

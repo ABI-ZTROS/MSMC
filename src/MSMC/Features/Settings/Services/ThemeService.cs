@@ -6,9 +6,11 @@
 // 设计模式: 单例模式（DI容器注册）、观察者模式（属性变更触发主题应用）
 // -----------------------------------------------------------------------------
 using System.IO;
+using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
+using io.NET.ZTR_OS.Features.Shared.Native.Services;
 using MaterialDesignThemes.Wpf;
 using Serilog;
 
@@ -170,6 +172,28 @@ public class ThemeService : IThemeService
     /// MaterialDesign 调色板辅助工具
     /// </summary>
     private readonly PaletteHelper _paletteHelper = new();
+
+    /// <summary>
+    /// 窗口效果服务（DWM Mica/深色标题栏/圆角），只在 Windows 下可用；非 Windows 或 DI 未注册时为 null。
+    /// 通过 ServiceProvider 懒解析，避免 ThemeService 在单测 / 非窗口场景下创建时强依赖。
+    /// </summary>
+    private readonly IWindowEffectsService? _windowEffects;
+
+    /// <summary>上一次 ApplyTheme 时是否是深色模式（用于判断是否需要重新调用 DWM）。</summary>
+    private bool _lastAppliedDarkMode;
+
+    /// <summary>
+    /// 默认构造（未注入 WindowEffectsService 时：兼容单测 / 降级场景）。
+    /// </summary>
+    public ThemeService() { }
+
+    /// <summary>
+    /// DI 构造函数（Windows 场景下 WindowEffectsService 由 NativeServiceCollectionExtensions 注册）。
+    /// </summary>
+    public ThemeService(IWindowEffectsService? windowEffects = null)
+    {
+        _windowEffects = windowEffects;
+    }
 
     private Color _primaryColor = Color.FromRgb(0x3B, 0x82, 0xF6);
 
@@ -348,6 +372,29 @@ public class ThemeService : IThemeService
             _paletteHelper.SetTheme(theme);
 
             UpdateResources();
+
+            // ⭐ ColorOS 视觉包联动：深浅模式切换时同步刷新 DWM 标题栏颜色、云母效果
+            if (_windowEffects != null && OperatingSystem.IsWindows())
+            {
+                try
+                {
+                    var app = System.Windows.Application.Current;
+                    var mainWindow = app?.MainWindow ?? app?.Windows.OfType<Window>().FirstOrDefault();
+                    if (mainWindow != null && new System.Windows.Interop.WindowInteropHelper(mainWindow).EnsureHandle() is var hWnd && hWnd != IntPtr.Zero)
+                    {
+                        // 深浅切了 → 重新 ApplyColorOSVisualPack（DWM 标题栏色 / 云母 / 圆角一次性生效）
+                        if (_lastAppliedDarkMode != IsDarkMode || _windowEffects.IsApplied(hWnd) == false)
+                        {
+                            _windowEffects.ApplyColorOSVisualPack(hWnd, darkTitleBar: IsDarkMode);
+                            _lastAppliedDarkMode = IsDarkMode;
+                        }
+                    }
+                }
+                catch (Exception fxEx)
+                {
+                    Log.Warning(fxEx, "[THEME] ApplyTheme → 同步 WindowEffects 失败（忽略，继续渲染）");
+                }
+            }
 
             Log.Information("[THEME] 主题已更新: 主色={Primary}, 强调色={Accent}, 圆角={Radius}",
                 _primaryColor, _accentColor, _cornerRadius);

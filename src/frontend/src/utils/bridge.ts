@@ -439,7 +439,23 @@ export function getCpuInfo(): Promise<CpuInfo> {
 // ═════════════════════════════════════════════════════════════════════
 
 export function getServerList(): Promise<ServerListResponse> {
-  return bridge.invoke<ServerListResponse>('server:list')
+  // 后端在每个 server/known 对象上返回 __supervisor = { isSupervised, crashCount, scheduledRestartAt, ... }
+  // 这里把它拍平到顶层（前端 interface ServerInfo / KnownServerInfo 直接声明了相同字段），
+  // 这样 Dashboard / Settings 里写代码时不用判断 __supervisor 是否存在。
+  return bridge.invoke<any>('server:list').then((resp: any) => {
+    const flatten = (obj: any): any => {
+      if (!obj || typeof obj !== 'object') return obj
+      const sup = (obj as any).__supervisor
+      if (!sup || typeof sup !== 'object') return obj
+      const { __supervisor, ...rest } = obj as any
+      return { ...rest, ...sup }
+    }
+    return {
+      ...resp,
+      running: Array.isArray(resp?.running) ? resp.running.map(flatten) : [],
+      known: Array.isArray(resp?.known) ? resp.known.map(flatten) : [],
+    } as ServerListResponse
+  })
 }
 
 export function getSelectedServer(): Promise<ServerInfo | null> {
