@@ -57,8 +57,12 @@
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- EnableCompressionInSingleFile 仅自包含模式支持，框架依赖模式会报 NETSDK1176 -->
+    <!-- 实际值由 CI 命令行参数 -p:EnableCompressionInSingleFile=true 覆盖 -->
+    <EnableCompressionInSingleFile Condition="'$(SelfContained)' == 'true'">true</EnableCompressionInSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- 前端 dist 文件既嵌入为 wwwroot.zip 又复制到 wwwroot\ 目录，发布时会冲突 -->
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
 
   <ItemGroup>
