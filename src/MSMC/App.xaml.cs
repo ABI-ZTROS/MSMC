@@ -396,7 +396,7 @@ public partial class App : Application
                     {
                         startupWindow.SetProgress(percent, status);
                         startupWindow.AppendLog(log);
-                        await Task.Delay(60);   // 60ms 间隔让用户看清每条
+                        await Task.Delay(100);  // 100ms 强制延迟，避免竞争态
                     }
 
                     // ServiceCollection 必须在辅助方法之前声明，否则 CS0841
