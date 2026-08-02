@@ -2,17 +2,15 @@
 // 文件名: PortToProcessMapper.cs
 // 命名空间: io.NET.ZTR_OS.Features.ServerDetection.Services
 // 功能描述: 端口→进程 PID 反向绑定器 —— 网络套件组件
-//           通过 Vanara.PInvoke.IpHlpApi 封装的 GetExtendedTcpTable / GetExtendedUdpTable
+//           通过手写 P/Invoke 调用 iphlpapi.dll 的 GetExtendedTcpTable / GetExtendedUdpTable
 //           查询 TCP/UDP 监听端口的归属进程 PID（IPv4 + IPv6 双栈）
-// 依赖组件: Vanara.PInvoke.IpHlpApi (NuGet), System.Runtime.InteropServices, Serilog
+// 依赖组件: System.Runtime.InteropServices, Serilog
 // 设计模式: 适配器模式 (封装 Windows IP Helper API)
 // -----------------------------------------------------------------------------
 namespace io.NET.ZTR_OS.Features.ServerDetection.Services;
 
 using System.Runtime.InteropServices;
 using Serilog;
-using Vanara.PInvoke;
-using static Vanara.PInvoke.IpHlpApi;
 
 /// <summary>
 /// 端口→进程 PID 反向绑定器 —— 网络套件组件
@@ -24,11 +22,23 @@ using static Vanara.PInvoke.IpHlpApi;
 /// </remarks>
 public sealed class PortToProcessMapper
 {
-    /// <summary>IPv4 地址族常量（Windows AF_INET）。Vanara GetExtendedTcpTable/UdpTable 的 ulAf 参数为 uint。</summary>
+    /// <summary>IPv4 地址族常量（Windows AF_INET）。</summary>
     private const uint AfInet = 2;
 
-    /// <summary>IPv6 地址族常量（Windows AF_INET6）。Vanara GetExtendedTcpTable/UdpTable 的 ulAf 参数为 uint。</summary>
+    /// <summary>IPv6 地址族常量（Windows AF_INET6）。</summary>
     private const uint AfInet6 = 23;
+
+    /// <summary>TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_LISTENER —— 仅 LISTEN 状态。</summary>
+    private const int TcpTableOwnerPidListener = 3;
+
+    /// <summary>TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_ALL —— 所有状态（LISTEN/ESTABLISHED/TIME_WAIT/...）。</summary>
+    private const int TcpTableOwnerPidAll = 5;
+
+    /// <summary>UDP_TABLE_CLASS.UDP_TABLE_OWNER_PID。</summary>
+    private const int UdpTableOwnerPid = 1;
+
+    /// <summary>Win32 NO_ERROR。</summary>
+    private const uint NoError = 0;
 
     /// <summary>
     /// 获取所有 TCP 监听端口（IPv4 + IPv6）的 PID 映射。
@@ -120,16 +130,14 @@ public sealed class PortToProcessMapper
         try
         {
             var size = 0u;
-            IpHlpApi.GetExtendedTcpTable(IntPtr.Zero, ref size, false, af,
-                TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_LISTENER);
+            NativeMethods.GetExtendedTcpTable(IntPtr.Zero, ref size, false, af, TcpTableOwnerPidListener, 0);
             if (size == 0) return;
 
             var buffer = Marshal.AllocHGlobal((int)size);
             try
             {
-                var err = IpHlpApi.GetExtendedTcpTable(buffer, ref size, false, af,
-                    TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_LISTENER);
-                if (err.Failed)
+                var err = NativeMethods.GetExtendedTcpTable(buffer, ref size, false, af, TcpTableOwnerPidListener, 0);
+                if (err != NoError)
                 {
                     Log.Warning("[WARN] GetExtendedTcpTable (AF={Af}) 调用失败: {Error}", af, err);
                     return;
@@ -193,16 +201,14 @@ public sealed class PortToProcessMapper
         try
         {
             var size = 0u;
-            IpHlpApi.GetExtendedTcpTable(IntPtr.Zero, ref size, false, af,
-                TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_ALL);
+            NativeMethods.GetExtendedTcpTable(IntPtr.Zero, ref size, false, af, TcpTableOwnerPidAll, 0);
             if (size == 0) return;
 
             var buffer = Marshal.AllocHGlobal((int)size);
             try
             {
-                var err = IpHlpApi.GetExtendedTcpTable(buffer, ref size, false, af,
-                    TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_ALL);
-                if (err.Failed)
+                var err = NativeMethods.GetExtendedTcpTable(buffer, ref size, false, af, TcpTableOwnerPidAll, 0);
+                if (err != NoError)
                 {
                     Log.Warning("[WARN] GetExtendedTcpTable(ALL) (AF={Af}) 调用失败: {Error}", af, err);
                     return;
@@ -262,16 +268,14 @@ public sealed class PortToProcessMapper
         try
         {
             var size = 0u;
-            IpHlpApi.GetExtendedUdpTable(IntPtr.Zero, ref size, false, af,
-                UDP_TABLE_CLASS.UDP_TABLE_OWNER_PID);
+            NativeMethods.GetExtendedUdpTable(IntPtr.Zero, ref size, false, af, UdpTableOwnerPid, 0);
             if (size == 0) return;
 
             var buffer = Marshal.AllocHGlobal((int)size);
             try
             {
-                var err = IpHlpApi.GetExtendedUdpTable(buffer, ref size, false, af,
-                    UDP_TABLE_CLASS.UDP_TABLE_OWNER_PID);
-                if (err.Failed)
+                var err = NativeMethods.GetExtendedUdpTable(buffer, ref size, false, af, UdpTableOwnerPid, 0);
+                if (err != NoError)
                 {
                     Log.Warning("[WARN] GetExtendedUdpTable (AF={Af}) 调用失败: {Error}", af, err);
                     return;
@@ -342,5 +346,109 @@ public sealed class PortToProcessMapper
         var lowByte = networkPort & 0xFF;
         var highByte = (networkPort >> 8) & 0xFF;
         return (int)((lowByte << 8) | highByte);
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // 📦 Windows IP Helper API P/Invoke 封装
+    // ───────────────────────────────────────────────────────────────────
+    // 原先用 Vanara.PInvoke.IpHlpApi（NuGet 包，传递依赖 ~1-2 MB），
+    // 现改为手写 P/Invoke 以减小发布产物体积。
+    // 函数签名与结构体布局严格按 Microsoft Win32 文档定义：
+    //   https://learn.microsoft.com/windows/win32/api/iphlpapi/nf-iphlpapi-getextendedtcptable
+    //   https://learn.microsoft.com/windows/win32/api/iphlpapi/nf-iphlpapi-getextendedudptable
+    // ───────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Win32 IP Helper API 的 P/Invoke 封装。
+    /// 放在独立内部类里以符合 CA1060 规范（P/Invoke 应放 NativeMethods 类）。
+    /// </summary>
+    private static class NativeMethods
+    {
+        /// <summary>
+        /// 检索包含 TCP 端点表的 P/Invoke。
+        /// 第一次调用 pTcpTable=IntPtr.Zero 用于查询所需缓冲区大小，返回 ERROR_INSUFFICIENT_BUFFER (122)；
+        /// 第二次调用传入实际缓冲区，返回 NO_ERROR (0) 表示成功。
+        /// </summary>
+        [DllImport("iphlpapi.dll", EntryPoint = "GetExtendedTcpTable", SetLastError = false)]
+        internal static extern uint GetExtendedTcpTable(
+            IntPtr pTcpTable,
+            ref uint pdwSize,
+            [MarshalAs(UnmanagedType.Bool)] bool bOrder,
+            uint ulAf,
+            int tableClass,
+            uint reserved);
+
+        /// <summary>
+        /// 检索包含 UDP 端点表的 P/Invoke。语义同 GetExtendedTcpTable。
+        /// </summary>
+        [DllImport("iphlpapi.dll", EntryPoint = "GetExtendedUdpTable", SetLastError = false)]
+        internal static extern uint GetExtendedUdpTable(
+            IntPtr pUdpTable,
+            ref uint pdwSize,
+            [MarshalAs(UnmanagedType.Bool)] bool bOrder,
+            uint ulAf,
+            int tableClass,
+            uint reserved);
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // 📐 Win32 结构体定义（按 Microsoft 文档布局）
+    // ───────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// IPv4 TCP 行（含 PID）。布局严格对应 Win32 MIB_TCPROW_OWNER_PID，共 24 字节。
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MIB_TCPROW_OWNER_PID
+    {
+        public uint dwState;
+        public uint dwLocalAddr;
+        public uint dwLocalPort;
+        public uint dwRemoteAddr;
+        public uint dwRemotePort;
+        public uint dwOwningPid;
+    }
+
+    /// <summary>
+    /// IPv6 TCP 行（含 PID）。布局严格对应 Win32 MIB_TCP6ROW_OWNER_PID，共 56 字节。
+    /// IN6_ADDR 为 16 字节数组。
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MIB_TCP6ROW_OWNER_PID
+    {
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public byte[] ucLocalAddr;
+        public uint dwLocalScopeId;
+        public uint dwLocalPort;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public byte[] ucRemoteAddr;
+        public uint dwRemoteScopeId;
+        public uint dwRemotePort;
+        public uint dwState;
+        public uint dwOwningPid;
+    }
+
+    /// <summary>
+    /// IPv4 UDP 行（含 PID）。布局严格对应 Win32 MIB_UDPROW_OWNER_PID，共 12 字节。
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MIB_UDPROW_OWNER_PID
+    {
+        public uint dwLocalAddr;
+        public uint dwLocalPort;
+        public uint dwOwningPid;
+    }
+
+    /// <summary>
+    /// IPv6 UDP 行（含 PID）。布局严格对应 Win32 MIB_UDP6ROW_OWNER_PID，共 28 字节。
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MIB_UDP6ROW_OWNER_PID
+    {
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public byte[] ucLocalAddr;
+        public uint dwLocalScopeId;
+        public uint dwLocalPort;
+        public uint dwOwningPid;
     }
 }
