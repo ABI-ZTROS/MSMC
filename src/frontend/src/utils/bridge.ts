@@ -84,9 +84,31 @@ class Bridge implements MsmcBridge {
   private requestIdCounter = 0
   private initialized = false
   private initPromise: Promise<void> | null = null
+  // BugH: 桥接是否「最终可用」标记。10s 内没连上 webview 就标 false，
+  //       这样 invoke 不会永远卡在 await init()，而是立刻给出明确错误
+  private bridgeAvailable = false
+  private bridgeAvailabilityKnown = false
+  // 异步等待「桥接可用性确定」（最多 10s），之后就不卡了
+  private availabilityPromise: Promise<void> | null = null
+  private availabilityResolve: (() => void) | null = null
 
   constructor() {
     rawLog('Bridge 构造函数执行')
+    // BugH: 10s 总兜底，不管 webview 有没有出现，都强制结束 init() 的等待
+    const totalTimeout = window.setTimeout(() => {
+      if (!this.initialized) {
+        rawLog('[BugH] 桥接初始化 10s 兜底超时：chrome.webview 仍不可用，标记 bridgeAvailable=false')
+        this.bridgeAvailable = false
+        this.bridgeAvailabilityKnown = true
+        this.availabilityResolve?.()
+      }
+    }, 10000)
+    this.availabilityPromise = new Promise<void>((resolve) => {
+      this.availabilityResolve = () => {
+        window.clearTimeout(totalTimeout)
+        resolve()
+      }
+    })
     this.init()
     // 启动周期性清理，防止超时后残留请求对象导致内存泄漏
     window.setInterval(() => this.cleanupExpiredRequests(), 30000)
@@ -137,6 +159,10 @@ class Bridge implements MsmcBridge {
 
         if (window.chrome?.webview) {
           rawLog('检测到 chrome.webview，注册消息监听')
+          // BugH: 标记桥接可用，并结束 10s 总兜底超时的等待
+          this.bridgeAvailable = true
+          this.bridgeAvailabilityKnown = true
+          this.availabilityResolve?.()
           // 防篡改自检：保护 postMessage 不被外部覆写
           try {
             const _wv = window.chrome.webview
@@ -256,6 +282,21 @@ class Bridge implements MsmcBridge {
 
   async invokeWithTimeout<T = unknown>(action: string, payload: unknown, timeoutMs: number): Promise<T> {
     rawLog(`invoke 开始: ${action}`)
+    // BugH: 先等待「桥接可用性确定」（最多 10s，可用性确定比 init() 强）。
+    //       这样 10s 后如果 webview 仍然不存在，桥接不可用，立即给出明确错误，
+    //       而不是永远卡在 await init()（因为 init() 的 Promise 永远 pending）。
+    if (!this.bridgeAvailabilityKnown && this.availabilityPromise) {
+      rawLog(`桥接可用性未确定，等待 availabilityPromise（最多 10s）: ${action}`)
+      await this.availabilityPromise
+    }
+    if (this.bridgeAvailabilityKnown && !this.bridgeAvailable) {
+      // 桥接已经确定不可用（10s 兜底超时仍无 webview）→ 立刻报错，不继续调用
+      rawLog(`[BugH] 桥接不可用（未检测到 chrome.webview），拒绝请求: ${action}`)
+      return Promise.reject(new Error(
+        `Bridge unavailable: WebView2 host not detected. ` +
+        `This action (${action}) requires running inside the desktop host.`,
+      ))
+    }
     await this.init()
     rawLog(`init 完成，准备发送请求: ${action}`)
 

@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { clsx } from 'clsx'
 import { Reveal } from '@/components/ui/Reveal'
 import { IconByName } from '@/utils/icons'
+import { useToastStore } from '@/stores/toastStore'
 import {
   getBridge,
   getServerList,
@@ -111,9 +112,10 @@ interface RunningItemProps {
   isSelected: boolean
   onSelect: () => void
   onStop: () => void
+  isBusy?: boolean
 }
 
-function RunningServerItem({ server, isSelected, onSelect, onStop }: RunningItemProps): JSX.Element {
+function RunningServerItem({ server, isSelected, onSelect, onStop, isBusy }: RunningItemProps): JSX.Element {
   return (
     <div
       onClick={onSelect}
@@ -148,10 +150,12 @@ function RunningServerItem({ server, isSelected, onSelect, onStop }: RunningItem
         <button
           onClick={(e) => {
             e.stopPropagation()
+            if (isBusy) return // Bug3: 运行中 stop 也受全局 isBusy 防抖
             onStop()
           }}
           className="md-btn md-btn-flat md-btn-icon"
-          title="停止"
+          title={isBusy ? '处理中，请稍候' : '停止服务器'}
+          style={{ opacity: isBusy ? 0.5 : undefined, pointerEvents: isBusy ? 'none' : undefined }}
         >
           <IconByName name="stop" size={14} />
         </button>
@@ -168,9 +172,10 @@ interface KnownItemProps {
   onSelect: () => void
   onStart: () => void
   onDelete: () => void
+  isBusy?: boolean
 }
 
-function KnownServerItem({ server, isSelected, onSelect, onStart, onDelete }: KnownItemProps): JSX.Element {
+function KnownServerItem({ server, isSelected, onSelect, onStart, onDelete, isBusy }: KnownItemProps): JSX.Element {
   return (
     <div
       onClick={onSelect}
@@ -206,21 +211,31 @@ function KnownServerItem({ server, isSelected, onSelect, onStart, onDelete }: Kn
           <button
             onClick={(e) => {
               e.stopPropagation()
+              if (isBusy) return // Bug3: 已知服务器 start 防抖
               onStart()
             }}
             className="md-btn md-btn-flat md-btn-icon"
-            title="启动"
-            style={{ color: 'var(--md-primary-hue-mid)' }}
+            title={isBusy ? '处理中，请稍候' : '启动该已知服务器'}
+            style={{
+              color: 'var(--md-primary-hue-mid)',
+              opacity: isBusy ? 0.5 : undefined,
+              pointerEvents: isBusy ? 'none' : undefined,
+            }}
           >
           <IconByName name="play" size={14} />
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation()
+              if (isBusy) return // Bug3: 已知服务器 delete 防抖
               onDelete()
             }}
             className="md-btn md-btn-flat md-btn-icon"
-            title="删除"
+            title={isBusy ? '处理中，请稍候' : '从已知列表删除'}
+            style={{
+              opacity: isBusy ? 0.5 : undefined,
+              pointerEvents: isBusy ? 'none' : undefined,
+            }}
           >
             <IconByName name="trash" size={14} />
           </button>
@@ -260,6 +275,21 @@ function ServerGroup({ title, icon, count, defaultExpanded = true, children }: S
 // ─── 主页面 ───
 
 export function DashboardPage(): JSX.Element {
+  const showToast = useToastStore((s) => s.showToast)
+  // Bug10: 挂载标记，防卸载后 setState
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+  const safeSet = useCallback(<S,>(setter: React.Dispatch<React.SetStateAction<S>>, value: S | ((prev: S) => S)): void => {
+    if (mountedRef.current) setter(value as never)
+  }, [])
+
+  // Bug2: 轮询请求序列号（out-of-order 保护：旧序列号的响应直接丢弃）
+  const fetchSeqRef = useRef(0)
+
   const [serverList, setServerList] = useState<ServerListResponse | null>(null)
   const [selectedServer, setSelectedServer] = useState<ServerInfo | null>(null)
   const [searchKeyword, setSearchKeyword] = useState('')
@@ -267,6 +297,8 @@ export function DashboardPage(): JSX.Element {
   const [isBusy, setIsBusy] = useState(false)
   const [busyReason, setBusyReason] = useState('')
   const [operationMessage, setOperationMessage] = useState('')
+  // Bug1: operationMessage 自动消失定时器 ref
+  const operationMsgTimerRef = useRef<number | null>(null)
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(false)
 
   // JVM 参数相关 state
@@ -278,14 +310,33 @@ export function DashboardPage(): JSX.Element {
   const [jvmMemoryInitial, setJvmMemoryInitial] = useState('')
   const [jvmMemoryMax, setJvmMemoryMax] = useState('')
 
+  // Bug1: 统一封装 operationMessage，自动 4s 后消失
+  const setOpMsg = useCallback((msg: string): void => {
+    if (operationMsgTimerRef.current != null) {
+      window.clearTimeout(operationMsgTimerRef.current)
+      operationMsgTimerRef.current = null
+    }
+    if (mountedRef.current) setOperationMessage(msg)
+    if (msg) {
+      operationMsgTimerRef.current = window.setTimeout(() => {
+        if (mountedRef.current) setOperationMessage('')
+        operationMsgTimerRef.current = null
+      }, 4000)
+    }
+  }, [])
+
   // 拉取服务器列表
-  const fetchServerList = async () => {
+  const fetchServerList = async (seq?: number) => {
     try {
       const data = await getServerList()
-      setServerList(data)
+      // Bug2: 如果 seq 传了但不等于最新序列号 → 是旧响应，丢弃（out-of-order 保护）
+      if (seq != null && seq !== fetchSeqRef.current) return
+      if (!mountedRef.current) return
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      safeSet<any>(setServerList, data)
       // 同步后端的自动检测状态，避免前端状态与后端不同步
       if (typeof data.isAutoDetectEnabled === 'boolean') {
-        setAutoDetectEnabled(data.isAutoDetectEnabled)
+        safeSet(setAutoDetectEnabled, data.isAutoDetectEnabled)
       }
     } catch (e) {
       console.error('获取服务器列表失败:', e)
@@ -293,149 +344,217 @@ export function DashboardPage(): JSX.Element {
   }
 
   // 拉取当前选中服务器详情
-  const fetchSelectedServer = async () => {
+  const fetchSelectedServer = async (seq?: number) => {
     try {
       const data = await getSelectedServer()
-      setSelectedServer(data)
+      if (seq != null && seq !== fetchSeqRef.current) return
+      if (!mountedRef.current) return
+      safeSet(setSelectedServer, data)
     } catch (e) {
       console.error('获取选中服务器失败:', e)
     }
   }
 
+  // 刷新按钮（不触发 fetchSeq 递增，因为刷新是"手动触发的最新"）
   const handleRefresh = async () => {
     setIsBusy(true)
     setBusyReason('正在刷新服务器列表...')
     try {
       await bridge.invoke('server:refresh')
-      await fetchServerList()
-      await fetchSelectedServer()
+      // Bug2: 手动刷新前递增序列号，确保最新响应覆盖所有旧轮询
+      const seq = ++fetchSeqRef.current
+      await fetchServerList(seq)
+      await fetchSelectedServer(seq)
     } catch (e) {
       console.error('刷新失败:', e)
+      setOpMsg('刷新失败，请重试')
+      showToast('刷新失败，请重试', 'error')
     } finally {
-      setIsBusy(false)
-      setBusyReason('')
+      if (mountedRef.current) {
+        setIsBusy(false)
+        setBusyReason('')
+      }
     }
   }
 
   const handleSelectServer = async (displayName: string) => {
+    if (isBusy) return // Bug3: 并发防抖
     setIsBusy(true)
     setBusyReason('正在切换服务器...')
     try {
       await selectServer(displayName)
-      await fetchSelectedServer()
+      const seq = ++fetchSeqRef.current
+      await fetchSelectedServer(seq)
     } catch (e) {
+      // Bug8: 之前只有 console.error，用户选服务器失败完全无感知
       console.error('选择服务器失败:', e)
+      const msg = `选择服务器失败: ${e instanceof Error ? e.message : String(e)}`
+      setOpMsg(msg)
+      showToast(msg, 'error')
     } finally {
-      setIsBusy(false)
-      setBusyReason('')
+      if (mountedRef.current) {
+        setIsBusy(false)
+        setBusyReason('')
+      }
     }
   }
 
   const handleStart = async () => {
+    if (isBusy) return // Bug3: 并发防抖
     setIsBusy(true)
     setBusyReason('正在启动服务器...')
-    setOperationMessage('')
+    setOpMsg('')
     try {
       const result = await bridge.invoke<{ success: boolean; error?: string; message?: string }>('server:start')
       if (result?.success) {
-        setOperationMessage(result.message || '启动成功')
+        setOpMsg(result.message || '启动成功')
+        showToast(result.message || '启动成功', 'success')
       } else {
-        setOperationMessage(`启动失败: ${result?.error || result?.message || '未知错误'}`)
+        const msg = `启动失败: ${result?.error || result?.message || '未知错误'}`
+        setOpMsg(msg)
+        showToast(msg, 'error')
       }
-      await fetchServerList()
-      await fetchSelectedServer()
+      const seq = ++fetchSeqRef.current
+      await fetchServerList(seq)
+      await fetchSelectedServer(seq)
     } catch (e) {
-      setOperationMessage(`启动失败: ${e instanceof Error ? e.message : String(e)}`)
+      const msg = `启动失败: ${e instanceof Error ? e.message : String(e)}`
+      setOpMsg(msg)
+      showToast(msg, 'error')
     } finally {
-      setIsBusy(false)
-      setBusyReason('')
+      if (mountedRef.current) {
+        setIsBusy(false)
+        setBusyReason('')
+      }
     }
   }
 
   const handleStop = async () => {
+    if (isBusy) return // Bug3: 并发防抖
     setIsBusy(true)
     setBusyReason('正在停止服务器...')
-    setOperationMessage('')
+    setOpMsg('')
     try {
       const result = await bridge.invoke<{ success: boolean; error?: string; message?: string }>('server:stop')
       if (result?.success) {
-        setOperationMessage(result.message || '停止成功')
+        setOpMsg(result.message || '停止成功')
+        showToast(result.message || '停止成功', 'success')
       } else {
-        setOperationMessage(`停止失败: ${result?.error || result?.message || '未知错误'}`)
+        const msg = `停止失败: ${result?.error || result?.message || '未知错误'}`
+        setOpMsg(msg)
+        showToast(msg, 'error')
       }
-      await fetchServerList()
-      await fetchSelectedServer()
+      const seq = ++fetchSeqRef.current
+      await fetchServerList(seq)
+      await fetchSelectedServer(seq)
     } catch (e) {
-      setOperationMessage(`停止失败: ${e instanceof Error ? e.message : String(e)}`)
+      const msg = `停止失败: ${e instanceof Error ? e.message : String(e)}`
+      setOpMsg(msg)
+      showToast(msg, 'error')
     } finally {
-      setIsBusy(false)
-      setBusyReason('')
+      if (mountedRef.current) {
+        setIsBusy(false)
+        setBusyReason('')
+      }
     }
   }
 
   const handleImport = async () => {
+    if (isBusy) return // Bug3: 并发防抖
     setIsBusy(true)
     setBusyReason('正在导入服务器...')
     try {
       const result = await bridge.invoke<{ success: boolean; message?: string; error?: string }>('server:import')
       if (result.success) {
-        await fetchServerList()
+        setOpMsg(result.message || '导入服务器成功')
+        showToast(result.message || '导入服务器成功', 'success')
+        const seq = ++fetchSeqRef.current
+        await fetchServerList(seq)
       } else {
-        setOperationMessage(`导入失败: ${result.error || result.message || '未知错误'}`)
+        const msg = `导入失败: ${result.error || result.message || '未知错误'}`
+        setOpMsg(msg)
+        showToast(msg, 'error')
       }
     } catch (e) {
       console.error('导入失败:', e)
-      setOperationMessage(`导入失败: ${e instanceof Error ? e.message : String(e)}`)
+      const msg = `导入失败: ${e instanceof Error ? e.message : String(e)}`
+      setOpMsg(msg)
+      showToast(msg, 'error')
     } finally {
-      setIsBusy(false)
-      setBusyReason('')
+      if (mountedRef.current) {
+        setIsBusy(false)
+        setBusyReason('')
+      }
     }
   }
 
   const handleToggleAutoDetect = async () => {
+    if (isBusy) return
     try {
       const result = await bridge.invoke<{ success: boolean; isEnabled?: boolean }>('server:toggleAutoDetect')
-      // 使用后端返回的实际状态，而非翻转本地状态
-      if (result && typeof result.isEnabled === 'boolean') {
-        setAutoDetectEnabled(result.isEnabled)
+      // Bug4: 使用后端返回的实际状态；失败时给出 toast 提示，不再悄悄翻转
+      if (result?.success && typeof result.isEnabled === 'boolean') {
+        safeSet(setAutoDetectEnabled, result.isEnabled)
+        showToast(result.isEnabled ? '已开启自动检测' : '已停止自动检测', 'success')
       } else {
-        // 后端未返回状态时，回退到翻转本地状态
-        setAutoDetectEnabled(!autoDetectEnabled)
+        // 后端未返回有效状态时，给出错误提示 + 兜底翻转本地
+        const msg = `切换自动检测失败${result?.success === false ? '' : ': 状态未返回'}`
+        showToast(msg, 'warning')
+        safeSet(setAutoDetectEnabled, !autoDetectEnabled)
       }
     } catch (e) {
+      // Bug4: 之前 catch 静默，现在给用户明确提示
       console.error('切换自动检测失败:', e)
+      const msg = `切换自动检测失败: ${e instanceof Error ? e.message : String(e)}`
+      showToast(msg, 'error')
+      // 桥接抛异常时，不翻转（避免"假切换"误导）
     }
   }
 
   const handleCopyCommand = () => {
     if (selectedServer?.fullCommandLine) {
-      navigator.clipboard?.writeText(selectedServer.fullCommandLine).catch(() => {})
+      navigator.clipboard?.writeText(selectedServer.fullCommandLine)
+        .then(() => {
+          // Bug5: 之前成功无反馈，现在给个 toast
+          showToast('启动命令已复制到剪贴板', 'success')
+        })
+        .catch((e) => {
+          console.error('复制失败:', e)
+          showToast('复制失败，请手动选择复制', 'error')
+        })
+    } else {
+      showToast('当前没有可复制的启动命令', 'warning')
     }
   }
 
   // ─── JVM 参数方法 ───
 
-  const fetchJvmDefinitions = useCallback(async () => {
+  const fetchJvmDefinitions = useCallback(async (seq?: number) => {
     try {
       const resp = await getJvmDefinitions()
-      setJvmDefinitions(resp.definitions)
+      if (seq != null && seq !== fetchSeqRef.current) return
+      if (!mountedRef.current) return
+      safeSet(setJvmDefinitions, resp.definitions)
     } catch (e) {
       console.error('获取 JVM 参数定义失败:', e)
     }
-  }, [])
+  }, [safeSet])
 
-  const fetchJvmState = useCallback(async () => {
+  const fetchJvmState = useCallback(async (seq?: number) => {
     try {
       const resp = await getJvmState()
-      setJvmState(resp)
+      if (seq != null && seq !== fetchSeqRef.current) return
+      if (!mountedRef.current) return
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      safeSet<any>(setJvmState, resp)
       if (resp.hasServer) {
-        setJvmMemoryInitial(resp.initialMemory)
-        setJvmMemoryMax(resp.maxMemory)
+        safeSet(setJvmMemoryInitial, resp.initialMemory)
+        safeSet(setJvmMemoryMax, resp.maxMemory)
       }
     } catch (e) {
       console.error('获取 JVM 状态失败:', e)
     }
-  }, [])
+  }, [safeSet])
 
   const selectedArgBaseNames = useMemo(() => {
     if (!jvmState?.selectedArguments) return new Set<string>()
@@ -454,11 +573,23 @@ export function DashboardPage(): JSX.Element {
   const handleAddArgument = async (def: JvmArgumentDefinition) => {
     if (def.valueType === 'None' || def.valueType === 'BooleanFlag') {
       try {
-        await addJvmArgument(def.flag)
-        await fetchJvmState()
-        await fetchSelectedServer()
+        const res = await addJvmArgument(def.flag)
+        if (res?.success === false) {
+          const msg = `添加参数失败: ${res?.error || '未知错误'}`
+          showToast(msg, 'error')
+          setOpMsg(msg)
+          return
+        }
+        showToast(`已添加参数: ${def.name}`, 'success')
+        const seq = ++fetchSeqRef.current
+        await fetchJvmState(seq)
+        await fetchSelectedServer(seq)
       } catch (e) {
+        // Bug7: 添加参数失败无反馈
         console.error('添加参数失败:', e)
+        const msg = `添加参数失败: ${e instanceof Error ? e.message : String(e)}`
+        showToast(msg, 'error')
+        setOpMsg(msg)
       }
     } else {
       setEditingArg({ def, value: def.defaultValue ?? '', mode: 'add' })
@@ -467,11 +598,23 @@ export function DashboardPage(): JSX.Element {
 
   const handleRemoveArgument = async (arg: string) => {
     try {
-      await removeJvmArgument(arg)
-      await fetchJvmState()
-      await fetchSelectedServer()
+      const res = await removeJvmArgument(arg)
+      if (res?.success === false) {
+        const msg = `移除参数失败: ${res?.error || '未知错误'}`
+        showToast(msg, 'error')
+        setOpMsg(msg)
+        return
+      }
+      showToast(`已移除参数: ${arg}`, 'success')
+      const seq = ++fetchSeqRef.current
+      await fetchJvmState(seq)
+      await fetchSelectedServer(seq)
     } catch (e) {
+      // Bug7: 移除参数失败无反馈
       console.error('移除参数失败:', e)
+      const msg = `移除参数失败: ${e instanceof Error ? e.message : String(e)}`
+      showToast(msg, 'error')
+      setOpMsg(msg)
     }
   }
 
@@ -482,6 +625,8 @@ export function DashboardPage(): JSX.Element {
       (d) => getArgBaseName(d.flag).toLowerCase() === base.toLowerCase(),
     )
     if (def) {
+      // BugF: 设置编辑前的参数值快照
+      editingArgSnapshotRef.current = { baseName: base.toLowerCase(), expectedFullArg: arg }
       setEditingArg({ def, value, mode: 'edit', oldArg: arg })
     }
   }
@@ -490,56 +635,144 @@ export function DashboardPage(): JSX.Element {
     if (!editingArg) return
     const { def, value, mode, oldArg } = editingArg
 
-    if (mode === 'add') {
-      const full = buildFullArg(def, value)
-      try {
-        await addJvmArgument(full)
-      } catch (e) {
-        console.error('添加参数失败:', e)
-      }
-    } else if (mode === 'edit' && oldArg) {
-      try {
-        await updateJvmArgument(oldArg, value)
-      } catch (e) {
-        console.error('更新参数失败:', e)
+    // BugF: edit 模式下保存前校验「弹窗打开期间底层参数值没变」
+    if (mode === 'edit' && oldArg && editingArgSnapshotRef.current) {
+      const snap = editingArgSnapshotRef.current
+      // 从当前 jvmState 找这个参数的最新实际值
+      const currentArg = jvmState?.selectedArguments?.find(
+        (a) => getArgBaseName(a).toLowerCase() === snap.baseName,
+      )
+      if (currentArg !== undefined && currentArg !== snap.expectedFullArg) {
+        // 参数实际值在弹窗打开期间被后台/轮询刷新了，不允许用旧快照覆盖新值
+        const msg = `参数「${def.name}」已在后台更新，请关闭编辑弹窗后重新编辑`
+        showToast(msg, 'warning')
+        setOpMsg(msg)
+        if (mountedRef.current) setEditingArg(null)
+        editingArgSnapshotRef.current = null
+        return
       }
     }
 
-    setEditingArg(null)
-    await fetchJvmState()
-    await fetchSelectedServer()
+    let ok = false
+    if (mode === 'add') {
+      const full = buildFullArg(def, value)
+      try {
+        const res = await addJvmArgument(full)
+        if (res?.success === false) {
+          showToast(`添加参数失败: ${res?.error || '未知错误'}`, 'error')
+          return
+        }
+        ok = true
+        showToast(`已添加参数: ${def.name} = ${value}`, 'success')
+      } catch (e) {
+        console.error('添加参数失败:', e)
+        showToast(`添加参数失败: ${e instanceof Error ? e.message : String(e)}`, 'error')
+        return
+      }
+    } else if (mode === 'edit' && oldArg) {
+      try {
+        const res = await updateJvmArgument(oldArg, value)
+        if (res?.success === false) {
+          showToast(`更新参数失败: ${res?.error || '未知错误'}`, 'error')
+          return
+        }
+        ok = true
+        showToast(`已更新参数: ${def.name} = ${value}`, 'success')
+      } catch (e) {
+        console.error('更新参数失败:', e)
+        showToast(`更新参数失败: ${e instanceof Error ? e.message : String(e)}`, 'error')
+        return
+      }
+    }
+
+    editingArgSnapshotRef.current = null
+    if (mountedRef.current) setEditingArg(null)
+    if (ok) {
+      const seq = ++fetchSeqRef.current
+      await fetchJvmState(seq)
+      await fetchSelectedServer(seq)
+    }
   }
 
   const handleApplyPreset = async (preset: 'aikar' | 'g1gc' | 'zgc') => {
     try {
-      await applyJvmPreset(preset)
-      await fetchJvmState()
-      await fetchSelectedServer()
+      const res = await applyJvmPreset(preset)
+      if (res?.success === false) {
+        showToast(`应用预设失败: ${res?.error || '未知错误'}`, 'error')
+        return
+      }
+      const presetLabel = preset === 'aikar' ? 'Aikar 优化' : preset === 'g1gc' ? 'G1GC 回收器' : 'ZGC 回收器'
+      showToast(`已应用预设: ${presetLabel}`, 'success')
+      const seq = ++fetchSeqRef.current
+      await fetchJvmState(seq)
+      await fetchSelectedServer(seq)
     } catch (e) {
+      // Bug7: 之前静默失败
       console.error('应用预设失败:', e)
+      showToast(`应用预设失败: ${e instanceof Error ? e.message : String(e)}`, 'error')
     }
   }
 
   const handleAddCustomArg = async () => {
     if (!customArgInput.trim()) return
     try {
-      await addCustomJvmArgument(customArgInput.trim())
-      setCustomArgInput('')
-      await fetchJvmState()
-      await fetchSelectedServer()
+      const res = await addCustomJvmArgument(customArgInput.trim())
+      if (res?.success === false) {
+        showToast(`添加自定义参数失败: ${res?.error || '未知错误'}`, 'error')
+        return
+      }
+      showToast(`已添加自定义参数: ${customArgInput.trim()}`, 'success')
+      if (mountedRef.current) setCustomArgInput('')
+      const seq = ++fetchSeqRef.current
+      await fetchJvmState(seq)
+      await fetchSelectedServer(seq)
     } catch (e) {
+      // Bug7: 自定义参数失败无反馈
       console.error('添加自定义参数失败:', e)
+      showToast(`添加自定义参数失败: ${e instanceof Error ? e.message : String(e)}`, 'error')
     }
   }
 
+  // 正在提交的内存修改 token（防 onBlur 多次触发重复提交）
+  const memorySubmittingRef = useRef(false)
+  const memoryLastValuesRef = useRef<{ initial: string; max: string } | null>(null)
+  // BugF: 记录 JVM 参数编辑弹窗打开时的「参数实际值快照」，保存前校验避免旧值覆盖新值
+  const editingArgSnapshotRef = useRef<{ baseName: string; expectedFullArg: string } | null>(null)
+
   const handleMemoryBlur = async () => {
     if (!jvmState?.hasServer) return
+    // Bug6: 内存输入 -> 切 Tab/路由导致 onBlur 没触发就卸载
+    //        解决方案：① 在 useEffect cleanup 时"若输入有脏值则自动提交"
+    //        ② 这里加防重入（避免 blur + 卸载 cleanup 重复提交）
+    const currentInitial = jvmMemoryInitial
+    const currentMax = jvmMemoryMax
+    if (
+      memorySubmittingRef.current ||
+      (memoryLastValuesRef.current?.initial === currentInitial &&
+        memoryLastValuesRef.current?.max === currentMax)
+    ) {
+      return
+    }
+    memorySubmittingRef.current = true
     try {
-      await setJvmMemory(jvmMemoryInitial, jvmMemoryMax)
-      await fetchJvmState()
-      await fetchSelectedServer()
+      const res = await setJvmMemory(currentInitial, currentMax)
+      if (res?.success === false) {
+        showToast(`设置内存失败: ${res?.error || '未知错误'}`, 'error')
+        return
+      }
+      memoryLastValuesRef.current = { initial: currentInitial, max: currentMax }
+      showToast(
+        `内存设置已更新: 初始 ${currentInitial || '(默认)'} / 最大 ${currentMax || '(默认)'}`,
+        'success',
+      )
+      const seq = ++fetchSeqRef.current
+      await fetchJvmState(seq)
+      await fetchSelectedServer(seq)
     } catch (e) {
       console.error('设置内存失败:', e)
+      showToast(`设置内存失败: ${e instanceof Error ? e.message : String(e)}`, 'error')
+    } finally {
+      memorySubmittingRef.current = false
     }
   }
 
@@ -549,17 +782,39 @@ export function DashboardPage(): JSX.Element {
   }
 
   useEffect(() => {
-    fetchServerList()
-    fetchSelectedServer()
-    fetchJvmDefinitions()
-    fetchJvmState()
-    // 后台轮询，不触发忙碌遮罩
-    const interval = setInterval(() => {
-      fetchServerList()
-      fetchSelectedServer()
-      fetchJvmState()
+    // 初次加载（seq 统一递增一次，避免 out-of-order 互相覆盖）
+    const seq0 = ++fetchSeqRef.current
+    fetchServerList(seq0)
+    fetchSelectedServer(seq0)
+    fetchJvmDefinitions(seq0)
+    fetchJvmState(seq0)
+
+    // Bug2: 轮询每次都递增序列号，保证旧响应不会覆盖新的
+    const interval = window.setInterval(() => {
+      const seq = ++fetchSeqRef.current
+      fetchServerList(seq)
+      fetchSelectedServer(seq)
+      fetchJvmState(seq)
     }, 3000)
-    return () => clearInterval(interval)
+
+    return () => {
+      window.clearInterval(interval)
+      // Bug6: 卸载时如果内存输入有脏值，同步提交一次（避免 onBlur 没触发导致丢修改）
+      if (
+        jvmState?.hasServer &&
+        !memorySubmittingRef.current &&
+        ((memoryLastValuesRef.current?.initial !== jvmMemoryInitial) ||
+          (memoryLastValuesRef.current?.max !== jvmMemoryMax))
+      ) {
+        // fire-and-forget：卸载后没法 await，让后端尽力而为
+        setJvmMemory(jvmMemoryInitial, jvmMemoryMax).catch(() => {})
+      }
+      // Bug1: 清理 operationMessage 自动消失定时器
+      if (operationMsgTimerRef.current != null) {
+        window.clearTimeout(operationMsgTimerRef.current)
+        operationMsgTimerRef.current = null
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -725,6 +980,7 @@ export function DashboardPage(): JSX.Element {
                       isSelected={selectedServer?.displayName === server.displayName}
                       onSelect={() => handleSelectServer(server.displayName)}
                       onStop={handleStop}
+                      isBusy={isBusy}
                     />
                   </div>
                 ))
@@ -754,39 +1010,75 @@ export function DashboardPage(): JSX.Element {
                       server={server}
                       isSelected={selectedServer?.isKnown === true && selectedServer.displayName === server.name}
                       onSelect={() => handleSelectServer(server.name)}
+                      isBusy={isBusy}
                       onStart={async () => {
+                        // Bug3: 并发防抖
+                        if (isBusy) return
+                        setIsBusy(true)
+                        setBusyReason(`正在启动「${server.name}」...`)
                         try {
-                          // Pattern5 修复：优先传 knownServerId，其次 name，避免同名冲突
                           const result = await bridge.invoke<{ success: boolean; error?: string; message?: string }>('server:startKnown', {
                             knownServerId: server.knownServerId,
                             id: server.id,
                             name: server.name,
                           })
                           if (!result?.success) {
-                            setOperationMessage(`启动失败: ${result?.error || '未知错误'}`)
+                            const msg = `启动失败: ${result?.error || result?.message || '未知错误'}`
+                            setOpMsg(msg)
+                            showToast(msg, 'error')
+                          } else {
+                            // Bug9: 之前成功 case 没提示
+                            const okMsg = result?.message || `已启动「${server.name}」`
+                            setOpMsg(okMsg)
+                            showToast(okMsg, 'success')
                           }
-                          await fetchServerList()
-                          await fetchSelectedServer()
+                          const seq = ++fetchSeqRef.current
+                          await fetchServerList(seq)
+                          await fetchSelectedServer(seq)
                         } catch (e) {
-                          setOperationMessage(`启动失败: ${e instanceof Error ? e.message : String(e)}`)
+                          const msg = `启动失败: ${e instanceof Error ? e.message : String(e)}`
+                          setOpMsg(msg)
+                          showToast(msg, 'error')
+                        } finally {
+                          if (mountedRef.current) {
+                            setIsBusy(false)
+                            setBusyReason('')
+                          }
                         }
                       }}
                       onDelete={async () => {
+                        // Bug3: 并发防抖
+                        if (isBusy) return
+                        if (!confirm(`确定要从已知服务器列表删除「${server.name}」吗？`)) return
+                        setIsBusy(true)
+                        setBusyReason(`正在删除「${server.name}」...`)
                         try {
-                          // Pattern5 修复：优先传 knownServerId
                           const result = await bridge.invoke<{ success: boolean; message?: string; error?: string }>('server:removeKnown', {
                             knownServerId: server.knownServerId,
                             id: server.id,
                             name: server.name,
                           })
                           if (result.success) {
-                            await fetchServerList()
+                            const okMsg = result.message || `已删除「${server.name}」`
+                            setOpMsg(okMsg)
+                            showToast(okMsg, 'success')
+                            const seq = ++fetchSeqRef.current
+                            await fetchServerList(seq)
                           } else {
-                            setOperationMessage(`删除失败: ${result.error || result.message || '未知错误'}`)
+                            const msg = `删除失败: ${result.error || result.message || '未知错误'}`
+                            setOpMsg(msg)
+                            showToast(msg, 'error')
                           }
                         } catch (e) {
                           console.error('删除失败:', e)
-                          setOperationMessage(`删除失败: ${e instanceof Error ? e.message : String(e)}`)
+                          const msg = `删除失败: ${e instanceof Error ? e.message : String(e)}`
+                          setOpMsg(msg)
+                          showToast(msg, 'error')
+                        } finally {
+                          if (mountedRef.current) {
+                            setIsBusy(false)
+                            setBusyReason('')
+                          }
                         }
                       }}
                     />
@@ -864,22 +1156,47 @@ export function DashboardPage(): JSX.Element {
                         </button>
                         <button
                           onClick={async () => {
+                            // BugA3: 并发防抖
+                            if (isBusy) return
+                            setIsBusy(true)
+                            setBusyReason('正在保存到已知服务器列表...')
+                            setOpMsg('')
                             try {
                               const result = await bridge.invoke<{ success: boolean; message?: string; error?: string }>('server:saveAsKnown')
                               if (result.success) {
-                                await fetchServerList()
+                                // BugA1: 成功给 toast
+                                const okMsg = result.message || '已保存到已知服务器列表'
+                                setOpMsg(okMsg)
+                                showToast(okMsg, 'success')
+                                // BugA4: 成功后带 seq 刷新，避免旧轮询覆盖
+                                const seq = ++fetchSeqRef.current
+                                await fetchServerList(seq)
+                                await fetchSelectedServer(seq)
                               } else {
-                                setOperationMessage(`保存失败: ${result.error || result.message || '未知错误'}`)
+                                // BugA2: 失败走 setOpMsg（自动消失）+ toast，不再直接 setOperationMessage
+                                const msg = `保存失败: ${result.error || result.message || '未知错误'}`
+                                setOpMsg(msg)
+                                showToast(msg, 'error')
                               }
                             } catch (e) {
                               console.error('保存到已知失败:', e)
-                              setOperationMessage(`保存失败: ${e instanceof Error ? e.message : String(e)}`)
+                              // BugA2: catch 也走 setOpMsg + toast
+                              const msg = `保存失败: ${e instanceof Error ? e.message : String(e)}`
+                              setOpMsg(msg)
+                              showToast(msg, 'error')
+                            } finally {
+                              if (mountedRef.current) {
+                                setIsBusy(false)
+                                setBusyReason('')
+                              }
                             }
                           }}
                           // Q1 修复：如果已经是已知服务器（isKnown=true），则不需要再显示「保存到已知」按钮
                           style={{ minHeight: 36, padding: '8px 16px', display: selectedServer && selectedServer.isKnown ? 'none' : undefined }}
                           className="md-btn md-btn-outlined"
                           disabled={isBusy}
+                          // Bug17: 禁用时说明原因
+                          title={isBusy ? '处理中，请稍候' : '将当前运行中的服务器保存到已知服务器列表，方便下次快速启动'}
                         >
                           <IconByName name="save" size={12} />
                           <span>保存到已知</span>
@@ -1055,6 +1372,14 @@ export function DashboardPage(): JSX.Element {
                             className="md-input"
                             placeholder="如 2G、512M"
                             disabled={!jvmState?.hasServer || jvmState.isRunning}
+                            // Bug17: 禁用提示
+                            title={
+                              !jvmState?.hasServer
+                                ? '请先选择一个服务器'
+                                : jvmState?.isRunning
+                                ? '服务器运行中无法修改内存设置，请先停服'
+                                : '初始堆内存大小（JVM -Xms 参数）'
+                            }
                           />
                         </div>
                         <div>
@@ -1075,6 +1400,14 @@ export function DashboardPage(): JSX.Element {
                             className="md-input"
                             placeholder="如 4G、2048M"
                             disabled={!jvmState?.hasServer || jvmState.isRunning}
+                            // Bug17: 禁用提示
+                            title={
+                              !jvmState?.hasServer
+                                ? '请先选择一个服务器'
+                                : jvmState?.isRunning
+                                ? '服务器运行中无法修改内存设置，请先停服'
+                                : '最大堆内存大小（JVM -Xmx 参数）'
+                            }
                           />
                         </div>
                       </div>
@@ -1103,6 +1436,13 @@ export function DashboardPage(): JSX.Element {
                           className="md-btn md-btn-outlined"
                           style={{ fontSize: 'var(--md-font-size-sm)' }}
                           disabled={!jvmState?.hasServer || jvmState.isRunning}
+                          title={
+                            !jvmState?.hasServer
+                              ? '请先选择一个服务器'
+                              : jvmState?.isRunning
+                              ? '服务器运行中无法修改 JVM 参数，请先停服'
+                              : '应用 Aikar 的 Minecraft JVM 优化参数组合'
+                          }
                         >
                           <IconByName name="star" size={12} /> Aikar 优化
                         </button>
@@ -1111,6 +1451,13 @@ export function DashboardPage(): JSX.Element {
                           className="md-btn md-btn-outlined"
                           style={{ fontSize: 'var(--md-font-size-sm)' }}
                           disabled={!jvmState?.hasServer || jvmState.isRunning}
+                          title={
+                            !jvmState?.hasServer
+                              ? '请先选择一个服务器'
+                              : jvmState?.isRunning
+                              ? '服务器运行中无法修改 JVM 参数，请先停服'
+                              : '使用 G1 Garbage-First 垃圾回收器预设'
+                          }
                         >
                           [METRIC] G1GC 回收器
                         </button>
@@ -1119,6 +1466,13 @@ export function DashboardPage(): JSX.Element {
                           className="md-btn md-btn-outlined"
                           style={{ fontSize: 'var(--md-font-size-sm)' }}
                           disabled={!jvmState?.hasServer || jvmState.isRunning}
+                          title={
+                            !jvmState?.hasServer
+                              ? '请先选择一个服务器'
+                              : jvmState?.isRunning
+                              ? '服务器运行中无法修改 JVM 参数，请先停服'
+                              : '使用 ZGC 低延迟垃圾回收器预设（需要 JDK 17+）'
+                          }
                         >
                           [METRIC] ZGC 回收器
                         </button>
@@ -1189,7 +1543,7 @@ export function DashboardPage(): JSX.Element {
                                   <button
                                     onClick={() => handleEditArgument(arg)}
                                     className="md-btn md-btn-flat md-btn-icon"
-                                    title="编辑值"
+                                    title={jvmState.isRunning ? '服务器运行中无法编辑，请先停服' : '编辑该参数的值'}
                                     style={{ fontSize: 12 }}
                                     disabled={jvmState.isRunning}
                                   >
@@ -1199,7 +1553,7 @@ export function DashboardPage(): JSX.Element {
                                 <button
                                   onClick={() => handleRemoveArgument(arg)}
                                   className="md-btn md-btn-flat md-btn-icon"
-                                  title="移除"
+                                  title={jvmState.isRunning ? '服务器运行中无法移除，请先停服' : '从已选参数中移除'}
                                   style={{ fontSize: 12, color: 'var(--md-error)' }}
                                   disabled={jvmState.isRunning}
                                 >
@@ -1348,6 +1702,14 @@ export function DashboardPage(): JSX.Element {
                                   className="md-btn md-btn-primary"
                                   style={{ fontSize: 11, padding: '4px 10px' }}
                                   disabled={!jvmState?.hasServer || jvmState.isRunning}
+                                  // Bug17: 禁用提示
+                                  title={
+                                    !jvmState?.hasServer
+                                      ? '请先选择一个服务器'
+                                      : jvmState?.isRunning
+                                      ? '服务器运行中无法添加 JVM 参数，请先停服'
+                                      : `添加参数「${def.name}」`
+                                  }
                                 >
                                   + 添加
                                 </button>
@@ -1387,12 +1749,30 @@ export function DashboardPage(): JSX.Element {
                           className="md-input flex-1"
                           placeholder="输入自定义参数，如 -XX:+UnlockExperimentalVMOptions"
                           disabled={!jvmState?.hasServer || jvmState.isRunning}
+                          // Bug17: 禁用提示
+                          title={
+                            !jvmState?.hasServer
+                              ? '请先选择一个服务器'
+                              : jvmState?.isRunning
+                              ? '服务器运行中无法添加自定义参数，请先停服'
+                              : '输入自定义 JVM 参数（按 Enter 或点击「添加」提交）'
+                          }
                         />
                         <button
                           onClick={handleAddCustomArg}
                           className="md-btn md-btn-primary"
                           style={{ fontSize: 11 }}
                           disabled={!jvmState?.hasServer || jvmState.isRunning || !customArgInput.trim()}
+                          // Bug17: 禁用提示
+                          title={
+                            !jvmState?.hasServer
+                              ? '请先选择一个服务器'
+                              : jvmState?.isRunning
+                              ? '服务器运行中无法添加自定义参数，请先停服'
+                              : !customArgInput.trim()
+                              ? '请先在左侧输入自定义参数'
+                              : '将自定义参数添加到已选参数列表'
+                          }
                         >
                           添加
                         </button>
@@ -1411,7 +1791,10 @@ export function DashboardPage(): JSX.Element {
                           justifyContent: 'center',
                           zIndex: 9999,
                         }}
-                        onClick={() => setEditingArg(null)}
+                        onClick={() => {
+                          editingArgSnapshotRef.current = null
+                          setEditingArg(null)
+                        }}
                       >
                         <div
                           className="md-card"
@@ -1582,7 +1965,10 @@ export function DashboardPage(): JSX.Element {
 
                           <div className="flex items-center" style={{ gap: 8 }}>
                             <button
-                              onClick={() => setEditingArg(null)}
+                              onClick={() => {
+                                editingArgSnapshotRef.current = null
+                                setEditingArg(null)
+                              }}
                               className="md-btn md-btn-outlined"
                               style={{ flex: 1 }}
                             >

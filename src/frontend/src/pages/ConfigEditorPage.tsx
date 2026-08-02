@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useBlocker } from 'react-router-dom'
 import {
   FaFolderOpen,
   FaFolder,
@@ -28,6 +29,7 @@ import {
   rescanConfigFiles,
   // 手动定位 JAR
   selectJarManually,
+  getBridge,
 } from '@/utils/bridge'
 import { Reveal } from '@/components/ui/Reveal'
 import { useToastStore } from '@/stores/toastStore'
@@ -219,7 +221,19 @@ function ConfigEntryEditor({
 // 配置编辑页主组件
 // ─────────────────────────────────────────────────────────────────────
 export function ConfigEditorPage(): JSX.Element {
+  const navigate = useNavigate()
   const showToast = useToastStore((s) => s.showToast)
+  // ── 标记组件是否已挂载（防卸载后 setState） ──
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+  // 用 mountedRef 包一层 setState，避免卸载后调用触发 React 警告
+  const safeSet = useCallback(<S,>(setter: React.Dispatch<React.SetStateAction<S>>, value: S | ((prev: S) => S)): void => {
+    if (mountedRef.current) setter(value as never)
+  }, [])
 
   // 快速选择已移除：保留 selectedServerName 用于显示当前选中状态（手动定位 JAR 后从后端同步）
   const [, setSelectedServerName] = useState<string | null>(null)
@@ -328,21 +342,21 @@ export function ConfigEditorPage(): JSX.Element {
   const loadFileTree = useCallback(async (): Promise<void> => {
     try {
       const resp: ConfigFileTreeResponse = await fetchFileTree()
-      setConfigFileTree(resp.tree)
-      setConfigFileCountText(resp.configFileCountText)
-      setServerWorkingDirectory(resp.serverWorkingDirectory)
-      setHasServerDirectory(resp.hasServerDirectory)
+      if (!mountedRef.current) return
+      safeSet(setConfigFileTree, resp.tree)
+      safeSet(setConfigFileCountText, resp.configFileCountText)
+      safeSet(setServerWorkingDirectory, resp.serverWorkingDirectory)
+      safeSet(setHasServerDirectory, resp.hasServerDirectory)
       // ── 关键：不覆盖本地已有的 selectedServerName ──
-      // 之前：无条件 setSelectedServerName(resp.selectedServerName) → 刚 set 完就被后端旧快照的 null 覆盖
       setSelectedServerName((prev) => {
-        if (prev != null) return prev           // 本地已有值：保留
+        if (prev != null) return prev
         selectedServerNameRef.current = resp.selectedServerName ?? null
         return resp.selectedServerName ?? null
       })
     } catch (e) {
       console.error('获取配置文件树失败:', e)
     }
-  }, [fetchFileTree])
+  }, [fetchFileTree, safeSet])
 
   const loadEntries = useCallback(async (): Promise<ConfigEntriesResponse | null> => {
     setIsFetchingEntries(true)
@@ -350,42 +364,148 @@ export function ConfigEditorPage(): JSX.Element {
       let resp = await getConfigEntries()
 
       // ── 后端 LoadConfigAsync 是 fire-and-forget，config:selectFile 立即返回不等待。
-      // 如果拿到 isLoading=true，需要轮询直到加载完成，否则永远卡在 0% 转圈。
       let attempts = 0
       while (resp.isLoading && attempts < 50) {
+        if (!mountedRef.current) return null
         setIsLoading(true)
         setLoadProgress(resp.loadProgress)
         await new Promise((resolve) => setTimeout(resolve, 200))
+        if (!mountedRef.current) return null
         resp = await getConfigEntries()
         attempts++
       }
 
+      if (!mountedRef.current) return null
+
+      // Bug12: 若 50 次轮询后仍 isLoading=true → 提示加载超时
+      if (resp.isLoading) {
+        showToast('配置加载超时，请稍后重试', 'error')
+      }
+
       // ── 加载完成后（或超时），一次性更新所有状态
-      setConfigGroups(resp.groups)
-      setHasUnsavedChanges(resp.hasUnsavedChanges)
-      setSaveStatusMessage(resp.saveStatusMessage)
-      setIsSaveError(resp.isSaveError)
-      setIsLoading(resp.isLoading)
-      setLoadProgress(resp.loadProgress)
-      setSelectedConfigFile(resp.selectedConfigFile)
-      setSelectedConfigFileName(resp.selectedConfigFileName)
-      setIsServerRunning(resp.isCurrentServerRunning ?? false)
-      setModifiedCount(resp.modifiedCount ?? 0)
+      safeSet(setConfigGroups, resp.groups)
+      safeSet(setHasUnsavedChanges, resp.hasUnsavedChanges)
+      safeSet(setSaveStatusMessage, resp.saveStatusMessage)
+      safeSet(setIsSaveError, resp.isSaveError)
+      safeSet(setIsLoading, resp.isLoading)
+      safeSet(setLoadProgress, resp.loadProgress)
+      safeSet(setSelectedConfigFile, resp.selectedConfigFile)
+      safeSet(setSelectedConfigFileName, resp.selectedConfigFileName)
+      safeSet(setIsServerRunning, resp.isCurrentServerRunning ?? false)
+      safeSet(setModifiedCount, resp.modifiedCount ?? 0)
+      // BugJ: 同步 currentFileRef，保证 handleValueChange 的防抖快照正确
+      if (resp.selectedConfigFile) currentFileRef.current = resp.selectedConfigFile
       return resp
     } catch (e) {
       console.error('获取配置条目失败:', e)
+      // Bug11: 抛异常时给用户可见的错误提示，而不是静默
+      if (mountedRef.current) {
+        showToast('获取配置条目失败，请刷新重试', 'error')
+      }
       return null
     } finally {
-      setIsFetchingEntries(false)
+      if (mountedRef.current) setIsFetchingEntries(false)
     }
-  }, [])
+  }, [safeSet, showToast])
 
   // 防抖定时器引用，用于配置项值变更
   const debounceTimerRef = useRef<Record<string, number>>({})
+  // BugJ: 跟踪当前选中配置文件（防抖触发时校验，避免切换文件后防抖跨文件更新）
+  const currentFileRef = useRef<string | null>(null)
   // 跟踪当前选中的服务器名，供 loadFileTree 兜底判断
   const selectedServerNameRef = useRef<string | null>(null)
   // 跟踪当前手动定位的 JAR 路径，供 setTimeout 回调判断（避免 set state 闭包）
   const selectedJarPathRef = useRef<string | null>(null)
+  // Bug15: handleBrowseJar 内的 150ms 重查定时器集合（卸载时统一 clear）
+  const browseJarTimersRef = useRef<number[]>([])
+
+  // ── BugD: 立即 flush 所有 pending debounces（Ctrl+S 保存前调用，避免保存旧值） ──
+  const flushDebouncedUpdates = useCallback(async (): Promise<void> => {
+    const timers = debounceTimerRef.current
+    const keys = Object.keys(timers)
+    if (keys.length === 0) return
+    // 收集所有待提交的 (key, value) 对，然后清定时器
+    const pending: Array<{ key: string; value: string }> = []
+    for (const k of keys) {
+      const timerId = timers[k]
+      window.clearTimeout(timerId)
+      // 必须通过 pendingValues 取值（因为 debounce 提交的就是 pendingValues 里存的值）
+      if (k in pendingValues) {
+        pending.push({ key: k, value: pendingValues[k] })
+      }
+      delete timers[k]
+    }
+    if (pending.length === 0) return
+    // BugJ: flush 前再次校验「当前选中文件」是否与防抖启动时一致（currentFileRef）
+    //       与 handleValueChange 中保持一致，由 updateConfigValue 后端根据上下文判断
+    console.log('[ConfigEditor][FLUSH] 立即提交', pending.length, '个 pending 配置值')
+    // 并发批量提交
+    await Promise.all(
+      pending.map(({ key, value }) =>
+        updateConfigValue({ key, value })
+          .then((res) => {
+            if (!res?.success && mountedRef.current) {
+              setPendingValues((prev) => {
+                const next = { ...prev }
+                delete next[key]
+                return next
+              })
+              showToast(`修改提交失败: ${res?.error || '未知错误'}`, 'error')
+            }
+          })
+          .catch((e) => {
+            console.error('[FLUSH] updateConfigValue error:', e)
+            if (mountedRef.current) {
+              setPendingValues((prev) => {
+                const next = { ...prev }
+                delete next[key]
+                return next
+              })
+              showToast('修改提交失败，已回滚本地 pending 状态', 'error')
+            }
+          }),
+      ),
+    )
+  }, [pendingValues, showToast])
+
+  // ── BugB: React Router 导航级别的脏数据拦截（beforeunload 只处理浏览器级别的刷新/关闭） ──
+  const hasDirty = hasUnsavedChanges || Object.keys(pendingValues).length > 0
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) => {
+      // 同一页面不拦截
+      if (currentLocation.pathname === nextLocation.pathname) return false
+      // 有脏数据时拦截
+      return hasDirty
+    },
+  )
+  // 拦截确认弹窗状态
+  const [showNavConfirm, setShowNavConfirm] = useState<{ targetPath: string | null }>({ targetPath: null })
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      setShowNavConfirm({ targetPath: blocker.location?.pathname ?? null })
+    }
+  }, [blocker.state, blocker.location])
+
+  // ── BugE: 定期同步「当前服务器是否正在运行」（ConfigEditor 进入时只取一次，之后靠轮询保持实时） ──
+  // 只更新 isServerRunning / hasUnsavedChanges / modifiedCount 这几个「轻量状态」，
+  // 避免重拉 configGroups 导致编辑中的输入框抖动/失焦
+  useEffect(() => {
+    const poll = async (): Promise<void> => {
+      try {
+        const resp = await getConfigEntries()
+        if (!mountedRef.current) return
+        // 只同步 isServerRunning + hasUnsavedChanges + modifiedCount，其它字段不动（避免打断用户输入）
+        safeSet(setIsServerRunning, resp.isCurrentServerRunning ?? false)
+        safeSet(setHasUnsavedChanges, resp.hasUnsavedChanges)
+        if (typeof resp.modifiedCount === 'number') safeSet(setModifiedCount, resp.modifiedCount)
+      } catch {
+        // 轮询失败静默即可，下一轮再试
+      }
+    }
+    const id = window.setInterval(poll, 5000)
+    return () => window.clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 初始化：快速选择已移除，只做一次 loadFileTree 兜底（用户从 Dashboard 联动进入时，
   // 后端可能已通过 config:selectDefaultServer 设好了 Server，前端拉一次文件树即可显示）
@@ -399,10 +519,55 @@ export function ConfigEditorPage(): JSX.Element {
     }
     init()
 
+    // Bug19: 真·绑定 Ctrl+S（按钮标题说了但之前没写，是"假绑定"）
+    // BugD: 保存前强制 flush 所有 pending debounces，杜绝「300ms 防抖」和「320ms 后 save」
+    //       的同时触发竞态，同时保证实际保存的内容 = 屏幕上用户看到的最新内容
+    const doSave = async (): Promise<void> => {
+      // 1) 先 flush 所有 pending 防抖提交（串行等它完成）
+      try {
+        await flushDebouncedUpdates()
+      } catch (e) {
+        console.error('[Ctrl+S] flush debounces 失败:', e)
+        // 继续往下：save 应该仍能把当前已落到后端的改动保存
+      }
+      // 2) 再 saveConfig 写入文件
+      await handleSave()
+    }
+    const onCtrlS = (e: KeyboardEvent): void => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        const active = document.activeElement
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+          // 焦点在输入框中：先 blur 让 onChange 事件走完（把 pendingValues 写入，这样 flush 才能拿到）
+          ;(active as HTMLElement).blur()
+          // 给 React 的 state 更新留一帧（比 300ms 短很多，但已足够保证 state 写入）
+          // 真正防止竞态靠 doSave 里的 flushDebouncedUpdates()，所以这里等 20ms 即可
+          setTimeout(doSave, 20)
+        } else {
+          doSave()
+        }
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('keydown', onCtrlS)
+
+    // Bug21: 浏览器级别 beforeunload，有脏数据时拦截关窗/刷新
+    const onBeforeUnload = (e: BeforeUnloadEvent): void => {
+      if (hasUnsavedChanges || Object.keys(pendingValues).length > 0) {
+        e.preventDefault()
+        e.returnValue = '有未保存的配置更改，确定离开吗？'
+      }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+
     return () => {
+      window.removeEventListener('keydown', onCtrlS)
+      window.removeEventListener('beforeunload', onBeforeUnload)
       // 组件卸载时清理所有防抖定时器
       Object.values(debounceTimerRef.current).forEach((timer) => window.clearTimeout(timer))
       debounceTimerRef.current = {}
+      // Bug15: 清理 browseJar 的 recheck 定时器
+      browseJarTimersRef.current.forEach((id) => window.clearTimeout(id))
+      browseJarTimersRef.current = []
     }
   }, [loadFileTree])
 
@@ -411,21 +576,35 @@ export function ConfigEditorPage(): JSX.Element {
   //       → OnServerChanged 自动扫目录 → 前端 loadFileTree 拿配置文件树
   const handleBrowseJar = async (): Promise<void> => {
     try {
-      setPendingValues({})
-      setSelectedConfigFile(null)
-      setSelectedConfigFileName(null)
-      setExpandedDirs(new Set())
-      setExpandedGroups(new Set())
-      setSaveStatusMessage(null)
-
+      // BugI: 先不清理旧状态，等用户真正选了 JAR 成功后再清理，避免取消时丢原状态
       const result = await selectJarManually()
       if (!result?.success) {
         console.error('手动定位 JAR 失败:', result?.error ?? '用户取消')
         if (result?.error && !result.error.includes('取消')) {
+          // Bug18: 失败必须标红（之前 isSaveError 没设导致失败显示绿色）
           setSaveStatusMessage(`定位 JAR 失败: ${result.error}`)
+          setIsSaveError(true)
+          showToast(`定位 JAR 失败: ${result.error}`, 'error')
         }
+        // BugI: 用户取消 → 什么都不做，保留旧状态（原文件树、原配置、原 pending 修改）
         return
       }
+
+      // ✅ 真正选择成功了 → 才清空旧文件的编辑状态，并加载新的服务器/文件树
+      // 1) 先 cancel 所有 debounce timers（避免旧文件的防抖跨文件更新）
+      const timers = debounceTimerRef.current
+      for (const k of Object.keys(timers)) {
+        window.clearTimeout(timers[k])
+        delete timers[k]
+      }
+      setPendingValues({})
+      setSelectedConfigFile(null)
+      setSelectedConfigFileName(null)
+      currentFileRef.current = null
+      setExpandedDirs(new Set())
+      setExpandedGroups(new Set())
+      setSaveStatusMessage(null)
+      setIsSaveError(false)
 
       // 后端已赋值 cfg.Server，OnServerChanged 已 fire-and-forget 触发扫描
       if (result.jarPath) {
@@ -439,22 +618,25 @@ export function ConfigEditorPage(): JSX.Element {
 
       await loadFileTree()
 
-      // 兜底：后端 ScanDirectoryForConfigFilesAsync 是 fire-and-forget，立即拉可能空树。
-      // 延迟 150ms 再拉一次（比 120ms 略长，给大目录更多扫描时间）。
+      // Bug15: 用 ref 存定时器 id，卸载时清理，避免卸载后 setState
       const expectedJar = result.jarPath
-      window.setTimeout(async () => {
+      const recheckTimerId = window.setTimeout(async () => {
         try {
+          if (!mountedRef.current) return
           if (selectedJarPathRef.current !== expectedJar) return
           const recheck = await getConfigFileTree()
+          if (!mountedRef.current) return
           if (recheck.tree && recheck.tree.length > 0) {
-            setConfigFileTree(recheck.tree)
+            safeSet(setConfigFileTree, recheck.tree)
             setConfigFilesState([])
-            if (recheck.hasServerDirectory != null) setHasServerDirectory(recheck.hasServerDirectory)
-            if (recheck.configFileCountText) setConfigFileCountText(recheck.configFileCountText)
-            if (recheck.serverWorkingDirectory) setServerWorkingDirectory(recheck.serverWorkingDirectory)
+            if (recheck.hasServerDirectory != null) safeSet(setHasServerDirectory, recheck.hasServerDirectory)
+            if (recheck.configFileCountText) safeSet(setConfigFileCountText, recheck.configFileCountText)
+            if (recheck.serverWorkingDirectory) safeSet(setServerWorkingDirectory, recheck.serverWorkingDirectory)
           }
         } catch {}
       }, 150)
+      // 清理函数：组件卸载时 cancel 这个 recheck timer（通过 ref 维护一个"待清理的 timer 集合"）
+      browseJarTimersRef.current.push(recheckTimerId)
     } catch (e) {
       console.error('手动定位 JAR 失败:', e)
     }
@@ -476,10 +658,20 @@ export function ConfigEditorPage(): JSX.Element {
 
   const handleSelectFile = async (path: string): Promise<void> => {
     if (path === selectedConfigFile) return
+    // BugJ: 切换文件前：1) 先 cancel 所有老文件的 debounce timers（如果用户没保存就硬切，保留 pendingValues 作为"脏"提示）
+    //       2) 同步 currentFileRef 为新路径（防止后续启动的 debounce 快照到旧路径）
+    const timers = debounceTimerRef.current
+    for (const k of Object.keys(timers)) {
+      window.clearTimeout(timers[k])
+      delete timers[k]
+    }
     try {
       await selectConfigFile(path)
+      // BugJ: 清空 pendingValues（切换文件时，老文件的脏值不应该跨文件存在）
       setPendingValues({})
       setSelectedConfigFile(path)
+      // BugJ: 同时同步 ref，保证 handleValueChange 的快照准确
+      currentFileRef.current = path
       const resp = await loadEntries()
       if (resp) {
         // 默认展开所有分组（对应 WPF IsExpanded="True"）
@@ -508,6 +700,7 @@ export function ConfigEditorPage(): JSX.Element {
     })
   }
 
+  // BugJ: 防抖启动时快照当前选中的配置文件，触发时如果文件已经切换就直接丢弃
   const handleValueChange = (entry: ConfigEntry, value: string): void => {
     // 本地立即更新（避免输入丢失焦点）
     setPendingValues((prev) => ({ ...prev, [entry.key]: value }))
@@ -520,22 +713,65 @@ export function ConfigEditorPage(): JSX.Element {
 
     // 数值和文本类型添加 300ms 防抖，布尔和枚举立即提交
     const delay = entry.isBoolType || entry.isEnumType ? 0 : 300
+    // BugJ: 快照当前选中的配置文件路径（防抖触发时再次校验）
+    const fileAtChangeTime = currentFileRef.current
 
     debounceTimerRef.current[entry.key] = window.setTimeout(() => {
-      updateConfigValue({ key: entry.key, value }).catch((e) =>
-        console.error('更新配置值失败:', e)
-      )
+      // BugJ: 防抖触发时，文件已切换 → 丢弃本次提交，避免跨文件乱更新
+      if (currentFileRef.current !== fileAtChangeTime) {
+        console.log(
+          `[ConfigEditor][BugJ] 跳过跨文件提交: key=${entry.key}, oldFile=${fileAtChangeTime}, newFile=${currentFileRef.current}`,
+        )
+        delete debounceTimerRef.current[entry.key]
+        return
+      }
+      // Bug13: updateConfigValue 失败时 → 前端回滚 pending value，避免假成功
+      updateConfigValue({ key: entry.key, value })
+        .then((res) => {
+          if (!res?.success) {
+            // 后端业务层返回 success=false → 回滚 + toast
+            if (mountedRef.current) {
+              setPendingValues((prev) => {
+                const next = { ...prev }
+                delete next[entry.key]
+                return next
+              })
+              showToast(`修改「${entry.friendlyDisplayName || entry.key}」失败: ${res?.error || '未知错误'}`, 'error')
+            }
+          }
+        })
+        .catch((e) => {
+          console.error('更新配置值失败:', e)
+          // 网络/桥接抛异常 → 回滚 + toast
+          if (mountedRef.current) {
+            setPendingValues((prev) => {
+              const next = { ...prev }
+              delete next[entry.key]
+              return next
+            })
+            showToast(`修改「${entry.friendlyDisplayName || entry.key}」失败，已回滚`, 'error')
+          }
+        })
       delete debounceTimerRef.current[entry.key]
     }, delay)
   }
 
   const handleSave = async (): Promise<void> => {
+    // BugD: 用户点按钮保存也先 flush debounces，与 Ctrl+S 保持一致（保证保存的=屏幕上看到的）
+    try {
+      await flushDebouncedUpdates()
+    } catch (e) {
+      console.error('[handleSave] flush debounces 失败:', e)
+      // 继续尝试保存（即使部分 flush 失败，也把后端已经收到的那部分先落盘）
+    }
     try {
       const result = await saveConfig()
+      if (!mountedRef.current) return
       setSaveStatusMessage(result.message)
       setIsSaveError(!result.success)
       setPendingValues({})
       await loadEntries()
+      if (!mountedRef.current) return
 
       if (result.success) {
         if (result.requiresRestart) {
@@ -556,9 +792,11 @@ export function ConfigEditorPage(): JSX.Element {
       }
     } catch (e) {
       console.error('保存配置失败:', e)
-      setSaveStatusMessage('保存失败')
-      setIsSaveError(true)
-      showToast('保存失败', 'error')
+      if (mountedRef.current) {
+        setSaveStatusMessage('保存失败')
+        setIsSaveError(true)
+        showToast('保存失败', 'error')
+      }
     }
   }
 
@@ -766,7 +1004,13 @@ export function ConfigEditorPage(): JSX.Element {
               <button
                 className="md-btn md-btn-outlined"
                 disabled={!hasUnsavedChanges || isServerRunning}
-                title="撤销最近一次编辑"
+                title={
+                  isServerRunning
+                    ? '服务器正在运行，修改需停服后才能撤销'
+                    : !hasUnsavedChanges
+                    ? '暂无可撤销的修改'
+                    : '撤销最近一次编辑'
+                }
                 onClick={handleUndo}
               >
                 <FaRotateLeft size={16} />
@@ -775,6 +1019,13 @@ export function ConfigEditorPage(): JSX.Element {
               <button
                 className="md-btn md-btn-outlined"
                 disabled={!hasUnsavedChanges || isServerRunning}
+                title={
+                  isServerRunning
+                    ? '服务器正在运行，修改需停服后才能重置'
+                    : !hasUnsavedChanges
+                    ? '暂无可重置的修改'
+                    : '重置所有尚未保存的修改'
+                }
                 onClick={handleReset}
               >
                 <FaRotate size={16} />
@@ -783,7 +1034,13 @@ export function ConfigEditorPage(): JSX.Element {
               <button
                 className="md-btn md-btn-primary"
                 disabled={!hasUnsavedChanges || isServerRunning}
-                title="Ctrl+S 也可以保存哦"
+                title={
+                  isServerRunning
+                    ? '服务器正在运行，请先停服再保存配置'
+                    : !hasUnsavedChanges
+                    ? '暂无可保存的修改'
+                    : '保存配置到文件 (Ctrl+S)'
+                }
                 onClick={handleSave}
               >
                 <FaFloppyDisk size={16} />
@@ -1387,13 +1644,119 @@ export function ConfigEditorPage(): JSX.Element {
               </button>
               <button
                 className="md-btn md-btn-primary"
-                onClick={() => {
+                onClick={async () => {
                   setShowRestartConfirm(false)
-                  showToast('重启功能开发中', 'info')
+                  // Bug16: 之前是假的"开发中"toast，现在真·停服 → 导航到 Dashboard 让用户点启动（启动需要完整的 Dashboard 上下文）
+                  try {
+                    const stopRes = await getBridge().invoke<{ success: boolean; error?: string; message?: string }>('server:stop')
+                    if (!stopRes?.success) {
+                      showToast(`停服失败: ${stopRes?.error || stopRes?.message || '未知错误'}`, 'error')
+                      return
+                    }
+                    showToast('服务器已停止，请在 Dashboard 启动服务器以应用新配置', 'info')
+                  } catch (e) {
+                    showToast(`停服失败: ${e instanceof Error ? e.message : String(e)}`, 'error')
+                    return
+                  }
+                  // 跳转到 Dashboard（那里有启动按钮和完整上下文）
+                  navigate('/')
                 }}
               >
                 <FaPowerOff size={14} />
-                立即重启
+                立即停服并返回启动
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── BugB: Router 导航脏数据离开确认弹窗 ── */}
+      {showNavConfirm.targetPath && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'var(--md-modal-backdrop)',
+            zIndex: 10001,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'mdFadeIn 0.2s ease-out',
+          }}
+          onClick={() => setShowNavConfirm({ targetPath: null })}
+        >
+          <div
+            className="md-card"
+            style={{
+              width: 420,
+              padding: 24,
+              borderRadius: 'var(--md-radius-large)',
+              boxShadow: 'var(--md-shadow-modal)',
+              animation: 'mdModalIn 0.2s ease-out',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4">
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--md-warning-subtle)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <FaTriangleExclamation
+                  size={24}
+                  style={{ color: 'var(--md-gauge-yellow)' }}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: 'var(--md-body)',
+                    marginBottom: 8,
+                  }}
+                >
+                  有未保存的修改
+                </div>
+                <div
+                  style={{
+                    fontSize: 'var(--md-font-size-base)',
+                    color: 'var(--md-body-light)',
+                    lineHeight: 1.6,
+                  }}
+                >
+                  您对配置的修改尚未保存，离开此页面将丢失这些更改。确定要离开吗？
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                className="md-btn md-btn-outlined"
+                onClick={() => {
+                  setShowNavConfirm({ targetPath: null })
+                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                  blocker.reset?.()
+                }}
+              >
+                继续编辑
+              </button>
+              <button
+                className="md-btn md-btn-danger"
+                onClick={() => {
+                  setShowNavConfirm({ targetPath: null })
+                  // BugB: 用户确认离开 → 允许跳转（丢弃 pending 修改）
+                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                  blocker.proceed?.()
+                }}
+              >
+                放弃更改并离开
               </button>
             </div>
           </div>
