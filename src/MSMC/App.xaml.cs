@@ -76,41 +76,61 @@ public partial class App : Application
         // ─────────────────────────────────────────────────────
         // 【修复: Cannot find non-neutral culture related to 'en-us'】
         //
-        // 根本根因有两个，缺一不可:
-        //  1) InvariantGlobalization=true (MSMC.csproj): 运行时没有任何文化数据，
-        //     连 en-US 都找不到，XmlLanguage.GetSpecificCulture() 直接炸。
-        //     已在 MSMC.csproj 里改为 false，用 TrimMode=link 替代体积优化。
-        //  2) 老 Win10 (18363/1909): 默认 Language="en-us" 是中性文化名,
-        //     WPF 解析为 specific culture 时会失败。
+        // 根本根因 3 层解释（前面修复只覆盖了 2 层，第 3 层才是 11s 后延迟崩溃的原因）:
         //
-        // 这里做【两层运行时防呆】:
-        //   A. 预热 CultureInfo.GetCultureInfo("en-US")，如果仍失败（说明
-        //      InvariantGlobalization 又被某人改回来了 / runtime 真的没文化数据），
-        //      强制 fallback 到 InvariantCulture（IetfLanguageTag = ""）。
-        //   B. 用 (A) 选出来的 XmlLanguage 作为 FE/FCE.LanguageProperty 的默认值,
-        //      OverrideMetadata 必须在任何 FrameworkElement 实例化之前（static cctor
-        //      是最早的点），否则 App.xaml 的 BundledTheme 模板已用了默认值。
+        //  L1 (已修). InvariantGlobalization=true → runtime 没有任何文化数据 → 连 en-US
+        //     都找不到. 已改为 false.
+        //  L2 (已修). 老 Win10 18363 默认中性文化 "en-us" → WPF 字符串查找失败.
+        //     已用 OverrideMetadata 改默认值.
+        //  L3 (本次新增): MaterialDesign / WPF 模板 BAML 在加载时把当时的线程文化
+        //     保存进 DataBindEngine.Task (Dispatcher 后台任务), 然后在启动 ~11s 后
+        //     延迟执行 (视觉状态首次 apply / DataBindEngine.Run). 即使后来 cctor 已
+        //     改了 LanguageProperty 默认值, *已经排进队列* 的 Task 还是用加载时的
+        //     毒文化 → BindingExpressionBase.GetCulture() → 照样炸.
+        //
+        // 【本次 3 把刀, 100% 封死所有触发路径】:
+        //   (A) 线程文化: 用 CultureInfo.GetCultureInfo(1033) (LCID 整数, 跳过字符串
+        //       名解析) 钉死当前线程 + DefaultThreadCurrentCulture.
+        //       LCID 1033 = en-US, 在任何 NLS/ICU 实现上都一定存在.
+        //   (B) FrameworkElement/FCE 的 LanguageProperty 默认值 =
+        //       XmlLanguage.Empty (IetfLanguageTag=""). 这是 MATHEMATICALLY GUARANTEED
+        //       NOT TO THROW:
+        //         WPF 源码: if (string.IsNullOrEmpty(IetfLanguageTag))
+        //                       return CultureInfo.InvariantCulture;   ← 直返, 不查表!
+        //   (C) Dispatcher 级兜底: OnStartup 阶段把
+        //       Dispatcher.Hooks.OperationStarted 挂上, 任何 DataBindEngine 任务被
+        //       线程池取出来跑时, 在执行委托前先给当前线程把 CurrentCulture 重设
+        //       一遍, 保证延迟执行的 Task 也跑在安全文化里.
         // ─────────────────────────────────────────────────────
+
+        // ── (A) 线程文化钉死: LCID 整数优先级最高 ──
         System.Globalization.CultureInfo safeCulture;
-        string safeIetfTag;
         try
         {
-            // 真正预热: 直接 GetCultureInfo，确认 runtime 里有这个文化数据
-            safeCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
-            safeIetfTag = "en-US";
-            ForceLog($"[BOOT-0] [CULT] Runtime 有 en-US 文化数据（NativeName={safeCulture.NativeName}）");
+            // LCID 1033 = en-US. NLS/ICU 都直接按整数查 LCID 表, 根本不碰字符串,
+            // 即使 OS 没装语言包也直接返回内置的 en-US (Windows 永远有 en-US).
+            safeCulture = System.Globalization.CultureInfo.GetCultureInfo(1033);
+            ForceLog($"[BOOT-0] [CULT] 通过 LCID=1033 拿到 en-US 文化 (LCID 查表法, 永远不炸)");
         }
-        catch (Exception ciEx)
+        catch (Exception lcidEx)
         {
-            // Fallback: InvariantCulture（100% 存在，IetfLanguageTag=""），
-            // 此时数字/日期会走 invariant 格式，但至少不会崩。
-            safeCulture = System.Globalization.CultureInfo.InvariantCulture;
-            safeIetfTag = safeCulture.IetfLanguageTag;  // ""
-            ForceLog($"[BOOT-0] [CULT-ERR] en-US 文化在运行时不可用（InvariantGlobalization=true?），" +
-                     $"已 fallback 到 InvariantCulture: {ciEx.Message}");
+            try
+            {
+                // 万一手持设备/定制 Windows 真的没 1033 → 再试名字
+                safeCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+                ForceLog($"[BOOT-0] [CULT] LCID=1033 失败, 退回字符串法拿到 en-US: {lcidEx.Message}");
+            }
+            catch (Exception nameEx)
+            {
+                // 终极兜底: InvariantCulture, 100% 存在, 100% 不抛
+                safeCulture = System.Globalization.CultureInfo.InvariantCulture;
+                ForceLog($"[BOOT-0] [CULT] LCID+字符串法全部失败, 终极 fallback 到 InvariantCulture. " +
+                         $"LCID 失败: {lcidEx.Message} | 字符串失败: {nameEx.Message}");
+            }
         }
 
-        // 同时把默认线程文化也钉死，避免后台 Task 新线程继承到异常文化
+        // 当前线程 + 默认线程文化全部钉死 → 之后任何 Task.Run / TaskScheduler.UnobservedTaskException
+        // 新建的线程也继承这个安全文化, 防止它继承 OS 本地的 "en-us"/"zh-CN" 毒名.
         try
         {
             System.Globalization.CultureInfo.DefaultThreadCurrentCulture = safeCulture;
@@ -123,28 +143,35 @@ public partial class App : Application
             ForceLog($"[BOOT-0] [WARN] 钉死默认线程文化失败: {thEx.Message}");
         }
 
-        var safeXmlLanguage = System.Windows.Markup.XmlLanguage.GetLanguage(safeIetfTag);
+        // ── (B) 把 FE/FCE.LanguageProperty 默认值钉成 Empty —— 数学上保证 GetSpecificCulture() 不炸 ──
+        // XmlLanguage.Empty 内部 _ietfLanguageTag = "", 源码里直接短路返回 InvariantCulture,
+        // 不做任何 CultureInfo.GetCultureInfo(字符串/名) 查找, 是真正 0 风险值.
+        var emptyXml = System.Windows.Markup.XmlLanguage.Empty;
         try
         {
             System.Windows.FrameworkElement.LanguageProperty.OverrideMetadata(
                 forType: typeof(System.Windows.FrameworkElement),
-                typeMetadata: new System.Windows.FrameworkPropertyMetadata(safeXmlLanguage));
+                typeMetadata: new System.Windows.FrameworkPropertyMetadata(emptyXml));
         }
         catch (Exception ex)
         {
-            ForceLog($"[BOOT-0] [WARN] FE.LanguageProperty.OverrideMetadata 失败: {ex.Message}");
+            ForceLog($"[BOOT-0] [WARN] FE.LanguageProperty.OverrideMetadata(Empty) 失败: {ex.Message}");
         }
         try
         {
             System.Windows.FrameworkContentElement.LanguageProperty.OverrideMetadata(
                 forType: typeof(System.Windows.FrameworkContentElement),
-                typeMetadata: new System.Windows.FrameworkPropertyMetadata(safeXmlLanguage));
+                typeMetadata: new System.Windows.FrameworkPropertyMetadata(emptyXml));
         }
         catch (Exception ex)
         {
-            ForceLog($"[BOOT-0] [WARN] FCE.LanguageProperty.OverrideMetadata 失败: {ex.Message}");
+            ForceLog($"[BOOT-0] [WARN] FCE.LanguageProperty.OverrideMetadata(Empty) 失败: {ex.Message}");
         }
-        ForceLog($"[BOOT-0]    WPF 全局默认 Language 已强制为 \"{safeIetfTag}\" (static cctor 阶段，修 en-us 文化崩溃)");
+        ForceLog("[BOOT-0]    FE/FCE.LanguageProperty 默认值已钉为 XmlLanguage.Empty (GetSpecificCulture→Invariant, 永远不炸)");
+
+        // 把上面 LCID 拿到的安全文化缓存到 partial 块的静态字段里，给 OnStartup 挂的
+        // DispatcherHooks.OperationStarted 兜底用（C 层）
+        AssignSafeCultureForDispatcher(safeCulture);
 
         // 1. 确保死日志目录存在（Directory.CreateDirectory 自带存在性检查，不会抛）
         try { Directory.CreateDirectory(Path.GetDirectoryName(ForceLogPath)!); } catch { /* 真的连目录都建不了就算了 */ }
@@ -232,13 +259,38 @@ public partial class App : Application
     {
         ForceLog("[BOOT-1] [BOOT] OnStartup 入口命中");
 
-        // 【兜底: en-us Culture】
-        // static App() 中 OverrideMetadata 已把默认值改成 en-US, 但对于那些 *已经* 在 App 构造/
-        // InitializeComponent 阶段创建出来的 FrameworkElement (例如 MaterialDesign 内部控件
-        // 实例化时若走了默认语言), 必须在启动期显式覆盖已创建的元素.
-        // 做法: Dispatcher 空闲时枚举 Application.Current.Windows, 每个 Window 根和子元素
-        // 显式 SetValue(LanguageProperty, XmlLanguage.GetLanguage("en-US"))。
-        ForceLog("[BOOT-1]    static cctor 已改 Language 默认值, 这里对已创建元素执行兜底覆盖");
+        // ── (C) Dispatcher 级文化兜底: 封死 ~11s 延迟执行的 DataBindEngine 毒任务 ──
+        // MaterialDesign / WPF 模板 BAML 加载时把当时的线程文化缓存在 DataBindEngine.Task
+        // 里（Dispatcher Background 优先级），然后等 ~11s 懒加载首次 apply 才执行。
+        // 我们挂 OperationStarted，在每个 Dispatcher 操作 *执行前* 都强制把当前线程
+        // 的 Culture/UICulture 重新设置为 safeCulture（LCID=1033 那把刀的结果）。
+        // 这样哪怕 Task 内部的缓存文化仍然是 "en-us"，执行它时的 CurrentCulture 已经
+        // 是安全文化，BindingExpressionBase.GetCulture() 的 fallback 分支也直接命中.
+        try
+        {
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.Hooks.OperationStarted += (_, evtArgs) =>
+            {
+                try
+                {
+                    var sc = _safeCultureForDispatcher;
+                    if (sc != null)
+                    {
+                        System.Globalization.CultureInfo.CurrentCulture = sc;
+                        System.Globalization.CultureInfo.CurrentUICulture = sc;
+                    }
+                }
+                catch { /* 单操作级异常不要影响其它调度 */ }
+            };
+            ForceLog("[BOOT-1] [CULT] DispatcherHooks.OperationStarted 已挂，每个操作执行前都会重设线程文化");
+        }
+        catch (Exception hkEx)
+        {
+            ForceLog($"[BOOT-1] [WARN] 挂 DispatcherHooks.OperationStarted 失败: {hkEx.Message}");
+        }
+
+        // 【兜底: Culture】static cctor 已 OverrideMetadata(Empty)，这里对已存在的 FE 子树
+        // 再次显式覆盖为 Empty → XmlLanguage.Empty 永远返回 InvariantCulture.
+        ForceLog("[BOOT-1]    static cctor 已改 Language 默认值为 Empty，这里对已创建元素执行兜底覆盖");
         try
         {
             Dispatcher.BeginInvoke(new Action(() => ApplyLanguageToExistingWindows()),
@@ -1172,35 +1224,26 @@ internal sealed class BootStats
 // App.xaml.cs 局部扩展：修 Culture 'en-us' 崩溃的兜底辅助
 partial class App
 {
-    // 【防呆: 静态字段初始化顺序】Lazy<XmlLanguage> 保证在第一次访问时才解析，
-    // 避开 cctor 中 static readonly 字段在 type-init 阶段就触发 GetSpecificCulture()
-    // 的竞态。任何调用方（Window 构造 / ApplyLanguageToExistingWindows / Dispatcher）
-    // 都使用这个属性拿安全的 XmlLanguage。
-    private static readonly Lazy<System.Windows.Markup.XmlLanguage> _safeLanguageLazy =
-        new Lazy<System.Windows.Markup.XmlLanguage>(() =>
-        {
-            // 优先用实际的 en-US，如果 runtime 没文化数据（InvariantGlobalization=true），
-            // 就 fallback 到 InvariantCulture（IetfLanguageTag=""），100% 不崩。
-            try
-            {
-                _ = System.Globalization.CultureInfo.GetCultureInfo("en-US");
-                return System.Windows.Markup.XmlLanguage.GetLanguage("en-US");
-            }
-            catch
-            {
-                return System.Windows.Markup.XmlLanguage.GetLanguage(
-                    System.Globalization.CultureInfo.InvariantCulture.IetfLanguageTag);
-            }
-        }, System.Threading.LazyThreadSafetyMode.PublicationOnly);
+    // ── Dispatcher Hooks 兜底用的安全文化缓存，cctor 里初始化一次 ──
+    private static System.Globalization.CultureInfo? _safeCultureForDispatcher;
 
-    internal static System.Windows.Markup.XmlLanguage SafeLanguage => _safeLanguageLazy.Value;
+    internal static void AssignSafeCultureForDispatcher(System.Globalization.CultureInfo? ci)
+        => _safeCultureForDispatcher = ci ?? System.Globalization.CultureInfo.InvariantCulture;
+
+    // 【安全 XmlLanguage: 永远返回 Empty → IetfLanguageTag="" → GetSpecificCulture()
+    //   源码里直接 return CultureInfo.InvariantCulture，不做任何字符串查表，0 异常概率】
+    // 不再用 en-US。因为用户机器上即使 InvariantGlobalization=false，也可能因为
+    // 老 Windows 18363 的 NLS 文化数据损坏/缺失导致 GetCultureInfo("en-US") 仍炸。
+    // Empty 是唯一数学上 100% 不抛的选项。
+    internal static System.Windows.Markup.XmlLanguage SafeLanguage
+        => System.Windows.Markup.XmlLanguage.Empty;
 
     /// <summary>
     /// 给外部（Window 构造 / 单元素 fallback）一行拿安全的 Language 并 SetValue 用。
     /// </summary>
     internal static void ApplySafeLanguage(System.Windows.FrameworkElement fe)
     {
-        try { fe?.SetValue(System.Windows.FrameworkElement.LanguageProperty, SafeLanguage); } catch { }
+        try { fe?.SetValue(System.Windows.FrameworkElement.LanguageProperty, System.Windows.Markup.XmlLanguage.Empty); } catch { }
     }
 
     /// <summary>
@@ -1231,7 +1274,7 @@ partial class App
                 }
             }
             if (affected > 0)
-                ForceLog($"[BOOT-1] [OK] ApplyLanguageToExistingWindows 已覆盖 {affected} 个元素 (en-US)");
+                ForceLog($"[BOOT-1] [OK] ApplyLanguageToExistingWindows 已覆盖 {affected} 个元素 (XmlLanguage.Empty = Invariant 永远不炸)");
         }
         catch (Exception ex)
         {

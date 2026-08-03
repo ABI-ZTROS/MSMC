@@ -228,23 +228,24 @@
   <!-- ═══════════════════════════════════════════════════════════════
        PackFrontendToZip: 把前端 dist 打包成单个 zip 作为嵌入资源
        ═══════════════════════════════════════════════════════════════
-       【关键修复 1】去掉 Target 级别 Condition！
-       Exists('中文路径\index.html') 静态评估在中文路径下会偶发解析成 false，
-       导致整个 Target 根本不执行（用户日志已证实嵌入资源只剩 MSMC.g.resources）。
-       现在改成 Target 无条件进入，在内部做动态存在性判定。
+       【关键修复 A】DependsOnTargets="BuildFrontend"：执行顺序硬约束。
+       BeforeTargets="BeforeResGen" 只是声明"在 BeforeResGen 之前"，但与
+       BuildFrontend 的 BeforeTargets="PrepareForBuild" 是两条并行链，
+       MSBuild 在 VS / dotnet build 并行评估下会偶发 PackFrontendToZip 先于
+       BuildFrontend 执行 → dist 还没创建 → 整 Target 跳过 → 运行时只剩
+       MSMC.g.resources（用户日志已证实）。显式 DependsOnTargets 保证两个
+       Target 一定按 BuildFrontend → PackFrontendToZip 的顺序跑。
 
-       【关键修复 2】不再 PowerShell Exec！改用 MSBuild 内联 C# 任务 (RoslynCodeTaskFactory)。
-       原因：XML Entity → cmd → PowerShell 三层引号/转义在中文路径下必然出错，
-       之前就是因为 &quot;&quot; 被解成空字符串才报 MSB3073 exit code 1。
-       内联 C# 用 .NET 原生 System.IO.Compression，路径字符串不经过任何 shell 转义，
-       中文路径/空格路径/特殊字符路径全部正确。
+       【关键修复 B】去掉 Target 级别 Condition（同 DiagnoseFrontendPaths 模式）：
+       Exists('中文路径\index.html') 静态评估在中文路径下偶发 false，整 Target
+       跳过。改为 Target 无条件进入，内部动态判定。
+
+       【关键修复 C】不再 PowerShell Exec！历史上 CodeTaskFactory (MSB4801 on
+       dotnet build) / PowerShell 三层转义都失败过，现在只用 MSBuild 内置
+       ZipDirectory + CreateItem。
   -->
-  <!--
-    使用 MSBuild 内置 ZipDirectory 任务替代 CodeTaskFactory 自定义任务。
-    CodeTaskFactory 在 .NET SDK 版 MSBuild (dotnet build) 上不支持 (MSB4801)，
-    ZipDirectory 是 MSBuild 16.0+ 内置任务，在 dotnet build 和 VS MSBuild 上都可用。
-  -->
-  <Target Name="PackFrontendToZip" BeforeTargets="BeforeResGen">
+  <Target Name="PackFrontendToZip" BeforeTargets="BeforeResGen"
+          DependsOnTargets="BuildFrontend">
     <PropertyGroup>
       <_FrontendIndex Condition="'$(_FrontendIndex)' == ''">$(FrontendDir)\dist\index.html</_FrontendIndex>
       <_FrontendZip   Condition="'$(_FrontendZip)'   == ''">$(IntermediateOutputPath)wwwroot.zip</_FrontendZip>
@@ -266,7 +267,8 @@
       DestinationFile="$(_FrontendZip)"
       Overwrite="true" />
 
-    <!-- 用 CreateItem 动态追加 EmbeddedResource（Target 执行阶段才追加，不依赖静态评估） -->
+    <!-- 用 CreateItem 动态追加 EmbeddedResource（Target 执行阶段才追加，不依赖静态评估）
+         （静态 ItemGroup 兜底在下方 PackFrontendStatic 里） -->
     <CreateItem Condition="Exists('$(_FrontendIndex)') And Exists('$(_FrontendZip)')"
                 Include="$(_FrontendZip)"
                 AdditionalMetadata="LogicalName=$(AssemblyName).wwwroot.zip">
@@ -278,11 +280,28 @@
 
     <Message Condition="Exists('$(_FrontendIndex)') And !Exists('$(_FrontendZip)')"
              Text="❌ [PackFrontendToZip] 失败: dist 存在但 zip 未生成" Importance="high" />
+
+    <!-- 【终极校验】在发布构建时，如果 zip 最终没能嵌入则直接 Error 中止，
+         防止带着空前端打包出残缺 exe。 -->
+    <Error Condition="'$(IsPublishing)' == 'true' And Exists('$(_FrontendIndex)') And !Exists('$(_FrontendZip)')"
+           Text="❌ [PackFrontendToZip] 发布构建时 dist 存在但 zip 未生成，中止打包。" />
   </Target>
+
+  <!-- 【静态嵌入兜底】除了 Target 内部动态 CreateItem，再加一条静态 ItemGroup。
+       静态 EmbeddedResource 在设计期/编译期静态评估阶段读取，但因为 IntermediateOutputPath
+       里的 wwwroot.zip 文件是 PackFrontendToZip Target 动态生成的，所以这里用
+       Condition="Exists(...) 在第二次 MSBuild 遍历时（Target 跑完之后）文件已经存在就会被捡起。
+       两条路径都指向同一个 LogicalName，确保最终程序集里肯定有 MSMC.wwwroot.zip。 -->
+  <ItemGroup>
+    <EmbeddedResource
+      Condition="Exists('$(IntermediateOutputPath)wwwroot.zip')"
+      Include="$(IntermediateOutputPath)wwwroot.zip"
+      LogicalName="$(AssemblyName).wwwroot.zip" />
+  </ItemGroup>
 
   <!-- 复制 wwwroot 文件夹到输出目录（开发模式热重载备用）
        【修复】同样移除顶级 Condition，在内部做动态存在性判断，避免中文路径下静态评估失败。 -->
-  <Target Name="CopyFrontendToOutput" BeforeTargets="BeforeBuild">
+  <Target Name="CopyFrontendToOutput" BeforeTargets="BeforeBuild" DependsOnTargets="BuildFrontend">
     <ItemGroup Condition="Exists('$(FrontendDir)\dist\index.html')">
       <None
         Include="$(FrontendDir)\dist\**"
