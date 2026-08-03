@@ -37,6 +37,11 @@ import type {
   CpuPowerCapabilities,
   QoSApplyResult,
   PowerProfileApplyResult,
+  CpuSetTopology,
+  CpuSetPinResult,
+  PriorityBoostResult,
+  TimerResolutionResult,
+  PowerRequestResult,
 } from '@/types/bridge'
 
 declare global {
@@ -808,4 +813,75 @@ export function getCurrentPowerProfile(): Promise<{
   boostMode?: number
 }> {
   return bridge.invoke('cpuPower:getCurrentProfile')
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// T3 用户层最大权限调度补齐 — CPU Set / Priority Boost / Timer / Power Request
+// 因果链：前端按钮 → pinToPCores/enableTimerResolution → cpuPower:* 桥接 →
+//         C# ICpuPowerService → SetProcessDefaultCpuSet / timeBeginPeriod / PowerCreateRequest
+// ═════════════════════════════════════════════════════════════════════
+
+/** 查询系统 CPU Set 拓扑（P/E 核分布，异构 CPU 检测） */
+export function getCpuSetTopology(): Promise<CpuSetTopology> {
+  return bridge.invoke<CpuSetTopology>('cpuPower:getCpuSetTopology')
+}
+
+/** 把进程默认调度限制到 P-core（自动选择 schedulingClass>0 的 CPU Set） */
+export function pinProcessToPCores(pid: number): Promise<CpuSetPinResult> {
+  return bridge.invoke<CpuSetPinResult>('cpuPower:pinToPCores', { pid })
+}
+
+/** 把进程默认调度限制到指定 CPU Set 列表（用户手动选择） */
+export function pinProcessToCpuSets(pid: number, cpuSetIds: number[]): Promise<CpuSetPinResult> {
+  return bridge.invoke<CpuSetPinResult>('cpuPower:pinToCpuSets', { pid, cpuSetIds })
+}
+
+/** 清除进程的 CPU Set 限制（恢复系统默认调度） */
+export function clearProcessCpuSetPinning(
+  pid: number,
+): Promise<{ success: boolean; error?: string; pid: number }> {
+  return bridge.invoke<{ success: boolean; error?: string; pid: number }>(
+    'cpuPower:clearCpuSetPinning',
+    { pid },
+  )
+}
+
+/** 设置进程优先级 Boost 是否禁用（true=禁用前台 boost，稳定后台调度） */
+export function setProcessPriorityBoost(pid: number, disableBoost: boolean): Promise<PriorityBoostResult> {
+  return bridge.invoke<PriorityBoostResult>('cpuPower:setPriorityBoost', { pid, disableBoost })
+}
+
+/** 查询进程当前的 Priority Boost 状态 */
+export function getProcessPriorityBoost(pid: number): Promise<PriorityBoostResult> {
+  return bridge.invoke<PriorityBoostResult>('cpuPower:getPriorityBoost', { pid })
+}
+
+/** 启用全局定时器精度（timeBeginPeriod，1ms 推荐 MC 服） */
+export function enableTimerResolution(periodMs: number): Promise<TimerResolutionResult> {
+  return bridge.invoke<TimerResolutionResult>('cpuPower:enableTimerResolution', { periodMs })
+}
+
+/** 禁用全局定时器精度（timeEndPeriod，恢复系统默认 15.6ms） */
+export function disableTimerResolution(): Promise<TimerResolutionResult> {
+  return bridge.invoke<TimerResolutionResult>('cpuPower:disableTimerResolution')
+}
+
+/** 查询当前定时器精度状态 */
+export function getTimerResolutionState(): Promise<TimerResolutionResult> {
+  return bridge.invoke<TimerResolutionResult>('cpuPower:getTimerResolutionState')
+}
+
+/** 启动 Power Request（防睡眠，命名化，比 SetThreadExecutionState 更可靠） */
+export function startPowerRequest(reason: string): Promise<PowerRequestResult> {
+  return bridge.invoke<PowerRequestResult>('cpuPower:startPowerRequest', { reason })
+}
+
+/** 停止 Power Request */
+export function stopPowerRequest(): Promise<PowerRequestResult> {
+  return bridge.invoke<PowerRequestResult>('cpuPower:stopPowerRequest')
+}
+
+/** 查询 Power Request 当前状态 */
+export function getPowerRequestState(): Promise<PowerRequestResult> {
+  return bridge.invoke<PowerRequestResult>('cpuPower:getPowerRequestState')
 }

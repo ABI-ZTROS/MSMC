@@ -983,6 +983,277 @@ public partial class MainWindow : Window
             }
         });
 
+        // === T3 用户层最大权限调度：CPU Set / Priority Boost / Timer / Power Request ===
+
+        _bridgeService.RegisterRequestHandler("cpuPower:getCpuSetTopology", _ =>
+        {
+            try
+            {
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var t = svc.GetCpuSetTopology();
+                return Task.FromResult<object?>(new
+                {
+                    success = t.Success,
+                    error = t.Error,
+                    isHybridCpu = t.IsHybridCpu,
+                    totalCpuSets = t.TotalCpuSets,
+                    performanceCpuSetCount = t.PerformanceCpuSetCount,
+                    efficiencyCpuSetCount = t.EfficiencyCpuSetCount,
+                    cpuSets = t.CpuSets,
+                    performanceCpuSetIds = t.PerformanceCpuSetIds,
+                    efficiencyCpuSetIds = t.EfficiencyCpuSetIds,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:getCpuSetTopology 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("cpuPower:pinToPCores", payload =>
+        {
+            try
+            {
+                var pid = 0;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    pid = el.TryGetProperty("pid", out var p) ? p.GetInt32() : 0;
+
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = svc.PinProcessToPCores(pid);
+                return Task.FromResult<object?>(new
+                {
+                    success = r.Success,
+                    error = r.Error,
+                    pid = r.Pid,
+                    appliedCpuSetIds = r.AppliedCpuSetIds,
+                    pinnedToPCores = r.PinnedToPCores,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:pinToPCores 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("cpuPower:pinToCpuSets", payload =>
+        {
+            try
+            {
+                var pid = 0;
+                List<int> ids = new();
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    pid = el.TryGetProperty("pid", out var p) ? p.GetInt32() : 0;
+                    if (el.TryGetProperty("cpuSetIds", out var arr) && arr.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in arr.EnumerateArray())
+                            if (item.TryGetInt32(out var id)) ids.Add(id);
+                    }
+                }
+
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = svc.PinProcessToCpuSets(pid, ids);
+                return Task.FromResult<object?>(new
+                {
+                    success = r.Success,
+                    error = r.Error,
+                    pid = r.Pid,
+                    appliedCpuSetIds = r.AppliedCpuSetIds,
+                    pinnedToPCores = r.PinnedToPCores,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:pinToCpuSets 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("cpuPower:clearCpuSetPinning", payload =>
+        {
+            try
+            {
+                var pid = 0;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    pid = el.TryGetProperty("pid", out var p) ? p.GetInt32() : 0;
+
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var (ok, err) = svc.ClearProcessCpuSetPinning(pid);
+                return Task.FromResult<object?>(new { success = ok, error = err, pid });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:clearCpuSetPinning 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("cpuPower:setPriorityBoost", payload =>
+        {
+            try
+            {
+                var pid = 0;
+                var disable = false;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    pid = el.TryGetProperty("pid", out var p) ? p.GetInt32() : 0;
+                    disable = el.TryGetProperty("disableBoost", out var d) && d.GetBoolean();
+                }
+
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = svc.SetProcessPriorityBoost(pid, disable);
+                return Task.FromResult<object?>(new
+                {
+                    success = r.Success, error = r.Error, pid = r.Pid, disablePriorityBoost = r.DisablePriorityBoost,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:setPriorityBoost 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("cpuPower:getPriorityBoost", payload =>
+        {
+            try
+            {
+                var pid = 0;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    pid = el.TryGetProperty("pid", out var p) ? p.GetInt32() : 0;
+
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = svc.GetProcessPriorityBoost(pid);
+                return Task.FromResult<object?>(new
+                {
+                    success = r.Success, error = r.Error, pid = r.Pid, disablePriorityBoost = r.DisablePriorityBoost,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:getPriorityBoost 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("cpuPower:enableTimerResolution", payload =>
+        {
+            try
+            {
+                uint periodMs = 1;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    periodMs = el.TryGetProperty("periodMs", out var p) ? (uint)p.GetUInt32() : 1;
+
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = svc.EnableTimerResolution(periodMs);
+                return Task.FromResult<object?>(new
+                {
+                    success = r.Success, error = r.Error, periodMs = r.PeriodMs, enabled = r.Enabled,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:enableTimerResolution 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("cpuPower:disableTimerResolution", _ =>
+        {
+            try
+            {
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = svc.DisableTimerResolution();
+                return Task.FromResult<object?>(new
+                {
+                    success = r.Success, error = r.Error, periodMs = r.PeriodMs, enabled = r.Enabled,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:disableTimerResolution 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("cpuPower:getTimerResolutionState", _ =>
+        {
+            try
+            {
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = svc.GetTimerResolutionState();
+                return Task.FromResult<object?>(new
+                {
+                    success = r.Success, error = r.Error, periodMs = r.PeriodMs, enabled = r.Enabled,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:getTimerResolutionState 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("cpuPower:startPowerRequest", payload =>
+        {
+            try
+            {
+                var reason = "MSMC 服务器运行中";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    reason = el.TryGetProperty("reason", out var r) ? (r.GetString() ?? reason) : reason;
+
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r2 = svc.StartPowerRequest(reason);
+                return Task.FromResult<object?>(new
+                {
+                    success = r2.Success, error = r2.Error, reason = r2.Reason, active = r2.Active,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:startPowerRequest 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("cpuPower:stopPowerRequest", _ =>
+        {
+            try
+            {
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = svc.StopPowerRequest();
+                return Task.FromResult<object?>(new
+                {
+                    success = r.Success, error = r.Error, reason = r.Reason, active = r.Active,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:stopPowerRequest 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("cpuPower:getPowerRequestState", _ =>
+        {
+            try
+            {
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = svc.GetPowerRequestState();
+                return Task.FromResult<object?>(new
+                {
+                    success = r.Success, error = r.Error, reason = r.Reason, active = r.Active,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:getPowerRequestState 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
         // === 服务器管理相关 API ===
 
         // 获取服务器列表（运行中 + 已知）

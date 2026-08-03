@@ -25,6 +25,10 @@ import {
   applyJvmPreset,
   addCustomJvmArgument,
   setProcessQoS,
+  pinProcessToPCores,
+  setProcessPriorityBoost,
+  enableTimerResolution,
+  getTimerResolutionState,
 } from '@/utils/bridge'
 import type { ProcessQoSTier } from '@/types/bridge'
 
@@ -49,6 +53,80 @@ const applyServerQoS = async (pid: number): Promise<void> => {
   } catch (e) {
     // QoS 应用失败不阻断主流程，仅记录
     console.warn('[QoS] 应用失败:', e)
+  }
+}
+
+/**
+ * 应用 T3 用户层最大权限调度策略到刚启动的服务器进程：
+ *   - CPU Set P-core 路由（仅当用户在设置页启用 + 检测到异构 CPU）
+ *   - Priority Boost 禁用（仅当用户选择 'disable'）
+ *
+ * 因果链：handleStart 成功 → fetchServerList 拿到新 PID → applyServerTuning →
+ *         pinProcessToPCores(pid) → cpuPower:pinToPCores → ICpuPowerService.PinProcessToPCores →
+ *         SetProcessDefaultCpuSet(handle, P-core CPU Set IDs)
+ *         setProcessPriorityBoost(pid, true) → cpuPower:setPriorityBoost →
+ *         SetProcessPriorityBoost(handle, disable=true)
+ */
+const applyServerTuning = async (pid: number): Promise<void> => {
+  if (!pid || pid <= 0) return
+
+  // 1. P-core 路由（仅当用户启用）
+  try {
+    const autoPin = localStorage.getItem('msmc_auto_pin_pcores') === 'true'
+    if (autoPin) {
+      const r = await pinProcessToPCores(pid)
+      if (!r.success) {
+        console.warn('[T3] P-core 路由失败:', r.error)
+      } else if (r.pinnedToPCores) {
+        console.info(`[T3] 已将 PID=${pid} 路由到 P-core (${r.appliedCpuSetIds.length} 个 CPU Set)`)
+      }
+    }
+  } catch (e) {
+    console.warn('[T3] P-core 路由异常:', e)
+  }
+
+  // 2. Priority Boost 禁用（仅当用户选择 'disable'）
+  try {
+    const boostMode = localStorage.getItem('msmc_server_boost')
+    if (boostMode === 'disable') {
+      const r = await setProcessPriorityBoost(pid, true)
+      if (!r.success) {
+        console.warn('[T3] Priority Boost 设置失败:', r.error)
+      }
+    }
+  } catch (e) {
+    console.warn('[T3] Priority Boost 异常:', e)
+  }
+}
+
+/**
+ * 启动服务器时按用户配置启用 winmm 定时器精度（1ms）。
+ * 因果链：handleStart 成功 → ensureTimerResolution →
+ *         getTimerResolutionState() 检查当前状态 → enableTimerResolution(periodMs) →
+ *         cpuPower:enableTimerResolution → ICpuPowerService.EnableTimerResolution →
+ *         timeBeginPeriod(periodMs)
+ *
+ * 全局状态：定时器精度是系统级的，只需启用一次；多个服务器启动不会重复调用
+ * （EnableTimerResolution 内部会先 timeEndPeriod 旧的再 timeBeginPeriod 新的）。
+ */
+const ensureTimerResolution = async (): Promise<void> => {
+  try {
+    const tierStr = localStorage.getItem('msmc_timer_tier')
+    const tier = tierStr ? Number(tierStr) : 0
+    if (tier <= 0) return // 用户选择系统默认，不干预
+
+    // 检查当前状态，避免无谓调用
+    const state = await getTimerResolutionState()
+    if (state.enabled && state.periodMs === 1) return // 已经是 1ms，无需重复
+
+    const r = await enableTimerResolution(1)
+    if (!r.success) {
+      console.warn('[T3] 启用定时器精度失败:', r.error)
+    } else {
+      console.info('[T3] 定时器精度已启用 1ms（MC TPS 抖动优化）')
+    }
+  } catch (e) {
+    console.warn('[T3] 定时器精度异常:', e)
   }
 }
 
@@ -619,15 +697,20 @@ export function DashboardPage(): JSX.Element {
       const seq = ++fetchSeqRef.current
       await fetchServerList(seq)
       await fetchSelectedServer(seq)
-      // 启动成功后应用用户配置的 QoS 能效标签（High/Eco）到刚启动的服务器进程
+      // 启动成功后应用用户配置的 T1/T3 调度策略到刚启动的服务器进程：
+      //   - T1: QoS 能效标签（High/Eco）
+      //   - T3: P-core 路由 + Priority Boost 禁用 + winmm 定时器精度
       // 重新查询选中服务器以拿到启动后的最新 PID（避免闭包中的 selectedServer 是旧值）
       if (result?.success) {
         try {
           const fresh = await getSelectedServer()
           if (fresh?.processId && fresh.processId > 0) {
             await applyServerQoS(fresh.processId)
+            await applyServerTuning(fresh.processId)
           }
-        } catch { /* QoS 应用失败不阻断主流程 */ }
+        } catch { /* 调度策略应用失败不阻断主流程 */ }
+        // 全局定时器精度（与 PID 无关，系统级）
+        await ensureTimerResolution()
       }
     } catch (e) {
       const msg = `启动失败: ${e instanceof Error ? e.message : String(e)}`

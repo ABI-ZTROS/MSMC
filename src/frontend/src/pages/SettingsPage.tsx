@@ -18,6 +18,9 @@ import {
   FaBolt,
   FaMoon,
   FaMemory,
+  FaMicrochip,
+  FaClock,
+  FaPlug,
 } from 'react-icons/fa6'
 import {
   getSettings,
@@ -44,6 +47,13 @@ import {
   getCpuPowerCapabilities,
   applyPowerProfile,
   restorePowerProfile,
+  getCpuSetTopology,
+  enableTimerResolution,
+  disableTimerResolution,
+  getTimerResolutionState,
+  startPowerRequest,
+  stopPowerRequest,
+  getPowerRequestState,
 } from '@/utils/bridge'
 import type {
   SettingsData,
@@ -57,6 +67,9 @@ import type {
   CpuPowerCapabilities,
   PowerProfile,
   ProcessQoSTier,
+  CpuSetTopology,
+  TimerResolutionResult,
+  PowerRequestResult,
 } from '@/types/bridge'
 import {
   applySettingsToCss,
@@ -173,11 +186,42 @@ export function SettingsPage(): JSX.Element {
     return 'High'
   })
 
+  // ─── T3 用户层最大权限调度状态 ───
+  // CPU Set 拓扑（P/E 核检测）
+  const [cpuSetTopology, setCpuSetTopology] = useState<CpuSetTopology | null>(null)
+  // 服务器启动时是否自动路由到 P-core
+  const [autoPinPCores, setAutoPinPCores] = useState<boolean>(() => {
+    try { return localStorage.getItem('msmc_auto_pin_pcores') === 'true' } catch { return false }
+  })
+  // 全局定时器精度档位（0=系统默认 15.6ms / 1=1ms / 2=0.5ms）
+  const [timerTier, setTimerTier] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('msmc_timer_tier')
+      return saved ? Number(saved) : 0
+    } catch { return 0 }
+  })
+  const [timerState, setTimerState] = useState<TimerResolutionResult | null>(null)
+  // 服务器进程 Priority Boost 策略（'auto'=系统默认 / 'disable'=禁用前台 boost）
+  const [serverBoostMode, setServerBoostMode] = useState<'auto' | 'disable'>(() => {
+    try {
+      const saved = localStorage.getItem('msmc_server_boost')
+      return saved === 'disable' ? 'disable' : 'auto'
+    } catch { return 'auto' }
+  })
+  // Power Request 状态
+  const [powerReqState, setPowerReqState] = useState<PowerRequestResult | null>(null)
+
   const powerProfileOptions: Array<{ value: PowerProfile; label: string; desc: string; color: string }> = [
     { value: 'UltimatePerformance', label: '极致性能', desc: 'Aggressive 睿频 + 100% 处理器状态 + 激进升频', color: 'var(--md-danger)' },
     { value: 'Balanced', label: '平衡', desc: '标准睿频 + 100% 处理器状态', color: 'var(--md-primary-hue-mid)' },
     { value: 'Efficient', label: '能效优先', desc: '能效优先的睿频 + 90% 处理器状态', color: 'var(--md-success)' },
     { value: 'PowerSaver', label: '极限省电', desc: '禁用睿频 + 80% 处理器状态', color: 'var(--md-body-light)' },
+  ]
+
+  const timerOptions: Array<{ tier: number; label: string; periodMs: number; desc: string }> = [
+    { tier: 0, label: '系统默认 (15.6ms)', periodMs: 0, desc: '不修改系统 tick，最低功耗' },
+    { tier: 1, label: '1ms (推荐 MC 服)', periodMs: 1, desc: '显著降低 20 TPS 主循环抖动，少量功耗' },
+    { tier: 2, label: '0.5ms (极致)', periodMs: 1, desc: '更精细，但增加空闲功耗（实际仍受限于系统最小值）' },
   ]
 
   const refreshCpuPowerCaps = useCallback(async (): Promise<void> => {
@@ -225,6 +269,75 @@ export function SettingsPage(): JSX.Element {
     setServerQoSTier(tier)
     try { localStorage.setItem('msmc_server_qos', tier) } catch { /* ignore */ }
   }, [])
+
+  // ─── T3 处理器 ───────────────────────────────────────────────────────────
+
+  const refreshCpuSetTopology = useCallback(async (): Promise<void> => {
+    try {
+      const topo = await getCpuSetTopology()
+      setCpuSetTopology(topo)
+    } catch (e) {
+      console.error('获取 CPU Set 拓扑失败:', e)
+    }
+  }, [])
+
+  const refreshTimerState = useCallback(async (): Promise<void> => {
+    try {
+      const r = await getTimerResolutionState()
+      setTimerState(r)
+    } catch (e) {
+      console.error('获取定时器精度状态失败:', e)
+    }
+  }, [])
+
+  const refreshPowerRequestState = useCallback(async (): Promise<void> => {
+    try {
+      const r = await getPowerRequestState()
+      setPowerReqState(r)
+    } catch (e) {
+      console.error('获取 Power Request 状态失败:', e)
+    }
+  }, [])
+
+  const handleToggleAutoPinPCores = useCallback((enabled: boolean): void => {
+    setAutoPinPCores(enabled)
+    try { localStorage.setItem('msmc_auto_pin_pcores', enabled ? 'true' : 'false') } catch { /* ignore */ }
+  }, [])
+
+  const handleSetTimerTier = useCallback(async (tier: number): Promise<void> => {
+    setTimerTier(tier)
+    try { localStorage.setItem('msmc_timer_tier', String(tier)) } catch { /* ignore */ }
+    const opt = timerOptions.find((o) => o.tier === tier)
+    if (!opt) return
+    try {
+      if (opt.periodMs > 0) {
+        await enableTimerResolution(opt.periodMs)
+      } else {
+        await disableTimerResolution()
+      }
+      await refreshTimerState()
+    } catch (e) {
+      console.error('设置定时器精度失败:', e)
+    }
+  }, [refreshTimerState])
+
+  const handleSetServerBoostMode = useCallback((mode: 'auto' | 'disable'): void => {
+    setServerBoostMode(mode)
+    try { localStorage.setItem('msmc_server_boost', mode) } catch { /* ignore */ }
+  }, [])
+
+  const handleTogglePowerRequest = useCallback(async (): Promise<void> => {
+    try {
+      if (powerReqState?.active) {
+        await stopPowerRequest()
+      } else {
+        await startPowerRequest('MSMC 服务器运行中（用户在设置页手动启用）')
+      }
+      await refreshPowerRequestState()
+    } catch (e) {
+      console.error('切换 Power Request 失败:', e)
+    }
+  }, [powerReqState?.active, refreshPowerRequestState])
 
   const loadSettings = useCallback(async (): Promise<void> => {
     try {
@@ -292,7 +405,19 @@ export function SettingsPage(): JSX.Element {
       .then((info) => setAppInfo(info))
       .catch((e) => console.error('获取应用信息失败:', e))
     refreshCpuPowerCaps()
-  }, [loadSettings, loadJavaList, loadSwatchesAndPresets, loadTeamInfo, refreshCpuPowerCaps])
+    refreshCpuSetTopology()
+    refreshTimerState()
+    refreshPowerRequestState()
+  }, [
+    loadSettings,
+    loadJavaList,
+    loadSwatchesAndPresets,
+    loadTeamInfo,
+    refreshCpuPowerCaps,
+    refreshCpuSetTopology,
+    refreshTimerState,
+    refreshPowerRequestState,
+  ])
 
   // ─── 颜色设置 ───
   const handlePrimaryPreview = (hex: string): void => {
@@ -1297,6 +1422,249 @@ export function SettingsPage(): JSX.Element {
           </div>
           <div style={{ fontSize: 10, color: 'var(--md-body-lighter)', marginTop: 6 }}>
             当前选择：<strong>{serverQoSTier}</strong> — 将在服务器启动时自动应用到此进程
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* [T3] 用户层最大权限调度卡片（CPU Set / Timer / Boost / PowerRequest） */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div className="md-card md-card-elevated p-5 mb-4 md-stagger-item" style={{ animationDelay: '150ms' }}>
+        <h2
+          className="md-section-title"
+          style={{ color: 'var(--md-accent-text)', margin: '0 0 4px 0' }}
+        >
+          <FaMicrochip size={14} style={{ marginRight: 6, color: 'var(--md-primary)' }} />
+          用户层最大权限调度（零 SDK / 零驱动）
+        </h2>
+        <div style={{ fontSize: 11, color: 'var(--md-body-lighter)', marginBottom: 12, lineHeight: 1.5 }}>
+          Win32 用户态 API 直通：CPU Set P/E 核路由 · winmm 定时器精度 · Priority Boost · Power Request 防睡眠
+        </div>
+
+        {/* ─── CPU Set P/E 核路由（异构 CPU 检测）─── */}
+        <div style={{
+          padding: '10px 12px',
+          background: 'var(--md-card-bg)',
+          borderRadius: 8,
+          marginBottom: 12,
+          border: cpuSetTopology?.isHybridCpu
+            ? '1px solid var(--md-primary)'
+            : '1px solid var(--md-subtle-border)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <strong style={{ fontSize: 12, color: 'var(--md-body)' }}>CPU Set P/E 核路由</strong>
+            {cpuSetTopology && (
+              <span style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: 10,
+                background: cpuSetTopology.isHybridCpu
+                  ? 'color-mix(in srgb, var(--md-primary) 18%, transparent)'
+                  : 'color-mix(in srgb, var(--md-body-light) 15%, transparent)',
+                color: cpuSetTopology.isHybridCpu ? 'var(--md-primary)' : 'var(--md-body-light)',
+              }}>
+                {cpuSetTopology.isHybridCpu ? '异构 CPU' : '同构 CPU'}
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--md-body-lighter)', marginBottom: 8, lineHeight: 1.4 }}>
+            Intel 12 代+ / AMD Ryzen 7000+ X3D 异构 CPU 可把 MC 主进程锁定到 P-core（性能核），
+            避免 E-core 误调度导致 TPS 抖动。SchedulingClass&gt;0 的 CPU Set 视为 P-core。
+          </div>
+          {cpuSetTopology?.success && (
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 10, marginBottom: 8 }}>
+              <span style={{ color: 'var(--md-body)' }}>
+                检测到 <strong>{cpuSetTopology.totalCpuSets}</strong> 个 CPU Set
+              </span>
+              <span style={{ color: 'var(--md-danger)' }}>
+                P-core: <strong>{cpuSetTopology.performanceCpuSetCount}</strong>
+              </span>
+              <span style={{ color: 'var(--md-success)' }}>
+                E-core: <strong>{cpuSetTopology.efficiencyCpuSetCount}</strong>
+              </span>
+            </div>
+          )}
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            cursor: cpuSetTopology?.isHybridCpu ? 'pointer' : 'not-allowed',
+            opacity: cpuSetTopology?.isHybridCpu ? 1 : 0.5,
+            padding: '6px 0',
+          }}>
+            <input
+              type="checkbox"
+              checked={autoPinPCores}
+              disabled={!cpuSetTopology?.isHybridCpu}
+              onChange={(e) => handleToggleAutoPinPCores(e.target.checked)}
+              style={{ width: 14, height: 14, cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: 11, color: 'var(--md-body)' }}>
+              服务器启动时自动路由到 P-core
+              {!cpuSetTopology?.isHybridCpu && (
+                <span style={{ color: 'var(--md-warning)', marginLeft: 4 }}>
+                  （当前 CPU 非异构，无需路由）
+                </span>
+              )}
+            </span>
+          </label>
+        </div>
+
+        {/* ─── winmm 定时器精度 ─── */}
+        <div style={{
+          padding: '10px 12px',
+          background: 'var(--md-card-bg)',
+          borderRadius: 8,
+          marginBottom: 12,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <FaClock size={11} style={{ color: 'var(--md-warning)' }} />
+            <strong style={{ fontSize: 12, color: 'var(--md-body)' }}>winmm 定时器精度</strong>
+            {timerState?.enabled && (
+              <span style={{
+                fontSize: 9,
+                fontWeight: 700,
+                padding: '1px 6px',
+                borderRadius: 8,
+                background: 'color-mix(in srgb, var(--md-success) 18%, transparent)',
+                color: 'var(--md-success)',
+              }}>
+                ● 已启用 {timerState.periodMs}ms
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--md-body-lighter)', marginBottom: 8, lineHeight: 1.4 }}>
+            默认系统 tick 15.6ms → 提到 1ms 可显著降低 MC 20 TPS 主循环抖动。仅在服务器运行期间启用，
+            应用退出时自动还原（Dispose 自动调用 timeEndPeriod）。
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+            {timerOptions.map((opt) => {
+              const isSelected = timerTier === opt.tier
+              return (
+                <button
+                  key={opt.tier}
+                  onClick={() => handleSetTimerTier(opt.tier)}
+                  style={{
+                    padding: '8px 6px',
+                    borderRadius: 6,
+                    border: isSelected
+                      ? '2px solid var(--md-primary)'
+                      : '1px solid var(--md-subtle-border)',
+                    background: isSelected
+                      ? 'color-mix(in srgb, var(--md-primary) 10%, transparent)'
+                      : 'transparent',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.12s ease',
+                  }}
+                >
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: isSelected ? 'var(--md-primary)' : 'var(--md-body)',
+                    marginBottom: 2,
+                  }}>
+                    {opt.label}
+                  </div>
+                  <div style={{ fontSize: 9, color: 'var(--md-body-lighter)', lineHeight: 1.3 }}>
+                    {opt.desc}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ─── Priority Boost + Power Request ─── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {/* Priority Boost */}
+          <div style={{
+            padding: '10px 12px',
+            background: 'var(--md-card-bg)',
+            borderRadius: 8,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <FaBolt size={11} style={{ color: 'var(--md-warning)' }} />
+              <strong style={{ fontSize: 12, color: 'var(--md-body)' }}>Priority Boost</strong>
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--md-body-lighter)', marginBottom: 8, lineHeight: 1.4 }}>
+              控制服务器进程在窗口前台/输入事件时是否自动提升优先级。后台服建议禁用以稳定调度。
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {([
+                { value: 'auto', label: '系统默认' },
+                { value: 'disable', label: '禁用前台 boost' },
+              ] as Array<{ value: 'auto' | 'disable'; label: string }>).map((opt) => {
+                const isSelected = serverBoostMode === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleSetServerBoostMode(opt.value)}
+                    style={{
+                      flex: 1,
+                      padding: '6px 8px',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: isSelected ? '#fff' : 'var(--md-body)',
+                      background: isSelected ? 'var(--md-primary)' : 'transparent',
+                      border: `1px solid ${isSelected ? 'var(--md-primary)' : 'var(--md-subtle-border)'}`,
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      transition: 'all 0.12s ease',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Power Request */}
+          <div style={{
+            padding: '10px 12px',
+            background: 'var(--md-card-bg)',
+            borderRadius: 8,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <FaPlug size={11} style={{ color: 'var(--md-success)' }} />
+              <strong style={{ fontSize: 12, color: 'var(--md-body)' }}>Power Request 防睡眠</strong>
+              {powerReqState?.active && (
+                <span style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  padding: '1px 6px',
+                  borderRadius: 8,
+                  background: 'color-mix(in srgb, var(--md-success) 18%, transparent)',
+                  color: 'var(--md-success)',
+                }}>
+                  ● 活跃
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--md-body-lighter)', marginBottom: 8, lineHeight: 1.4 }}>
+              命名化防睡眠请求（比 SetThreadExecutionState 更可靠），崩溃时句柄自动释放。
+            </div>
+            <button
+              onClick={handleTogglePowerRequest}
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                fontSize: 11,
+                fontWeight: 600,
+                color: powerReqState?.active ? 'var(--md-danger)' : '#fff',
+                background: powerReqState?.active
+                  ? 'transparent'
+                  : 'var(--md-success)',
+                border: `1px solid ${powerReqState?.active ? 'var(--md-danger)' : 'var(--md-success)'}`,
+                borderRadius: 6,
+                cursor: 'pointer',
+                transition: 'all 0.12s ease',
+              }}
+            >
+              {powerReqState?.active ? '停止 Power Request' : '启动 Power Request'}
+            </button>
           </div>
         </div>
       </div>

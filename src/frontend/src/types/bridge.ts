@@ -550,6 +550,69 @@ export interface PowerProfileApplyResult {
   appliedProfile?: string
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// T3 用户层最大权限调度补齐 — CPU Set / Priority Boost / Timer / Power Request
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 一个 CPU Set 的描述（P-core 组或 E-core 组） */
+export interface CpuSetInfo {
+  id: number                       // CPU Set ID（用于 pinToCpuSets）
+  group: number                    // NUMA 组
+  logicalProcessorIndex: number    // 组内逻辑处理器序号
+  coreIndex: number                // 物理核序号
+  logicalProcessorCount: number    // 本 Set 中的逻辑处理器数
+  coreCount: number                // 本 Set 中的物理核数
+  schedulingClass: number          // 0=E-core，>0=P-core（值越大越偏性能）
+  isParked: boolean                // 是否已停泊
+  isPerformanceCore: boolean       // 推断：schedulingClass>0 → P-core
+}
+
+/** 系统 CPU Set 拓扑查询结果 */
+export interface CpuSetTopology {
+  success: boolean
+  error?: string
+  isHybridCpu: boolean             // 是否为异构 CPU（同时有 P-core 和 E-core）
+  totalCpuSets: number
+  performanceCpuSetCount: number   // P-core Set 数量
+  efficiencyCpuSetCount: number    // E-core Set 数量
+  cpuSets: CpuSetInfo[]
+  performanceCpuSetIds: number[]   // P-core Set ID 列表（用于一键锁定）
+  efficiencyCpuSetIds: number[]
+}
+
+/** CPU Set 路由应用结果 */
+export interface CpuSetPinResult {
+  success: boolean
+  error?: string
+  pid: number
+  appliedCpuSetIds: number[]
+  pinnedToPCores: boolean
+}
+
+/** Priority Boost 查询/设置结果 */
+export interface PriorityBoostResult {
+  success: boolean
+  error?: string
+  pid: number
+  disablePriorityBoost: boolean    // true=已禁用前台 boost（后台服推荐）
+}
+
+/** 定时器精度设置结果 */
+export interface TimerResolutionResult {
+  success: boolean
+  error?: string
+  periodMs: number                 // 当前定时器精度（毫秒）
+  enabled: boolean                 // 是否已启用
+}
+
+/** Power Request（防睡眠）操作结果 */
+export interface PowerRequestResult {
+  success: boolean
+  error?: string
+  reason: string                   // 防睡眠原因（命名化）
+  active: boolean                  // 是否活跃
+}
+
 export interface SetAffinityRequest {
   pid: number
   affinityMask: number

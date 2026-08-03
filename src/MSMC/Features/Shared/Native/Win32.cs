@@ -496,6 +496,182 @@ internal static class NativeMethods
         [In] SafeProcessHandle hProcess,
         [Out] out PROCESS_MEMORY_COUNTERS_EX ppsmemCounters,
         [In] int cb);
+
+    // ───────────────────────────────────────────────────────────────────────
+    // 🧬 CPU Set — 异构 CPU（Intel 12 代+ / AMD X3D）的 P-core/E-core 路由
+    //     ref: https://learn.microsoft.com/windows/win32/api/processthreadsapi/nf-processthreadsapi-getsystemcpusetinformation
+    //     比 ProcessorAffinity 更精细：可指定"用 P-core 不用 E-core"，
+    //     而不影响同一物理核的超线程兄弟核；适合 MC 主线程锁定到 P-core
+    //     Win10 1709+ 用户态 API，零驱动
+    // ───────────────────────────────────────────────────────────────────────
+    public const uint CPU_SET_INFORMATION_TYPE_CpuSet = 1;
+
+    // AllocationFlags 位定义（SYSTEM_CPU_SET.AllocationFlags）
+    public const ulong CPU_SET_ALLOCATED = 0x00000001;        // 已分配给 CPU Set
+    public const ulong CPU_SET_ALLOCATED_TO_CONFIGURED_CLASS = 0x00000002;
+    public const ulong CPU_SET_PARKED = 0x00000004;            // 已停泊
+
+    /// <summary>
+    /// SYSTEM_CPU_SET — 一个 CPU Set 的描述（P-core 或 E-core 组）
+    /// SchedulingClass：0 = E-core（能效核），更高值 = P-core（性能核）
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SYSTEM_CPU_SET
+    {
+        public uint   Id;                       // CPU Set ID（用于 SetProcessDefaultCpuSet）
+        public ushort Group;                    // NUMA 组
+        public byte   LogicalProcessorIndex;    // 组内逻辑处理器序号
+        public byte   CoreIndex;                // 物理核序号
+        public byte   PhysicalProcessorIndex;   // 物理处理器（socket）序号
+        public byte   Reserved;                 // 保留
+        public uint   LogicalProcessorCount;    // 本 Set 中的逻辑处理器数
+        public uint   CoreCount;                // 本 Set 中的物理核数
+        public ulong  SchedulingClass;          // 0=E-core，>0=P-core（值越大越偏性能）
+        public ulong  AllocationFlags;          // 分配状态（CPU_SET_ALLOCATED 等）
+    }
+
+    /// <summary>
+    /// SYSTEM_CPU_SET_INFORMATION — GetSystemCpuSetInformation 输出的可变长度记录
+    /// 每条记录的 Size 字段是本记录的字节大小，迭代时按 Size 累加指针
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SYSTEM_CPU_SET_INFORMATION
+    {
+        public uint Size;          // 本记录字节大小（变长）
+        public uint Type;          // CPU_SET_INFORMATION_TYPE（=1 表示 CpuSet）
+        public SYSTEM_CPU_SET CpuSet; // 当 Type==1 时有效
+    }
+
+    /// <summary>
+    /// GetSystemCpuSetInformation — 查询系统 CPU Set 拓扑（P/E 核分布）
+    /// Process=(IntPtr)(-1) 表示当前进程；Flags=0
+    /// </summary>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetSystemCpuSetInformation(
+        [Out] IntPtr Information,
+        [In] int BufferLength,
+        [Out] out int ReturnedLength,
+        [In] IntPtr Process,
+        [In] uint Flags);
+
+    /// <summary>
+    /// SetProcessDefaultCpuSet — 把进程默认调度限制到指定 CPU Set 列表
+    /// CpuSetIds 是 CPU Set ID 数组（来自 SYSTEM_CPU_SET.Id）
+    /// </summary>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetProcessDefaultCpuSet(
+        [In] SafeProcessHandle Process,
+        [In] IntPtr[] CpuSetIds,
+        [In] uint CpuSetIdCount);
+
+    /// <summary>
+    /// GetProcessDefaultCpuSet — 读取进程默认 CPU Set
+    /// </summary>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetProcessDefaultCpuSet(
+        [In] SafeProcessHandle Process,
+        [Out] uint[] CpuSetIds,
+        [In] uint CpuSetIdCount,
+        [Out] out uint RequiredIdCount);
+
+    // ───────────────────────────────────────────────────────────────────────
+    // ⚡ SetProcessPriorityBoost — 控制进程是否在窗口前台/输入事件时自动提升优先级
+    //     ref: https://learn.microsoft.com/windows/win32/api/processthreadsapi/nf-processthreadsapi-setprocesspriorityboost
+    //     后台 MC 服建议禁用 boost，避免与系统其他进程的优先级翻转
+    // ───────────────────────────────────────────────────────────────────────
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetProcessPriorityBoost(
+        [In] SafeProcessHandle hProcess,
+        [In][MarshalAs(UnmanagedType.Bool)] bool DisablePriorityBoost);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetProcessPriorityBoost(
+        [In] SafeProcessHandle hProcess,
+        [Out][MarshalAs(UnmanagedType.Bool)] out bool DisablePriorityBoost);
+
+    // ───────────────────────────────────────────────────────────────────────
+    // ⏱️ winmm 多媒体定时器 — timeBeginPeriod/timeEndPeriod
+    //     ref: https://learn.microsoft.com/windows/win32/api/timeapi/nf-timeapi-timebeginperiod
+    //     默认系统 tick = 15.6ms，提到 1ms 可显著降低 MC 20 TPS 主循环抖动
+    //     全局影响：会增加空闲功耗，仅在服务器运行期间启用
+    // ───────────────────────────────────────────────────────────────────────
+    [DllImport("winmm.dll", SetLastError = true)]
+    public static extern uint timeBeginPeriod([In] uint uPeriod);
+
+    [DllImport("winmm.dll", SetLastError = true)]
+    public static extern uint timeEndPeriod([In] uint uPeriod);
+
+    // ───────────────────────────────────────────────────────────────────────
+    // 🔌 Power Request — 现代化防睡眠（比 SetThreadExecutionState 更可靠）
+    //     ref: https://learn.microsoft.com/windows/win32/api/powerbase/nf-powerbase-powercreaterequest
+    //     支持命名请求 + 显式 Clear；崩溃后系统能根据句柄清理
+    //     可独立请求 SystemRequired / DisplayRequired / AwayModeRequired
+    // ───────────────────────────────────────────────────────────────────────
+    public const uint POWER_REQUEST_CONTEXT_VERSION = 0;
+    public const uint POWER_REQUEST_CONTEXT_SIMPLE_STRING = 1;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct REASON_CONTEXT
+    {
+        public uint   Version;            // POWER_REQUEST_CONTEXT_VERSION
+        public uint   Flags;              // POWER_REQUEST_CONTEXT_SIMPLE_STRING
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string SimpleReasonString; // 简单字符串原因（最长 255 字符）
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POWER_REQUEST_INFORMATION
+    {
+        // 不直接使用结构体，PowerCreateRequest 接收 REASON_CONTEXT*
+    }
+
+    /// <summary>PowerCreateRequest — 创建命名 Power Request，返回句柄</summary>
+    [DllImport("powrprof.dll", SetLastError = true)]
+    public static extern SafeWaitHandle PowerCreateRequest([In] ref REASON_CONTEXT Context);
+
+    /// <summary>PowerSetRequest — 激活 Power Request（PowerSystemRequired / PowerDisplayRequired / ...）</summary>
+    [DllImport("powrprof.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool PowerSetRequest(
+        [In] SafeWaitHandle PowerRequest,
+        [In] uint RequestType);   // 0=PowerSystemRequired, 1=PowerDisplayRequired, 2=PowerAwayModeRequired
+
+    /// <summary>PowerClearRequest — 解除 Power Request</summary>
+    [DllImport("powrprof.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool PowerClearRequest(
+        [In] SafeWaitHandle PowerRequest,
+        [In] uint RequestType);
+
+    // Power Request 类型常量
+    public const uint PowerRequestSystemRequired = 0;
+    public const uint PowerRequestDisplayRequired = 1;
+    public const uint PowerRequestAwayModeRequired = 2;
+
+    // ───────────────────────────────────────────────────────────────────────
+    // 📊 Job Object CPU 速率硬限 — JobObjectCpuRateControlInformation (class=15)
+    //     ref: https://learn.microsoft.com/windows/win32/api/winnt/ns-winnt-jobobject_cpu_rate_control_information
+    //     限制 Job 内所有进程的总 CPU 占用百分比（硬上限）
+    // ───────────────────────────────────────────────────────────────────────
+    public const int JobObjectCpuRateControlInformation = 15;
+
+    public const uint JOB_OBJECT_CPU_RATE_CONTROL_ENABLE         = 0x1;
+    public const uint JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP       = 0x4;   // 硬上限（不能超过）
+    public const uint JOB_OBJECT_CPU_RATE_CONTROL_PERCENT_BASED  = 0x2;   // 按 % 控制（否则按 Weight 1-9）
+    public const uint JOB_OBJECT_CPU_RATE_CONTROL_WEIGHT_BASED   = 0x0;   // 按 Weight 控制
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct JOBOBJECT_CPU_RATE_CONTROL_INFORMATION
+    {
+        public uint ControlFlags;  // ENABLE | HARD_CAP | (PERCENT_BASED 或 WEIGHT_BASED)
+        public uint CpuRate;       // 按 % 时：百分比 × 100（50% = 5000）
+        public uint Weight;        // 按 Weight 时：1-9（5=默认）
+    }
 }
 
 #endregion
