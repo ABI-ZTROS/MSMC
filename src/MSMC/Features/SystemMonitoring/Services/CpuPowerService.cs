@@ -29,6 +29,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using io.NET.ZTR_OS.Features.Shared.Native;
 using io.NET.ZTR_OS.Features.Startup.Services;
+using Microsoft.Win32.SafeHandles;
 using Serilog;
 
 namespace io.NET.ZTR_OS.Features.SystemMonitoring.Services;
