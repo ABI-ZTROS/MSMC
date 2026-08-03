@@ -28,6 +28,7 @@ import {
   pinProcessToPCores,
   setProcessPriorityBoost,
   enableTimerResolution,
+  disableTimerResolution,
   getTimerResolutionState,
 } from '@/utils/bridge'
 import type { ProcessQoSTier } from '@/types/bridge'
@@ -127,6 +128,54 @@ const ensureTimerResolution = async (): Promise<void> => {
     }
   } catch (e) {
     console.warn('[T3] 定时器精度异常:', e)
+  }
+}
+
+/**
+ * 启动服务器成功后统一应用 T1/T3 调度策略（handleStart 和 startKnown 共用）。
+ * 因果链：启动成功 → getSelectedServer 拿到新 PID → applyServerQoS + applyServerTuning →
+ *         ensureTimerResolution（全局定时器精度）
+ *
+ * 任何子步骤失败都仅 console.warn，不阻断主流程、不抛异常。
+ */
+const applyServerSchedulingPolicies = async (): Promise<void> => {
+  try {
+    const fresh = await getSelectedServer()
+    if (fresh?.processId && fresh.processId > 0) {
+      await applyServerQoS(fresh.processId)
+      await applyServerTuning(fresh.processId)
+    }
+  } catch { /* 调度策略应用失败不阻断主流程 */ }
+  // 全局定时器精度（与 PID 无关，系统级）
+  await ensureTimerResolution()
+}
+
+/**
+ * 停止服务器后检查：若已无任何运行中服务器，撤销 winmm 定时器精度
+ * （恢复系统默认 15.6ms），避免空闲时持续高精度 tick 浪费功耗。
+ *
+ * 因果链：handleStop 成功 → getServerList 检查 running.length === 0 →
+ *         disableTimerResolution → cpuPower:disableTimerResolution →
+ *         ICpuPowerService.DisableTimerResolution → timeEndPeriod
+ */
+const maybeDisableTimerResolution = async (): Promise<void> => {
+  try {
+    const tierStr = localStorage.getItem('msmc_timer_tier')
+    const tier = tierStr ? Number(tierStr) : 0
+    if (tier <= 0) return // 用户未启用定时器精度，无需撤销
+
+    // 拉取最新服务器列表，检查是否还有运行中的服务器
+    const list = await getServerList()
+    if (list.running && list.running.length === 0) {
+      const r = await disableTimerResolution()
+      if (r.success) {
+        console.info('[T3] 所有服务器已停止，定时器精度已撤销（恢复 15.6ms）')
+      } else {
+        console.warn('[T3] 撤销定时器精度失败:', r.error)
+      }
+    }
+  } catch (e) {
+    console.warn('[T3] 撤销定时器精度异常:', e)
   }
 }
 
@@ -700,17 +749,8 @@ export function DashboardPage(): JSX.Element {
       // 启动成功后应用用户配置的 T1/T3 调度策略到刚启动的服务器进程：
       //   - T1: QoS 能效标签（High/Eco）
       //   - T3: P-core 路由 + Priority Boost 禁用 + winmm 定时器精度
-      // 重新查询选中服务器以拿到启动后的最新 PID（避免闭包中的 selectedServer 是旧值）
       if (result?.success) {
-        try {
-          const fresh = await getSelectedServer()
-          if (fresh?.processId && fresh.processId > 0) {
-            await applyServerQoS(fresh.processId)
-            await applyServerTuning(fresh.processId)
-          }
-        } catch { /* 调度策略应用失败不阻断主流程 */ }
-        // 全局定时器精度（与 PID 无关，系统级）
-        await ensureTimerResolution()
+        await applyServerSchedulingPolicies()
       }
     } catch (e) {
       const msg = `启动失败: ${e instanceof Error ? e.message : String(e)}`
@@ -742,6 +782,10 @@ export function DashboardPage(): JSX.Element {
       const seq = ++fetchSeqRef.current
       await fetchServerList(seq)
       await fetchSelectedServer(seq)
+      // 停止成功后：若已无运行中服务器，撤销 winmm 定时器精度（恢复 15.6ms 省电）
+      if (result?.success) {
+        await maybeDisableTimerResolution()
+      }
     } catch (e) {
       const msg = `停止失败: ${e instanceof Error ? e.message : String(e)}`
       setOpMsg(msg)
@@ -765,6 +809,8 @@ export function DashboardPage(): JSX.Element {
         showToast(result.message || '导入服务器成功', 'success')
         const seq = ++fetchSeqRef.current
         await fetchServerList(seq)
+        // Bug 修复：导入的服务器可能被后端自动选中，需刷新 selectedServer 保持一致
+        await fetchSelectedServer(seq)
       } else {
         const msg = `导入失败: ${result.error || result.message || '未知错误'}`
         setOpMsg(msg)
@@ -785,6 +831,9 @@ export function DashboardPage(): JSX.Element {
 
   const handleToggleAutoDetect = async () => {
     if (isBusy) return
+    // Bug 修复：之前不设 isBusy，异步期间可与其他写操作并发
+    setIsBusy(true)
+    setBusyReason('正在切换自动检测...')
     try {
       const result = await bridge.invoke<{ success: boolean; isEnabled?: boolean }>('server:toggleAutoDetect')
       // Bug4: 使用后端返回的实际状态；失败时给出 toast 提示，不再悄悄翻转
@@ -803,6 +852,11 @@ export function DashboardPage(): JSX.Element {
       const msg = `切换自动检测失败: ${e instanceof Error ? e.message : String(e)}`
       showToast(msg, 'error')
       // 桥接抛异常时，不翻转（避免"假切换"误导）
+    } finally {
+      if (mountedRef.current) {
+        setIsBusy(false)
+        setBusyReason('')
+      }
     }
   }
 
@@ -1330,6 +1384,10 @@ export function DashboardPage(): JSX.Element {
                           const seq = ++fetchSeqRef.current
                           await fetchServerList(seq)
                           await fetchSelectedServer(seq)
+                          // 启动成功后应用 T1/T3 调度策略（与 handleStart 行为一致）
+                          if (result?.success) {
+                            await applyServerSchedulingPolicies()
+                          }
                         } catch (e) {
                           const msg = `启动失败: ${e instanceof Error ? e.message : String(e)}`
                           setOpMsg(msg)
@@ -1359,6 +1417,8 @@ export function DashboardPage(): JSX.Element {
                             showToast(okMsg, 'success')
                             const seq = ++fetchSeqRef.current
                             await fetchServerList(seq)
+                            // Bug 修复：若删除的是当前选中服务器，需刷新 selectedServer 避免过期
+                            await fetchSelectedServer(seq)
                           } else {
                             const msg = `删除失败: ${result.error || result.message || '未知错误'}`
                             setOpMsg(msg)
