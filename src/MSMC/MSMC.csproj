@@ -74,14 +74,10 @@
             CultureInfo.GetCultureInfo()，Invariant 模式会把所有文化名（包括 en-US）
             全部拒绝，直接在 BindingExpression.TransferValue 抛
             InvalidOperationException("Cannot find non-neutral culture related to 'en-us'")。
-            （体积替代：EnableTrimmed=full 配合 trim 比 invariant 模式更安全，
-            且 WPF 模板生成的 AOT 友好代码不会被误裁） -->
+            注意：不能用 PublishTrimmed 补偿体积！WPF 明确不支持 trimming
+            (NETSDK1168: WPF is not supported or recommended with trimming enabled)。
+            体积优化只靠 SatelliteResourceLanguages + EnableCompressionInSingleFile。 -->
     <InvariantGlobalization>false</InvariantGlobalization>
-    <!-- 体积补偿：开启 PublishTrimmed（WPF 9.0 在 net9 下对 trimming 已优化），
-         再配合 RootNamespace 显式保留 MaterialDesign 相关根类型，避免误裁
-         BAML 模板中的类型。 -->
-    <PublishTrimmed Condition="'$(Configuration)'=='Release'">true</PublishTrimmed>
-    <TrimMode>link</TrimMode>
     <!-- 3. 去掉调试符号支持（发布版不需要） -->
     <DebuggerSupport>false</DebuggerSupport>
     <DebugType>none</DebugType>
@@ -165,7 +161,7 @@
        1. 无顶级 Condition —— 中文路径下 MSBuild 静态评估 Exists() 可能误判为
           false（项目历史已证实），因此 Target 无条件进入，所有存在性判断改在
           内部 Task 的 Condition 上做（与 DiagnoseFrontendPaths 同模式）。
-       2. 发布时强制重建 —— dotnet publish 会设置 $(IsPublishing)=true，
+       2. 发布时强制重建 —— dotnet publish 会设置 $(PublishDir)（非空），
           此时无论 dist 是否已存在都重新 npm run build，保证发布产物是最新的。
        3. 普通构建按需 —— dotnet build 仅在 dist\index.html 不存在时才构建，
           避免开发迭代时每次都等前端编译。
@@ -179,19 +175,19 @@
              Text="ℹ️  [BuildFrontend] 未找到 package.json ($(FrontendDir))，跳过前端构建" Importance="high" />
 
     <!-- ── 发布时：强制重建 ── -->
-    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(IsPublishing)' == 'true'"
-             Text="📦 [BuildFrontend] 发布构建 (IsPublishing=true)：强制重新构建前端" Importance="high" />
+    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(PublishDir)' != ''"
+             Text="📦 [BuildFrontend] 发布构建 (PublishDir=$(PublishDir))：强制重新构建前端" Importance="high" />
 
     <!-- ── 普通构建 + dist 已存在：跳过（开发热重载）── -->
-    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(IsPublishing)' != 'true' And Exists('$(FrontendDir)\dist\index.html')"
+    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(PublishDir)' == '' And Exists('$(FrontendDir)\dist\index.html')"
              Text="✅ [BuildFrontend] 前端已构建 (dist\index.html 存在)，普通构建跳过（发布时自动重建）" Importance="high" />
 
     <!-- ── 普通构建 + dist 不存在：首次构建 ── -->
-    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(IsPublishing)' != 'true' And !Exists('$(FrontendDir)\dist\index.html')"
+    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(PublishDir)' == '' And !Exists('$(FrontendDir)\dist\index.html')"
              Text="🌐 [BuildFrontend] 检测到前端尚未构建，开始 npm install + npm run build..." Importance="high" />
 
     <!-- ── npm install（仅 node_modules 不存在时）── -->
-    <Exec Condition="Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\node_modules') And ('$(IsPublishing)' == 'true' Or !Exists('$(FrontendDir)\dist\index.html'))"
+    <Exec Condition="Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\node_modules') And ('$(PublishDir)' != '' Or !Exists('$(FrontendDir)\dist\index.html'))"
           Command="npm.cmd install --prefix &quot;$(FrontendDir)&quot;"
           WorkingDirectory="$(FrontendDir)"
           ContinueOnError="false"
@@ -199,7 +195,7 @@
           StandardErrorImportance="high" />
 
     <!-- ── npm run build（发布时强制 / 普通构建时 dist 不存在）── -->
-    <Exec Condition="Exists('$(FrontendDir)\package.json') And ('$(IsPublishing)' == 'true' Or !Exists('$(FrontendDir)\dist\index.html'))"
+    <Exec Condition="Exists('$(FrontendDir)\package.json') And ('$(PublishDir)' != '' Or !Exists('$(FrontendDir)\dist\index.html'))"
           Command="npm.cmd run build --prefix &quot;$(FrontendDir)&quot;"
           WorkingDirectory="$(FrontendDir)"
           ContinueOnError="false"
@@ -207,7 +203,7 @@
           StandardErrorImportance="high" />
 
     <!-- ── 构建后验证：dist\index.html 仍不存在则报错中断 ── -->
-    <Error Condition="Exists('$(FrontendDir)\package.json') And ('$(IsPublishing)' == 'true' Or !Exists('$(FrontendDir)\dist\index.html')) And !Exists('$(FrontendDir)\dist\index.html')"
+    <Error Condition="Exists('$(FrontendDir)\package.json') And ('$(PublishDir)' != '' Or !Exists('$(FrontendDir)\dist\index.html')) And !Exists('$(FrontendDir)\dist\index.html')"
            Text="❌ [BuildFrontend] 前端构建后仍未找到 dist\index.html。请检查 npm run build 输出。" />
   </Target>
 
@@ -283,7 +279,7 @@
 
     <!-- 【终极校验】在发布构建时，如果 zip 最终没能嵌入则直接 Error 中止，
          防止带着空前端打包出残缺 exe。 -->
-    <Error Condition="'$(IsPublishing)' == 'true' And Exists('$(_FrontendIndex)') And !Exists('$(_FrontendZip)')"
+    <Error Condition="'$(PublishDir)' != '' And Exists('$(_FrontendIndex)') And !Exists('$(_FrontendZip)')"
            Text="❌ [PackFrontendToZip] 发布构建时 dist 存在但 zip 未生成，中止打包。" />
   </Target>
 
