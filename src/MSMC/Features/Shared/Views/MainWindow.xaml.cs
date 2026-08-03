@@ -850,6 +850,139 @@ public partial class MainWindow : Window
             }
         });
 
+        // === CPU 电源与调度管控 API（T1 QoS + T2 电源档位） ===
+
+        // 查询平台能力（支持哪些 QoS / 电源档位能力 + 当前档位）
+        _bridgeService.RegisterRequestHandler("cpuPower:getCapabilities", _ =>
+        {
+            try
+            {
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var caps = svc.GetCapabilities();
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    supportsEcoQoS = caps.SupportsEcoQoS,
+                    supportsMemoryPriority = caps.SupportsMemoryPriority,
+                    isAdmin = caps.IsAdmin,
+                    canModifyPowerProfile = caps.CanModifyPowerProfile,
+                    currentProfileName = caps.CurrentProfileName,
+                    currentBoostMode = caps.CurrentBoostMode,
+                    hasPendingCrashSnapshot = svc.HasPendingCrashSnapshot(),
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:getCapabilities 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 给进程设置 QoS 能效档位（T1：High / Eco / Unset）
+        _bridgeService.RegisterRequestHandler("cpuPower:setQoS", payload =>
+        {
+            try
+            {
+                var pid = 0;
+                string tierStr = "Unset";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    pid = el.TryGetProperty("pid", out var p) ? p.GetInt32() : 0;
+                    tierStr = el.TryGetProperty("tier", out var t) ? t.GetString() ?? "Unset" : "Unset";
+                }
+                if (!Enum.TryParse<ProcessQoSTier>(tierStr, true, out var tier))
+                    return Task.FromResult<object?>(new { success = false, error = $"未知 QoS 档位: {tierStr}" });
+
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = svc.SetProcessQoS(pid, tier);
+                return Task.FromResult<object?>(new { success = r.Success, error = r.Error, appliedTier = r.AppliedTier.ToString() });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:setQoS 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 给进程设置内存优先级（T1：0=VeryLow ~ 5=Normal）
+        _bridgeService.RegisterRequestHandler("cpuPower:setMemoryPriority", payload =>
+        {
+            try
+            {
+                var pid = 0;
+                uint priority = 5;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    pid = el.TryGetProperty("pid", out var p) ? p.GetInt32() : 0;
+                    priority = el.TryGetProperty("priority", out var pr) ? pr.GetUInt32() : 5;
+                }
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var (ok, err) = svc.SetProcessMemoryPriority(pid, priority);
+                return Task.FromResult<object?>(new { success = ok, error = err });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:setMemoryPriority 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 应用系统电源档位预设（T2：UltimatePerformance / Balanced / Efficient / PowerSaver）
+        _bridgeService.RegisterRequestHandler("cpuPower:applyProfile", async payload =>
+        {
+            try
+            {
+                string profileStr = "Balanced";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    profileStr = el.TryGetProperty("profile", out var p) ? p.GetString() ?? "Balanced" : "Balanced";
+                }
+                if (!Enum.TryParse<PowerProfile>(profileStr, true, out var profile))
+                    return new { success = false, error = $"未知电源档位: {profileStr}" };
+
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = await svc.ApplyPowerProfileAsync(profile);
+                return new { success = r.Success, error = r.Error, appliedProfile = r.AppliedProfile.ToString() };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:applyProfile 失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // 还原原始电源策略（T2，基于快照）
+        _bridgeService.RegisterRequestHandler("cpuPower:restoreProfile", async _ =>
+        {
+            try
+            {
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var r = await svc.RestoreOriginalProfileAsync();
+                return new { success = r.Success, error = r.Error };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:restoreProfile 失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // 查询当前电源档位
+        _bridgeService.RegisterRequestHandler("cpuPower:getCurrentProfile", async _ =>
+        {
+            try
+            {
+                var svc = App.Services.GetRequiredService<ICpuPowerService>();
+                var (profile, boostMode) = await svc.GetCurrentProfileAsync();
+                return new { success = true, profile = profile.ToString(), boostMode };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cpuPower:getCurrentProfile 失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
         // === 服务器管理相关 API ===
 
         // 获取服务器列表（运行中 + 已知）

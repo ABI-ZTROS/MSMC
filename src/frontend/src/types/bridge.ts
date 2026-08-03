@@ -513,6 +513,43 @@ export interface KillProcessByIdRequest {
   graceful?: boolean
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// CPU 电源与调度管控（T1 QoS + T2 电源档位）
+// ─────────────────────────────────────────────────────────────────────
+
+/** 进程 QoS 能效档位（对应 Windows EcoQoS） */
+export type ProcessQoSTier = 'High' | 'Eco' | 'Unset'
+
+/** 系统电源档位预设 */
+export type PowerProfile = 'UltimatePerformance' | 'Balanced' | 'Efficient' | 'PowerSaver'
+
+/** 平台能力查询结果 */
+export interface CpuPowerCapabilities {
+  success: boolean
+  error?: string
+  supportsEcoQoS: boolean
+  supportsMemoryPriority: boolean
+  isAdmin: boolean
+  canModifyPowerProfile: boolean
+  currentProfileName: string
+  currentBoostMode: number
+  hasPendingCrashSnapshot: boolean
+}
+
+/** QoS 应用结果 */
+export interface QoSApplyResult {
+  success: boolean
+  error?: string
+  appliedTier?: string
+}
+
+/** 电源档位应用结果 */
+export interface PowerProfileApplyResult {
+  success: boolean
+  error?: string
+  appliedProfile?: string
+}
+
 export interface SetAffinityRequest {
   pid: number
   affinityMask: number

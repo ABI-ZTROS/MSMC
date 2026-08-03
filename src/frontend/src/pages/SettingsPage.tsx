@@ -41,6 +41,9 @@ import {
   getPrimarySwatches,
   getAccentSwatches,
   getTeamInfo,
+  getCpuPowerCapabilities,
+  applyPowerProfile,
+  restorePowerProfile,
 } from '@/utils/bridge'
 import type {
   SettingsData,
@@ -51,6 +54,9 @@ import type {
   SwatchInfo,
   PresetInfo,
   TeamInfoResponse,
+  CpuPowerCapabilities,
+  PowerProfile,
+  ProcessQoSTier,
 } from '@/types/bridge'
 import {
   applySettingsToCss,
@@ -152,6 +158,74 @@ export function SettingsPage(): JSX.Element {
     { value: 'RealTime', label: '实时 (RealTime)', hint: '不推荐！抢占鼠标键盘/音频驱动，极端场景才用' },
   ]
 
+  // ─── CPU 电源档位（T2 系统睿频 / T1 进程 QoS） ───
+  const [cpuPowerCaps, setCpuPowerCaps] = useState<CpuPowerCapabilities | null>(null)
+  const [applyingProfile, setApplyingProfile] = useState<PowerProfile | null>(null)
+  const [powerError, setPowerError] = useState<string | null>(null)
+  const [restoringProfile, setRestoringProfile] = useState(false)
+
+  // 默认 MC 服务器主进程的 QoS 标签（持久化到 localStorage）
+  const [serverQoSTier, setServerQoSTier] = useState<ProcessQoSTier>(() => {
+    try {
+      const saved = localStorage.getItem('msmc_server_qos')
+      if (saved === 'High' || saved === 'Eco' || saved === 'Unset') return saved
+    } catch { /* ignore */ }
+    return 'High'
+  })
+
+  const powerProfileOptions: Array<{ value: PowerProfile; label: string; desc: string; color: string }> = [
+    { value: 'UltimatePerformance', label: '极致性能', desc: 'Aggressive 睿频 + 100% 处理器状态 + 激进升频', color: 'var(--md-danger)' },
+    { value: 'Balanced', label: '平衡', desc: '标准睿频 + 100% 处理器状态', color: 'var(--md-primary-hue-mid)' },
+    { value: 'Efficient', label: '能效优先', desc: '能效优先的睿频 + 90% 处理器状态', color: 'var(--md-success)' },
+    { value: 'PowerSaver', label: '极限省电', desc: '禁用睿频 + 80% 处理器状态', color: 'var(--md-body-light)' },
+  ]
+
+  const refreshCpuPowerCaps = useCallback(async (): Promise<void> => {
+    try {
+      const caps = await getCpuPowerCapabilities()
+      setCpuPowerCaps(caps)
+    } catch (e) {
+      console.error('获取 CPU 电源能力失败:', e)
+    }
+  }, [])
+
+  const handleApplyPowerProfile = useCallback(async (profile: PowerProfile): Promise<void> => {
+    setApplyingProfile(profile)
+    setPowerError(null)
+    try {
+      const r = await applyPowerProfile(profile)
+      if (!r.success) {
+        setPowerError(r.error ?? '应用失败')
+      }
+      await refreshCpuPowerCaps()
+    } catch (e) {
+      setPowerError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setApplyingProfile(null)
+    }
+  }, [refreshCpuPowerCaps])
+
+  const handleRestorePowerProfile = useCallback(async (): Promise<void> => {
+    setRestoringProfile(true)
+    setPowerError(null)
+    try {
+      const r = await restorePowerProfile()
+      if (!r.success) {
+        setPowerError(r.error ?? '还原失败')
+      }
+      await refreshCpuPowerCaps()
+    } catch (e) {
+      setPowerError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setRestoringProfile(false)
+    }
+  }, [refreshCpuPowerCaps])
+
+  const handleSetServerQoS = useCallback((tier: ProcessQoSTier): void => {
+    setServerQoSTier(tier)
+    try { localStorage.setItem('msmc_server_qos', tier) } catch { /* ignore */ }
+  }, [])
+
   const loadSettings = useCallback(async (): Promise<void> => {
     try {
       const resp = await getSettings()
@@ -217,7 +291,8 @@ export function SettingsPage(): JSX.Element {
     getAppInfo()
       .then((info) => setAppInfo(info))
       .catch((e) => console.error('获取应用信息失败:', e))
-  }, [loadSettings, loadJavaList, loadSwatchesAndPresets, loadTeamInfo])
+    refreshCpuPowerCaps()
+  }, [loadSettings, loadJavaList, loadSwatchesAndPresets, loadTeamInfo, refreshCpuPowerCaps])
 
   // ─── 颜色设置 ───
   const handlePrimaryPreview = (hex: string): void => {
@@ -1068,6 +1143,160 @@ export function SettingsPage(): JSX.Element {
                 ? '永不重启'
                 : `${supervisor.maxTotalRestartAttempts} 次`}
           </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* [CPU POWER] CPU 电源档位卡片（T2 睿频 + T1 进程 QoS） */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div className="md-card md-card-elevated p-5 mb-4 md-stagger-item" style={{ animationDelay: '140ms' }}>
+        <h2
+          className="md-section-title"
+          style={{ color: 'var(--md-accent-text)', margin: '0 0 4px 0' }}
+        >
+          <FaBolt size={14} style={{ marginRight: 6, color: 'var(--md-warning)' }} />
+          CPU 电源档位与睿频管控
+        </h2>
+        <div
+          style={{
+            fontSize: 12,
+            color: 'var(--md-body-light)',
+            marginBottom: 12,
+          }}
+        >
+          仿安卓性能模式：系统级睿频档位（PERFBOOSTMODE）+ 进程级 QoS 能效标签。修改前自动快照，退出/崩溃可还原。
+        </div>
+
+        {/* 平台能力状态条 */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 12,
+            flexWrap: 'wrap',
+            padding: '8px 12px',
+            background: 'var(--md-card-bg)',
+            borderRadius: 8,
+            marginBottom: 16,
+            fontSize: 11,
+          }}
+        >
+          <span>
+            当前档位：
+            <strong style={{ color: cpuPowerCaps?.currentBoostMode === 2 ? 'var(--md-danger)' : 'var(--md-body)' }}>
+              {cpuPowerCaps?.currentProfileName ?? '加载中...'}
+            </strong>
+            {cpuPowerCaps?.currentBoostMode !== undefined && cpuPowerCaps.currentBoostMode >= 0 && (
+              <span style={{ color: 'var(--md-body-lighter)' }}> (BoostMode={cpuPowerCaps.currentBoostMode})</span>
+            )}
+          </span>
+          <span style={{ color: cpuPowerCaps?.isAdmin ? 'var(--md-success)' : 'var(--md-warning)' }}>
+            {cpuPowerCaps?.isAdmin ? '✓ 管理员' : '⚠ 非管理员（仅可查询，无法修改电源策略）'}
+          </span>
+          {cpuPowerCaps?.hasPendingCrashSnapshot && (
+            <span style={{ color: 'var(--md-danger)' }}>⚠ 检测到未还原的崩溃快照</span>
+          )}
+        </div>
+
+        {/* T2: 电源档位预设按钮组 */}
+        <div className="md-label" style={{ marginBottom: 8 }}>
+          系统电源档位（睿频激进型，需管理员）
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12 }}>
+          {powerProfileOptions.map((opt) => {
+            const isCurrent = cpuPowerCaps?.currentProfileName === opt.value
+            const isApplying = applyingProfile === opt.value
+            return (
+              <button
+                key={opt.value}
+                onClick={() => handleApplyPowerProfile(opt.value)}
+                disabled={isApplying || (cpuPowerCaps !== null && !cpuPowerCaps.canModifyPowerProfile)}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: isCurrent ? `2px solid ${opt.color}` : '1px solid var(--md-subtle-border)',
+                  background: isCurrent ? `${opt.color}18` : 'var(--md-card-bg)',
+                  cursor: isApplying || (cpuPowerCaps !== null && !cpuPowerCaps.canModifyPowerProfile) ? 'not-allowed' : 'pointer',
+                  opacity: isApplying ? 0.6 : 1,
+                  textAlign: 'left',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: opt.color, display: 'inline-block' }} />
+                  <strong style={{ fontSize: 13, color: 'var(--md-body)' }}>{opt.label}</strong>
+                  {isCurrent && <span style={{ fontSize: 10, color: opt.color, fontWeight: 700 }}>● 当前</span>}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--md-body-lighter)', lineHeight: 1.4 }}>
+                  {isApplying ? '应用中...' : opt.desc}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* 还原按钮 */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <button
+            onClick={handleRestorePowerProfile}
+            disabled={restoringProfile}
+            className="md-btn md-btn-outlined"
+            style={{ fontSize: 12 }}
+          >
+            {restoringProfile ? '还原中...' : '还原原始电源策略'}
+          </button>
+        </div>
+
+        {powerError && (
+          <div style={{ fontSize: 11, color: 'var(--md-danger)', marginBottom: 12, padding: '6px 10px', background: 'var(--md-danger-bg, rgba(255,0,0,0.06))', borderRadius: 6 }}>
+            {powerError}
+          </div>
+        )}
+
+        {/* T1: 服务器进程 QoS 标签 */}
+        <div
+          style={{
+            borderTop: '1px solid var(--md-subtle-border)',
+            paddingTop: 12,
+            marginTop: 4,
+          }}
+        >
+          <div className="md-label" style={{ marginBottom: 6 }}>
+            MC 服务器进程 QoS 能效标签（启动时自动应用）
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--md-body-lighter)', marginBottom: 8, lineHeight: 1.5 }}>
+            EcoQoS 等同安卓 schedtune：High=解除节流高性能 / Eco=降频调度到能效核 / Unset=系统默认
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {([
+              { value: 'High', label: 'High（高性能）', color: 'var(--md-danger)' },
+              { value: 'Eco', label: 'Eco（能效优先）', color: 'var(--md-success)' },
+              { value: 'Unset', label: 'Unset（系统默认）', color: 'var(--md-body-light)' },
+            ] as Array<{ value: ProcessQoSTier; label: string; color: string }>).map((opt) => {
+              const isSelected = serverQoSTier === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => handleSetServerQoS(opt.value)}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: isSelected ? '#fff' : opt.color,
+                    background: isSelected ? opt.color : 'transparent',
+                    border: `1px solid ${opt.color}`,
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    transition: 'all 0.12s ease',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--md-body-lighter)', marginTop: 6 }}>
+            当前选择：<strong>{serverQoSTier}</strong> — 将在服务器启动时自动应用到此进程
           </div>
         </div>
       </div>

@@ -32,6 +32,11 @@ import type {
   JvmSetMemoryRequest,
   JvmPresetType,
   ProcessAffinityInfo,
+  ProcessQoSTier,
+  PowerProfile,
+  CpuPowerCapabilities,
+  QoSApplyResult,
+  PowerProfileApplyResult,
 } from '@/types/bridge'
 
 declare global {
@@ -759,4 +764,48 @@ export function killProcessById(pid: number, graceful: boolean = true): Promise<
 
 export function setProcessAffinity(pid: number, affinityMask: number): Promise<{ success: boolean; error?: string }> {
   return bridge.invoke<{ success: boolean; error?: string }>('processManager:setAffinity', { pid, affinityMask })
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// CPU 电源与调度管控 API（T1 QoS + T2 电源档位）
+// 因果链：前端按钮 → setProcessQoS/applyPowerProfile → cpuPower:* 桥接 →
+//         C# ICpuPowerService → SetProcessInformation / powercfg
+// ═════════════════════════════════════════════════════════════════════
+
+/** 查询平台能力（支持哪些 QoS / 电源档位能力 + 当前档位 + 是否有崩溃未还原快照） */
+export function getCpuPowerCapabilities(): Promise<CpuPowerCapabilities> {
+  return bridge.invoke<CpuPowerCapabilities>('cpuPower:getCapabilities')
+}
+
+/** 给进程设置 QoS 能效档位（T1：High=高性能 / Eco=能效优先 / Unset=解除） */
+export function setProcessQoS(pid: number, tier: ProcessQoSTier): Promise<QoSApplyResult> {
+  return bridge.invoke<QoSApplyResult>('cpuPower:setQoS', { pid, tier })
+}
+
+/** 给进程设置内存优先级（T1：0=VeryLow ~ 5=Normal，默认 5） */
+export function setProcessMemoryPriority(
+  pid: number,
+  priority: number,
+): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('cpuPower:setMemoryPriority', { pid, priority })
+}
+
+/** 应用系统电源档位预设（T2，需管理员：极致性能 / 平衡 / 能效优先 / 极限省电） */
+export function applyPowerProfile(profile: PowerProfile): Promise<PowerProfileApplyResult> {
+  return bridge.invoke<PowerProfileApplyResult>('cpuPower:applyProfile', { profile })
+}
+
+/** 还原原始电源策略（T2，基于快照） */
+export function restorePowerProfile(): Promise<PowerProfileApplyResult> {
+  return bridge.invoke<PowerProfileApplyResult>('cpuPower:restoreProfile')
+}
+
+/** 查询当前电源档位（推断当前 PERFBOOSTMODE） */
+export function getCurrentPowerProfile(): Promise<{
+  success: boolean
+  error?: string
+  profile?: string
+  boostMode?: number
+}> {
+  return bridge.invoke('cpuPower:getCurrentProfile')
 }

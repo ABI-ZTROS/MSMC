@@ -311,6 +311,71 @@ internal static class NativeMethods
     public const uint NORMAL_PRIORITY_CLASS     = 0x00000020;
     public const uint REALTIME_PRIORITY_CLASS   = 0x00000100;
 
+    // ───────────────────────────────────────────────────────────────────────
+    // ⚡ Process Power Throttling / EcoQoS — 进程级能效档位（类安卓 schedtune）
+    //     ref: https://learn.microsoft.com/windows/win32/api/processthreadsapi/nf-processthreadsapi-setprocessinformation
+    //     PROCESS_INFORMATION_CLASS.ProcessPowerThrottling = 4
+    //     PROCESS_POWER_THROTTLING_CURRENT_VERSION = 1
+    //     PROCESS_POWER_THROTTLING_EXECUTION_SPEED = 0x1（控制执行速度/能效档）
+    //     StateMask=EXECUTION_SPEED → 启用 EcoQoS（降频/能效核）
+    //     StateMask=0 → 解除限制（恢复高性能）
+    // ───────────────────────────────────────────────────────────────────────
+    public const uint PROCESS_POWER_THROTTLING_CURRENT_VERSION = 1;
+    public const uint PROCESS_POWER_THROTTLING_EXECUTION_SPEED = 0x00000001;
+    public const uint ProcessInformationClass_ProcessPowerThrottling = 4;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PROCESS_POWER_THROTTLING_STATE
+    {
+        public uint Version;
+        public uint ControlMask;   // 哪些位受控（EXECUTION_SPEED）
+        public uint StateMask;     // 启用(=EXECUTION_SPEED) 或 解除(=0)
+    }
+
+    /// <summary>
+    /// SetProcessInformation — 设置进程级电源节流(EcoQoS)/电源状态。
+    /// ProcessInformationClass=4 → ProcessPowerThrottling
+    /// </summary>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetProcessInformation(
+        [In] SafeProcessHandle hProcess,
+        [In] uint ProcessInformationClass,
+        [In] ref PROCESS_POWER_THROTTLING_STATE ProcessInformation,
+        [In] uint ProcessInformationSize);
+
+    /// <summary>
+    /// GetProcessInformation — 读取进程级电源节流当前状态。
+    /// </summary>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetProcessInformation(
+        [In] SafeProcessHandle hProcess,
+        [In] uint ProcessInformationClass,
+        [Out] out PROCESS_POWER_THROTTLING_STATE ProcessInformation,
+        [In] uint ProcessInformationSize);
+
+    // ───────────────────────────────────────────────────────────────────────
+    // 🧠 内存优先级 — 控制工作集页驻留优先级（防止 MC 内存被优先换出）
+    //     ref: https://learn.microsoft.com/windows/win32/api/processthreadsapi/nf-processthreadsapi-setprocessinformation
+    //     ProcessInformationClass.ProcessMemoryPriority = 3
+    // ───────────────────────────────────────────────────────────────────────
+    public const uint ProcessInformationClass_ProcessMemoryPriority = 3;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MEMORY_PRIORITY_INFORMATION
+    {
+        public uint MemoryPriority;  // 0-5：VeryLow/Low/Medium/BelowNormal/Normal(默认5)
+    }
+
+    // 内存优先级枚举值（MEMORY_PRIORITY_*）
+    public const uint MEMORY_PRIORITY_VERYLOW      = 0;
+    public const uint MEMORY_PRIORITY_LOW          = 1;
+    public const uint MEMORY_PRIORITY_MEDIUM       = 2;
+    public const uint MEMORY_PRIORITY_BELOW_NORMAL = 3;
+    public const uint MEMORY_PRIORITY_NORMAL       = 5;
+
+
     /// <summary>
     /// JobObjectExtendedLimitInformation = 9
     /// https://learn.microsoft.com/windows/win32/api/jobapi2/nf-jobapi2-setinformationjobobject

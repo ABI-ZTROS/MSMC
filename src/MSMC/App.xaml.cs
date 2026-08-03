@@ -517,6 +517,7 @@ public partial class App : Application
                     await Register<IMetricsPersistenceService, MetricsPersistenceService>(42, "[METRIC]", "MetricsPersistenceService", "指标历史持久化");
                     await Register<IProcessManagerService, ProcessManagerService>(43, "[METRIC]", "ProcessManagerService", "进程亲和性管理");
                     await Register<IProcessSupervisorService, ProcessSupervisorService>(44, "[METRIC]", "ProcessSupervisorService", "Job进程监管/崩溃重启/睡眠防止");
+                    await Register<ICpuPowerService, CpuPowerService>(45, "[METRIC]", "CpuPowerService", "CPU电源/QoS档位/睿频管控");
 
                     // ════════════ 原生窗口效果模块 ════════════
                     await Step(44, "正在注册原生窗口效果服务...", "[WINFX] === 原生窗口效果模块 ===");

@@ -24,9 +24,33 @@ import {
   setJvmMemory,
   applyJvmPreset,
   addCustomJvmArgument,
+  setProcessQoS,
 } from '@/utils/bridge'
+import type { ProcessQoSTier } from '@/types/bridge'
 
 const bridge = getBridge()
+
+/**
+ * 应用用户在设置页配置的 QoS 能效标签到刚启动的服务器进程。
+ * 因果链：handleStart 成功 → fetchServerList 拿到新 PID → applyServerQoS →
+ *         setProcessQoS(pid, tier) → cpuPower:setQoS → ICpuPowerService.SetProcessQoS →
+ *         SetProcessInformation(ProcessPowerThrottling)
+ */
+const applyServerQoS = async (pid: number): Promise<void> => {
+  if (!pid || pid <= 0) return
+  let tier: ProcessQoSTier = 'High'
+  try {
+    const saved = localStorage.getItem('msmc_server_qos')
+    if (saved === 'High' || saved === 'Eco' || saved === 'Unset') tier = saved
+  } catch { /* ignore */ }
+  if (tier === 'Unset') return // 用户选择系统默认，不干预
+  try {
+    await setProcessQoS(pid, tier)
+  } catch (e) {
+    // QoS 应用失败不阻断主流程，仅记录
+    console.warn('[QoS] 应用失败:', e)
+  }
+}
 
 function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs))
@@ -595,6 +619,16 @@ export function DashboardPage(): JSX.Element {
       const seq = ++fetchSeqRef.current
       await fetchServerList(seq)
       await fetchSelectedServer(seq)
+      // 启动成功后应用用户配置的 QoS 能效标签（High/Eco）到刚启动的服务器进程
+      // 重新查询选中服务器以拿到启动后的最新 PID（避免闭包中的 selectedServer 是旧值）
+      if (result?.success) {
+        try {
+          const fresh = await getSelectedServer()
+          if (fresh?.processId && fresh.processId > 0) {
+            await applyServerQoS(fresh.processId)
+          }
+        } catch { /* QoS 应用失败不阻断主流程 */ }
+      }
     } catch (e) {
       const msg = `启动失败: ${e instanceof Error ? e.message : String(e)}`
       setOpMsg(msg)
