@@ -73,6 +73,43 @@ public partial class App : Application
     /// </summary>
     static App()
     {
+        // ─────────────────────────────────────────────────────
+        // 【修复: Cannot find non-neutral culture related to 'en-us'】
+        //
+        // 老版本 Windows (如 10.0.18363/1909) 上, WPF 默认 Language = "en-us"
+        // (语言-地区码全部小写的中性文化名), 在 BindingExpressionBase.GetCulture()
+        // -> XmlLanguage.GetSpecificCulture() 路径中找不到对应的 specific culture,
+        // 直接抛 InvalidOperationException。
+        //
+        // 关键约束: OverrideMetadata 必须在任何 FrameworkElement / FrameworkContentElement
+        // 实例化之前执行, 也就是任何 XAML / InitializeComponent / 资源字典加载 之前。
+        // static App() 是整进程能做到的最早时机, 比 App 构造 / OnStartup / InitializeComponent
+        // 都早, 放在这里 100% 覆盖 App.xaml 的 BundledTheme 资源字典。
+        // ─────────────────────────────────────────────────────
+        try
+        {
+            System.Windows.FrameworkElement.LanguageProperty.OverrideMetadata(
+                forType: typeof(System.Windows.FrameworkElement),
+                typeMetadata: new System.Windows.FrameworkPropertyMetadata(
+                    System.Windows.Markup.XmlLanguage.GetLanguage("en-US")));
+        }
+        catch (Exception ex)
+        {
+            ForceLog($"[BOOT-0] [WARN] FE.LanguageProperty.OverrideMetadata 失败: {ex.Message}");
+        }
+        try
+        {
+            System.Windows.FrameworkContentElement.LanguageProperty.OverrideMetadata(
+                forType: typeof(System.Windows.FrameworkContentElement),
+                typeMetadata: new System.Windows.FrameworkPropertyMetadata(
+                    System.Windows.Markup.XmlLanguage.GetLanguage("en-US")));
+        }
+        catch (Exception ex)
+        {
+            ForceLog($"[BOOT-0] [WARN] FCE.LanguageProperty.OverrideMetadata 失败: {ex.Message}");
+        }
+        ForceLog("[BOOT-0]    WPF 全局默认 Language 已强制为 en-US (static cctor 阶段, 修 en-us 文化崩溃)");
+
         // 1. 确保死日志目录存在（Directory.CreateDirectory 自带存在性检查，不会抛）
         try { Directory.CreateDirectory(Path.GetDirectoryName(ForceLogPath)!); } catch { /* 真的连目录都建不了就算了 */ }
 
@@ -159,39 +196,22 @@ public partial class App : Application
     {
         ForceLog("[BOOT-1] [BOOT] OnStartup 入口命中");
 
-        // ─────────────────────────────────────────────────────
-        // 【修复: Cannot find non-neutral culture 'en-us'】
-        // 老版本 Windows (如 18363/1909) 上, WPF XmlLanguage.GetSpecificCulture()
-        // 解析默认 "en-us" 中性名会炸 (具体是 BindingExpressionBase.GetCulture()
-        // -> XmlLanguage.GetSpecificCulture 找不到对应 specific culture)。
-        // 解决方案: 在任何 XAML 加载前(必须在 base.OnStartup 之前),
-        // 全局重写 FrameworkElement / FrameworkContentElement 的
-        // LanguageProperty 默认值为合法的 specific culture "en-US"(大写区域码)。
-        // 参考 NBDTech WPF Binding CheatSheet 等官方推荐方式。
-        // ─────────────────────────────────────────────────────
+        // 【兜底: en-us Culture】
+        // static App() 中 OverrideMetadata 已把默认值改成 en-US, 但对于那些 *已经* 在 App 构造/
+        // InitializeComponent 阶段创建出来的 FrameworkElement (例如 MaterialDesign 内部控件
+        // 实例化时若走了默认语言), 必须在启动期显式覆盖已创建的元素.
+        // 做法: Dispatcher 空闲时枚举 Application.Current.Windows, 每个 Window 根和子元素
+        // 显式 SetValue(LanguageProperty, XmlLanguage.GetLanguage("en-US"))。
+        ForceLog("[BOOT-1]    static cctor 已改 Language 默认值, 这里对已创建元素执行兜底覆盖");
         try
         {
-            System.Windows.FrameworkElement.LanguageProperty.OverrideMetadata(
-                forType: typeof(System.Windows.FrameworkElement),
-                typeMetadata: new System.Windows.FrameworkPropertyMetadata(
-                    System.Windows.Markup.XmlLanguage.GetLanguage("en-US")));
+            Dispatcher.BeginInvoke(new Action(() => ApplyLanguageToExistingWindows()),
+                DispatcherPriority.ApplicationIdle);
         }
-        catch (Exception langEx)
+        catch (Exception applyEx)
         {
-            ForceLog($"[BOOT-1] [WARN] FE.LanguageProperty.OverrideMetadata 失败: {langEx.Message}");
+            ForceLog($"[BOOT-1] [WARN] 调度 ApplyLanguageToExistingWindows 失败: {applyEx.Message}");
         }
-        try
-        {
-            System.Windows.FrameworkContentElement.LanguageProperty.OverrideMetadata(
-                forType: typeof(System.Windows.FrameworkContentElement),
-                typeMetadata: new System.Windows.FrameworkPropertyMetadata(
-                    System.Windows.Markup.XmlLanguage.GetLanguage("en-US")));
-        }
-        catch (Exception langEx)
-        {
-            ForceLog($"[BOOT-1] [WARN] FCE.LanguageProperty.OverrideMetadata 失败: {langEx.Message}");
-        }
-        ForceLog("[BOOT-1]    WPF 全局默认 Language 已强制为 en-US (修 en-us 文化崩溃)");
 
         // ─────────────────────────────────────────────────────
         // 【防静默退出】显式设置 ShutdownMode = OnExplicitShutdown
@@ -1111,4 +1131,89 @@ internal sealed class BootStats
 {
     public int Ok { get; set; }
     public int Fail { get; set; }
+}
+
+// App.xaml.cs 局部扩展：修 Culture 'en-us' 崩溃的兜底辅助
+partial class App
+{
+    private static readonly System.Windows.Markup.XmlLanguage SafeEnUsLanguage
+        = System.Windows.Markup.XmlLanguage.GetLanguage("en-US");
+
+    /// <summary>
+    /// 【兜底: en-us 文化崩溃】遍历当前已创建的所有 Window 和逻辑子树,
+    /// 对每个 FrameworkElement / FrameworkContentElement 显式设置 Language。
+    /// 在 static App() 完成 OverrideMetadata 之后、Dispatcher 空闲时调用,
+    /// 保证即使老版本 Windows 默认文化链里带了 "en-us" 的对象也被覆盖为合法 "en-US"。
+    /// </summary>
+    internal static void ApplyLanguageToExistingWindows()
+    {
+        try
+        {
+            var windows = Current?.Windows;
+            if (windows == null) return;
+
+            int affected = 0;
+            foreach (Window? w in windows)
+            {
+                if (w == null) continue;
+                try
+                {
+                    // 根 Window (FrameworkElement)
+                    ApplyLanguageRecursive(w, ref affected);
+                }
+                catch (Exception ex)
+                {
+                    ForceLog($"[BOOT-1] [WARN] ApplyLanguage 处理窗口 {w.Title ?? w.Name ?? "(null)"} 出错: {ex.Message}");
+                }
+            }
+            if (affected > 0)
+                ForceLog($"[BOOT-1] [OK] ApplyLanguageToExistingWindows 已覆盖 {affected} 个元素 (en-US)");
+        }
+        catch (Exception ex)
+        {
+            ForceLog($"[BOOT-1] [WARN] ApplyLanguageToExistingWindows 整体失败: {ex.Message}");
+        }
+    }
+
+    private static void ApplyLanguageRecursive(DependencyObject root, ref int affected)
+    {
+        if (root == null) return;
+
+        // 对 FE / FCE 显式 SetValue
+        if (root is System.Windows.FrameworkElement fe)
+        {
+            try
+            {
+                if (fe.Language.IetfLanguageTag != "en-US")
+                {
+                    fe.SetValue(System.Windows.FrameworkElement.LanguageProperty, SafeEnUsLanguage);
+                    affected++;
+                }
+            }
+            catch { /* 忽略单个 */ }
+        }
+        else if (root is System.Windows.FrameworkContentElement fce)
+        {
+            try
+            {
+                if (fce.Language.IetfLanguageTag != "en-US")
+                {
+                    fce.SetValue(System.Windows.FrameworkContentElement.LanguageProperty, SafeEnUsLanguage);
+                    affected++;
+                }
+            }
+            catch { /* 忽略单个 */ }
+        }
+
+        // 遍历逻辑子树 (LogicalTreeHelper 覆盖 Content / ContentTemplate / ItemTemplate 等)
+        try
+        {
+            foreach (var child in LogicalTreeHelper.GetChildren(root))
+            {
+                if (child is DependencyObject dobj)
+                    ApplyLanguageRecursive(dobj, ref affected);
+            }
+        }
+        catch { /* 逻辑树遍历在模板未加载时可能抛，忽略 */ }
+    }
 }

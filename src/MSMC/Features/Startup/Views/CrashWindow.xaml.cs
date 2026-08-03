@@ -59,6 +59,11 @@ public partial class CrashWindow : Window
         string? crashDumpPath = null,
         string? contextLabel = null)
     {
+        // 【兜底: Cannot find non-neutral culture 'en-us'】
+        // 即使 static App() 已 OverrideMetadata 默认值, 这里也显式对本窗口根对象
+        // SetValue(LanguageProperty), 以防初始化顺序在老 Windows 上不一致。
+        Language = System.Windows.Markup.XmlLanguage.GetLanguage("en-US");
+
         InitializeComponent();
         _dispatcher = Dispatcher;
         _forceLogPath = forceLogPath;

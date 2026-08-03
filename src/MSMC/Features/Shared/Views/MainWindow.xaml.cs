@@ -48,6 +48,11 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        // 【兜底: Cannot find non-neutral culture 'en-us'】
+        // 即使 static App() 已 OverrideMetadata 默认值, 这里也显式对本窗口根对象
+        // SetValue(LanguageProperty), 以防初始化顺序在老 Windows 上不一致。
+        Language = System.Windows.Markup.XmlLanguage.GetLanguage("en-US");
+
         Log.Information("[BUILD] MainWindow (WebView2) 正在初始化...");
         InitializeComponent();
 
