@@ -148,24 +148,57 @@
     <Message Text="────────────────────────────────────────────────" Importance="high" />
   </Target>
 
-  <!-- 自动构建前端：仅当 package.json 存在 且 dist\index.html 不存在时触发 -->
-  <Target Name="BuildFrontend" BeforeTargets="PrepareForBuild"
-          Condition="Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')">
-    <Message Text="🌐 检测到前端尚未构建，开始 npm install + npm run build..." Importance="high" />
-    <Exec
-      Command="npm.cmd install --prefix &quot;$(FrontendDir)&quot;"
-      WorkingDirectory="$(FrontendDir)"
-      ContinueOnError="false"
-      EchoOff="false"
-      StandardOutputImportance="high"
-      StandardErrorImportance="high" />
-    <Exec
-      Command="npm.cmd run build --prefix &quot;$(FrontendDir)&quot;"
-      WorkingDirectory="$(FrontendDir)"
-      ContinueOnError="false"
-      EchoOff="false"
-      StandardOutputImportance="high"
-      StandardErrorImportance="high" />
+  <!-- ═══════════════════════════════════════════════════════════════
+       自动构建前端 (BuildFrontend)
+       ──────────────────────────────────────────────────────────────
+       【设计原则】
+       1. 无顶级 Condition —— 中文路径下 MSBuild 静态评估 Exists() 可能误判为
+          false（项目历史已证实），因此 Target 无条件进入，所有存在性判断改在
+          内部 Task 的 Condition 上做（与 DiagnoseFrontendPaths 同模式）。
+       2. 发布时强制重建 —— dotnet publish 会设置 $(IsPublishing)=true，
+          此时无论 dist 是否已存在都重新 npm run build，保证发布产物是最新的。
+       3. 普通构建按需 —— dotnet build 仅在 dist\index.html 不存在时才构建，
+          避免开发迭代时每次都等前端编译。
+       4. npm install 按需 —— 仅 node_modules 不存在时才安装依赖。
+       5. 构建失败即终止 —— 构建后仍无 dist\index.html 则用 Error 中断，
+          防止带着空前端打包出残缺 exe。
+       ═══════════════════════════════════════════════════════════════ -->
+  <Target Name="BuildFrontend" BeforeTargets="PrepareForBuild">
+    <!-- ── 无 package.json：直接跳过 ── -->
+    <Message Condition="!Exists('$(FrontendDir)\package.json')"
+             Text="ℹ️  [BuildFrontend] 未找到 package.json ($(FrontendDir))，跳过前端构建" Importance="high" />
+
+    <!-- ── 发布时：强制重建 ── -->
+    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(IsPublishing)' == 'true'"
+             Text="📦 [BuildFrontend] 发布构建 (IsPublishing=true)：强制重新构建前端" Importance="high" />
+
+    <!-- ── 普通构建 + dist 已存在：跳过（开发热重载）── -->
+    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(IsPublishing)' != 'true' And Exists('$(FrontendDir)\dist\index.html')"
+             Text="✅ [BuildFrontend] 前端已构建 (dist\index.html 存在)，普通构建跳过（发布时自动重建）" Importance="high" />
+
+    <!-- ── 普通构建 + dist 不存在：首次构建 ── -->
+    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(IsPublishing)' != 'true' And !Exists('$(FrontendDir)\dist\index.html')"
+             Text="🌐 [BuildFrontend] 检测到前端尚未构建，开始 npm install + npm run build..." Importance="high" />
+
+    <!-- ── npm install（仅 node_modules 不存在时）── -->
+    <Exec Condition="Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\node_modules') And ('$(IsPublishing)' == 'true' Or !Exists('$(FrontendDir)\dist\index.html'))"
+          Command="npm.cmd install --prefix &quot;$(FrontendDir)&quot;"
+          WorkingDirectory="$(FrontendDir)"
+          ContinueOnError="false"
+          StandardOutputImportance="high"
+          StandardErrorImportance="high" />
+
+    <!-- ── npm run build（发布时强制 / 普通构建时 dist 不存在）── -->
+    <Exec Condition="Exists('$(FrontendDir)\package.json') And ('$(IsPublishing)' == 'true' Or !Exists('$(FrontendDir)\dist\index.html'))"
+          Command="npm.cmd run build --prefix &quot;$(FrontendDir)&quot;"
+          WorkingDirectory="$(FrontendDir)"
+          ContinueOnError="false"
+          StandardOutputImportance="high"
+          StandardErrorImportance="high" />
+
+    <!-- ── 构建后验证：dist\index.html 仍不存在则报错中断 ── -->
+    <Error Condition="Exists('$(FrontendDir)\package.json') And ('$(IsPublishing)' == 'true' Or !Exists('$(FrontendDir)\dist\index.html')) And !Exists('$(FrontendDir)\dist\index.html')"
+           Text="❌ [BuildFrontend] 前端构建后仍未找到 dist\index.html。请检查 npm run build 输出。" />
   </Target>
 
   <!-- 当 package.json 和 dist 都不存在时给出明确警告，而不是静默让用户看到桥接测试页 -->
