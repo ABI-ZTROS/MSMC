@@ -8,6 +8,7 @@ import {
 import { GaugeRing } from '@/components/ui/GaugeRing'
 import { Reveal } from '@/components/ui/Reveal'
 import { IconByName } from '@/utils/icons'
+import { useToastStore } from '@/stores/toastStore'
 import {
   getNetworkStatus,
   getPorts,
@@ -243,6 +244,7 @@ function HourlyThroughputChart({ currentHour, downloadData }: HourlyThroughputCh
 // ─────────────────────────────────────────────────────────────────────
 
 export function NetworkMonitorPage(): JSX.Element {
+  const showToast = useToastStore((s) => s.showToast)
   const [activeTab, setActiveTab] = useState<TabKey>('ports')
   const [status, setStatus] = useState<NetworkStatus | null>(null)
   const [ports, setPorts] = useState<PortInfo[]>([])
@@ -274,19 +276,23 @@ export function NetworkMonitorPage(): JSX.Element {
     try {
       // 先触发后端刷新（含流量采样 + 端口扫描 + 桥接规则）
       await refreshNetwork()
-      const [s, p, b, c, h] = await Promise.all([
+      // Bug 修复：Promise.all → allSettled，单数据源失败不阻断其他数据更新
+      const results = await Promise.allSettled([
         getNetworkStatus(),
         getPorts(),
         getBridgeRules(),
         getCommonPorts(),
         getHourlyHistory(),
       ])
-      setStatus(s)
-      setPorts(p.ports)
-      setBridgeRules(b.rules)
-      setCommonPorts(c.ports)
-      setHourlyHistory(h)
-      setLoading(false)
+      if (results[0].status === 'fulfilled') setStatus(results[0].value)
+      if (results[1].status === 'fulfilled') setPorts(results[1].value.ports)
+      if (results[2].status === 'fulfilled') setBridgeRules(results[2].value.rules)
+      if (results[3].status === 'fulfilled') setCommonPorts(results[3].value.ports)
+      if (results[4].status === 'fulfilled') setHourlyHistory(results[4].value)
+      // 至少一个成功就标记加载完成
+      if (results.some((r) => r.status === 'fulfilled')) {
+        setLoading(false)
+      }
     } catch (err) {
       console.error('加载网络数据失败:', err)
       setLoading(false)
@@ -302,12 +308,23 @@ export function NetworkMonitorPage(): JSX.Element {
   }, [loadData])
 
   const handleAddBridge = async () => {
+    // Bug 修复：端口输入校验，空/非法值不发 0
+    const listenPort = parseInt(form.listenPort, 10)
+    const connectPort = parseInt(form.connectPort, 10)
+    if (!form.listenPort || isNaN(listenPort) || listenPort < 1 || listenPort > 65535) {
+      showToast('监听端口无效（需 1-65535）', 'error')
+      return
+    }
+    if (!form.connectPort || isNaN(connectPort) || connectPort < 1 || connectPort > 65535) {
+      showToast('目标端口无效（需 1-65535）', 'error')
+      return
+    }
     try {
       const payload: AddBridgeRequest = {
         listenAddress: form.listenAddress,
-        listenPort: parseInt(form.listenPort, 10) || 0,
+        listenPort,
         connectAddress: form.connectAddress,
-        connectPort: parseInt(form.connectPort, 10) || 0,
+        connectPort,
         addFirewall: form.addFirewall,
       }
       if (form.protocol !== 'auto') {
@@ -316,20 +333,31 @@ export function NetworkMonitorPage(): JSX.Element {
       const result = await addBridge(payload)
       if (result.success) {
         setForm({ ...form, listenPort: '', connectPort: '', protocol: 'auto' })
+        showToast('桥接规则已添加', 'success')
         await loadData()
+      } else {
+        // Bug 修复：之前 success=false 完全静默
+        showToast(`添加失败: ${result.error || '端口可能被占用或权限不足'}`, 'error')
       }
     } catch (err) {
       console.error('添加桥接失败:', err)
+      showToast(`添加桥接失败: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
   }
 
   const handleRemoveBridge = async (rule: BridgeRule) => {
     try {
-      await removeBridge(rule.listenAddress, rule.listenPort, rule.protocol)
-      // 后端 removeBridge 成功后已自动 RefreshPorts，直接重新拉取快照即可
-      await loadData()
+      const result = await removeBridge(rule.listenAddress, rule.listenPort, rule.protocol)
+      // Bug 修复：之前不检查返回 success 字段
+      if (result?.success) {
+        showToast('桥接规则已删除', 'success')
+        await loadData()
+      } else {
+        showToast(`删除失败: ${result?.error || '未知错误'}`, 'error')
+      }
     } catch (err) {
       console.error('删除桥接失败:', err)
+      showToast(`删除桥接失败: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
   }
 
@@ -338,17 +366,24 @@ export function NetworkMonitorPage(): JSX.Element {
     try {
       const result = await killProcess({ port: selectedPort.port, protocol: selectedPort.protocol })
       if (result.success) {
+        showToast('进程已结束', 'success')
         setSelectedPort(null)
         await loadData()
+      } else {
+        // Bug 修复：之前失败完全静默
+        showToast(`结束进程失败: ${result.error || '可能权限不足或进程已退出'}`, 'error')
       }
     } catch (err) {
       console.error('结束进程失败:', err)
+      showToast(`结束进程失败: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
   }
 
   const handleRefresh = async () => {
+    // Bug 修复：之前 setLoading(true) 后若 loadData 因重入保护直接 return，
+    // loading 永不复位 → 永久转圈。改为：强制重置 loadingRef 后再调用
+    loadingRef.current = false
     setLoading(true)
-    // loadData 内部已调用 refreshNetwork，无需重复调用
     await loadData()
   }
 

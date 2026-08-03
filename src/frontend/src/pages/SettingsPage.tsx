@@ -304,29 +304,56 @@ export function SettingsPage(): JSX.Element {
     try { localStorage.setItem('msmc_auto_pin_pcores', enabled ? 'true' : 'false') } catch { /* ignore */ }
   }, [])
 
+  const [timerApplying, setTimerApplying] = useState(false)
   const handleSetTimerTier = useCallback(async (tier: number): Promise<void> => {
+    // Bug 修复：加 in-progress 标志防并发；失败时回滚 state + localStorage
+    const prevTier = timerTier
+    setTimerApplying(true)
     setTimerTier(tier)
     try { localStorage.setItem('msmc_timer_tier', String(tier)) } catch { /* ignore */ }
     const opt = timerOptions.find((o) => o.tier === tier)
-    if (!opt) return
+    if (!opt) {
+      // 无效 tier：回滚
+      setTimerTier(prevTier)
+      try { localStorage.setItem('msmc_timer_tier', String(prevTier)) } catch { /* ignore */ }
+      setTimerApplying(false)
+      return
+    }
     try {
       if (opt.periodMs > 0) {
-        await enableTimerResolution(opt.periodMs)
+        const r = await enableTimerResolution(opt.periodMs)
+        if (!r.success) {
+          // Bug 修复：失败时回滚 state + localStorage，避免 UI 显示与实际不符
+          setTimerTier(prevTier)
+          try { localStorage.setItem('msmc_timer_tier', String(prevTier)) } catch { /* ignore */ }
+        }
       } else {
-        await disableTimerResolution()
+        const r = await disableTimerResolution()
+        if (!r.success) {
+          setTimerTier(prevTier)
+          try { localStorage.setItem('msmc_timer_tier', String(prevTier)) } catch { /* ignore */ }
+        }
       }
       await refreshTimerState()
     } catch (e) {
       console.error('设置定时器精度失败:', e)
+      // 回滚
+      setTimerTier(prevTier)
+      try { localStorage.setItem('msmc_timer_tier', String(prevTier)) } catch { /* ignore */ }
+    } finally {
+      setTimerApplying(false)
     }
-  }, [refreshTimerState])
+  }, [refreshTimerState, timerTier])
 
   const handleSetServerBoostMode = useCallback((mode: 'auto' | 'disable'): void => {
     setServerBoostMode(mode)
     try { localStorage.setItem('msmc_server_boost', mode) } catch { /* ignore */ }
   }, [])
 
+  const [powerReqApplying, setPowerReqApplying] = useState(false)
   const handleTogglePowerRequest = useCallback(async (): Promise<void> => {
+    // Bug 修复：加 in-progress 标志防连点，避免重复 start 导致句柄泄漏
+    setPowerReqApplying(true)
     try {
       if (powerReqState?.active) {
         await stopPowerRequest()
@@ -336,6 +363,8 @@ export function SettingsPage(): JSX.Element {
       await refreshPowerRequestState()
     } catch (e) {
       console.error('切换 Power Request 失败:', e)
+    } finally {
+      setPowerReqApplying(false)
     }
   }, [powerReqState?.active, refreshPowerRequestState])
 
@@ -638,6 +667,34 @@ export function SettingsPage(): JSX.Element {
   const handleReset = async (): Promise<void> => {
     try {
       const result = await resetSettings()
+      // Bug 修复：之前不清理 localStorage，重置后刷新页面旧值复活。
+      // 清理所有 msmc_* 前缀的 localStorage 键，确保重置彻底生效。
+      if (result.success) {
+        const keysToRemove = [
+          'msmc_cornerRadius',
+          'msmc_animationDuration',
+          'msmc_enableWindowsNotifications',
+          'msmc_preferJavaw',
+          'msmc_supervisor',
+          'msmc_server_qos',
+          'msmc_auto_pin_pcores',
+          'msmc_timer_tier',
+          'msmc_server_boost',
+        ]
+        keysToRemove.forEach((k) => {
+          try { localStorage.removeItem(k) } catch { /* ignore */ }
+        })
+        // 重置本地 state 到默认值
+        setCornerRadius(0)
+        setAnimationDuration(200)
+        setEnableWindowsNotifications(false)
+        setPreferJavaw(false)
+        setServerQoSTier('High')
+        setAutoPinPCores(false)
+        setTimerTier(0)
+        setServerBoostMode('auto')
+        setSupervisor(DEFAULT_SUPERVISOR)
+      }
       setStatusMessage(result.success ? '已重置为默认设置' : '重置失败')
       await loadSettings()
     } catch (e) {
@@ -1335,14 +1392,14 @@ export function SettingsPage(): JSX.Element {
               <button
                 key={opt.value}
                 onClick={() => handleApplyPowerProfile(opt.value)}
-                disabled={isApplying || (cpuPowerCaps !== null && !cpuPowerCaps.canModifyPowerProfile)}
+                disabled={isApplying || applyingProfile !== null || restoringProfile || (cpuPowerCaps !== null && !cpuPowerCaps.canModifyPowerProfile)}
                 style={{
                   padding: '10px 12px',
                   borderRadius: 8,
                   border: isCurrent ? `2px solid ${opt.color}` : '1px solid var(--md-subtle-border)',
                   background: isCurrent ? `${opt.color}18` : 'var(--md-card-bg)',
-                  cursor: isApplying || (cpuPowerCaps !== null && !cpuPowerCaps.canModifyPowerProfile) ? 'not-allowed' : 'pointer',
-                  opacity: isApplying ? 0.6 : 1,
+                  cursor: isApplying || applyingProfile !== null || restoringProfile || (cpuPowerCaps !== null && !cpuPowerCaps.canModifyPowerProfile) ? 'not-allowed' : 'pointer',
+                  opacity: isApplying || applyingProfile !== null ? 0.6 : 1,
                   textAlign: 'left',
                   transition: 'all 0.15s ease',
                 }}
@@ -1364,7 +1421,7 @@ export function SettingsPage(): JSX.Element {
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           <button
             onClick={handleRestorePowerProfile}
-            disabled={restoringProfile}
+            disabled={restoringProfile || applyingProfile !== null}
             className="md-btn md-btn-outlined"
             style={{ fontSize: 12 }}
           >
@@ -1545,6 +1602,7 @@ export function SettingsPage(): JSX.Element {
                 <button
                   key={opt.tier}
                   onClick={() => handleSetTimerTier(opt.tier)}
+                  disabled={timerApplying}
                   style={{
                     padding: '8px 6px',
                     borderRadius: 6,
@@ -1648,6 +1706,7 @@ export function SettingsPage(): JSX.Element {
             </div>
             <button
               onClick={handleTogglePowerRequest}
+              disabled={powerReqApplying}
               style={{
                 width: '100%',
                 padding: '6px 8px',
@@ -1832,7 +1891,7 @@ export function SettingsPage(): JSX.Element {
                     {!java.isDefault && (
                       <button
                         className="md-btn md-btn-outlined"
-                        disabled={javaOpInProgress}
+                        disabled={javaOpInProgress || isScanningJava}
                         onClick={() => handleSetDefaultJava(java)}
                         title="设为默认 Java"
                         style={{ padding: '4px 8px', fontSize: 11 }}
@@ -1844,7 +1903,7 @@ export function SettingsPage(): JSX.Element {
                     {java.isCustom && (
                       <button
                         className="md-btn md-btn-outlined"
-                        disabled={javaOpInProgress}
+                        disabled={javaOpInProgress || isScanningJava}
                         onClick={() => handleRemoveJavaPath(java)}
                         title="移除自定义 Java 路径"
                         style={{
@@ -1889,7 +1948,7 @@ export function SettingsPage(): JSX.Element {
               value={newJavaPath}
               onChange={(e) => setNewJavaPath(e.target.value)}
               placeholder="例如：C:\Program Files\Java\jdk-21"
-              disabled={javaOpInProgress}
+              disabled={javaOpInProgress || isScanningJava}
               style={{
                 flex: 1,
                 minWidth: 0,
@@ -1904,7 +1963,7 @@ export function SettingsPage(): JSX.Element {
             <button
               className="md-btn md-btn-outlined"
               onClick={handleBrowseJavaPath}
-              disabled={javaOpInProgress}
+              disabled={javaOpInProgress || isScanningJava}
               title="浏览选择 Java 安装目录"
             >
               <FaFolderOpen size={14} />
@@ -1913,7 +1972,7 @@ export function SettingsPage(): JSX.Element {
             <button
               className="md-btn md-btn-filled"
               onClick={handleAddJavaPath}
-              disabled={javaOpInProgress || !newJavaPath.trim()}
+              disabled={javaOpInProgress || isScanningJava || !newJavaPath.trim()}
               title="添加自定义 Java 路径"
             >
               <FaPlus size={14} />

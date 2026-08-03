@@ -255,6 +255,12 @@ export function ConfigEditorPage(): JSX.Element {
   const [loadProgress, setLoadProgress] = useState(0)
   const [isFetchingEntries, setIsFetchingEntries] = useState(false)
   const [isServerRunning, setIsServerRunning] = useState(false)
+  // Bug 修复：Ctrl+S 闭包在 useEffect([]) 中绑定，isServerRunning 闭包会过期。
+  // 用 ref 追踪最新值，让 Ctrl+S 能正确判断是否应拦截保存。
+  const isServerRunningRef = useRef(false)
+  useEffect(() => {
+    isServerRunningRef.current = isServerRunning
+  }, [isServerRunning])
   const [modifiedCount, setModifiedCount] = useState(0)
 
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
@@ -535,6 +541,12 @@ export function ConfigEditorPage(): JSX.Element {
     }
     const onCtrlS = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        // Bug 修复：Ctrl+S 快捷键无 isServerRunning 守卫，与按钮 disabled 不一致。
+        // 服务器运行时禁止通过快捷键保存配置（与保存按钮 disabled 行为一致）。
+        if (isServerRunningRef.current) {
+          e.preventDefault()
+          return
+        }
         const active = document.activeElement
         if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
           // 焦点在输入框中：先 blur 让 onChange 事件走完（把 pendingValues 写入，这样 flush 才能拿到）
@@ -769,11 +781,12 @@ export function ConfigEditorPage(): JSX.Element {
       if (!mountedRef.current) return
       setSaveStatusMessage(result.message)
       setIsSaveError(!result.success)
-      setPendingValues({})
-      await loadEntries()
-      if (!mountedRef.current) return
-
+      // Bug 修复：之前 setPendingValues({}) 在此处无条件执行，
+      // 保存失败时也会清空用户修改 → 数据丢失。移到成功分支内。
       if (result.success) {
+        setPendingValues({})
+        await loadEntries()
+        if (!mountedRef.current) return
         if (result.requiresRestart) {
           setShowRestartConfirm(true)
         } else {
