@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { CpuInfo, ProcessAffinityInfo } from '@/types/bridge'
 import { IconByName } from '@/utils/icons'
+import { setProcessAffinity } from '@/utils/bridge'
 
 interface CpuProcessTreeProps {
   cpuInfo: CpuInfo | null
@@ -16,6 +17,18 @@ function bytesToMB(bytes: number): number {
 }
 
 type FilterKey = 'all' | 'minecraft' | 'java' | 'user' | 'system'
+
+// 亲和性编辑面板的次级按钮（全选/清空/取消）统一样式
+const affinityChipBtnStyle: React.CSSProperties = {
+  padding: '4px 10px',
+  fontSize: 11,
+  fontWeight: 500,
+  color: 'var(--md-body-light)',
+  background: 'var(--md-subtle-border)',
+  border: 'none',
+  borderRadius: 6,
+  cursor: 'pointer',
+}
 
 const FILTER_OPTIONS: { key: FilterKey; label: string; iconName: string }[] = [
   { key: 'all',       label: '全部',       iconName: 'folderTree' },
@@ -35,6 +48,11 @@ export function CpuProcessTree({
   const [expandedProcess, setExpandedProcess] = useState<number | null>(null)
   const [killing, setKilling] = useState<number | null>(null)
   const [filter, setFilter] = useState<FilterKey>('all')
+  // 亲和性编辑状态：editingPid !== null 时展开核心选择面板；selectedCores 为勾选的核心索引集合
+  const [editingPid, setEditingPid] = useState<number | null>(null)
+  const [selectedCores, setSelectedCores] = useState<Set<number>>(new Set())
+  const [affinitySaving, setAffinitySaving] = useState(false)
+  const [affinityError, setAffinityError] = useState<string | null>(null)
 
   const logicalCores = cpuInfo?.logicalCores ?? perCoreUsages.length ?? 0
   const physicalCores = cpuInfo?.physicalCores ?? 0
@@ -117,6 +135,48 @@ export function CpuProcessTree({
       setExpandedProcess(null)
     } finally {
       setKilling(null)
+    }
+  }
+
+  // 打开亲和性编辑面板：用当前进程已绑定的核心初始化勾选
+  const openAffinityEditor = (proc: ProcessAffinityInfo) => {
+    setEditingPid(proc.processId)
+    setSelectedCores(new Set(proc.allowedCoreIndices))
+    setAffinityError(null)
+  }
+
+  // 切换某个逻辑核的勾选状态
+  const toggleCore = (coreIdx: number) => {
+    setSelectedCores(prev => {
+      const next = new Set(prev)
+      if (next.has(coreIdx)) next.delete(coreIdx)
+      else next.add(coreIdx)
+      return next
+    })
+  }
+
+  // 提交亲和性修改：核心索引集合 → 位掩码 → 调用后端
+  const applyAffinity = async (pid: number) => {
+    if (selectedCores.size === 0) {
+      setAffinityError('至少需要保留一个核心')
+      return
+    }
+    setAffinitySaving(true)
+    setAffinityError(null)
+    try {
+      // 核心索引 → 位掩码（核心 N 对应 bit N）
+      let mask = 0
+      for (const idx of selectedCores) mask |= 1 << idx
+      const res = await setProcessAffinity(pid, mask)
+      if (!res.success) {
+        setAffinityError(res.error ?? '设置失败')
+      } else {
+        setEditingPid(null)
+      }
+    } catch (e) {
+      setAffinityError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setAffinitySaving(false)
     }
   }
 
@@ -493,7 +553,111 @@ export function CpuProcessTree({
                               [WARN] 系统进程，不允许终止
                             </span>
                           )}
+                          {/* 设置 CPU 亲和性按钮（接通 processManager:setAffinity 桥接链路） */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (editingPid === proc.processId) setEditingPid(null)
+                              else openAffinityEditor(proc)
+                            }}
+                            style={{
+                              marginLeft: 'auto',
+                              padding: '5px 14px',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: editingPid === proc.processId ? '#fff' : 'var(--md-primary-hue-mid)',
+                              background: editingPid === proc.processId ? 'var(--md-primary-hue-mid)' : 'transparent',
+                              border: '1px solid var(--md-primary-hue-mid)',
+                              borderRadius: 6,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {editingPid === proc.processId ? '收起核心选择' : '设置亲和性'}
+                          </button>
                         </div>
+
+                        {/* CPU 亲和性核心选择面板 */}
+                        {editingPid === proc.processId && (
+                          <div
+                            style={{
+                              marginTop: 8,
+                              padding: 10,
+                              background: 'var(--md-card-bg)',
+                              borderRadius: 6,
+                              border: '1px solid var(--md-subtle-border)',
+                            }}
+                          >
+                            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 6, color: 'var(--md-body)' }}>
+                              选择允许运行的核心（已选 {selectedCores.size}/{logicalCores}）
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                              {Array.from({ length: logicalCores }, (_, i) => {
+                                const checked = selectedCores.has(i)
+                                return (
+                                  <button
+                                    key={i}
+                                    onClick={(e) => { e.stopPropagation(); toggleCore(i) }}
+                                    style={{
+                                      width: 38,
+                                      height: 30,
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      color: checked ? '#fff' : 'var(--md-body-light)',
+                                      background: checked ? 'var(--md-primary-hue-mid)' : 'var(--md-subtle-border)',
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      cursor: 'pointer',
+                                      transition: 'all 0.12s ease',
+                                    }}
+                                  >
+                                    L{i}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            <div className="flex items-center" style={{ gap: 6, flexWrap: 'wrap' }}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setSelectedCores(new Set(Array.from({ length: logicalCores }, (_, i) => i))) }}
+                                style={affinityChipBtnStyle}
+                              >
+                                全选
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setSelectedCores(new Set()) }}
+                                style={affinityChipBtnStyle}
+                              >
+                                清空
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); applyAffinity(proc.processId) }}
+                                disabled={affinitySaving || selectedCores.size === 0}
+                                style={{
+                                  padding: '4px 14px',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: '#fff',
+                                  background: affinitySaving || selectedCores.size === 0
+                                    ? 'var(--md-subtle-border)'
+                                    : 'var(--md-primary-hue-mid)',
+                                  border: 'none',
+                                  borderRadius: 6,
+                                  cursor: affinitySaving || selectedCores.size === 0 ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                {affinitySaving ? '应用中...' : '应用'}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setEditingPid(null) }}
+                                style={affinityChipBtnStyle}
+                              >
+                                取消
+                              </button>
+                              {affinityError && (
+                                <span style={{ fontSize: 10, color: 'var(--md-gauge-red)' }}>{affinityError}</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

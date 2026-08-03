@@ -1,7 +1,6 @@
 import type {
   BridgeMessage,
   AppInfo,
-  AppReadyEvent,
   SystemMetrics,
   HistoryPoint,
   HistoryRangeResult,
@@ -366,10 +365,6 @@ class Bridge implements MsmcBridge {
       })
     })
   }
-
-  isAvailable(): boolean {
-    return this.initialized
-  }
 }
 
 // 工厂模式：避免全局对象被逆向者直接 inspect
@@ -400,10 +395,6 @@ export function getAppInfo(): Promise<AppInfo> {
 // 慢操作（如 network:*、server:*）可用更长超时调用
 export function invokeWithTimeout<T = unknown>(action: string, payload: unknown, timeoutMs: number): Promise<T> {
   return bridge.invokeWithTimeout<T>(action, payload, timeoutMs)
-}
-
-export function onAppReady(handler: (data: AppReadyEvent) => void): () => void {
-  return bridge.on('app:ready', (payload) => handler(payload as AppReadyEvent))
 }
 
 export function onStatusUpdate(handler: (data: { message: string }) => void): () => void {

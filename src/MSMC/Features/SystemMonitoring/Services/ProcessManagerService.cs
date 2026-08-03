@@ -117,11 +117,11 @@ public class ProcessManagerService : IProcessManagerService
                 }
                 catch (Win32Exception ex) when (ex.NativeErrorCode == 5)
                 {
-                    // 权限不足，无法读取其他用户进程的亲和性
+                    // 权限不足，无法读取其他用户进程的亲和性（正常情况，不记日志）
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // 其他异常，忽略
+                    Log.Verbose(ex, "[ProcMgr] 读取 PID={Pid} 亲和性失败", pid);
                 }
 
                 // 亲和性掩码转核心索引列表
@@ -147,30 +147,30 @@ public class ProcessManagerService : IProcessManagerService
                     }
                     _lastCpuSample[pid] = (nowTick, currentCpuTime);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // 读取 CPU 时间失败，跳过
+                    Log.Verbose(ex, "[ProcMgr] 读取 PID={Pid} CPU 时间失败", pid);
                 }
 
                 // 获取工作集内存
                 long workingSet = 0;
                 try { workingSet = proc.WorkingSet64; }
-                catch { }
+                catch (Exception ex) { Log.Verbose(ex, "[ProcMgr] 读取 PID={Pid} WorkingSet 失败", pid); }
 
                 // 获取线程数
                 int threadCount = 0;
                 try { threadCount = proc.Threads.Count; }
-                catch { }
+                catch (Exception ex) { Log.Verbose(ex, "[ProcMgr] 读取 PID={Pid} 线程数失败", pid); }
 
                 // 获取优先级
                 string priorityClass = string.Empty;
                 try { priorityClass = proc.PriorityClass.ToString(); }
-                catch { }
+                catch (Exception ex) { Log.Verbose(ex, "[ProcMgr] 读取 PID={Pid} 优先级失败", pid); }
 
                 // 获取命令行（截断）
                 string commandLine = string.Empty;
                 try { commandLine = Truncate(proc.MainModule?.FileName ?? string.Empty, 200); }
-                catch { }
+                catch (Exception ex) { Log.Verbose(ex, "[ProcMgr] 读取 PID={Pid} 命令行失败", pid); }
 
                 // 显示名：Minecraft 优先，否则用进程名
                 string displayName = isMinecraft
@@ -244,19 +244,19 @@ public class ProcessManagerService : IProcessManagerService
             using var proc = Process.GetProcessById(pid);
             long affinityMask = 0;
             try { affinityMask = proc.ProcessorAffinity.ToInt64(); }
-            catch { }
+            catch (Exception ex) { Log.Verbose(ex, "[ProcMgr] GetProcessInfo PID={Pid} 亲和性失败", pid); }
 
             long workingSet = 0;
             try { workingSet = proc.WorkingSet64; }
-            catch { }
+            catch (Exception ex) { Log.Verbose(ex, "[ProcMgr] GetProcessInfo PID={Pid} WorkingSet 失败", pid); }
 
             int threadCount = 0;
             try { threadCount = proc.Threads.Count; }
-            catch { }
+            catch (Exception ex) { Log.Verbose(ex, "[ProcMgr] GetProcessInfo PID={Pid} 线程数失败", pid); }
 
             string priorityClass = string.Empty;
             try { priorityClass = proc.PriorityClass.ToString(); }
-            catch { }
+            catch (Exception ex) { Log.Verbose(ex, "[ProcMgr] GetProcessInfo PID={Pid} 优先级失败", pid); }
 
             // 判断是否为 Minecraft 服务器
             bool isMinecraft = false;
@@ -265,7 +265,7 @@ public class ProcessManagerService : IProcessManagerService
                 var serverProcesses = _processScanner.ScanServerProcesses();
                 isMinecraft = serverProcesses.Any(s => s.ProcessId == pid);
             }
-            catch { }
+            catch (Exception ex) { Log.Verbose(ex, "[ProcMgr] GetProcessInfo PID={Pid} 扫描 MC 进程失败", pid); }
 
             return new ProcessAffinityInfo
             {

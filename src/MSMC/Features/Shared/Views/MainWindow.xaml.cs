@@ -105,7 +105,7 @@ public partial class MainWindow : Window
                 if (!loaded)
                 {
                     Log.Warning("[UI-7] [WARN] 所有前端加载方式都失败，加载内置测试页面");
-                    LoadTestPage();
+                    await LoadTestPageAsync();
                 }
 
                 Log.Information("[UI-8] [OK] WebView2 初始化全部完成");
@@ -197,7 +197,7 @@ public partial class MainWindow : Window
     /// 【修复 FTL】NavigateToString 要求 CoreWebView2 已初始化完成，否则抛 InvalidOperationException
     /// 冒泡到 UI 线程变成未处理异常。这里补 EnsureCoreWebView2Async + 全局 try/catch。
     /// </summary>
-    private async void LoadTestPage()
+    private async Task LoadTestPageAsync()
     {
         try
         {
