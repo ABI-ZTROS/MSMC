@@ -79,15 +79,25 @@ public static class FrontendResourceProviderFactory
 
     private static IEnumerable<string> GetCandidatePaths()
     {
+        // 封装一个安全的 Combine, 跳过任何 null 或空的片段防止 Path.Combine 直接炸
+        static string SafeCombine(params string?[] parts)
+        {
+            var nonEmpty = parts.Where(p => !string.IsNullOrEmpty(p)).ToList();
+            return nonEmpty.Count == 0 ? string.Empty : Path.Combine(nonEmpty.ToArray()!);
+        }
+
         // 1. 程序输出目录下的 wwwroot （CopyToOutputDirectory 复制过去的）
-        yield return Path.Combine(AppContext.BaseDirectory, "wwwroot");
+        yield return SafeCombine(AppContext.BaseDirectory, "wwwroot");
 
         // 2. 工作目录（开发时 dotnet run 的当前目录可能在项目根）
         var curDir = Environment.CurrentDirectory;
-        yield return Path.Combine(curDir, "wwwroot");
-        yield return Path.Combine(curDir, "dist");
-        yield return Path.Combine(curDir, "src", "frontend", "dist");
-        yield return Path.Combine(Path.GetDirectoryName(curDir)!, "src", "frontend", "dist");
+        yield return SafeCombine(curDir, "wwwroot");
+        yield return SafeCombine(curDir, "dist");
+        yield return SafeCombine(curDir, "src", "frontend", "dist");
+        // Path.GetDirectoryName(根目录) 返回 null，必须用 SafeCombine 过滤
+        var parentOfCur = Path.GetDirectoryName(curDir);
+        if (!string.IsNullOrEmpty(parentOfCur))
+            yield return SafeCombine(parentOfCur, "src", "frontend", "dist");
 
         // 3. 从 AppContext.BaseDirectory 向上逐级搜索（覆盖 bin/Debug/netX.X/rid 这样的深目录）
         //    每一层都尝试拼接 ../src/frontend/dist 和 ../../src/frontend/dist 等
@@ -97,17 +107,17 @@ public static class FrontendResourceProviderFactory
         while (searchDir != null && depth++ < 12)
         {
             // a) 经典结构：sln -> src/frontend/dist
-            var p1 = Path.Combine(searchDir.FullName, "src", "frontend", "dist");
+            var p1 = SafeCombine(searchDir.FullName, "src", "frontend", "dist");
             if (Directory.Exists(Path.GetDirectoryName(p1)))
                 yield return p1;
 
             // b) 扁平结构：sln -> frontend/dist
-            var p2 = Path.Combine(searchDir.FullName, "frontend", "dist");
+            var p2 = SafeCombine(searchDir.FullName, "frontend", "dist");
             if (Directory.Exists(Path.GetDirectoryName(p2)))
                 yield return p2;
 
             // c) 直接把该层 wwwroot 也纳入（有人会手动复制一份）
-            var p3 = Path.Combine(searchDir.FullName, "wwwroot");
+            var p3 = SafeCombine(searchDir.FullName, "wwwroot");
             yield return p3;
 
             searchDir = searchDir.Parent;
@@ -117,8 +127,8 @@ public static class FrontendResourceProviderFactory
         var solutionDir = FindSolutionDir();
         if (solutionDir != null)
         {
-            yield return Path.Combine(solutionDir, "src", "frontend", "dist");
-            yield return Path.Combine(solutionDir, "frontend", "dist");
+            yield return SafeCombine(solutionDir, "src", "frontend", "dist");
+            yield return SafeCombine(solutionDir, "frontend", "dist");
         }
     }
 

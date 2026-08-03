@@ -160,6 +160,40 @@ public partial class App : Application
         ForceLog("[BOOT-1] [BOOT] OnStartup 入口命中");
 
         // ─────────────────────────────────────────────────────
+        // 【修复: Cannot find non-neutral culture 'en-us'】
+        // 老版本 Windows (如 18363/1909) 上, WPF XmlLanguage.GetSpecificCulture()
+        // 解析默认 "en-us" 中性名会炸 (具体是 BindingExpressionBase.GetCulture()
+        // -> XmlLanguage.GetSpecificCulture 找不到对应 specific culture)。
+        // 解决方案: 在任何 XAML 加载前(必须在 base.OnStartup 之前),
+        // 全局重写 FrameworkElement / FrameworkContentElement 的
+        // LanguageProperty 默认值为合法的 specific culture "en-US"(大写区域码)。
+        // 参考 NBDTech WPF Binding CheatSheet 等官方推荐方式。
+        // ─────────────────────────────────────────────────────
+        try
+        {
+            System.Windows.FrameworkElement.LanguageProperty.OverrideMetadata(
+                forType: typeof(System.Windows.FrameworkElement),
+                typeMetadata: new System.Windows.FrameworkPropertyMetadata(
+                    System.Windows.Markup.XmlLanguage.GetLanguage("en-US")));
+        }
+        catch (Exception langEx)
+        {
+            ForceLog($"[BOOT-1] [WARN] FE.LanguageProperty.OverrideMetadata 失败: {langEx.Message}");
+        }
+        try
+        {
+            System.Windows.FrameworkContentElement.LanguageProperty.OverrideMetadata(
+                forType: typeof(System.Windows.FrameworkContentElement),
+                typeMetadata: new System.Windows.FrameworkPropertyMetadata(
+                    System.Windows.Markup.XmlLanguage.GetLanguage("en-US")));
+        }
+        catch (Exception langEx)
+        {
+            ForceLog($"[BOOT-1] [WARN] FCE.LanguageProperty.OverrideMetadata 失败: {langEx.Message}");
+        }
+        ForceLog("[BOOT-1]    WPF 全局默认 Language 已强制为 en-US (修 en-us 文化崩溃)");
+
+        // ─────────────────────────────────────────────────────
         // 【防静默退出】显式设置 ShutdownMode = OnExplicitShutdown
         // 否则默认 OnLastWindowClose：如果 StartupWindow 在 MainWindow.Show 之前
         // 因为异常 / WebView2 崩溃 / 用户误关 而关闭，进程直接就没了，连 err 都没有
