@@ -16,6 +16,7 @@
 
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using io.NET.ZTR_OS.Features.Shared.Native;
@@ -119,7 +120,11 @@ public sealed class SupervisedProcessHandle : IAsyncDisposable, IDisposable
         try
         {
             if (!_process.HasExited)
-                await _process.WaitForExitAsync(TimeSpan.FromMilliseconds(500)).ConfigureAwait(false);
+            {
+                // .NET 9 的 Process.WaitForExitAsync 没有 TimeSpan 重载，用 CTS 模拟超时
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+                await _process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
+            }
         }
         catch { /* ignore */ }
         try { if (!_process.HasExited) _process.Kill(entireProcessTree: true); }

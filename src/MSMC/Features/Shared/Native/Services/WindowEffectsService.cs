@@ -177,7 +177,7 @@ public sealed class WindowEffectsService : IWindowEffectsService
             // darkMode = true   → 1（深色）
             // darkMode = false  → 0（浅色）
             // darkMode = null   → 跟随系统（不设置此项，默认行为）
-            if (!darkMode.HasValue && SupportsDarkTitleBar) return true;
+            if (!darkMode.HasValue) return SupportsDarkTitleBar;
             if (!SupportsDarkTitleBar) return false;
 
             int value = darkMode.Value ? 1 : 0;

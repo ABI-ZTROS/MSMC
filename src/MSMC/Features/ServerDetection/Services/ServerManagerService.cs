@@ -588,8 +588,10 @@ public class ServerManagerService : IServerManagerService
                 var handle = StartServerSupervisedAsync(server, CancellationToken.None)
                     .ConfigureAwait(false).GetAwaiter().GetResult();
                 if (handle == null) return null;
-                try { return handle.Process; }
-                catch (ObjectDisposedException) { return null; }
+                // SupervisedProcessHandle 内部持有 Process 但不对外暴露（避免外部 Dispose 破坏监管生命周期）。
+                // 这里返回基于 PID 的全新 Process 对象（调用方负责 Dispose），与 Legacy 流程行为一致。
+                try { return Process.GetProcessById(handle.ProcessId); }
+                catch (ArgumentException) { return null; } // 进程已退出
             }
             catch (Exception ex)
             {
@@ -1022,6 +1024,283 @@ public class ServerManagerService : IServerManagerService
 
         Log.Information("[INFO] 未找到运行中的服务器进程，视为已停止: {JarName}", server.ServerJarName);
         return true;
+    }
+
+    /// <summary>
+    /// 通过进程 ID 停止服务器进程及其子进程树
+    /// </summary>
+    /// <param name="processId">父进程 ID</param>
+    /// <returns>true 表示停止操作执行成功</returns>
+    public bool StopServerByProcessId(int processId)
+    {
+        Log.Information("[STOP] 尝试终止进程: PID={Pid}", processId);
+        try
+        {
+            return StopProcessTree(processId);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[ERR] 终止进程失败 PID={Pid}", processId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 查找与指定服务器实例匹配的运行中进程
+    /// </summary>
+    /// <param name="server">服务器实例</param>
+    /// <returns>匹配的进程对象；未找到返回 null</returns>
+    /// <remarks>
+    /// 通过枚举所有 java.exe 进程，匹配命令行中包含目标 JAR 文件名的进程。
+    /// 返回新的 Process 对象实例，调用方负责释放。
+    /// 处理进程枚举过程中的竞态条件——进程可能随时退出。
+    /// </remarks>
+    public Process? FindServerProcess(ServerInstance server)
+    {
+        if (string.IsNullOrEmpty(server.ServerJarPath)) return null;
+        var jarName = Path.GetFileName(server.ServerJarPath).ToLowerInvariant();
+        if (string.IsNullOrEmpty(jarName)) return null;
+
+        try
+        {
+            foreach (var process in Process.GetProcessesByName("java"))
+            {
+                using (process)
+                {
+                    try
+                    {
+                        var cmdLine = GetProcessCommandLine(process.Id);
+                        if (!string.IsNullOrEmpty(cmdLine) &&
+                            cmdLine.ToLowerInvariant().Contains(jarName))
+                        {
+                            // 返回新的 Process 对象，避免 using 块释放
+                            try { return Process.GetProcessById(process.Id); }
+                            catch (Exception ex)
+                            {
+                                Log.Debug(ex, "获取进程 PID={Pid} 失败（可能已退出）", process.Id);
+                                return null;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // 进程可能已退出，跳过
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[ERR] 查找 Java 进程失败");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 获取指定 JAR 文件对应的服务器进程 ID
+    /// </summary>
+    /// <param name="jarFilePath">JAR 文件完整路径</param>
+    /// <returns>进程 ID；未找到返回 null</returns>
+    /// <remarks>
+    /// 通过枚举所有 java.exe 进程，匹配命令行中包含目标 JAR 文件名的进程。
+    /// 处理进程枚举过程中的竞态条件。
+    /// </remarks>
+    public int? GetServerProcessId(string jarFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(jarFilePath)) return null;
+        var jarName = Path.GetFileName(jarFilePath).ToLowerInvariant();
+        if (string.IsNullOrEmpty(jarName)) return null;
+
+        try
+        {
+            foreach (var process in Process.GetProcessesByName("java"))
+            {
+                using (process)
+                {
+                    try
+                    {
+                        var cmdLine = GetProcessCommandLine(process.Id);
+                        if (!string.IsNullOrEmpty(cmdLine) &&
+                            cmdLine.ToLowerInvariant().Contains(jarName))
+                        {
+                            return process.Id;
+                        }
+                    }
+                    catch
+                    {
+                        // 进程可能已退出，跳过
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[ERR] 获取服务器进程 ID 失败");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 检测 JAR 文件是否被进程独占锁定（公共静态版，供 ServerDetector 等其他组件复用）。
+    /// </summary>
+    /// <param name="jarFilePath">JAR 文件绝对路径</param>
+    /// <returns>true 表示文件被其他进程以共享冲突方式打开（典型：Java 加载 JAR）</returns>
+    /// <remarks>
+    /// 原理：尝试以 FileShare.None 打开文件读取，若抛出 IOException（ERROR_SHARING_VIOLATION）
+    /// 则判定为被锁定。仅作为快速存在性检测，不依赖管理员权限。
+    /// 文件不存在时返回 false（调用方应预先 File.Exists 判断）。
+    /// </remarks>
+    public static bool IsJarFileLocked(string jarFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(jarFilePath))
+            return false;
+        try
+        {
+            using var stream = new FileStream(jarFilePath, FileMode.Open, FileAccess.Read, FileShare.None);
+            return false;
+        }
+        catch (FileNotFoundException) { return false; }
+        catch (DirectoryNotFoundException) { return false; }
+        catch (IOException)
+        {
+            // ERROR_SHARING_VIOLATION (0x80070020)：文件被其他进程占用
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[ERR] 检查 JAR 文件锁定状态失败: {JarPath}", jarFilePath);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 通过 JAR 文件路径与工作目录，在所有 java/javaw 进程中查找匹配的服务器进程。
+    /// 优先用命令行包含 JAR 文件名匹配，其次用 JAR 完整路径匹配，最后降级为工作目录匹配。
+    /// （公共静态版，供 ServerDetector 等复用）
+    /// </summary>
+    /// <param name="jarFilePath">目标 JAR 绝对路径</param>
+    /// <param name="workingDirectory">预期工作目录（可空）</param>
+    /// <returns>匹配到的 Process 对象（调用方负责 Dispose）；未找到返回 null</returns>
+    /// <remarks>
+    /// 枚举进程与命令行读取失败均静默跳过，不会向上抛出异常。
+    /// </remarks>
+    public static Process? FindJavaProcessByJarPath(string jarFilePath, string? workingDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(jarFilePath))
+            return null;
+
+        var jarName = Path.GetFileName(jarFilePath).ToLowerInvariant();
+        var jarFullLower = jarFilePath.ToLowerInvariant();
+        var workDirLower = string.IsNullOrWhiteSpace(workingDirectory)
+            ? null
+            : workingDirectory.TrimEnd('\\', '/').ToLowerInvariant();
+
+        // 同时枚举 java.exe 与 javaw.exe（MSMC 启动时可配置 preferJavaw）
+        var processNames = new[] { "java", "javaw" };
+
+        Process? bestMatch = null;
+        int bestScore = 0;
+
+        foreach (var procName in processNames)
+        {
+            Process[] procs;
+            try { procs = Process.GetProcessesByName(procName); }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "枚举 {ProcName} 进程失败", procName);
+                continue;
+            }
+
+            foreach (var proc in procs)
+            {
+                try
+                {
+                    if (proc.HasExited)
+                    {
+                        proc.Dispose();
+                        continue;
+                    }
+
+                    int score = 0;
+
+                    // 策略 1：命令行包含 JAR 文件名（最强信号）
+                    var cmdLine = GetProcessCommandLineStatic(proc.Id);
+                    if (!string.IsNullOrEmpty(cmdLine))
+                    {
+                        var cmdLower = cmdLine.ToLowerInvariant();
+                        if (cmdLower.Contains(jarName))
+                            score += 100;
+                        if (cmdLower.Contains(jarFullLower))
+                            score += 200; // 完整路径匹配，优先级最高
+                    }
+
+                    // 策略 2：进程工作目录匹配（降级信号）
+                    if (workDirLower != null && score == 0)
+                    {
+                        try
+                        {
+                            var procWorkDir = proc.StartInfo.WorkingDirectory;
+                            if (!string.IsNullOrWhiteSpace(procWorkDir)
+                                && procWorkDir.TrimEnd('\\', '/').ToLowerInvariant() == workDirLower)
+                            {
+                                score += 50;
+                            }
+                        }
+                        catch { /* StartInfo.WorkingDirectory 可能拿不到，忽略 */ }
+                    }
+
+                    if (score > bestScore)
+                    {
+                        bestMatch?.Dispose();
+                        bestMatch = proc;
+                        bestScore = score;
+                    }
+                    else
+                    {
+                        proc.Dispose();
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // 进程在检查期间退出
+                    proc.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "检查进程 PID={Pid} 时出错", proc.Id);
+                    proc.Dispose();
+                }
+            }
+        }
+
+        return bestScore > 0 ? bestMatch : null;
+    }
+
+    /// <summary>
+    /// 获取指定进程的完整命令行（WMI Win32_Process 静态版，供 FindJavaProcessByJarPath 复用）。
+    /// </summary>
+    private static string? GetProcessCommandLineStatic(int processId)
+    {
+        try
+        {
+            // 复用 Windows 专用的 WMI 查询方式（与 ProcessScanner 逻辑一致）
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {processId}");
+            using var results = searcher.Get();
+            foreach (var mo in results)
+            {
+                var cmd = mo["CommandLine"]?.ToString();
+                if (!string.IsNullOrEmpty(cmd))
+                    return cmd;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "读取进程 PID={Pid} 命令行失败", processId);
+        }
+        return null;
     }
 
     /// <summary>
