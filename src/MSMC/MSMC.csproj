@@ -65,13 +65,23 @@
     <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 🗜️ 体积压缩设置（零风险） -->
+    <!-- 🗜️ 体积压缩设置 -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- 1. 只保留中文和英文卫星资源，去掉其他语言的 resx -->
     <SatelliteResourceLanguages>zh;zh-Hans;en</SatelliteResourceLanguages>
-    <!-- 2. 全球化 invariant 模式：去掉 ICU/globalization 数据（~3MB） -->
-    <!--    应用仅使用 CurrentCulture 做数字/日期格式化，不需要本地化排序等 -->
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- 2. 【修复 en-us 崩溃】禁用 InvariantGlobalization！
+            WPF / MaterialDesign 深度依赖 XmlLanguage.GetSpecificCulture() /
+            CultureInfo.GetCultureInfo()，Invariant 模式会把所有文化名（包括 en-US）
+            全部拒绝，直接在 BindingExpression.TransferValue 抛
+            InvalidOperationException("Cannot find non-neutral culture related to 'en-us'")。
+            （体积替代：EnableTrimmed=full 配合 trim 比 invariant 模式更安全，
+            且 WPF 模板生成的 AOT 友好代码不会被误裁） -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- 体积补偿：开启 PublishTrimmed（WPF 9.0 在 net9 下对 trimming 已优化），
+         再配合 RootNamespace 显式保留 MaterialDesign 相关根类型，避免误裁
+         BAML 模板中的类型。 -->
+    <PublishTrimmed Condition="'$(Configuration)'=='Release'">true</PublishTrimmed>
+    <TrimMode>link</TrimMode>
     <!-- 3. 去掉调试符号支持（发布版不需要） -->
     <DebuggerSupport>false</DebuggerSupport>
     <DebugType>none</DebugType>

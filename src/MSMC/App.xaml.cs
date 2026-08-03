@@ -76,22 +76,59 @@ public partial class App : Application
         // ─────────────────────────────────────────────────────
         // 【修复: Cannot find non-neutral culture related to 'en-us'】
         //
-        // 老版本 Windows (如 10.0.18363/1909) 上, WPF 默认 Language = "en-us"
-        // (语言-地区码全部小写的中性文化名), 在 BindingExpressionBase.GetCulture()
-        // -> XmlLanguage.GetSpecificCulture() 路径中找不到对应的 specific culture,
-        // 直接抛 InvalidOperationException。
+        // 根本根因有两个，缺一不可:
+        //  1) InvariantGlobalization=true (MSMC.csproj): 运行时没有任何文化数据，
+        //     连 en-US 都找不到，XmlLanguage.GetSpecificCulture() 直接炸。
+        //     已在 MSMC.csproj 里改为 false，用 TrimMode=link 替代体积优化。
+        //  2) 老 Win10 (18363/1909): 默认 Language="en-us" 是中性文化名,
+        //     WPF 解析为 specific culture 时会失败。
         //
-        // 关键约束: OverrideMetadata 必须在任何 FrameworkElement / FrameworkContentElement
-        // 实例化之前执行, 也就是任何 XAML / InitializeComponent / 资源字典加载 之前。
-        // static App() 是整进程能做到的最早时机, 比 App 构造 / OnStartup / InitializeComponent
-        // 都早, 放在这里 100% 覆盖 App.xaml 的 BundledTheme 资源字典。
+        // 这里做【两层运行时防呆】:
+        //   A. 预热 CultureInfo.GetCultureInfo("en-US")，如果仍失败（说明
+        //      InvariantGlobalization 又被某人改回来了 / runtime 真的没文化数据），
+        //      强制 fallback 到 InvariantCulture（IetfLanguageTag = ""）。
+        //   B. 用 (A) 选出来的 XmlLanguage 作为 FE/FCE.LanguageProperty 的默认值,
+        //      OverrideMetadata 必须在任何 FrameworkElement 实例化之前（static cctor
+        //      是最早的点），否则 App.xaml 的 BundledTheme 模板已用了默认值。
         // ─────────────────────────────────────────────────────
+        System.Globalization.CultureInfo safeCulture;
+        string safeIetfTag;
+        try
+        {
+            // 真正预热: 直接 GetCultureInfo，确认 runtime 里有这个文化数据
+            safeCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+            safeIetfTag = "en-US";
+            ForceLog($"[BOOT-0] [CULT] Runtime 有 en-US 文化数据（NativeName={safeCulture.NativeName}）");
+        }
+        catch (Exception ciEx)
+        {
+            // Fallback: InvariantCulture（100% 存在，IetfLanguageTag=""），
+            // 此时数字/日期会走 invariant 格式，但至少不会崩。
+            safeCulture = System.Globalization.CultureInfo.InvariantCulture;
+            safeIetfTag = safeCulture.IetfLanguageTag;  // ""
+            ForceLog($"[BOOT-0] [CULT-ERR] en-US 文化在运行时不可用（InvariantGlobalization=true?），" +
+                     $"已 fallback 到 InvariantCulture: {ciEx.Message}");
+        }
+
+        // 同时把默认线程文化也钉死，避免后台 Task 新线程继承到异常文化
+        try
+        {
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = safeCulture;
+            System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = safeCulture;
+            System.Threading.Thread.CurrentThread.CurrentCulture = safeCulture;
+            System.Threading.Thread.CurrentThread.CurrentUICulture = safeCulture;
+        }
+        catch (Exception thEx)
+        {
+            ForceLog($"[BOOT-0] [WARN] 钉死默认线程文化失败: {thEx.Message}");
+        }
+
+        var safeXmlLanguage = System.Windows.Markup.XmlLanguage.GetLanguage(safeIetfTag);
         try
         {
             System.Windows.FrameworkElement.LanguageProperty.OverrideMetadata(
                 forType: typeof(System.Windows.FrameworkElement),
-                typeMetadata: new System.Windows.FrameworkPropertyMetadata(
-                    System.Windows.Markup.XmlLanguage.GetLanguage("en-US")));
+                typeMetadata: new System.Windows.FrameworkPropertyMetadata(safeXmlLanguage));
         }
         catch (Exception ex)
         {
@@ -101,14 +138,13 @@ public partial class App : Application
         {
             System.Windows.FrameworkContentElement.LanguageProperty.OverrideMetadata(
                 forType: typeof(System.Windows.FrameworkContentElement),
-                typeMetadata: new System.Windows.FrameworkPropertyMetadata(
-                    System.Windows.Markup.XmlLanguage.GetLanguage("en-US")));
+                typeMetadata: new System.Windows.FrameworkPropertyMetadata(safeXmlLanguage));
         }
         catch (Exception ex)
         {
             ForceLog($"[BOOT-0] [WARN] FCE.LanguageProperty.OverrideMetadata 失败: {ex.Message}");
         }
-        ForceLog("[BOOT-0]    WPF 全局默认 Language 已强制为 en-US (static cctor 阶段, 修 en-us 文化崩溃)");
+        ForceLog($"[BOOT-0]    WPF 全局默认 Language 已强制为 \"{safeIetfTag}\" (static cctor 阶段，修 en-us 文化崩溃)");
 
         // 1. 确保死日志目录存在（Directory.CreateDirectory 自带存在性检查，不会抛）
         try { Directory.CreateDirectory(Path.GetDirectoryName(ForceLogPath)!); } catch { /* 真的连目录都建不了就算了 */ }
@@ -1136,8 +1172,36 @@ internal sealed class BootStats
 // App.xaml.cs 局部扩展：修 Culture 'en-us' 崩溃的兜底辅助
 partial class App
 {
-    private static readonly System.Windows.Markup.XmlLanguage SafeEnUsLanguage
-        = System.Windows.Markup.XmlLanguage.GetLanguage("en-US");
+    // 【防呆: 静态字段初始化顺序】Lazy<XmlLanguage> 保证在第一次访问时才解析，
+    // 避开 cctor 中 static readonly 字段在 type-init 阶段就触发 GetSpecificCulture()
+    // 的竞态。任何调用方（Window 构造 / ApplyLanguageToExistingWindows / Dispatcher）
+    // 都使用这个属性拿安全的 XmlLanguage。
+    private static readonly Lazy<System.Windows.Markup.XmlLanguage> _safeLanguageLazy =
+        new Lazy<System.Windows.Markup.XmlLanguage>(() =>
+        {
+            // 优先用实际的 en-US，如果 runtime 没文化数据（InvariantGlobalization=true），
+            // 就 fallback 到 InvariantCulture（IetfLanguageTag=""），100% 不崩。
+            try
+            {
+                _ = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+                return System.Windows.Markup.XmlLanguage.GetLanguage("en-US");
+            }
+            catch
+            {
+                return System.Windows.Markup.XmlLanguage.GetLanguage(
+                    System.Globalization.CultureInfo.InvariantCulture.IetfLanguageTag);
+            }
+        }, System.Threading.LazyThreadSafetyMode.PublicationOnly);
+
+    internal static System.Windows.Markup.XmlLanguage SafeLanguage => _safeLanguageLazy.Value;
+
+    /// <summary>
+    /// 给外部（Window 构造 / 单元素 fallback）一行拿安全的 Language 并 SetValue 用。
+    /// </summary>
+    internal static void ApplySafeLanguage(System.Windows.FrameworkElement fe)
+    {
+        try { fe?.SetValue(System.Windows.FrameworkElement.LanguageProperty, SafeLanguage); } catch { }
+    }
 
     /// <summary>
     /// 【兜底: en-us 文化崩溃】遍历当前已创建的所有 Window 和逻辑子树,
@@ -1184,9 +1248,9 @@ partial class App
         {
             try
             {
-                if (fe.Language.IetfLanguageTag != "en-US")
+                if (fe.Language.IetfLanguageTag != SafeLanguage.IetfLanguageTag)
                 {
-                    fe.SetValue(System.Windows.FrameworkElement.LanguageProperty, SafeEnUsLanguage);
+                    fe.SetValue(System.Windows.FrameworkElement.LanguageProperty, SafeLanguage);
                     affected++;
                 }
             }
@@ -1196,9 +1260,9 @@ partial class App
         {
             try
             {
-                if (fce.Language.IetfLanguageTag != "en-US")
+                if (fce.Language.IetfLanguageTag != SafeLanguage.IetfLanguageTag)
                 {
-                    fce.SetValue(System.Windows.FrameworkContentElement.LanguageProperty, SafeEnUsLanguage);
+                    fce.SetValue(System.Windows.FrameworkContentElement.LanguageProperty, SafeLanguage);
                     affected++;
                 }
             }
