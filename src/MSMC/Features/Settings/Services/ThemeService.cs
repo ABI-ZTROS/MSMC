@@ -188,7 +188,7 @@ public class ThemeService : IThemeService
     public ThemeService() { }
 
     /// <summary>
-    /// DI 构造函数（Windows 场景下 WindowEffectsService 由 NativeServiceCollectionExtensions 注册）。
+    /// DI 构造函数（Windows 场景下 WindowEffectsService 由 App.xaml.cs 内联注册）。
     /// </summary>
     public ThemeService(IWindowEffectsService? windowEffects = null)
     {

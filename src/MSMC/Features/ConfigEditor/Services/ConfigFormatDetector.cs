@@ -37,14 +37,6 @@ public enum ConfigFormat
 public static class ConfigFormatDetector
 {
     /// <summary>
-    /// Properties 行正则：允许 key=value 或 key: value，值内含冒号/等号不受影响。
-    /// 键名允许字母、数字、下划线、点号、短横线。
-    /// </summary>
-    private static readonly Regex PropertiesLineRegex = new(
-        @"^\s*[A-Za-z0-9_.\-]+\s*[=:]\s*",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
-    /// <summary>
     /// 通过分析内容语法特征检测配置格式
     /// </summary>
     /// <param name="content">配置文件原始内容</param>
@@ -113,6 +105,12 @@ public static class ConfigFormatDetector
     /// <summary>
     /// 同时统计 YAML 与 Properties 命中行数，避免多次 Split
     /// </summary>
+    /// <remarks>
+    /// 区分规则（Minecraft server.properties 实际只用 = 分隔，YAML 用 : 分隔）：
+    ///   - 有缩进的键值行 → YAML（Properties 不使用缩进嵌套）
+    ///   - 无缩进 + = 分隔符 → Properties
+    ///   - 无缩进 + : 分隔符（colon-space 或行尾冒号）→ YAML mapping
+    /// </remarks>
     private static void CountFeatures(string content, out int yamlCount, out int propsCount)
     {
         yamlCount = 0;
@@ -126,16 +124,29 @@ public static class ConfigFormatDetector
             if (trimmed.Length == 0) continue;
             if (trimmed.StartsWith('#') || trimmed.StartsWith('!')) continue; // YAML/Properties 注释都跳过
 
-            // Properties 特征（正则匹配 key=value 或 key: value 行首）
-            if (PropertiesLineRegex.IsMatch(line))
+            int leadingWs = line.Length - trimmed.Length;
+            bool isIndented = leadingWs > 0;
+            bool hasEquals = trimmed.Contains('=');
+            bool hasColonSpace = trimmed.Contains(": ") || trimmed.EndsWith(':');
+
+            // 有缩进的键值行 → YAML（Properties 不使用缩进嵌套）
+            if (isIndented && (hasColonSpace || hasEquals))
+            {
+                yamlCount++;
+                continue;
+            }
+
+            // 无缩进 + = 分隔符 → Properties（Minecraft server.properties 标准）
+            if (!isIndented && hasEquals)
             {
                 propsCount++;
                 continue;
             }
 
-            // YAML 特征：不含 = 号（不是 properties）但含 缩进 key: value 或 - 列表项
-            bool hasColonWithSpace = trimmed.Contains(": ") || trimmed.EndsWith(':');
-            if (!trimmed.Contains('=') && hasColonWithSpace)
+            // 无缩进 + : 分隔符（colon-space 或行尾冒号）→ YAML mapping
+            // （Properties 虽规范上允许 : 分隔，但实际 server.properties 一律用 =，
+            //   把 : 归 YAML 更准确，避免 YAML 被误判为 Properties）
+            if (!isIndented && hasColonSpace && !hasEquals)
             {
                 yamlCount++;
                 continue;
@@ -257,23 +268,5 @@ public static class ConfigFormatDetector
         catch { /* 忽略 */ }
 
         return false;
-    }
-
-    /// <summary>
-    /// 尝试验证 JSON 格式合法性
-    /// </summary>
-    /// <param name="content">待检测的文本内容</param>
-    /// <returns>合法 JSON 返回 <c>true</c>，否则返回 <c>false</c></returns>
-    private static bool TryParseJson(string content)
-    {
-        try
-        {
-            JsonDocument.Parse(content);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
     }
 }

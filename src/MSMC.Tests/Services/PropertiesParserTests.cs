@@ -217,25 +217,33 @@ public class PropertiesParserTests
     }
 
     [Fact]
-    public void Parse_LineWithoutEquals_ThrowsFormatException()
+    public void Parse_LineWithoutEquals_SkippedAsComment()
     {
-        // Arrange —— 没有 = 号的非空非注释行，应该报错
+        // Arrange —— 没有 = 号的非空非注释行，按降级策略保留为注释，避免整文件挂
         var content = "server-port=25565\nthis-is-not-a-valid-line\nmax-players=20";
 
-        // Act & Assert
-        var ex = Assert.Throws<FormatException>(() => PropertiesParser.Parse(content));
-        Assert.Contains("缺少 = 号", ex.Message);
+        // Act
+        var result = PropertiesParser.Parse(content);
+
+        // Assert —— 坏行被跳过（降级为注释），其他配置项仍可正常读取
+        Assert.Equal(2, result.Count);
+        Assert.Equal("25565", result["server-port"]);
+        Assert.Equal("20", result["max-players"]);
+        Assert.DoesNotContain("this-is-not-a-valid-line", result.Keys);
     }
 
     [Fact]
-    public void Parse_EmptyKey_ThrowsFormatException()
+    public void Parse_EmptyKey_SkippedAsComment()
     {
-        // Arrange —— = 前面没有键名，离谱
-        var content = "=25565";
+        // Arrange —— = 前面没有键名，按降级策略保留为注释
+        var content = "=25565\nserver-port=25565";
 
-        // Act & Assert
-        var ex = Assert.Throws<FormatException>(() => PropertiesParser.Parse(content));
-        Assert.Contains("键名为空", ex.Message);
+        // Act
+        var result = PropertiesParser.Parse(content);
+
+        // Assert —— 空键名行被跳过，其他配置项仍可正常读取
+        Assert.Single(result);
+        Assert.Equal("25565", result["server-port"]);
     }
 
     [Fact]

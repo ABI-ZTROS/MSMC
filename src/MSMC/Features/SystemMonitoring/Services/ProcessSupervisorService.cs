@@ -152,9 +152,6 @@ public interface IProcessSupervisorService
     /// <summary>设置进程 CPU 亲和性（coreNumbers：逻辑核编号 0..N-1）</summary>
     bool SetProcessAffinity(int pid, IEnumerable<int> coreNumbers);
 
-    /// <summary>设置进程优先级（Idle/Below/Normal/Above/High/Realtime）</summary>
-    bool SetProcessPriorityClass(int pid, ProcessPriorityClass priority);
-
     /// <summary>获取 psapi 级精确内存（PrivateUsage + WorkingSet + Pagefile）</summary>
     (long PrivateBytes, long WorkingSet, long PagefileUsage) QueryProcessMemory(int pid);
 
@@ -410,22 +407,6 @@ public sealed class ProcessSupervisorService : IProcessSupervisorService
         catch (Exception ex)
         {
             _log.Warning(ex, "[Supervisor] SetProcessAffinity 失败 PID={Pid}", pid);
-            return false;
-        }
-    }
-
-    // ───────────────────────────────────────────────────────────────────────
-    public bool SetProcessPriorityClass(int pid, ProcessPriorityClass priority)
-    {
-        try
-        {
-            using var proc = Process.GetProcessById(pid);
-            proc.PriorityClass = priority;
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _log.Warning(ex, "[Supervisor] SetPriorityClass 失败 PID={Pid}", pid);
             return false;
         }
     }

@@ -81,14 +81,10 @@ public sealed class ServerPortResolver
                 ServerConstants.DefaultServerPort);
             return ServerConstants.DefaultServerPort;
         }
-        catch (FormatException ex)
-        {
-            // PropertiesParser 对格式错误会抛 FormatException
-            Log.Debug(ex, "[BRDG] ServerPortResolver: server.properties 格式错误，使用默认端口");
-            return ServerConstants.DefaultServerPort;
-        }
         catch (Exception ex)
         {
+            // PropertiesParser 采用降级策略（坏行转注释），不再抛 FormatException；
+            // 此处兜底捕获文件读取等意外异常
             Log.Debug(ex, "[BRDG] ServerPortResolver: 读取 server.properties 失败，使用默认端口");
             return ServerConstants.DefaultServerPort;
         }
