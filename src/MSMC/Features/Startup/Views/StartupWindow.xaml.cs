@@ -329,6 +329,14 @@ public partial class StartupWindow : Window
             using var resourceStream = await provider.GetResourceAsync(relativePath);
             if (resourceStream == null)
             {
+                // favicon.ico 通常不打包，找不到时返回 204 No Content，避免无意义 WARNING
+                if (relativePath.Equals("/favicon.ico", StringComparison.OrdinalIgnoreCase))
+                {
+                    args.Response = StartupWebView.CoreWebView2.Environment.CreateWebResourceResponse(
+                        null, 204, "No Content", string.Empty);
+                    return;
+                }
+
                 args.Response = StartupWebView.CoreWebView2.Environment.CreateWebResourceResponse(
                     null, 404, "Not Found", "Content-Type: text/plain");
                 return;

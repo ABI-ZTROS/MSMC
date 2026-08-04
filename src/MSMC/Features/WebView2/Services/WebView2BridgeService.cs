@@ -431,6 +431,15 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             using var resourceStream = await provider.GetResourceAsync(relativePath);
             if (resourceStream == null)
             {
+                // favicon.ico 通常不打包进前端资源，浏览器会默认请求它。
+                // 找不到时直接返回 204 No Content（合法响应），避免日志里反复出现 WARNING。
+                if (relativePath.Equals("/favicon.ico", StringComparison.OrdinalIgnoreCase))
+                {
+                    args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
+                        null, 204, "No Content", string.Empty);
+                    return;
+                }
+
                 Log.Warning("[ERR] 资源未找到: {Path}", relativePath);
                 args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
                     null, 404, "Not Found", "Content-Type: text/plain");
