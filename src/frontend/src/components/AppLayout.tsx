@@ -45,6 +45,39 @@ export function AppLayout(): JSX.Element {
     return () => clearInterval(timer)
   }, [])
 
+  // ── [FE-DIAG] AppLayout 挂载后 1 帧：打印根容器（md-app-root）的
+  //    实际最终背景色/前景色。如果 CSS 变量丢了，会变成白底/透明。
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      try {
+        const root = document.querySelector('.md-app-root') as HTMLElement | null
+        const paperEl = document.querySelector('.md-app-paper') as HTMLElement | null
+        const sb = document.querySelector('.md-sidebar') as HTMLElement | null
+        const readStyle = (el: HTMLElement | null, name: string) => {
+          if (!el) return '(elem missing)'
+          return getComputedStyle(el).getPropertyValue(name).trim() || '(EMPTY - CSS VAR UNDEFINED)'
+        }
+        const msg =
+          `[FE-DIAG] AppLayout 1帧后样式快照 | ` +
+          `md-app-root bgcolor=${root ? getComputedStyle(root).backgroundColor : '(elem missing)'} | ` +
+          `md-app-paper bgcolor=${paperEl ? getComputedStyle(paperEl).backgroundColor : '(elem missing)'} | ` +
+          `sidebar width_raw=${readStyle(sb, 'width')} / sidebar var(--md-card-background)=${readStyle(sb, '--md-card-background')} / ` +
+          `:root --md-paper=${readStyle(document.documentElement, '--md-paper')}`
+        console.log(msg)
+        const bridge = (window as any).__msmc_bridge__
+        if (bridge && typeof bridge.invoke === 'function') {
+          bridge.invoke('log:write', {
+            level: 'Information', message: msg, stack: '',
+            url: location.href, ua: navigator.userAgent,
+          }).catch(() => {})
+        }
+      } catch (e: any) {
+        console.warn('[FE-DIAG] AppLayout diag 失败:', e?.message || e)
+      }
+    }, 16)
+    return () => window.clearTimeout(t)
+  }, [])
+
   return (
     <div
       className="h-full flex flex-col overflow-hidden relative"

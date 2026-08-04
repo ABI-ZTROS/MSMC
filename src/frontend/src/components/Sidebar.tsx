@@ -33,6 +33,46 @@ export function Sidebar() {
   const [expanded, setExpanded] = useState(false)
   const location = useLocation()
 
+  // ── [FE-DIAG] Sidebar 首次挂载时把自身状态/样式/数据全量打印
+  //    用于定位"侧边栏消失但 hover 有交互"的问题（症状 B/C）
+  //    如果 CSS 变量没加载 → width 会算成 auto / 空 / initial
+  //    如果图标没加载 → navItems[i].icon.type 会是 undefined 而非 function
+  useState(() => {
+    try {
+      const cs = getComputedStyle(document.documentElement)
+      const cssVars = {
+        md_card_background: cs.getPropertyValue('--md-card-background').trim() || '(EMPTY!)',
+        md_body: cs.getPropertyValue('--md-body').trim() || '(EMPTY!)',
+        md_nav_item_selected: cs.getPropertyValue('--md-nav-item-selected').trim() || '(EMPTY!)',
+        sidebar_width_expanded: cs.getPropertyValue('--sidebar-width-expanded').trim() || '(EMPTY!)',
+        sidebar_width_collapsed: cs.getPropertyValue('--sidebar-width-collapsed').trim() || '(EMPTY!)',
+      }
+      // 检查图标组件是否是有效组件（undefined 说明 react-icons chunk 没加载/tree-shake 了）
+      const iconTypes = navItems.map((it, i) => {
+        const node = it.icon as any
+        const typeStr = node == null
+          ? 'NULL!'
+          : typeof node.type === 'function'
+            ? `Fn(${node.type.name || 'anon'})`
+            : String(node.type)
+        return `[${i}] ${typeStr}`
+      }).join(', ')
+      const msg =
+        `[FE-DIAG] Sidebar首次挂载 | expanded=${expanded} | navItems.length=${navItems.length} | location=${location.pathname} | ` +
+        `CSS vars: ${JSON.stringify(cssVars)} | nav图标: ${iconTypes}`
+      console.log(msg)
+      // 上报 C# 日志（注意：此时桥接可能还没初始化，失败时静默忽略）
+      const bridge = (window as any).__msmc_bridge__
+      if (bridge && typeof bridge.invoke === 'function') {
+        bridge.invoke('log:write', {
+          level: 'Information', message: msg, stack: '', url: location.href, ua: navigator.userAgent,
+        }).catch(() => {})
+      }
+    } catch (e: any) {
+      console.warn('[FE-DIAG] Sidebar diag 失败:', e?.message || e)
+    }
+  })
+
   return (
     <aside
       className={clsx(

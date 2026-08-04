@@ -44,14 +44,78 @@ window.addEventListener('unhandledrejection', (e) => {
   reportToCsharp('Error', `[FE-ERR] 未处理的 Promise 拒绝: ${msg}`, reason?.stack)
 })
 
+// ── [FE-DIAG] 在 React 挂载前检测 :root CSS 变量是否存在
+//    如果 globals.css 没成功加载（例如 Win11 下 CORS 校验被拒绝），getComputedStyle
+//    读出来的 CSS 变量是 ""（空字符串），可以精准定位"样式丢失"问题是 CSS 文件没解析
+function diagRootCssVariables(): string {
+  try {
+    const root = document.documentElement
+    const cs = getComputedStyle(root)
+    const checkVars = [
+      '--md-card-background',
+      '--md-body',
+      '--md-body-light',
+      '--md-primary',
+      '--sidebar-width-expanded',
+      '--sidebar-width-collapsed',
+    ]
+    const lines: string[] = []
+    for (const v of checkVars) {
+      const val = cs.getPropertyValue(v).trim()
+      lines.push(`${v}=${val || '(EMPTY - CSS未加载!)'}`)
+    }
+    // 额外看 body 的实际颜色（最终生效的）
+    const bodyCs = getComputedStyle(document.body)
+    lines.push(`body.color=${bodyCs.color}`)
+    lines.push(`body.background=${bodyCs.backgroundColor}`)
+    return lines.join(' | ')
+  } catch (e: any) {
+    return `(CSS diag failed: ${e?.message || e})`
+  }
+}
+console.log('[FE-DIAG] 挂载前 :root CSS 变量: ' + diagRootCssVariables())
+reportToCsharp('Information', '[FE-DIAG] 挂载前 CSS 变量诊断: ' + diagRootCssVariables(), '')
+
 const rootEl = document.getElementById('root')
 if (!rootEl) {
   reportToCsharp('Error', '[FE-ERR] #root 元素未找到，无法挂载 React')
 } else {
   try {
+    console.log('[FE-DIAG] ReactDOM.createRoot → 开始渲染 <App />')
     ReactDOM.createRoot(rootEl).render(<App />)
     // [OK] React 挂载成功
     ;(window as any).__msmcReactMounted = true
+    console.log('[FE-DIAG] React 首帧渲染完成 → __msmcReactMounted=true')
+    reportToCsharp('Information', '[FE-DIAG] React 已挂载 → 挂载后 CSS 变量: ' + diagRootCssVariables(), '')
+
+    // ── [FE-DIAG] 挂载后再等 3 帧，检查 Sidebar/Dashboard/ServerPage 等元素是否真的在 DOM 中
+    //    如果 Sidebar nav-item-mask 或 dashboard-root 不在 DOM → 是 lazy chunk 加载失败
+    setTimeout(() => {
+      try {
+        const sidebar = document.querySelector('.md-sidebar')
+        const sidebarItems = document.querySelectorAll('.md-sidebar-item').length
+        const navIcons = document.querySelectorAll('.md-sidebar-item svg').length
+        const navTexts = document.querySelectorAll('.md-sidebar-text').length
+        const msg = `[FE-DIAG] 3帧后 DOM 快照: .md-sidebar=${sidebar ? 'EXISTS' : 'MISSING'} | items=${sidebarItems} | icons=${navIcons} | texts=${navTexts}`
+        console.log(msg)
+        reportToCsharp('Information', msg, '')
+        if (!sidebar) {
+          reportToCsharp('Warning',
+            '[FE-DIAG] Sidebar 元素 .md-sidebar 在挂载 3 帧后仍不存在！（lazy chunk 加载失败或 App 渲染到某处炸了）', '')
+        } else if (sidebarItems === 0) {
+          reportToCsharp('Warning',
+            '[FE-DIAG] Sidebar 存在但 .md-sidebar-item 数量为 0（navItems 空数组或 Sidebar 渲染被 early-return）', '')
+        } else if (navTexts === 0) {
+          reportToCsharp('Warning',
+            `[FE-DIAG] Sidebar items=${sidebarItems} 但文字 .md-sidebar-text 数量为 0。` +
+            ` 这说明 expanded/collapsed 折叠样式或文字 display:none 有问题。`, '')
+        }
+      } catch (e2: any) {
+        reportToCsharp('Error',
+          `[FE-DIAG] 3帧后 DOM 快照异常: ${e2?.message || e2}`, '')
+      }
+    }, 48)
+
     // 关键：等待 React 渲染完成（双 rAF 确保首帧已进入 DOM），
     // 然后给诊断层加 fade-out（opacity→0 + blur→8px + 轻微上浮），
     // 过渡结束后再 remove DOM，避免「诊断框硬消失 → 黑底 → App 首帧僵硬出现」的视觉断裂。

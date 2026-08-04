@@ -439,7 +439,11 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         if (string.IsNullOrEmpty(relativePath) || relativePath == "/")
             relativePath = "/index.html";
 
-        Log.Information("[MSG] WebResource 请求: {Path}", relativePath);
+        var ctx = request.ResourceContext.ToString();
+        // 【DIAG-请求层】每个请求打印 Resource Context（Script/Stylesheet/Image/All 等），
+        //    便于判断：Sidebar 图标消失时 JS chunk 的 Context 是 Script，CSS 是 Stylesheet
+        Log.Information("[WV2-REQ] [{Ctx}] {Path}  |  URI={Uri}", ctx, relativePath,
+            uri.Length > 120 ? uri[..120] + "..." : uri);
 
         try
         {
@@ -453,12 +457,18 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                 {
                     args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
                         null, 204, "No Content", string.Empty);
+                    Log.Information("[WV2-RESP] [{Ctx}] {Path}  →  204 No Content (favicon)", ctx, relativePath);
                     return;
                 }
 
-                Log.Warning("[ERR] 资源未找到: {Path}", relativePath);
-                args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
+                Log.Warning("[WV2-404] [{Ctx}] 资源未找到: {Path}", ctx, relativePath);
+                var resp404 = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
                     null, 404, "Not Found", "Content-Type: text/plain\r\n");
+                // 【DIAG-响应层】确认 args.Response 非 null（某些 WebView2 版本极端情况下会返回 null）
+                var status404 = resp404?.StatusCode ?? -999;
+                Log.Information("[WV2-RESP] [{Ctx}] {Path}  →  404 (resp.StatusCode={St})",
+                    ctx, relativePath, status404);
+                args.Response = resp404;
                 return;
             }
 
@@ -479,20 +489,32 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                 $"Access-Control-Allow-Origin: *\r\n";
 
             // 构造响应
-            args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
+            var response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
                 memoryStream,
                 200,
                 "OK",
                 headers);
 
-            // 【CSS 诊断增强】对 CSS 资源单独打印详细日志，方便定位样式丢失问题
-            //    Win11 新版 WebView2 对 CSS 响应有额外校验，一旦 Content-Type 不对或 headers 丢失，
-            //    CSS 会被浏览器拒绝解析，导致界面无样式（症状：DOM 挂载但视觉透明）
+            // 【DIAG-响应层】Critical：打印 CreateWebResourceResponse 实际写入的 status code
+            //    某些 WebView2 版本在 Stream 不可读或 headers 格式不合法时，StatusCode 会悄悄地 = 0
+            //    → 前端 Performance API 会判为 HTTP 0 → RES-BAD（这正是 Win11 可能出现的情况）
+            var actualStatusCode = response?.StatusCode ?? -999;
+            var actualReason = response?.ReasonPhrase ?? "(null)";
+            args.Response = response;
+
             var isCss = relativePath.EndsWith(".css", StringComparison.OrdinalIgnoreCase);
-            if (isCss)
+            var isJs = relativePath.EndsWith(".js", StringComparison.OrdinalIgnoreCase);
+            if (isCss || isJs)
             {
-                Log.Information("[CSS-DIAG] CSS 资源响应: {Path} | MIME={MimeType} | Size={Size}B | Headers=\n{Headers}",
-                    relativePath, mimeType, memoryStream.Length, headers.Replace("\r\n", "\\r\\n"));
+                // 【DIAG-CSS/JS 详细层】关键资源（CSS/JS）打印 MIME/Size/StatusCode/Headers
+                //    如果 StatusCode != 200 → WebView2 内核拒绝了我们的 CreateWebResourceResponse 参数
+                //    如果 Headers 日志显示 Content-Type 丢了 → Win11 新版校验严格：末尾缺 \r\n
+                Log.Information("[WV2-RESP] [{Ctx}] {Path}  →  {St} {Reason} | MIME={Mime} | Size={Sz}B | " +
+                                "Headers=\"{Hd}\"",
+                    ctx, relativePath,
+                    actualStatusCode, actualReason,
+                    mimeType, memoryStream.Length,
+                    headers.Replace("\r\n", " \\r\\n "));
             }
             else
             {

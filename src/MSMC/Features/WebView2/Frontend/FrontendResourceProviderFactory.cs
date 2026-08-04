@@ -20,57 +20,80 @@ public static class FrontendResourceProviderFactory
         if (_cachedProvider != null)
             return _cachedProvider;
 
-        Log.Information("[FIND] 正在查找前端资源提供器...");
+        Log.Information("[FIND] ============== 查找前端资源提供器 ==============");
 
         // 1. 优先：开发环境本地文件夹
-        var folderProvider = TryCreateFolderProvider();
+        var folderProvider = TryCreateFolderProvider(out var folderTriedList);
+        // 先把所有候选的命中/未命中原因打印出来（DIAG）
+        foreach (var t in folderTriedList)
+            Log.Information("[FIND]  Folder候选: {Status}  {Path}  ({Reason})",
+                t.hit ? "✅ HIT" : "❌   ", t.path, t.reason);
         if (folderProvider != null && folderProvider.IsAvailable)
         {
-            Log.Information("[OK] 使用本地文件夹模式加载前端");
+            Log.Information("[FIND] → 采用 Folder 模式: BasePath={P}", folderProvider.GetBasePathAsync().GetAwaiter().GetResult());
             _cachedProvider = folderProvider;
             return _cachedProvider;
         }
 
         // 2. 其次：嵌入资源（B 模式）
+        Log.Information("[FIND] 尝试 B 模式(嵌入资源 EmbeddedZip) ...");
         var embeddedProvider = new EmbeddedResourceProvider();
+        Log.Information("[FIND]  B 模式: IsAvailable={Avail}  EntryCount={Cnt}",
+            embeddedProvider.IsAvailable, embeddedProvider.IsAvailable ? "(embedded会在自己内部log entry表)" : "N/A");
         if (embeddedProvider.IsAvailable)
         {
-            Log.Information("[OK] 使用嵌入资源模式加载前端 (B 模式)");
+            Log.Information("[FIND] → 采用 Embedded 模式 (B)");
             _cachedProvider = embeddedProvider;
             return _cachedProvider;
         }
 
         // 3. 兜底：Zip 解压（C 模式）
+        Log.Information("[FIND] 尝试 C 模式(Zip解压) ...");
         var zipProvider = new ZipExtractResourceProvider();
+        Log.Information("[FIND]  C 模式: IsAvailable={Avail}", zipProvider.IsAvailable);
         if (zipProvider.IsAvailable)
         {
-            Log.Information("[OK] 使用 Zip 解压模式加载前端 (C 模式/兜底)");
+            Log.Information("[FIND] → 采用 Zip 解压模式 (C)");
             _cachedProvider = zipProvider;
             return _cachedProvider;
         }
 
         // 4. 都不行，返回一个不可用的提供器
-        Log.Warning("[WARN] 未找到任何可用的前端资源提供器，将加载测试页面");
+        Log.Warning("[FIND] ❌ 所有模式全部未命中，回退到 NullResourceProvider");
+        Log.Warning("[FIND]   BaseDir      = {B}", AppContext.BaseDirectory);
+        Log.Warning("[FIND]   CurrentDir   = {C}", Environment.CurrentDirectory);
+        Log.Warning("[FIND]   Process.Main = {M}",
+            System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "(null)");
         _cachedProvider = new NullResourceProvider();
         return _cachedProvider;
     }
 
-    private static FolderResourceProvider? TryCreateFolderProvider()
+    private static FolderResourceProvider? TryCreateFolderProvider(out List<(string path, bool hit, string reason)> tried)
     {
+        tried = new List<(string, bool, string)>();
         // 尝试多个可能的路径
-        var candidates = GetCandidatePaths();
+        var candidates = GetCandidatePaths().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
         foreach (var path in candidates)
         {
             try
             {
+                if (!Directory.Exists(path))
+                {
+                    tried.Add((path, false, "Directory.Exists=false"));
+                    continue;
+                }
                 var provider = new FolderResourceProvider(path);
                 if (provider.IsAvailable)
+                {
+                    tried.Add((path, true, "FolderResourceProvider.IsAvailable=true"));
                     return provider;
+                }
+                tried.Add((path, false, "Directory存在但 index.html/assets/ 检查未通过 (FolderResourceProvider.IsAvailable=false)"));
             }
             catch (Exception ex)
             {
-                Log.Debug("检查前端目录失败 {Path}: {Error}", path, ex.Message);
+                tried.Add((path, false, $"Exception: {ex.Message}"));
             }
         }
 
