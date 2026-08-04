@@ -361,7 +361,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         if (_webView?.CoreWebView2 == null) return;
 
         // 注册多层过滤器，确保所有深度的路径都能被拦截
-        // WebView2 的 * 通配符不跨路径分隔符，所以需要多层
+        // WebView2 的 * 通配符不跨路径分隔符，所以需要多层（深度扩到 6 层，覆盖深层 chunk / sourcemap）
         // 注意：统一用 http:// 协议（和上面导航的协议保持一致），避免协议不匹配导致拦截器不生效
         var filters = new[]
         {
@@ -371,6 +371,8 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             $"http://{hostName}/*/*",
             $"http://{hostName}/*/*/*",
             $"http://{hostName}/*/*/*/*",
+            $"http://{hostName}/*/*/*/*/*",
+            $"http://{hostName}/*/*/*/*/*/*",
         };
 
         foreach (var filter in filters)
@@ -420,6 +422,20 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             return;
 
         var relativePath = uri[baseUri.Length..];
+
+        // ── 路径规范化（根因修复：Vite chunk/dynamic import 会带 ?v=hash 或 #fragment）
+        //    ① 去掉 query string (?xxx) 和 fragment (#xxx)
+        //    ② 合并连续斜杠 // → /（URL 拼接失误会出现）
+        //    ③ 空路径或单 / → index.html
+        int qIdx = relativePath.IndexOf('?');
+        int hIdx = relativePath.IndexOf('#');
+        int stripTo = relativePath.Length;
+        if (qIdx >= 0) stripTo = Math.Min(stripTo, qIdx);
+        if (hIdx >= 0) stripTo = Math.Min(stripTo, hIdx);
+        if (stripTo < relativePath.Length)
+            relativePath = relativePath[..stripTo];
+        while (relativePath.Contains("//"))
+            relativePath = relativePath.Replace("//", "/");
         if (string.IsNullOrEmpty(relativePath) || relativePath == "/")
             relativePath = "/index.html";
 
@@ -442,7 +458,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
                 Log.Warning("[ERR] 资源未找到: {Path}", relativePath);
                 args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
-                    null, 404, "Not Found", "Content-Type: text/plain");
+                    null, 404, "Not Found", "Content-Type: text/plain\r\n");
                 return;
             }
 
@@ -454,8 +470,13 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             // 获取 MIME 类型
             var mimeType = provider.GetMimeType(relativePath);
 
-            // 构造响应头
-            var headers = $"Content-Type: {mimeType}\r\nContent-Length: {memoryStream.Length}\r\nCache-Control: public, max-age=3600\r\nAccess-Control-Allow-Origin: *";
+            // 构造响应头 —— WebView2 SDK 要求末尾带 \r\n，否则 Win11 新版内核会静默丢弃 headers
+            //    导致 Content-Type/MIME 丢失，JS 模块被当成纯文本拒绝执行 → 侧边栏/图标 chunk 全挂
+            var headers =
+                $"Content-Type: {mimeType}\r\n" +
+                $"Content-Length: {memoryStream.Length}\r\n" +
+                $"Cache-Control: public, max-age=3600\r\n" +
+                $"Access-Control-Allow-Origin: *\r\n";
 
             // 构造响应
             args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
@@ -470,7 +491,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         {
             Log.Error(ex, "[ERR] 处理资源请求失败: {Path}", relativePath);
             args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
-                null, 500, "Internal Server Error", "Content-Type: text/plain");
+                null, 500, "Internal Server Error", "Content-Type: text/plain\r\n");
         }
     }
 

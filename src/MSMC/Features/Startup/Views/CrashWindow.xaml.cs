@@ -195,6 +195,7 @@ public partial class CrashWindow : Window
 
     private void RegisterWebResourceRequested(IFrontendResourceProvider provider, string hostName)
     {
+        // 过滤器深度扩到 6 层，覆盖深层 chunk / sourcemap
         var filters = new[]
         {
             $"http://{hostName}",
@@ -203,6 +204,8 @@ public partial class CrashWindow : Window
             $"http://{hostName}/*/*",
             $"http://{hostName}/*/*/*",
             $"http://{hostName}/*/*/*/*",
+            $"http://{hostName}/*/*/*/*/*",
+            $"http://{hostName}/*/*/*/*/*/*",
         };
 
         foreach (var filter in filters)
@@ -233,6 +236,18 @@ public partial class CrashWindow : Window
         if (!uri.StartsWith(baseUri, StringComparison.OrdinalIgnoreCase)) return;
 
         var relativePath = uri[baseUri.Length..];
+
+        // ── 路径规范化（同 WebView2BridgeService / StartupWindow）
+        //    ① 剥离 query(?)/fragment(#) ② 合并连续斜杠 ③ 空路径 → crash.html
+        int qIdx = relativePath.IndexOf('?');
+        int hIdx = relativePath.IndexOf('#');
+        int stripTo = relativePath.Length;
+        if (qIdx >= 0) stripTo = Math.Min(stripTo, qIdx);
+        if (hIdx >= 0) stripTo = Math.Min(stripTo, hIdx);
+        if (stripTo < relativePath.Length)
+            relativePath = relativePath[..stripTo];
+        while (relativePath.Contains("//"))
+            relativePath = relativePath.Replace("//", "/");
         if (string.IsNullOrEmpty(relativePath) || relativePath == "/")
             relativePath = "/crash.html";
 
@@ -250,7 +265,7 @@ public partial class CrashWindow : Window
                 }
 
                 args.Response = CrashWebView.CoreWebView2.Environment.CreateWebResourceResponse(
-                    null, 404, "Not Found", "Content-Type: text/plain");
+                    null, 404, "Not Found", "Content-Type: text/plain\r\n");
                 return;
             }
 
@@ -259,7 +274,12 @@ public partial class CrashWindow : Window
             memoryStream.Position = 0;
 
             var mimeType = provider.GetMimeType(relativePath);
-            var headers = $"Content-Type: {mimeType}\r\nContent-Length: {memoryStream.Length}\r\nCache-Control: public, max-age=3600\r\nAccess-Control-Allow-Origin: *";
+            // WebView2 SDK headers 格式要求末尾带 \r\n，否则 Win11 新版内核会静默丢 header
+            var headers =
+                $"Content-Type: {mimeType}\r\n" +
+                $"Content-Length: {memoryStream.Length}\r\n" +
+                $"Cache-Control: public, max-age=3600\r\n" +
+                $"Access-Control-Allow-Origin: *\r\n";
 
             args.Response = CrashWebView.CoreWebView2.Environment.CreateWebResourceResponse(
                 memoryStream, 200, "OK", headers);
@@ -268,7 +288,7 @@ public partial class CrashWindow : Window
         {
             Log.Error(ex, "[CRASH-WIN] 处理资源请求失败: {Path}", relativePath);
             args.Response = CrashWebView.CoreWebView2.Environment.CreateWebResourceResponse(
-                null, 500, "Internal Server Error", "Content-Type: text/plain");
+                null, 500, "Internal Server Error", "Content-Type: text/plain\r\n");
         }
     }
 

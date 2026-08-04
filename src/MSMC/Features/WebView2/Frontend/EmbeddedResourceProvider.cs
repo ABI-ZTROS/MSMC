@@ -93,38 +93,69 @@ public class EmbeddedResourceProvider : IFrontendResourceProvider
         if (!IsAvailable || _archive == null)
             return Task.FromResult<Stream?>(null);
 
-        // 规范化路径
-        var path = relativePath.TrimStart('/');
-        if (string.IsNullOrEmpty(path))
-            path = "index.html";
+        // 防御性规范化（调用方应该已经处理过了，但在 provider 这一层再做一次确保万无一失）
+        var rp = relativePath;
+        // ① 剥离 query / fragment
+        int qIdx = rp.IndexOf('?');
+        int hIdx = rp.IndexOf('#');
+        int stripTo = rp.Length;
+        if (qIdx >= 0) stripTo = Math.Min(stripTo, qIdx);
+        if (hIdx >= 0) stripTo = Math.Min(stripTo, hIdx);
+        if (stripTo < rp.Length)
+            rp = rp[..stripTo];
+        // ② 合并连续斜杠
+        while (rp.Contains("//"))
+            rp = rp.Replace("//", "/");
+        // ③ 去掉首尾多余的 \ /
+        rp = rp.TrimStart('/', '\\').TrimEnd('/', '\\');
+        if (string.IsNullOrEmpty(rp))
+            rp = "index.html";
 
-        var key = $"/{path}";
+        var key = $"/{rp}";
 
-        // 直接查找
+        // 直接查找（_entryMap 已用 StringComparer.OrdinalIgnoreCase）
         if (_entryMap.TryGetValue(key, out var entry))
-        {
             return Task.FromResult<Stream?>(entry.Open());
-        }
 
-        // 尝试不带前导斜杠
-        if (_entryMap.TryGetValue(path, out entry))
-        {
+        // 不带前导斜杠（兜底不同打包工具的 entry.FullName 约定）
+        if (_entryMap.TryGetValue(rp, out entry))
             return Task.FromResult<Stream?>(entry.Open());
-        }
 
-        // 兜底：目录路径 → index.html
-        if (!path.EndsWith(".html", StringComparison.OrdinalIgnoreCase) &&
-            !path.Contains('.'))
+        // 兼容 Zip 条目名可能带目录前缀（如 dist/assets/...）的打包方式
+        // 某些 ZipDirectory 模式下条目名是 "dist/assets/icons-xxx.js"，我们统一去掉 "dist/" 前缀再查一次
+        var dePrefixKey = StripDistPrefix(key);
+        if (!string.Equals(dePrefixKey, key, StringComparison.OrdinalIgnoreCase)
+            && _entryMap.TryGetValue(dePrefixKey, out entry))
+            return Task.FromResult<Stream?>(entry.Open());
+
+        // 目录兜底：xxx/yyy → xxx/yyy/index.html
+        if (!rp.EndsWith(".html", StringComparison.OrdinalIgnoreCase) &&
+            !rp.Contains('.'))
         {
-            var indexPath = $"/{path}/index.html".Replace("//", "/");
+            var indexPath = $"/{rp}/index.html".Replace("//", "/");
             if (_entryMap.TryGetValue(indexPath, out entry))
-            {
                 return Task.FromResult<Stream?>(entry.Open());
-            }
         }
 
-        Log.Debug("嵌入资源未找到: {Path}", relativePath);
+        Log.Debug("嵌入资源未找到: {Path} (normalized={Norm}, entryCount={Cnt})",
+            relativePath, rp, _entryMap.Count);
         return Task.FromResult<Stream?>(null);
+    }
+
+    private static string StripDistPrefix(string key)
+    {
+        // 去掉可能的 dist/ wwwroot/ frontend/ 前缀（大小写不敏感比较）
+        foreach (var prefix in new[] { "/dist/", "/wwwroot/", "/frontend/" })
+        {
+            if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return "/" + key[prefix.Length..];
+        }
+        foreach (var prefix in new[] { "dist/", "wwwroot/", "frontend/" })
+        {
+            if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return key[prefix.Length..];
+        }
+        return key;
     }
 
     /// <inheritdoc />
