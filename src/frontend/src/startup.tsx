@@ -1,4 +1,3 @@
-import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { StartupPage } from './pages/StartupPage'
 import './styles/globals.css'
@@ -39,15 +38,27 @@ window.addEventListener('unhandledrejection', (e) => {
 const rootEl = document.getElementById('root')
 if (rootEl) {
   try {
-    ReactDOM.createRoot(rootEl).render(
-      <React.StrictMode>
-        <StartupPage />
-      </React.StrictMode>,
-    )
-    const bootDiag = document.getElementById('boot-diagnostics')
-    if (bootDiag && bootDiag.parentNode) {
-      bootDiag.parentNode.removeChild(bootDiag)
-    }
+    ReactDOM.createRoot(rootEl).render(<StartupPage />)
+    ;(window as any).__msmcStartupReactMounted = true
+    // 关键：等待 React 渲染完成（双 rAF 确保首帧已进入 DOM），
+    // 然后给诊断层加 fade-out，过渡结束后再 remove。
+    // 之前同步立即 removeChild 会导致「诊断框消失 → 1-2 帧纯深色背景无内容 → StartupPage 入场动画僵硬弹出」的时序断裂。
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const bootDiag = document.getElementById('boot-diagnostics')
+        if (!bootDiag || !bootDiag.parentNode) return
+        bootDiag.classList.add('fade-out')
+        // transitionend 触发 remove；加 setTimeout 兜底避免某些浏览器不触发 transitionend
+        let removed = false
+        const doRemove = (): void => {
+          if (removed) return
+          removed = true
+          if (bootDiag.parentNode) bootDiag.parentNode.removeChild(bootDiag)
+        }
+        bootDiag.addEventListener('transitionend', doRemove, { once: true })
+        setTimeout(doRemove, 600)
+      })
+    })
   } catch (err) {
     const stack = err instanceof Error ? err.stack : String(err)
     reportToCsharp('Error', `[STARTUP-ERR] React 渲染异常: ${String(err)}`, stack)

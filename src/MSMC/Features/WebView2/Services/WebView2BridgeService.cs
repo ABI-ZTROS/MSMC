@@ -105,9 +105,10 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
 
         try
         {
-            // 设置默认背景色为黑色，防止白屏闪烁
-            _webView.DefaultBackgroundColor = System.Drawing.Color.Black;
-            Log.Information("[THEME] WebView2 默认背景色已设置为黑色");
+            // 设置默认背景色与前端 index.html body (#0a0f1e) 一致，避免 WebView2 页面载入前闪纯黑
+            // 之前 Color.Black (#000000) 与 #0a0f1e 之间存在明显色阶跳变，用户感知为「先黑一下再出字」
+            _webView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(0xFF, 0x0A, 0x0F, 0x1E);
+            Log.Information("[THEME] WebView2 默认背景色已设置为 #0A0F1E（与前端 body 一致）");
 
             // ──────────────────────────────────────────────────────────────
             // 【关键】显式创建 CoreWebView2Environment，带上允许 file:// 访问的 flags

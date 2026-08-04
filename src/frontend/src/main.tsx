@@ -1,4 +1,3 @@
-import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './styles/globals.css'
@@ -50,20 +49,26 @@ if (!rootEl) {
   reportToCsharp('Error', '[FE-ERR] #root 元素未找到，无法挂载 React')
 } else {
   try {
-    ReactDOM.createRoot(rootEl).render(
-      <React.StrictMode>
-        <App />
-      </React.StrictMode>,
-    )
+    ReactDOM.createRoot(rootEl).render(<App />)
     // [OK] React 挂载成功
     ;(window as any).__msmcReactMounted = true
-    // React 挂载成功后，移除启动诊断层（延迟一点让渲染完成，避免闪屏）
+    // 关键：等待 React 渲染完成（双 rAF 确保首帧已进入 DOM），
+    // 然后给诊断层加 fade-out（opacity→0 + blur→8px + 轻微上浮），
+    // 过渡结束后再 remove DOM，避免「诊断框硬消失 → 黑底 → App 首帧僵硬出现」的视觉断裂。
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const bootDiag = document.getElementById('boot-diagnostics')
-        if (bootDiag && bootDiag.parentNode) {
-          bootDiag.parentNode.removeChild(bootDiag)
+        if (!bootDiag || !bootDiag.parentNode) return
+        bootDiag.classList.add('fade-out')
+        // transitionend 触发 remove；加 setTimeout 兜底避免某些 WebView2 不触发 transitionend
+        let removed = false
+        const doRemove = (): void => {
+          if (removed) return
+          removed = true
+          if (bootDiag.parentNode) bootDiag.parentNode.removeChild(bootDiag)
         }
+        bootDiag.addEventListener('transitionend', doRemove, { once: true })
+        setTimeout(doRemove, 500)
       })
     })
   } catch (err) {

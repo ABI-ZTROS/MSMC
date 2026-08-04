@@ -9,11 +9,24 @@
       html, body { margin: 0; padding: 0; height: 100%; background-color: #0a0f1e; }
       body { font-family: "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif; color: #e2e8f0; }
       #root { height: 100%; }
-      /* 启动诊断层：React 渲染成功后会被清空；失败时显示错误信息 */
+      /* 启动诊断层：React 渲染成功后 fade-out 淡出；失败时显示错误信息 */
       #boot-diagnostics {
         position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
         background-color: #0a0f1e; color: #e2e8f0; padding: 24px; z-index: 9999;
         font-size: 13px; line-height: 1.6;
+        /* 过渡：避免 React 挂载前生硬移除，消除黑底→文字的僵硬切换感 */
+        transition: opacity 300ms cubic-bezier(0.33, 1, 0.68, 1),
+                    transform 300ms cubic-bezier(0.33, 1, 0.68, 1),
+                    filter 300ms cubic-bezier(0.33, 1, 0.68, 1);
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+      }
+      #boot-diagnostics.fade-out {
+        opacity: 0;
+        transform: translateY(-4px) scale(1.01);
+        filter: blur(8px);
+        pointer-events: none;
       }
       #boot-diagnostics .box { max-width: 680px; width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 24px; }
       #boot-diagnostics h2 { margin: 0 0 8px; font-size: 16px; color: #f87171; }
@@ -24,7 +37,7 @@
       #boot-diagnostics .bad { color: #f87171; }
       #boot-diagnostics .warn { color: #fbbf24; }
     </style>
-    <script type="module" crossorigin src="./assets/main-V-IQp6Hq.js"></script>
+    <script type="module" crossorigin src="./assets/main-DDphRUpp.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-BeY2h1CR.js">
     <link rel="modulepreload" crossorigin href="./assets/icons-ZWRwFCkI.js">
     <link rel="modulepreload" crossorigin href="./assets/globals-XOO2MliZ.js">
