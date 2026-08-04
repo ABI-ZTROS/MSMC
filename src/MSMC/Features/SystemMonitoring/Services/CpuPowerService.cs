@@ -219,7 +219,7 @@ public interface ICpuPowerService
 public sealed class CpuPowerService : ICpuPowerService, IDisposable
 {
     private readonly IPrivilegeService _privilegeService;
-    private readonly ILogger _log;
+    private readonly ILogger _log = Log.ForContext<CpuPowerService>();
 
     /// <summary>快照文件路径（崩溃恢复用）</summary>
     private static readonly string SnapshotFilePath = Path.Combine(
@@ -256,10 +256,9 @@ public sealed class CpuPowerService : ICpuPowerService, IDisposable
     private string? _powerRequestReason;
     private readonly object _powerRequestLock = new();
 
-    public CpuPowerService(IPrivilegeService privilegeService, ILogger log)
+    public CpuPowerService(IPrivilegeService privilegeService)
     {
         _privilegeService = privilegeService;
-        _log = log.ForContext<CpuPowerService>();
     }
 
     /// <inheritdoc/>
