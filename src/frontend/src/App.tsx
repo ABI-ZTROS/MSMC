@@ -1,4 +1,4 @@
-import { lazy } from 'react'
+import { lazy, useEffect } from 'react'
 import { createHashRouter, RouterProvider, createRoutesFromElements, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/AppLayout'
 import { ToastContainer } from '@/components/ui/Toast'
@@ -36,6 +36,26 @@ const router = createHashRouter(
 function App(): JSX.Element {
   useBridgeInit()
   const isReady = useAppStore((s) => s.isReady)
+
+  // ── [FE-DIAG] 监听 isReady 切换：从加载屏 → RouterProvider 的关键时刻
+  //    之前 48ms 检查太早（那时 isReady 还是 false，显示加载屏，Sidebar 当然不在）
+  useEffect(() => {
+    const bridge = (window as any).__msmc_bridge__
+    const report = (msg: string) => {
+      console.log('[FE-DIAG] ' + msg)
+      if (bridge && typeof bridge.invoke === 'function') {
+        bridge.invoke('log:write', {
+          level: 'Information', message: '[FE-DIAG] ' + msg, stack: '',
+          url: window.location.href, ua: navigator.userAgent,
+        }).catch(() => {})
+      }
+    }
+    if (isReady) {
+      report(`App: isReady 切换为 true → 即将渲染 <RouterProvider> (路由模式=HashRouter, 初始URL=${window.location.href})`)
+    } else {
+      report('App: isReady=false → 显示加载屏（此时 .md-sidebar 不存在是正常的）')
+    }
+  }, [isReady])
 
   if (!isReady) {
     return (
