@@ -9,6 +9,8 @@ import {
   FaGear,
   FaShield,
   FaChevronRight,
+  FaBolt,
+  FaMugHot,
 } from 'react-icons/fa6'
 
 interface NavItem {
@@ -22,6 +24,8 @@ const navItems: NavItem[] = [
   { path: '/system', label: '系统监控', icon: <FaChartLine size={16} /> },
   { path: '/network', label: '网络监控', icon: <FaNetworkWired size={16} /> },
   { path: '/config', label: '配置编辑', icon: <FaSliders size={16} /> },
+  { path: '/power', label: '电源管理', icon: <FaBolt size={16} /> },
+  { path: '/java', label: 'Java 管理', icon: <FaMugHot size={16} /> },
   { path: '/settings', label: '设置', icon: <FaGear size={16} /> },
 ]
 

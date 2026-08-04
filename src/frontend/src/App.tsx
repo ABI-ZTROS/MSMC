@@ -12,6 +12,8 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(m => ({ de
 const ConfigEditorPage = lazy(() => import('@/pages/ConfigEditorPage').then(m => ({ default: m.ConfigEditorPage })))
 const SystemMonitorPage = lazy(() => import('@/pages/SystemMonitorPage').then(m => ({ default: m.SystemMonitorPage })))
 const NetworkMonitorPage = lazy(() => import('@/pages/NetworkMonitorPage').then(m => ({ default: m.NetworkMonitorPage })))
+const PowerPage = lazy(() => import('@/pages/PowerPage').then(m => ({ default: m.PowerPage })))
+const JavaPage = lazy(() => import('@/pages/JavaPage').then(m => ({ default: m.JavaPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
 
 // Data Router（createHashRouter）：支持 useBlocker 等 Data Router 专属 API。
@@ -23,6 +25,8 @@ const router = createHashRouter(
       <Route path="/config" element={<ConfigEditorPage />} />
       <Route path="/system" element={<SystemMonitorPage />} />
       <Route path="/network" element={<NetworkMonitorPage />} />
+      <Route path="/power" element={<PowerPage />} />
+      <Route path="/java" element={<JavaPage />} />
       <Route path="/settings" element={<SettingsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Route>
