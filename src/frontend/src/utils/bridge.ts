@@ -568,6 +568,10 @@ export function undoConfig(): Promise<{ success: boolean }> {
   return bridge.invoke<{ success: boolean }>('config:undo')
 }
 
+export function redoConfig(): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('config:redo')
+}
+
 export function selectConfigServer(name: string): Promise<{ success: boolean; error?: string }> {
   return bridge.invoke<{ success: boolean; error?: string }>('config:selectServer', name)
 }

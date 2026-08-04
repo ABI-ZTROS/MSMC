@@ -7,6 +7,7 @@ import {
   FaArrowsRotate,
   FaPen,
   FaRotateLeft,
+  FaRotateRight,
   FaRotate,
   FaFloppyDisk,
   FaLightbulb,
@@ -26,6 +27,7 @@ import {
   saveConfig,
   resetConfig,
   undoConfig,
+  redoConfig,
   rescanConfigFiles,
   // 手动定位 JAR
   selectJarManually,
@@ -843,6 +845,21 @@ export function ConfigEditorPage(): JSX.Element {
     }
   }
 
+  const handleRedo = async (): Promise<void> => {
+    try {
+      const result = await redoConfig()
+      if (result.success) {
+        setPendingValues({})
+        await loadEntries()
+      } else {
+        showToast('重做失败', 'error')
+      }
+    } catch (e) {
+      console.error('重做失败:', e)
+      showToast('重做失败', 'error')
+    }
+  }
+
   const getDisplayValue = (entry: ConfigEntry): string =>
     entry.key in pendingValues ? pendingValues[entry.key] : entry.value
 
@@ -1028,6 +1045,19 @@ export function ConfigEditorPage(): JSX.Element {
               >
                 <FaRotateLeft size={16} />
                 撤销
+              </button>
+              <button
+                className="md-btn md-btn-outlined"
+                disabled={isServerRunning}
+                title={
+                  isServerRunning
+                    ? '服务器正在运行，修改需停服后才能重做'
+                    : '重做最近一次撤销的操作'
+                }
+                onClick={handleRedo}
+              >
+                <FaRotateRight size={16} />
+                重做
               </button>
               <button
                 className="md-btn md-btn-outlined"
