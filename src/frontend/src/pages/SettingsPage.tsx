@@ -783,8 +783,8 @@ export function SettingsPage(): JSX.Element {
             lineHeight: 1.55,
           }}
         >
-          基于 Win32 Job Object 实现：崩溃自动重启、防止系统睡眠、设置进程优先级/内存硬上限。关闭 MSMC
-          时所有服务器进程会被一并终止，不会像老版本出现“幽灵 Java。
+          基于 Win32 Job Object 实现：崩溃自动重启、防止系统睡眠、设置进程优先级/内存硬上限。关闭
+          MSMC 时所有服务器进程会被一并终止，不会像老版本出现"幽灵 Java 进程"。
         </div>
 
         {/* ✅ 1. 崩溃自动重启开关 */}

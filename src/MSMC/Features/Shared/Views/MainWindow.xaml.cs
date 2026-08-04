@@ -9,6 +9,7 @@
 // -----------------------------------------------------------------------------
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -2777,6 +2778,8 @@ public partial class MainWindow : Window
         // 获取所有设置
         _bridgeService.RegisterRequestHandler("settings:get", _ =>
         {
+            var cfg = App.Services.GetService<IAppConfigService>()?.Config;
+            var sv = cfg?.Supervisor;
             return Task.FromResult<object?>(new
             {
                 primaryColorHex = ArgbToRgb(settings?.PrimaryColorHex),
@@ -2792,6 +2795,16 @@ public partial class MainWindow : Window
                 preferJavaw = settings?.PreferJavaw ?? false,
                 statusMessage = settings?.StatusMessage ?? string.Empty,
                 isDarkMode = _themeService.IsDarkMode,
+                supervisor = sv == null ? null : new
+                {
+                    enableCrashRestart = sv.EnableCrashRestart,
+                    maxRestartAttemptsPerHour = sv.MaxRestartAttemptsPerHour,
+                    restartCooldownSeconds = sv.RestartCooldownSeconds,
+                    preventSystemSleepWhenRunning = sv.PreventSystemSleepWhenRunning,
+                    processPriority = sv.ProcessPriority.ToString(),
+                    maxProcessMemoryBytes = sv.MaxProcessMemoryBytes,
+                    maxTotalRestartAttempts = sv.MaxTotalRestartAttempts,
+                },
             });
         });
 
@@ -2883,6 +2896,34 @@ public partial class MainWindow : Window
                         settings.PreferJavaw = true;
                     else if (el.TryGetProperty("preferJavaw", out var pj2) && pj2.ValueKind == JsonValueKind.False)
                         settings.PreferJavaw = false;
+
+                    // 进程监管策略（写回 AppConfig.Supervisor，由 saveSettings 持久化）
+                    if (el.TryGetProperty("supervisor", out var svEl) && svEl.ValueKind == JsonValueKind.Object)
+                    {
+                        var cfgSvc = App.Services.GetService<IAppConfigService>();
+                        if (cfgSvc?.Config?.Supervisor != null)
+                        {
+                            var p = cfgSvc.Config.Supervisor;
+                            if (svEl.TryGetProperty("enableCrashRestart", out var ecr) && ecr.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                                p.EnableCrashRestart = ecr.GetBoolean();
+                            if (svEl.TryGetProperty("maxRestartAttemptsPerHour", out var mr) && mr.ValueKind == JsonValueKind.Number)
+                                p.MaxRestartAttemptsPerHour = mr.GetInt32();
+                            if (svEl.TryGetProperty("restartCooldownSeconds", out var rc) && rc.ValueKind == JsonValueKind.Number)
+                                p.RestartCooldownSeconds = rc.GetInt32();
+                            if (svEl.TryGetProperty("preventSystemSleepWhenRunning", out var ps) && ps.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                                p.PreventSystemSleepWhenRunning = ps.GetBoolean();
+                            if (svEl.TryGetProperty("processPriority", out var pp) && pp.ValueKind == JsonValueKind.String)
+                            {
+                                var ppStr = pp.GetString() ?? "Normal";
+                                if (Enum.TryParse<ProcessPriorityClass>(ppStr, ignoreCase: true, out var ppVal))
+                                    p.ProcessPriority = ppVal;
+                            }
+                            if (svEl.TryGetProperty("maxProcessMemoryBytes", out var mm) && mm.ValueKind == JsonValueKind.Number)
+                                p.MaxProcessMemoryBytes = mm.GetInt64();
+                            if (svEl.TryGetProperty("maxTotalRestartAttempts", out var mt) && mt.ValueKind == JsonValueKind.Number)
+                                p.MaxTotalRestartAttempts = mt.GetInt32();
+                        }
+                    }
                 }
 
                 return Task.FromResult<object?>(new { success = true });

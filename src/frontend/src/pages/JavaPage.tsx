@@ -23,19 +23,31 @@ import type {
 export function JavaPage(): JSX.Element {
   const [javaList, setJavaList] = useState<JavaInstallationInfo[]>([])
   const [isScanningJava, setIsScanningJava] = useState(false)
-  const [statusMessage, setStatusMessage] = useState('')
+  const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'info' | 'error' } | null>(null)
   const [newJavaPath, setNewJavaPath] = useState('')
   const [javaOpInProgress, setJavaOpInProgress] = useState(false)
+
+  const showStatus = useCallback((text: string, type: 'info' | 'error' = 'info'): void => {
+    setStatusMessage({ text, type })
+    window.setTimeout(() => {
+      setStatusMessage((cur) => (cur && cur.text === text ? null : cur))
+    }, 3500)
+  }, [])
 
   const loadJavaList = useCallback(async (): Promise<void> => {
     try {
       const resp: JavaListResponse = await getJavaList()
+      if ((resp as any).success === false) {
+        showStatus((resp as any).error ?? '获取 Java 列表失败', 'error')
+        return
+      }
       setJavaList(resp.javas)
       setIsScanningJava(resp.isScanning)
     } catch (e) {
       console.error('获取 Java 列表失败:', e)
+      showStatus(e instanceof Error ? e.message : String(e), 'error')
     }
-  }, [])
+  }, [showStatus])
 
   useEffect(() => {
     loadJavaList()
@@ -47,14 +59,13 @@ export function JavaPage(): JSX.Element {
       const result = await rescanJava()
       if (result.success) {
         await loadJavaList()
+        showStatus('正在后台扫描 Java 安装...')
       } else {
-        setStatusMessage('重新扫描 Java 失败')
+        showStatus('重新扫描 Java 失败', 'error')
       }
     } catch (e) {
       console.error('重新扫描 Java 失败:', e)
-      setStatusMessage('重新扫描 Java 失败')
-    } finally {
-      setIsScanningJava(false)
+      showStatus(e instanceof Error ? e.message : '重新扫描 Java 失败', 'error')
     }
   }
 
@@ -64,10 +75,12 @@ export function JavaPage(): JSX.Element {
       const result = await browseJavaPath()
       if (result.success && result.path) {
         setNewJavaPath(result.path)
+      } else if (!result.success) {
+        showStatus(result.error ?? '未选择有效的 Java 路径', 'error')
       }
     } catch (e) {
       console.error('浏览 Java 路径失败:', e)
-      setStatusMessage('浏览 Java 路径失败')
+      showStatus(e instanceof Error ? e.message : '浏览 Java 路径失败', 'error')
     } finally {
       setJavaOpInProgress(false)
     }
@@ -76,7 +89,7 @@ export function JavaPage(): JSX.Element {
   const handleAddJavaPath = async (): Promise<void> => {
     const path = newJavaPath.trim()
     if (!path) {
-      setStatusMessage('请输入或选择 Java 路径')
+      showStatus('请输入或选择 Java 路径', 'error')
       return
     }
     try {
@@ -84,14 +97,14 @@ export function JavaPage(): JSX.Element {
       const result = await addJavaPath(path)
       if (result.success) {
         setNewJavaPath('')
-        setStatusMessage(result.statusMessage || '已添加 Java 路径')
+        showStatus(result.statusMessage || '已添加 Java 路径')
         await loadJavaList()
       } else {
-        setStatusMessage(result.error || result.statusMessage || '添加 Java 路径失败')
+        showStatus(result.error || result.statusMessage || '添加 Java 路径失败', 'error')
       }
     } catch (e) {
       console.error('添加 Java 路径失败:', e)
-      setStatusMessage('添加 Java 路径失败')
+      showStatus(e instanceof Error ? e.message : '添加 Java 路径失败', 'error')
     } finally {
       setJavaOpInProgress(false)
     }
@@ -102,14 +115,14 @@ export function JavaPage(): JSX.Element {
       setJavaOpInProgress(true)
       const result = await setDefaultJava(java.javaPath)
       if (result.success) {
-        setStatusMessage(result.statusMessage || '已设为默认 Java')
+        showStatus(result.statusMessage || '已设为默认 Java')
         await loadJavaList()
       } else {
-        setStatusMessage(result.error || '设为默认 Java 失败')
+        showStatus(result.error || '设为默认 Java 失败', 'error')
       }
     } catch (e) {
       console.error('设为默认 Java 失败:', e)
-      setStatusMessage('设为默认 Java 失败')
+      showStatus(e instanceof Error ? e.message : '设为默认 Java 失败', 'error')
     } finally {
       setJavaOpInProgress(false)
     }
@@ -117,21 +130,21 @@ export function JavaPage(): JSX.Element {
 
   const handleRemoveJavaPath = async (java: JavaInstallationInfo): Promise<void> => {
     if (!java.isCustom) {
-      setStatusMessage('只能移除自定义添加的 Java 路径')
+      showStatus('只能移除自定义添加的 Java 路径', 'error')
       return
     }
     try {
       setJavaOpInProgress(true)
       const result = await removeJavaPath(java.javaPath)
       if (result.success) {
-        setStatusMessage(result.statusMessage || '已移除 Java 路径')
+        showStatus(result.statusMessage || '已移除 Java 路径')
         await loadJavaList()
       } else {
-        setStatusMessage(result.error || '移除 Java 路径失败')
+        showStatus(result.error || '移除 Java 路径失败', 'error')
       }
     } catch (e) {
       console.error('移除 Java 路径失败:', e)
-      setStatusMessage('移除 Java 路径失败')
+      showStatus(e instanceof Error ? e.message : '移除 Java 路径失败', 'error')
     } finally {
       setJavaOpInProgress(false)
     }
@@ -145,15 +158,18 @@ export function JavaPage(): JSX.Element {
       </div>
 
       {statusMessage && (
-        <div style={{
-          fontSize: 12,
-          color: 'var(--md-body-light)',
-          padding: '6px 12px',
-          marginBottom: 12,
-          background: 'var(--md-card-bg)',
-          borderRadius: 6,
-        }}>
-          {statusMessage}
+        <div
+          style={{
+            fontSize: 12,
+            padding: '8px 14px',
+            marginBottom: 12,
+            borderRadius: 6,
+            borderLeft: `3px solid ${statusMessage.type === 'error' ? 'var(--md-danger)' : 'var(--md-info)'}`,
+            background: 'var(--md-card-bg)',
+            color: statusMessage.type === 'error' ? 'var(--md-danger)' : 'var(--md-body)',
+          }}
+        >
+          {statusMessage.text}
         </div>
       )}
 

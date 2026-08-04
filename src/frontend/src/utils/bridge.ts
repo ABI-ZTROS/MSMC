@@ -639,6 +639,15 @@ export function updateSettings(data: {
   enableAnimations?: boolean
   enableWindowsNotifications?: boolean
   preferJavaw?: boolean
+  supervisor?: {
+    enableCrashRestart?: boolean
+    maxRestartAttemptsPerHour?: number
+    restartCooldownSeconds?: number
+    preventSystemSleepWhenRunning?: boolean
+    processPriority?: string
+    maxProcessMemoryBytes?: number
+    maxTotalRestartAttempts?: number
+  }
 }): Promise<{ success: boolean; error?: string }> {
   return bridge.invoke<{ success: boolean; error?: string }>('settings:update', data)
 }
