@@ -407,6 +407,26 @@ export function refreshAdminStatus(): Promise<{ success: boolean; isAdmin: boole
   return bridge.invoke<{ success: boolean; isAdmin: boolean }>('app:refreshAdminStatus')
 }
 
+// 电源管理模块开关 —— 实验性能力，默认关闭，启用后需重启 MSMC 生效
+export interface PowerManagementState {
+  enabled: boolean
+}
+
+export interface PowerManagementToggleResult {
+  success: boolean
+  enabled?: boolean
+  needsRestart?: boolean
+  error?: string
+}
+
+export function getPowerManagementState(): Promise<PowerManagementState> {
+  return bridge.invoke<PowerManagementState>('app:getPowerManagementState')
+}
+
+export function setPowerManagementEnabled(enabled: boolean): Promise<PowerManagementToggleResult> {
+  return bridge.invoke<PowerManagementToggleResult>('app:setPowerManagementEnabled', { enabled })
+}
+
 // 慢操作（如 network:*、server:*）可用更长超时调用
 export function invokeWithTimeout<T = unknown>(action: string, payload: unknown, timeoutMs: number): Promise<T> {
   return bridge.invokeWithTimeout<T>(action, payload, timeoutMs)

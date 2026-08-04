@@ -5,6 +5,8 @@ import {
   FaClock,
   FaPlug,
   FaFlask,
+  FaPowerOff,
+  FaRotateRight,
 } from 'react-icons/fa6'
 import {
   getCpuPowerCapabilities,
@@ -17,6 +19,8 @@ import {
   startPowerRequest,
   stopPowerRequest,
   getPowerRequestState,
+  getPowerManagementState,
+  setPowerManagementEnabled,
 } from '@/utils/bridge'
 import type {
   CpuPowerCapabilities,
@@ -74,6 +78,11 @@ export function PowerPage(): JSX.Element {
   const [powerReqState, setPowerReqState] = useState<PowerRequestResult | null>(null)
   const [timerApplying, setTimerApplying] = useState(false)
   const [powerReqApplying, setPowerReqApplying] = useState(false)
+
+  // 电源管理模块开关状态：null=加载中, true=已启用, false=未启用
+  const [pmEnabled, setPmEnabled] = useState<boolean | null>(null)
+  const [pmToggling, setPmToggling] = useState(false)
+  const [pmToggleMsg, setPmToggleMsg] = useState<string | null>(null)
 
   const refreshCpuPowerCaps = useCallback(async (): Promise<void> => {
     try {
@@ -216,12 +225,47 @@ export function PowerPage(): JSX.Element {
     }
   }, [powerReqState?.active, refreshPowerRequestState])
 
+  // 首次加载：先查电源管理开关状态，已启用才拉取功能数据
   useEffect(() => {
-    refreshCpuPowerCaps()
-    refreshCpuSetTopology()
-    refreshTimerState()
-    refreshPowerRequestState()
+    let cancelled = false
+    ;(async (): Promise<void> => {
+      try {
+        const st = await getPowerManagementState()
+        if (cancelled) return
+        setPmEnabled(!!st.enabled)
+        if (st.enabled) {
+          refreshCpuPowerCaps()
+          refreshCpuSetTopology()
+          refreshTimerState()
+          refreshPowerRequestState()
+        }
+      } catch (e) {
+        console.error('查询电源管理开关状态失败:', e)
+        if (!cancelled) setPmEnabled(false)
+      }
+    })()
+    return () => { cancelled = true }
   }, [refreshCpuPowerCaps, refreshCpuSetTopology, refreshTimerState, refreshPowerRequestState])
+
+  const handleTogglePowerManagement = useCallback(async (enable: boolean): Promise<void> => {
+    setPmToggling(true)
+    setPmToggleMsg(null)
+    try {
+      const r = await setPowerManagementEnabled(enable)
+      if (r.success) {
+        setPmEnabled(enable)
+        setPmToggleMsg(enable
+          ? '已启用电源管理，请重启 MSMC 使其完全生效。'
+          : '已关闭电源管理，重启后功能将完全卸载。')
+      } else {
+        setPmToggleMsg(r.error ?? '操作失败')
+      }
+    } catch (e) {
+      setPmToggleMsg(e instanceof Error ? e.message : String(e))
+    } finally {
+      setPmToggling(false)
+    }
+  }, [])
 
   return (
     <div className="md-page-enter p-4 pb-8 max-w-4xl mx-auto">
@@ -230,24 +274,84 @@ export function PowerPage(): JSX.Element {
         <h1 className="text-lg font-bold text-[var(--md-body)]">电源管理</h1>
       </div>
 
-      <div
-        className="md-card p-3 mb-4 md-stagger-item"
-        style={{
-          borderLeft: '3px solid var(--md-warning)',
-          background: 'var(--md-primary-subtle-background)',
-          fontSize: 12,
-          color: 'var(--md-body)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-          <FaFlask size={13} style={{ color: 'var(--md-warning)' }} />
-          <span style={{ fontWeight: 600, color: 'var(--md-warning)' }}>实验性功能</span>
+      {/* 启用开关卡片 —— 未启用时这是页面上唯一的卡片 */}
+      <div className="md-card md-card-elevated p-5 mb-4 md-stagger-item">
+        <div className="flex items-center" style={{ gap: 12 }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 'var(--md-radius-small)',
+              background: pmEnabled ? 'var(--md-primary-subtle-background)' : 'var(--md-card-hover)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <FaPowerOff size={20} style={{ color: pmEnabled ? 'var(--md-success)' : 'var(--md-body-light)' }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--md-body)' }}>启用电源管理</div>
+            <div style={{ fontSize: 12, color: 'var(--md-body-light)', marginTop: 2, lineHeight: 1.5 }}>
+              默认关闭。启用后才会加载 CPU 电源档位、QoS 调度等底层管控能力。
+              {' '}
+              {pmEnabled
+                ? '当前已启用，下方功能可用。'
+                : '当前未启用，下方所有功能均不加载、不工作。'}
+            </div>
+          </div>
+          <label className="md-toggle" style={{ flexShrink: 0 }}>
+            <input
+              type="checkbox"
+              checked={pmEnabled ?? false}
+              disabled={pmToggling || pmEnabled === null}
+              onChange={(e) => handleTogglePowerManagement(e.target.checked)}
+            />
+            <span className="md-toggle-slider" />
+          </label>
         </div>
-        <div style={{ color: 'var(--md-body-light)', lineHeight: 1.6 }}>
-          本页涉及系统级电源策略、处理器睿频与调度参数的底层修改，属于实验性能力，不对其安全性与稳定性作保证。
-          异常断电或操作不当可能导致系统电源方案损坏、处理器调度异常，请确保已了解风险后再使用，并在使用前关闭其他重要任务。
-        </div>
+
+        {pmToggleMsg && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: '8px 12px',
+              borderRadius: 6,
+              fontSize: 12,
+              borderLeft: '3px solid var(--md-warning)',
+              background: 'var(--md-card-hover)',
+              color: 'var(--md-body)',
+              lineHeight: 1.5,
+            }}
+          >
+            <FaRotateRight size={12} style={{ marginRight: 6, color: 'var(--md-warning)' }} />
+            {pmToggleMsg}
+          </div>
+        )}
       </div>
+
+      {/* 未启用或加载中时，不渲染任何功能卡片 */}
+      {pmEnabled !== true ? null : (
+        <>
+          <div
+            className="md-card p-3 mb-4 md-stagger-item"
+            style={{
+              borderLeft: '3px solid var(--md-warning)',
+              background: 'var(--md-primary-subtle-background)',
+              fontSize: 12,
+              color: 'var(--md-body)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <FaFlask size={13} style={{ color: 'var(--md-warning)' }} />
+              <span style={{ fontWeight: 600, color: 'var(--md-warning)' }}>实验性功能</span>
+            </div>
+            <div style={{ color: 'var(--md-body-light)', lineHeight: 1.6 }}>
+              本页涉及系统级电源策略、处理器睿频与调度参数的底层修改，属于实验性能力，不对其安全性与稳定性作保证。
+              异常断电或操作不当可能导致系统电源方案损坏、处理器调度异常，请确保已了解风险后再使用，并在使用前关闭其他重要任务。
+            </div>
+          </div>
 
       {/* CPU 电源档位 */}
       <div className="md-card md-card-elevated p-5 mb-4 md-stagger-item">
@@ -619,6 +723,8 @@ export function PowerPage(): JSX.Element {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

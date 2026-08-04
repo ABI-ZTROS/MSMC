@@ -101,6 +101,13 @@ public class AppConfig
     /// 服务器级可通过 <see cref="KnownServer.Supervisor"/> 进行字段级覆盖（null 字段走全局）。
     /// </summary>
     public ProcessSupervisorPolicy Supervisor { get; set; } = new();
+
+    /// <summary>
+    /// 是否启用电源管理模块（CPU 电源档位/QoS/睿频管控等实验性能力）。
+    /// 默认 false：出于安全与稳定性考虑，电源管理默认关闭。
+    /// 启用后需重启 MSMC 生效 —— 启用时才会注册 CpuPowerService 与对应的桥接 API。
+    /// </summary>
+    public bool EnablePowerManagement { get; set; } = false;
 }
 
 /// <summary>

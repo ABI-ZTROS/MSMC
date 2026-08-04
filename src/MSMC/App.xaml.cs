@@ -6,6 +6,7 @@
 // 设计模式: 依赖注入模式、单例模式、观察者模式（全局异常监听）
 // -----------------------------------------------------------------------------
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -219,6 +220,31 @@ public partial class App : Application
             File.AppendAllText(ForceLogPath, line);
         }
         catch { /* 真的写不了文件就彻底放弃，但至少 Console/Debug 已尽力 */ }
+    }
+
+    /// <summary>
+    /// 在 DI 容器构建阶段提前读取 app-config.json 的 EnablePowerManagement 字段。
+    /// 此刻 IAppConfigService 尚未注册/Load，只能直接读文件（路径与 AppConfigService 保持一致）。
+    /// 任何异常都视为「未启用」，确保安全降级。
+    /// </summary>
+    private static bool ReadEnablePowerManagementEarly()
+    {
+        try
+        {
+            var configPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "io.NET.ZTR_OS", "app-config.json");
+            if (!File.Exists(configPath)) return false;
+            var json = File.ReadAllText(configPath);
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty("EnablePowerManagement", out var v)
+                && v.ValueKind == JsonValueKind.True;
+        }
+        catch (Exception ex)
+        {
+            try { Log.Warning(ex, "[BOOT] 预读 EnablePowerManagement 失败，按未启用处理"); } catch { }
+            return false;
+        }
     }
 
     /// <summary>
@@ -662,7 +688,20 @@ public partial class App : Application
                     await Register<IMetricsPersistenceService, MetricsPersistenceService>(42, "[METRIC]", "MetricsPersistenceService", "指标历史持久化");
                     await Register<IProcessManagerService, ProcessManagerService>(43, "[METRIC]", "ProcessManagerService", "进程亲和性管理");
                     await Register<IProcessSupervisorService, ProcessSupervisorService>(44, "[METRIC]", "ProcessSupervisorService", "Job进程监管/崩溃重启/睡眠防止");
-                    await Register<ICpuPowerService, CpuPowerService>(45, "[METRIC]", "CpuPowerService", "CPU电源/QoS档位/睿频管控");
+
+                    // 电源管理模块默认关闭（实验性能力）—— 启用后才注册 CpuPowerService
+                    // 此处提前读取 app-config.json 的 EnablePowerManagement 字段
+                    // （IAppConfigService 此时还未 Load，但文件路径是固定的，可独立预读）
+                    var powerMgmtEnabled = ReadEnablePowerManagementEarly();
+                    if (powerMgmtEnabled)
+                    {
+                        await Register<ICpuPowerService, CpuPowerService>(45, "[METRIC]", "CpuPowerService", "CPU电源/QoS档位/睿频管控");
+                        Log.Information("[BOOT] 电源管理模块已启用，CpuPowerService 已注册");
+                    }
+                    else
+                    {
+                        Log.Information("[BOOT] 电源管理模块未启用（默认关闭），跳过 CpuPowerService 注册");
+                    }
 
                     // ════════════ 原生窗口效果模块 ════════════
                     await Step(44, "正在注册原生窗口效果服务...", "[WINFX] === 原生窗口效果模块 ===");

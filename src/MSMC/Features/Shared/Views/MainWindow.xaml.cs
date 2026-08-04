@@ -594,6 +594,39 @@ public partial class MainWindow : Window
             return Task.FromResult<object?>(new { success = true, isAdmin });
         });
 
+        // 查询电源管理模块是否已启用（前端据此决定是否渲染电源管理页内容）
+        _bridgeService.RegisterRequestHandler("app:getPowerManagementState", _ =>
+        {
+            var enabled = IsPowerManagementEnabled();
+            return Task.FromResult<object?>(new { enabled });
+        });
+
+        // 开关电源管理模块 —— 写入 AppConfig.EnablePowerManagement 并持久化
+        // 启用/关闭后需重启 MSMC 才能真正生效（CpuPowerService 的 DI 注册在启动时一次性决定）
+        _bridgeService.RegisterRequestHandler("app:setPowerManagementEnabled", payload =>
+        {
+            try
+            {
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object
+                    && el.TryGetProperty("enabled", out var en) && en.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                {
+                    var cfgSvc = App.Services.GetService<IAppConfigService>();
+                    if (cfgSvc?.Config == null)
+                        return Task.FromResult<object?>(new { success = false, error = "配置服务未初始化" });
+
+                    cfgSvc.Config.EnablePowerManagement = en.GetBoolean();
+                    cfgSvc.Save();
+                    return Task.FromResult<object?>(new { success = true, enabled = cfgSvc.Config.EnablePowerManagement, needsRestart = true });
+                }
+                return Task.FromResult<object?>(new { success = false, error = "无效的 payload，期望 { enabled: boolean }" });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "设置电源管理开关失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
         // === 系统监控相关 API ===
 
         // 获取当前系统指标快照
@@ -868,7 +901,11 @@ public partial class MainWindow : Window
         });
 
         // === CPU 电源与调度管控 API（T1 QoS + T2 电源档位） ===
-
+        // 仅在电源管理启用时注册（AppConfig.EnablePowerManagement）。
+        // 未启用时整块跳过 —— 前端调用 cpuPower:* 会得到 bridge 层的「未知命令」错误，
+        // 前端通过 app:getPowerManagementState 先判断开关状态，未启用时不发任何 cpuPower 请求。
+        if (IsPowerManagementEnabled())
+        {
         // 查询平台能力（支持哪些 QoS / 电源档位能力 + 当前档位）
         _bridgeService.RegisterRequestHandler("cpuPower:getCapabilities", _ =>
         {
@@ -1270,6 +1307,7 @@ public partial class MainWindow : Window
                 return Task.FromResult<object?>(new { success = false, error = ex.Message });
             }
         });
+        } // end if (IsPowerManagementEnabled())
 
         // === 服务器管理相关 API ===
 
@@ -2767,6 +2805,20 @@ public partial class MainWindow : Window
     // ─────────────────────────────────────────────────────────────────────
     // 设置相关桥接 API
     // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 查询电源管理模块当前是否已启用。
+    /// 优先从 IAppConfigService.Config 读取（运行期真值），失败时回退到 App.xaml.cs 的启动期判断。
+    /// </summary>
+    private bool IsPowerManagementEnabled()
+    {
+        try
+        {
+            var cfgSvc = App.Services.GetService<IAppConfigService>();
+            return cfgSvc?.Config?.EnablePowerManagement ?? false;
+        }
+        catch { return false; }
+    }
 
     /// <summary>
     /// 注册设置模块的桥接 API
