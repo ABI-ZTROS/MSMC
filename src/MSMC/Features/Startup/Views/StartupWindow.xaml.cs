@@ -156,15 +156,14 @@ public partial class StartupWindow : Window
             // 【优先级翻转】虚拟主机名(http://) 优先，file:// 兜底
             // 因为：http 协议下 <script type=module> / <link rel=modulepreload> 的 CORS 检查 100% 通过；
             // 之前优先 file:// 时 Chromium 把所有资源都拦了（全部 "Script error."）
-            // 只有当虚拟主机模式设置失败（basePath==null 即 EmbeddedResource 模式）才用原逻辑。
             // ──────────────────────────────────────────────────────────────
             bool useVirtualHost = basePath != null;   // 有真实磁盘路径就 100% 用虚拟主机
-            Uri targetUri;
+            Uri targetUri = new Uri($"http://{virtualHost}/startup.html");
 
             if (useVirtualHost)
             {
-                targetUri = new Uri($"http://{virtualHost}/startup.html");
-                // 先注册映射再导航！注册晚了 URL 可能被 Chrome 识别为不存在
+                // Folder/ZipExtract 模式：basePath 非空，用 SetVirtualHostNameToFolderMapping 让
+                // WebView2 内部直接读磁盘，最快最稳。先注册映射再导航！
                 StartupWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                     hostName: virtualHost,
                     folderPath: basePath!,   // 已判空 basePath!=null
@@ -175,14 +174,16 @@ public partial class StartupWindow : Window
             }
             else
             {
-                // EmbeddedResource 模式：basePath=null，走原拦截逻辑，targetUri 由 provider 自己决定
-                // （这时 provider 会在 Navigate 时提供，简单兜底：还是虚拟主机 URL，让 provider 的拦截器处理）
-                targetUri = new Uri($"http://{virtualHost}/startup.html");
+                // EmbeddedResource 模式：basePath=null，没有磁盘路径可映射。
+                // 必须注册 WebResourceRequested 拦截器让 provider 自己提供资源内容，
+                // 否则 Chromium 会把 msmcstartup 当成真实主机去 DNS 解析 → HostNameNotResolved。
+                // （此分支与 WebView2BridgeService.LoadFrontendAsync 保持一致）
+                RegisterWebResourceRequested(provider, virtualHost);
+                Log.Information("[Startup-WV2-LOAD] [API] WebResourceRequested 拦截器已注册（EmbeddedResource 模式）");
             }
 
-            // 【兼容兜底】如果用户不想用虚拟主机（比如以后调试需要），可以保留一个开关走 file://，
-            // 但我们现在已经加了 --allow-file-access-from-files，即使走 file:// 理论上也 OK，
-            // 只是为了保险默认用 http 虚拟主机。
+            // 【兼容兜底】forceFileProtocol=true 时强制走 file:// 直读（调试用，默认关闭）。
+            // --allow-file-access-from-files 已在 WebView2 启动参数里加过了。
             bool forceFileProtocol = false;
             if (forceFileProtocol && basePath != null)
             {
@@ -200,17 +201,6 @@ public partial class StartupWindow : Window
                         Log.Warning(uriEx, "[Startup-WV2-LOAD] [WARN] 构造 file:// Uri 失败，保留虚拟主机模式");
                     }
                 }
-            }
-
-            // 虚拟主机名模式：如果是 EmbeddedResource 模式（basePath==null，无法 folderMapping），
-            // 则注册 WebResourceRequested 拦截器让 provider 自己提供资源内容；
-            // 反之（Folder/ZipExtract 模式，basePath!=null），我们已经调用了
-            // SetVirtualHostNameToFolderMapping，WebView2 内部会直接去 disk 读，
-            // 不需要拦截器，更快更稳。
-            if (useVirtualHost && basePath == null)
-            {
-                RegisterWebResourceRequested(provider, virtualHost);
-                Log.Information("[Startup-WV2-LOAD] [API] WebResourceRequested 拦截器已注册（EmbeddedResource 模式）");
             }
 
             Log.Information("[Startup-WV2-LOAD] [NAV] 导航到: {Url} (模式={Mode}, 虚拟主机={UseVH})",
