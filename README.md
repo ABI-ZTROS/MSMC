@@ -1,4 +1,6 @@
-![MSMC 品牌 Banner](assets/banner.jpg)
+<p align="center">
+  <!-- [LOGO] 品牌 Banner 示意图，待维护者后期补齐 -->
+</p>
 
 <p align="center">
   <code>[蓝] .NET 9.0</code>
@@ -10,9 +12,13 @@
   <br/>
   <code>[绿] #nullable enable</code>
   <code>[蓝] Windows 10+ x64</code>
-  <code>[灰] Apache-2.0 + Attached</code>
+  <code style="background:#ffe5e5;color:#b42318;border:1px solid #f1c0c0">⚠ EULA v3.0 · 非开源 · 仅限中国大陆</code>
   <code>[绿] v0.9.0-preview.17</code>
   <code>[灰] Team ZTROS</code>
+</p>
+
+<p align="center">
+  <strong style="color:#b42318">⚠ 源代码公开 ≠ 开源许可 · 本软件依据 EULA v3.0 发布，仅供中国大陆地区用户非商业性使用</strong>
 </p>
 
 <p align="center">
@@ -49,7 +55,7 @@ Minecraft 服务器世界里光 Paper/Purpur/Folia 三个分支就能让运维�
 - **服务器进程一键停止**：优雅 Ctrl+C → 30 秒超时 → TaskKill 兜底三阶段结束策略，避免粗暴 `taskkill /F` 导致地图文件损坏
 - **服务器图标 (server-icon.png) 自动预览**：从工作目录抓取 64×64 PNG 图标显示在实例卡片头部（若存在）
 
-![服务器检测面板渲染示意图](assets/server-detect.jpg)
+<!-- [图 1] 服务器检测面板渲染示意图，待维护者后期补齐 -->
 
 **差异化亮点**
 
@@ -76,7 +82,7 @@ Minecraft 服务器世界里光 Paper/Purpur/Folia 三个分支就能让运维�
 - **大文件分页懒加载**：对于 5000 行以上的巨型 `sponge.conf`，虚拟化只渲染视口 80 行，滚动丝滑不卡顿
 - **原版注释长按对照**：右键/长按某个键弹出「原版英文注释 + 中文翻译注释」对比面板，对于追求绝对准确的老运维可随时交叉验证
 
-![配置编辑器渲染示意图](assets/config-editor.jpg)
+<!-- [图 2] 配置编辑器渲染示意图，待维护者后期补齐 -->
 
 **差异化亮点**
 
@@ -101,7 +107,7 @@ Intel 12 代开始的 P-core / E-core 大小核架构、AMD Threadripper 的多 
 - **进程级资源占用 Top N**：按 CPU% / Private Bytes / 句柄数 三种排序切换，前 10 名进程（不只 MC）实时刷新，方便发现「哎呀我忘了关 Chrome 它占了 8GB」这种常见乌龙
 - **核心温度 / 电压 (可选)**：若系统安装了 LibreHardwareMonitor 驱动，可读取每核温度/Package Power/Vcore 电压显示；未安装则自动隐藏对应区域，不强塞依赖
 
-![系统监控仪表盘渲染示意图](assets/system-monitor.jpg)
+<!-- [图 3] 系统监控仪表盘渲染示意图，待维护者后期补齐 -->
 
 **差异化亮点**
 
@@ -129,7 +135,7 @@ Intel 12 代开始的 P-core / E-core 大小核架构、AMD Threadripper 的多 
 
 <br/>
 
-![Java + 电源 + 网络三联面板渲染示意图](assets/modules-trio.jpg)
+<!-- [图 4] Java / 电源 / 网络 三联面板渲染示意图，待维护者后期补齐 -->
 
 ## 🧱 基础设施模块
 
@@ -270,8 +276,8 @@ dotnet run --project src/MSMC -c Debug /p:SignAssembly=false
 
 ```
 MSMC/
-├── CREDITS.md                         # 致谢与第三方版权声明（附加条款要求携带）
-├── LICENSE                            # Apache-2.0 主协议
+├── CREDITS.md                         # 致谢与第三方版权声明
+├── LICENSE                            # EULA v3.0 完整协议文本
 ├── README.md                          # 你正在读的这个文件
 ├── version.json                       # 语义化版本源 (v0.9.0-preview.17)
 ├── Directory.Build.props              # 全局构建属性 (WAE / nullable / 强名称公钥)
@@ -328,12 +334,12 @@ MSMC/
 │           ├── types/bridge.ts        # 前后端桥接完整 TS 类型定义 (请求/响应 Discriminated Unions)
 │           └── styles/globals.css     # 全局样式: ColorOS 16 级 CSS 变量 + md-card/md-btn 原子类 + 动画 keyframes
 │
-└── assets/                            # README 配图资源目录 (Seedream 生成: Banner + 4 UI 渲染示意图)
-    ├── banner.jpg                     # 顶部品牌 Banner (1280×720, 16:9 科幻服务器配色)
-    ├── server-detect.jpg              # 服务器检测面板渲染示意图
-    ├── config-editor.jpg              # 配置编辑器渲染示意图
-    ├── system-monitor.jpg             # 异构 CPU 拓扑监控仪表盘渲染示意图
-    └── modules-trio.jpg               # Java/电源/网络三联面板渲染示意图
+└── assets/
+    ├── banner.xxx                         # [占位] 品牌 Banner 图（由维护者后期补齐）
+    ├── server-detect.xxx                  # [占位] 服务器检测面板 UI 渲染图（由维护者后期补齐）
+    ├── config-editor.xxx                  # [占位] 配置编辑器 UI 渲染图（由维护者后期补齐）
+    ├── system-monitor.xxx                 # [占位] 系统监控仪表盘 UI 渲染图（由维护者后期补齐）
+    └── modules-trio.xxx                   # [占位] Java/电源/网络三联面板渲染示意图（由维护者后期补齐）
 ```
 
 ## 🗺️ 路线图 Roadmap
@@ -354,82 +360,76 @@ MSMC/
 
 ## 🤝 团队致谢
 
-### 核心团队
+### 核心贡献者
 
-| 代号 | 角色 | 主要贡献 |
-|---|---|---|
-| **ABI-ZTROS** | 项目发起 / 架构设计 / 后端主程 | 需求定义、WPF + WebView2 混合架构选型、DI 容器装配、服务器检测指纹体系、CPU 拓扑 / 电源管理 / 网络桥接底层 Win32 API 封装、Serilog 管道、全局异常链路 |
-| **烟蓝湘** | 前端主程 / UI/动效 设计 | ColorOS Aquario 量子动画引擎（16 级 CSS 色阶）、7 个页面组件设计与实现、React Router + Suspense + Lazy ErrorBoundary、Zustand 状态拆分、MaterialDesign 主题映射、首屏加载与路由转场丝滑动画 |
-| **MochaCello92377** | 核心翻译主理人 / QA | 36+ 核心配置中文翻译第一梯队（Paper/Purpur/Velocity/Nukkit 等）、1000+ 配置项 Wiki 交叉校验、翻译准确性回归测试、用户文档打磨 |
-| **CatStack** | 核心翻译 / QA | 混合端/Mod 端翻译攻坚（Mohist/CatServer/Arclight/Forge/Fabric）、QA 全矩阵 Win10/Win11 多机实测、崩溃复现与日志归档 |
+| 代号 | 角色与贡献范围 |
+|---|---|
+| **ABI-ZTROS** | 项目发起人 · 整体架构与产品设计 · 全栈开发（**承担约 97% 的代码开发与产品设计工作**，含 WPF 主程序 / WebView2 桥接层 / React 前端 / 服务器检测指纹体系 / 配置翻译矩阵 / CPU 拓扑监控 / 主题系统 / 启动崩溃恢复链路等全部模块） |
+| **MochaCello** | Windows 11 兼容性攻坚修复 · 超线程（SMT）识别逻辑修正 · Win32 API 查表法实现与隐式调用封装（`GetLogicalProcessorInformationEx` / `SetProcessInformation` / `NtQuerySystemInformation` 等底层 API 签名、结构体与安全调用） |
+| **InfinityXCat** | 多机种测试平台搭建与回归矩阵维护 · 软件功能方案设计与需求梳理 · 产品未来技术路线与方向规划 |
+| **fuuzccc** | 高负载压测用例设计与执行 · 关键路径性能剖析 · 性能瓶颈定位与优化建议输出（启动链路、配置编辑器、系统监控刷新率） |
+| **烟蓝湘** | 项目全程情感支持 · 产品命名与色彩方案审美顾问（ABI-ZTROS 的伴侣，不承担技术开发工作） |
+
+### 🕯️ 永远怀念
+
+> 愿你在星之海洋的另一端继续与代码和电子为伴。
+>
+> 谨以此项目献给那位**已经离世的朋友**：是他为 MSMC 作出了最初的整体软件框架选型与定义，为项目早期依赖梳理了大量 NuGet 包的选型、版本兼容性与引入建议——没有他打下的第一根桩，就不会有今天的 MSMC。
+>
+> 他的名字不出现在这张表的「代号」栏里，但他的设计决策与技术品味会一直留在这个项目的每一行代码中。R.I.P.
 
 ### 开源项目致谢（Build on Giants' Shoulders）
 
-- **MaterialDesignInXamlToolkit 4.9** — 感谢 ButchersBoy 团队，WPF 生态最成熟的 Material Design 控件库，撑起了 Win 原生侧的视觉底
-- **MahApps.Metro.IconPacks 4.x** — 完整 FontAwesome6 / MaterialIcons 图标包，侧边栏 7 个导航图标全靠它
-- **Serilog** — 结构化日志之王，Warning+ 主日志 + Debug+ 调试日志双轨策略让排查 Win11 渲染时序竞争不再是玄学
-- **Microsoft.Web.WebView2** — 现代 WebView2 让 .NET 桌面能吃 React 18 最新技术栈红利，EmbeddedResource + WebResourceRequested 拦截的零磁盘落盘方案是点睛之笔
-- **CommunityToolkit.Mvvm 8.x** — IAsyncRelayCommand + INotifyPropertyChanged Source Generator，让 WPF ViewModel 不再写一平米 `OnPropertyChanged` 模板代码
-- **React 18 + Vite 5 + TypeScript 5.8** — 前端三件套，HMR 的 500ms 热更新循环和 TS strict 的严格让开发体验拉满
-- **xUnit.net** — 单元测试框架，服务器核心指纹识别、YAML/TOML/HOCON 多格式解析回归靠它守住
-- **StyleCop Analyzers + SonarAnalyzer .NET** — 两条恶狗守住了 C# 代码风格和质量底线，配合 TreatWarningsAsErrors 就是零容忍
+这份列表仅用于技术溯源与善意致谢，所有第三方资源的著作权归各自权利人所有，与本项目的 EULA 许可无关。
 
-### 特别鸣谢
-
-感谢所有早期测试的朋友——尤其是在 Win11 24H2 + 大核 CPU 这对「最强组合」上反复复现渲染时序竞争、帮我们定位到 `md-stagger-item` 可见性绑定到动画触发帧的经典 bug 的几位。没有你们在多台机器上的实测，这个问题大概率会留到 Release 才炸。
+- **MaterialDesignInXamlToolkit 4.9** — WPF 生态最成熟的 Material Design 控件库
+- **MahApps.Metro.IconPacks 4.x** — FontAwesome6 / MaterialIcons 图标包全集
+- **Serilog** — 结构化日志管道，Warning+ 主日志 + Debug+ 调试日志双轨策略
+- **Microsoft.Web.WebView2** — 现代 WebView2 + EmbeddedResource 零磁盘落盘前端分发方案
+- **CommunityToolkit.Mvvm 8.x** — IAsyncRelayCommand 与 MVVM 源生成器，消除样板代码
+- **React 18 + Vite 5 + TypeScript 5.8** — 前端三件套，HMR 与 Strict 模式保障
+- **xUnit.net** — 单元测试回归矩阵，配置解析与核心指纹两大模块守护
+- **StyleCop Analyzers + SonarAnalyzer .NET** — 配合 TreatWarningsAsErrors，守住 C# 代码质量底线
 
 ## 📜 许可声明
 
-本项目基于 **Apache License 2.0**（下简称「主协议」）开源。完整主协议文本见仓库根目录 [LICENSE](LICENSE) 文件。
+> ⚠️ **本软件不是开源软件。** 即使本项目的源代码在 GitHub 等平台上公开可见，也绝不代表本软件适用任何开源许可协议（MIT / GPL / Apache / BSD 等均不适用）。源代码公开仅用于学习交流、审计透明度与社区 Bug 反馈，不构成对任何著作权、复制权、再许可权的放弃。
 
-在主协议条款的基础上，附加以下 4 条约束条款。**使用、复制、分发、衍生本项目时，须同时遵守 Apache-2.0 主协议和本附加条款。如附加条款与主协议存在冲突，以附加条款为准。**
+### 适用许可协议
 
----
+本软件受 **《MSMC 最终用户许可协议（EULA）v3.0》** 管辖（以下简称「本协议」）。协议完整文本随软件内置首次启动弹窗一并提供，**以软件内嵌「用户协议与法律声明」窗口展示的版本为准**；本节仅作核心摘要，详细条款请以完整 EULA 为准。
 
-### 附加条款 1：CREDITS 文件必须完整保留
+### 核心许可条款（摘要 · 非完整文本）
 
-任何对本项目源代码或二进制形式的再分发（无论是否修改），都必须**未经修改地原样保留**仓库根目录下 `CREDITS.md` 文件的完整内容。该文件包含贡献者名录、第三方版权声明、开源组件许可信息。删除、截断、篡改 `CREDITS.md` 内容者视为违反本附加条款，授权即刻撤销。
+| 条款 | 内容摘要 |
+|---|---|
+| **许可人** | ABI-ZTROS（即「甲方」，软件唯一著作权与知识产权所有人） |
+| **被许可人** | 同意本协议并实际使用本软件的终端用户（即「乙方」） |
+| **许可性质** | 有限的、可撤销的、非独占的、不可再许可的、非商业性的本地使用许可 |
+| **使用地域** | **严格限定为中华人民共和国大陆地区（不含香港特别行政区、澳门特别行政区、台湾地区）**；港澳台及境外用户未经甲方事先书面同意不得下载、安装或使用 |
+| **许可用途** | 仅限乙方为管理其**合法所有或已获合法授权**的 Minecraft 游戏服务器，进行**非商业性**的本地运维、监控与配置管理 |
+| **著作权归属** | 本软件全部源代码、目标代码、界面设计、图标、文案、算法、架构、数据结构及配套文档的一切知识产权，**完整、排他地归 ABI-ZTROS 所有** |
+| **AS IS 现状提供** | 本软件按「现状」（AS IS）提供，甲方不就软件适用性、可靠性、准确性、不侵权性等作出任何明示或默示保证；因使用或无法使用本软件产生的损失（除甲方故意或重大过失致人身损害外），甲方在法律允许最大范围内免责 |
 
-### 附加条款 2：版权与免责声明保留
+### 严格禁止行为（以下任一行为均构成严重违约 / 侵权）
 
-衍生作品（Derivative Works）必须在其**主入口页面**或**About 对话框**中**醒目展示**以下内容的完整副本：
-- 本项目的版权声明（`Copyright © 2024-2026 Team ZTROS · ABI-ZTROS 及贡献者`）
-- 本项目 Apache-2.0 主协议中的免责声明（`AS IS BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND` 条款）
-不得以折叠、滚动到底部才可见、字体小于正文 50% 等方式规避本条。
+- ❌ **任何商业性利用**：售卖、收费下载、会员制、付费订阅、植入广告、捆绑收费、作为收费产品/服务的一部分；
+- ❌ **二次开发（二改）与派生**：对本软件源代码或可执行程序进行修改、改编、翻译、嵌入其他产品、打包分发等；
+- ❌ **盗版与权属篡改**：移除、篡改、遮挡本软件的版权声明、作者标识、版本标识、EULA 入口；谎称自己是作者或开发者；
+- ❌ **跨境分发**：在港澳台地区及中华人民共和国大陆以外的任何法域，分发、传播、托管或向他人提供本软件下载；
+- ❌ **逆向与规避**：反向工程、反编译、反汇编、破坏或绕过授权/完整性校验等技术措施；
+- ❌ **未授权使用**：对他人服务器进行未授权的远程管理、监控、入侵或控制；用于任何违反中华人民共和国法律法规或公序良俗的用途。
 
-### 附加条款 3：第三方宣传需书面同意
+甲方对上述侵权行为**零容忍**，一经发现将立即采取下架投诉、公开曝光、民事追偿，情节严重的将移送公安机关追究刑事责任。
 
-任何**未被列入 CREDITS.md「核心团队」和「贡献者」名单**的第三方个人或组织，不得在其宣传材料（包括但不限于公众号、B站视频、YouTube 视频、知乎专栏、商业产品介绍页、招聘简历、KOL 带货内容等）中明示或暗示：
-- 其与 Team ZTROS / MSMC 项目存在官方合作关系
-- 其产品「由 MSMC 官方推荐」或「MSMC 认证」
-- 其产品使用 MSMC 源码即代表得到了 ABI-ZTROS 的背书
+### 完整协议获取方式
 
-需要获得此类宣传授权者，须提前书面联系 ABI-ZTROS 并获得书面同意（含电子签名的邮件、PDF 等均视为有效书面同意）。
-
-### 附加条款 4：衍生项目变更须声明
-
-凡基于 MSMC 源码修改形成的衍生项目（Fork / Patch / 二次发行 / 集成进其他产品），须在其 README 的**首屏（前 3 屏内）**醒目位置放置以下声明，字号不小于正文：
-
-> 本产品 / 项目基于 **MSMC（MC Server Guard Console）** 开源项目衍生开发，相较于原版存在功能修改与/或行为变更。MSMC 原项目（Team ZTROS）不对本衍生版本的任何问题或缺陷负责。
-
-不得以「Fork 之后删掉原项目链接 + 改个名字就当自己做的」这种方式规避本条；即使项目改名为完全不同的产品名，只要实质使用了 MSMC 超过 500 行的代码或核心架构（WPF+WebView2 三层架构 + 36+ 核心指纹/翻译体系），均视为衍生项目，须遵守本条。
-
----
-
-### 疑问与申诉
-
-对以上附加条款的适用性、边界或判定存疑时，以 ABI-ZTROS 的书面解释为准。合规矩的开发者一般不会触发本附加条款——它们的存在只为防止少数人把别人一整年的心血打包改名出去变现。
+启动 MSMC 后，首次进入会弹出红色「用户协议与法律声明」窗口，即为 EULA v3.0 完整文本；如您未看到完整协议或需要获取离线副本，请通过项目官方渠道联系 ABI-ZTROS。
 
 ---
 
-<div align="center">
-
-**MSMC · MC Server Guard Console** · v0.9.0-preview.17 · Paper 分支
-
-🆕 [Releases 下载] （占位：用户后续补充链接）　·　💬 [联系渠道] （占位：QQ 群/邮箱，用户后续补充）
-
-Made with ❤️ by Team ZTROS · ABI-ZTROS · 烟蓝湘 · MochaCello92377 · CatStack
-
-</div>
-
----
+<p align="center">
+  <small>Copyright © 2024-2026 Team ZTROS · ABI-ZTROS 及贡献者 · 保留所有权利</small>
+  <br/>
+  <small>本项目引用的所有第三方开源资源，其著作权归各自权利人所有。</small>
+</p>
