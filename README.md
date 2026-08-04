@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <strong>MSMC · MC Server Guard Console —— 给 Minecraft 服务器运维的全栈守护控制台，从进程级指纹识别、全核心中文配置、异构 CPU 拓扑监控到 Java/电源/网络管理一站式搞定。</strong>
+  <strong>MSMC · Minecraft Server Management Console —— 给 Minecraft 服务器运维的全栈守护控制台，从进程级指纹识别、全核心中文配置、异构 CPU 拓扑监控到 Java/电源/网络管理一站式搞定。</strong>
 </p>
 
 ## ✨ 核心亮点
