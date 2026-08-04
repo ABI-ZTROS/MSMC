@@ -546,6 +546,9 @@ public partial class App : Application
                     // ServiceCollection 必须在辅助方法之前声明，否则 CS0841
                     var services = new ServiceCollection();
 
+                    // 注册 Serilog ILogger 单例 — 所有服务构造函数注入 ILogger 都走这里
+                    services.AddSingleton<Serilog.ILogger>(Serilog.Log.Logger);
+
                     // 注册单个服务并打印加载结果（成功/失败）
                     async Task Register<TService, TImpl>(int percent, string category, string displayName, string description)
                         where TService : class
