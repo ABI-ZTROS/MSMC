@@ -439,7 +439,7 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         if (string.IsNullOrEmpty(relativePath) || relativePath == "/")
             relativePath = "/index.html";
 
-        var ctx = request.ResourceContext.ToString();
+        var ctx = args.ResourceContext.ToString();
         // 【DIAG-请求层】每个请求打印 Resource Context（Script/Stylesheet/Image/All 等），
         //    便于判断：Sidebar 图标消失时 JS chunk 的 Context 是 Script，CSS 是 Stylesheet
         Log.Information("[WV2-REQ] [{Ctx}] {Path}  |  URI={Uri}", ctx, relativePath,
