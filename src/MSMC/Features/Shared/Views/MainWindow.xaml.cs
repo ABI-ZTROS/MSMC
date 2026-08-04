@@ -2632,6 +2632,21 @@ public partial class MainWindow : Window
             }
         });
 
+        // 重做（补全：README 声明了完整撤销/重做能力）
+        _bridgeService.RegisterRequestHandler("config:redo", _ =>
+        {
+            try
+            {
+                cfg?.RedoCommand?.Execute(null);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "重做配置变更失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
         // 选择服务器（极简版：只赋值 cfg.Server = matched，让 OnServerChanged 自己异步扫目录）
         // 选择服务器（极简版：DisplayName 精确匹配 → 匹配失败主动刷新重试 → 仍失败返回 success=false）
         // 修复"列表里有但点不中"问题：
@@ -3257,17 +3272,18 @@ public partial class MainWindow : Window
             }
         });
 
-        // 获取预设主题列表
+        // 获取预设主题列表（13 套：README L3 品牌系统）
         _bridgeService.RegisterRequestHandler("settings:getPresets", _ =>
         {
-            var presets = new[]
-            {
-                new { key = "SkyBlue", label = "苍穹蓝", primary = "#3B82F6", accent = "#FB7185" },
-                new { key = "BlueOrange", label = "科技蓝", primary = "#1565C0", accent = "#FF9800" },
-                new { key = "TealPink", label = "清新绿", primary = "#00897B", accent = "#E91E63" },
-                new { key = "RedYellow", label = "火焰红", primary = "#C62828", accent = "#FFD600" },
-                new { key = "OceanBlue", label = "海洋蓝", primary = "#0097A7", accent = "#FFD740" },
-            };
+            var presets = ThemePresetRegistry.GetAllPresets()
+                .Select(p => new
+                {
+                    key = p.Key,
+                    label = p.Label,
+                    primary = p.PrimaryColorHex,
+                    accent = p.AccentColorHex,
+                })
+                .ToArray();
             return Task.FromResult<object?>(new { presets });
         });
 

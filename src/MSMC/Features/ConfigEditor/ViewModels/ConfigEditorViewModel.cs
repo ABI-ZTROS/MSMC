@@ -113,11 +113,17 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     /// <summary>编辑历史栈 —— 记录每次值变更前的条目引用与原始值（撤销功能保留）</summary>
     private readonly Stack<(ServerConfigEntry Entry, string PreviousValue)> _undoStack = new();
 
+    /// <summary>重做历史栈 —— 记录每次撤销出去的条目与撤销前的值（README 声明完整撤销/重做）</summary>
+    private readonly Stack<(ServerConfigEntry Entry, string RedoValue)> _redoStack = new();
+
     /// <summary>已修改条目计数器 —— O(1) 替代 O(n) 的 ConfigEntries.Any(...) 扫描（保存/脏计数保留）</summary>
     private int _modifiedCount;
 
     /// <summary>撤销操作进行中标志 —— 防止撤销恢复值时再次触发压栈（撤销功能保留）</summary>
     private bool _isUndoing;
+
+    /// <summary>重做操作进行中标志 —— 防止重做恢复值时再次触发撤销/重做压栈</summary>
+    private bool _isRedoing;
 
     /// <summary>指示当前实例是否已释放，防止重复 Dispose 导致资源二次释放</summary>
     private bool _disposed;
@@ -640,7 +646,9 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         HasUnsavedChanges = false;
         _modifiedCount = 0;
         _undoStack.Clear();
+        _redoStack.Clear();
         UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
         _originalConfig.Clear();
         SaveStatusMessage = null;
         SaveErrorType = null;
@@ -884,7 +892,9 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             _originalConfig = new Dictionary<string, string>(config);
             HasUnsavedChanges = false;
             _undoStack.Clear();
+            _redoStack.Clear();
             UndoCommand.NotifyCanExecuteChanged();
+            RedoCommand.NotifyCanExecuteChanged();
 
             if (_groupUpdateTimer != null) _groupUpdateTimer.Stop();
 
@@ -1006,7 +1016,9 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
             }
             HasUnsavedChanges = false;
             _undoStack.Clear();
+            _redoStack.Clear();
             UndoCommand.NotifyCanExecuteChanged();
+            RedoCommand.NotifyCanExecuteChanged();
 
             IsSaveError = false;
             SaveErrorType = null;
@@ -1063,7 +1075,9 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         HasUnsavedChanges = false;
         _modifiedCount = 0;
         _undoStack.Clear();
+        _redoStack.Clear();
         UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
         SaveStatusMessage = null;
         SaveErrorType = null;
         IsSaveError = false;
@@ -1079,16 +1093,43 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
         try
         {
             var (entry, previousValue) = _undoStack.Pop();
+            // 撤销前先把「当前值」记录到 Redo 栈（重做时要还原到这个值）
+            var redoValue = entry.Value;
             entry.Value = previousValue;
+            _redoStack.Push((entry, redoValue));
             entry.IsModified = !string.Equals(entry.Value, entry.OriginalValue, StringComparison.Ordinal);
         }
         finally { _isUndoing = false; }
 
         HasUnsavedChanges = ConfigEntries.Any(ce => ce.IsModified && ce.Key != "__ERROR__");
         UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
     }
 
     private bool CanUndo() => _undoStack.Count > 0;
+
+    [RelayCommand(CanExecute = nameof(CanRedo))]
+    private void Redo()
+    {
+        if (_redoStack.Count == 0) return;
+        _isRedoing = true;
+        try
+        {
+            var (entry, redoValue) = _redoStack.Pop();
+            // 重做前先把「当前值」推回 Undo 栈（用户可以再次撤销回到重做前的状态）
+            var undoValue = entry.Value;
+            entry.Value = redoValue;
+            _undoStack.Push((entry, undoValue));
+            entry.IsModified = !string.Equals(entry.Value, entry.OriginalValue, StringComparison.Ordinal);
+        }
+        finally { _isRedoing = false; }
+
+        HasUnsavedChanges = ConfigEntries.Any(ce => ce.IsModified && ce.Key != "__ERROR__");
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanRedo() => _redoStack.Count > 0;
 
     #endregion
 
@@ -1148,8 +1189,17 @@ public partial class ConfigEditorViewModel : ObservableObject, IDisposable
     {
         if (sender is not ServerConfigEntry entry || e.PropertyName != nameof(ServerConfigEntry.Value))
             return;
-        if (!_isUndoing)
-            _undoStack.Push((entry, entry.Value));
+        // 撤销/重做过程中：不压入任何栈，避免递归记录
+        if (_isUndoing || _isRedoing)
+            return;
+        _undoStack.Push((entry, entry.Value));
+        // ══ 中间态 Push 清空 Redo 历史 ══（README 契约：中途改动分叉，旧重做路径作废）
+        if (_redoStack.Count > 0)
+        {
+            _redoStack.Clear();
+            RedoCommand.NotifyCanExecuteChanged();
+        }
+        UndoCommand.NotifyCanExecuteChanged();
     }
 
     private void OnConfigEntryChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
