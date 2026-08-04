@@ -365,8 +365,8 @@ MSMC/
 | 代号 | 角色与贡献范围 |
 |---|---|
 | **ABI-ZTROS** | 项目发起人 · 整体架构与产品设计 · 全栈开发（**承担约 97% 的代码开发与产品设计工作**，含 WPF 主程序 / WebView2 桥接层 / React 前端 / 服务器检测指纹体系 / 配置翻译矩阵 / CPU 拓扑监控 / 主题系统 / 启动崩溃恢复链路等全部模块） |
-| **MochaCello** | Windows 11 兼容性攻坚修复 · 超线程（SMT）识别逻辑修正 · Win32 API 查表法实现与隐式调用封装（`GetLogicalProcessorInformationEx` / `SetProcessInformation` / `NtQuerySystemInformation` 等底层 API 签名、结构体与安全调用） |
-| **InfinityXCat** | 多机种测试平台搭建与回归矩阵维护 · 软件功能方案设计与需求梳理 · 产品未来技术路线与方向规划 |
+| **MochaCello（MochaCello92377）** | Windows 11 兼容性攻坚修复 · 超线程（SMT）识别逻辑修正 · Win32 API 查表法实现与隐式调用封装（`GetLogicalProcessorInformationEx` / `SetProcessInformation` / `NtQuerySystemInformation` 等底层 API 签名、结构体与安全调用） |
+| **InfinityXCat（CatStack）** | 多机种测试平台搭建与回归矩阵维护 · 软件功能方案设计与需求梳理 · 产品未来技术路线与方向规划 |
 | **fuuzccc** | 高负载压测用例设计与执行 · 关键路径性能剖析 · 性能瓶颈定位与优化建议输出（启动链路、配置编辑器、系统监控刷新率） |
 | **烟蓝湘** | 项目全程情感支持 · 产品命名与色彩方案审美顾问（ABI-ZTROS 的伴侣，不承担技术开发工作） |
 
