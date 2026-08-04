@@ -485,7 +485,19 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                 "OK",
                 headers);
 
-            Log.Information("[OK] 嵌入资源响应: {Path} ({MimeType}, {Size} bytes)", relativePath, mimeType, memoryStream.Length);
+            // 【CSS 诊断增强】对 CSS 资源单独打印详细日志，方便定位样式丢失问题
+            //    Win11 新版 WebView2 对 CSS 响应有额外校验，一旦 Content-Type 不对或 headers 丢失，
+            //    CSS 会被浏览器拒绝解析，导致界面无样式（症状：DOM 挂载但视觉透明）
+            var isCss = relativePath.EndsWith(".css", StringComparison.OrdinalIgnoreCase);
+            if (isCss)
+            {
+                Log.Information("[CSS-DIAG] CSS 资源响应: {Path} | MIME={MimeType} | Size={Size}B | Headers=\n{Headers}",
+                    relativePath, mimeType, memoryStream.Length, headers.Replace("\r\n", "\\r\\n"));
+            }
+            else
+            {
+                Log.Information("[OK] 嵌入资源响应: {Path} ({MimeType}, {Size} bytes)", relativePath, mimeType, memoryStream.Length);
+            }
         }
         catch (Exception ex)
         {

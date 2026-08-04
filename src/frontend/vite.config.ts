@@ -54,6 +54,12 @@ export default defineConfig({
     // 对 <link rel="modulepreload"> 的实现有瑕疵，关闭能避免一些懒加载 chunk
     // 无法触发预加载的问题。真正需要预加载时浏览器回退到普通 import。
     modulePreload: { polyfill: false },
+    // 【Win11 兼容修复】Vite 默认给 <link rel="stylesheet"> 和 <script type="module"> 加 crossorigin 属性。
+    // Win11 新版 WebView2（Edge 126+）在 http:// 协议下对带 crossorigin 的 CSS 走严格 CORS 校验，
+    // 我们的资源走 http://msmcapp/ 虚拟主机是同源请求，不需要 crossorigin。
+    // 设为 false 让 Vite 不注入 crossorigin 属性，避免 Win11 严格 CORS 校验导致 CSS 被拒绝解析。
+    crossorigin: false,
+    cssCodeSplit: true,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),

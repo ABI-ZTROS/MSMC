@@ -172,19 +172,31 @@
                 if (name.indexOf('assets/') === -1 && name.indexOf('/dist/') === -1 && name.indexOf('file://') !== 0) return;
                 // 若被重定向或跨域，transferSize/decodedBodySize 可能为 0
                 var ok = true;
+                // 【宽容判定】只有当三个条件同时成立才判失败：
+                //   transferSize=0 + decodedBodySize=0 + duration<1ms
+                //   （这种情况通常代表请求根本没发出去或被内核拦截丢弃）
+                // 注意：204 No Content（如 favicon.ico）的 decodedBodySize=0 是合法的，不算失败
                 if (en.transferSize === 0 && en.decodedBodySize === 0 && en.duration < 1) ok = false;
                 // 如果浏览器支持 PerformanceResourceTiming.responseStatus（部分 WebView2 版本支持）
                 var status = '';
                 if (typeof en.responseStatus === 'number') {
                   status = ' HTTP ' + en.responseStatus;
-                  if (en.responseStatus >= 400) ok = false;
+                  // 【修复】204 No Content 是合法响应，不算失败（之前会把 favicon 误判）
+                  if (en.responseStatus >= 400 || en.responseStatus === 0) ok = false;
                 }
                 if (ok) okCnt++; else badCnt++;
+                // 【增强诊断】对 CSS 资源单独打印详细信息，方便定位样式丢失问题
+                var isCss = name.indexOf('.css') !== -1 || en.initiatorType === 'css';
+                var detail = '';
+                if (!ok || isCss) {
+                  detail = ' [ts=' + en.transferSize + ' dbs=' + en.decodedBodySize +
+                           ' dur=' + Math.round(en.duration) + ' init=' + en.initiatorType + ']';
+                }
                 appendLog(
                   (ok ? '[RES-OK ] ' : '[RES-BAD] ') +
                   '[' + en.initiatorType + '] ' +
                   name.replace(/^.*[\\/]/, '') +   // 只显示文件名，太长
-                  ' (' + Math.round(en.duration) + 'ms' + status + ')',
+                  ' (' + Math.round(en.duration) + 'ms' + status + ')' + detail,
                   ok ? 'ok' : 'bad'
                 );
               });
