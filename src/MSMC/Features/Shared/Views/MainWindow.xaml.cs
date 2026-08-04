@@ -28,6 +28,7 @@ using io.NET.ZTR_OS.Features.WebView2.Frontend;
 using io.NET.ZTR_OS.Features.WebView2.Services;
 using io.NET.ZTR_OS.Features.ConfigEditor.ViewModels;
 using io.NET.ZTR_OS.Features.Shared.ViewModels;
+using io.NET.ZTR_OS.Features.Startup.Services;
 using io.NET.ZTR_OS.Features.JavaInstallation.Constants;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Constants;
 using Microsoft.Extensions.DependencyInjection;
@@ -569,6 +570,8 @@ public partial class MainWindow : Window
         // 获取应用就绪状态（JS 端主动拉取，避免时序问题）
         _bridgeService.RegisterRequestHandler("app:getReadyState", _ =>
         {
+            var privilegeSvc = App.Services.GetService<IPrivilegeService>();
+            privilegeSvc?.Refresh();
             return Task.FromResult<object?>(new
             {
                 version = typeof(App).Assembly.GetName().Version?.ToString() ?? "0.0.0",
@@ -580,6 +583,14 @@ public partial class MainWindow : Window
                 },
                 statusMessage = _vm?.StatusMessage ?? string.Empty,
             });
+        });
+
+        // 强制刷新管理员权限状态（前端主动触发，如切换页面或点击刷新按钮）
+        _bridgeService.RegisterRequestHandler("app:refreshAdminStatus", _ =>
+        {
+            var privilegeSvc = App.Services.GetRequiredService<IPrivilegeService>();
+            var isAdmin = privilegeSvc.Refresh();
+            return Task.FromResult<object?>(new { success = true, isAdmin });
         });
 
         // === 系统监控相关 API ===

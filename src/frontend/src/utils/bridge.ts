@@ -402,6 +402,11 @@ export function getAppInfo(): Promise<AppInfo> {
   return bridge.invoke<AppInfo>('app:getInfo')
 }
 
+/** 强制刷新管理员权限状态（前端主动触发，如切换页面或点击刷新按钮） */
+export function refreshAdminStatus(): Promise<{ success: boolean; isAdmin: boolean }> {
+  return bridge.invoke<{ success: boolean; isAdmin: boolean }>('app:refreshAdminStatus')
+}
+
 // 慢操作（如 network:*、server:*）可用更长超时调用
 export function invokeWithTimeout<T = unknown>(action: string, payload: unknown, timeoutMs: number): Promise<T> {
   return bridge.invokeWithTimeout<T>(action, payload, timeoutMs)

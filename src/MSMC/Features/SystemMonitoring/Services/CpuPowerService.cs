@@ -265,6 +265,7 @@ public sealed class CpuPowerService : ICpuPowerService, IDisposable
     /// <inheritdoc/>
     public CpuPowerCapabilities GetCapabilities()
     {
+        _privilegeService.Refresh();
         bool isAdmin = _privilegeService.IsRunningAsAdmin;
         int boostMode = -1;
         string profileName = "Unknown";
