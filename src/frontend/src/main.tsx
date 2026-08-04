@@ -92,23 +92,30 @@ if (!rootEl) {
     //    如果 Sidebar nav-item-mask 或 dashboard-root 不在 DOM → 是 lazy chunk 加载失败
     setTimeout(() => {
       try {
-        const sidebar = document.querySelector('.md-sidebar')
-        const sidebarItems = document.querySelectorAll('.md-sidebar-item').length
-        const navIcons = document.querySelectorAll('.md-sidebar-item svg').length
-        const navTexts = document.querySelectorAll('.md-sidebar-text').length
-        const msg = `[FE-DIAG] 3帧后 DOM 快照: .md-sidebar=${sidebar ? 'EXISTS' : 'MISSING'} | items=${sidebarItems} | icons=${navIcons} | texts=${navTexts}`
+        // 修正：之前查 .md-sidebar / .md-sidebar-item / .md-sidebar-text，
+        // 但 Sidebar.tsx 实际渲染的类名是 md-sidebar-transition / md-nav-item /
+        // md-sidebar-text-transition，导致诊断一直误报 "Sidebar 不存在"。
+        const sidebar = document.querySelector('.md-sidebar-transition')
+        const navItems = document.querySelectorAll('.md-nav-item').length
+        const navIcons = document.querySelectorAll('.md-nav-item svg').length
+        const navTexts = document.querySelectorAll('.md-sidebar-text-transition').length
+        // 额外检查 md-stagger-item 的实际计算 opacity —— 若为 0 说明入场动画未执行
+        // （侧边栏按钮"蒸发"、页面卡片空白的直接表征）
+        const staggerEl = document.querySelector('.md-stagger-item') as HTMLElement | null
+        const staggerOpacity = staggerEl ? getComputedStyle(staggerEl).opacity : '(no stagger-item)'
+        const msg = `[FE-DIAG] 3帧后 DOM 快照: aside=${sidebar ? 'EXISTS' : 'MISSING'} | navItems=${navItems} | icons=${navIcons} | texts=${navTexts} | first-stagger-opacity=${staggerOpacity}`
         console.log(msg)
         reportToCsharp('Information', msg, '')
         if (!sidebar) {
           reportToCsharp('Warning',
-            '[FE-DIAG] Sidebar 元素 .md-sidebar 在挂载 3 帧后仍不存在！（lazy chunk 加载失败或 App 渲染到某处炸了）', '')
-        } else if (sidebarItems === 0) {
+            '[FE-DIAG] aside.md-sidebar-transition 在挂载 3 帧后仍不存在！（lazy chunk 加载失败或 App 渲染到某处炸了）', '')
+        } else if (navItems === 0) {
           reportToCsharp('Warning',
-            '[FE-DIAG] Sidebar 存在但 .md-sidebar-item 数量为 0（navItems 空数组或 Sidebar 渲染被 early-return）', '')
-        } else if (navTexts === 0) {
+            '[FE-DIAG] aside 存在但 .md-nav-item 数量为 0（navItems 空数组或 Sidebar 渲染被 early-return）', '')
+        }
+        if (staggerEl && staggerOpacity === '0') {
           reportToCsharp('Warning',
-            `[FE-DIAG] Sidebar items=${sidebarItems} 但文字 .md-sidebar-text 数量为 0。` +
-            ` 这说明 expanded/collapsed 折叠样式或文字 display:none 有问题。`, '')
+            `[FE-DIAG] .md-stagger-item opacity=0 —— 入场动画未执行，元素永久透明（侧边栏蒸发/卡片空白的根因）。navItems=${navItems}`, '')
         }
       } catch (e2: any) {
         reportToCsharp('Error',

@@ -637,8 +637,12 @@
   /* 用法：<div className="md-stagger-item" style={{ '--md-stagger-i': 0 }}>...</div> */
   /* ═══════════════════════════════════════════════════════════════ */
   .md-stagger-item {
-    opacity: 0;
-    animation: mdStaggerIn var(--md-duration-elastic) var(--md-ease-spring-soft) forwards;
+    /* 不在元素自身设 opacity:0 —— 之前依赖 animation forwards 才变可见，
+       一旦动画因 WebView2 渲染时序 / lazy chunk 延迟挂载错过触发窗口，
+       元素会永久 opacity:0（侧边栏按钮"蒸发"、页面卡片空白）。
+       改为 both：动画开始前应用 0%（无闪烁渐入），动画失效时 fill-mode
+       不生效、元素默认 opacity:1 可见，可见性不再依赖动画是否执行。 */
+    animation: mdStaggerIn var(--md-duration-elastic) var(--md-ease-spring-soft) both;
     animation-delay: calc(
       min(var(--md-stagger-i, 0) * 40ms, 320ms) *
       (1 - 0.05 * var(--md-stagger-i, 0))
