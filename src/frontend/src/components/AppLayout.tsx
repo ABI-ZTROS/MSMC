@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
+import { LazyPageErrorBoundary } from './LazyPageErrorBoundary'
 import { useAppStore } from '@/stores/appStore'
 import { useEffect, useState, useRef, Suspense } from 'react'
 import { FaShield } from 'react-icons/fa6'
@@ -166,7 +167,9 @@ export function AppLayout(): JSX.Element {
                     </div>
                   }
                 >
-                  <Outlet />
+                  <LazyPageErrorBoundary pageName={pageKey}>
+                    <Outlet />
+                  </LazyPageErrorBoundary>
                 </Suspense>
               </div>
             </>
