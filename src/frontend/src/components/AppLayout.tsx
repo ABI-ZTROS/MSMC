@@ -68,7 +68,7 @@ export function AppLayout(): JSX.Element {
         if (bridge && typeof bridge.invoke === 'function') {
           bridge.invoke('log:write', {
             level: 'Information', message: msg, stack: '',
-            url: location.href, ua: navigator.userAgent,
+            url: window.location.href, ua: navigator.userAgent,
           }).catch(() => {})
         }
       } catch (e: any) {

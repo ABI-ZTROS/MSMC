@@ -65,7 +65,7 @@ export function Sidebar() {
       const bridge = (window as any).__msmc_bridge__
       if (bridge && typeof bridge.invoke === 'function') {
         bridge.invoke('log:write', {
-          level: 'Information', message: msg, stack: '', url: location.href, ua: navigator.userAgent,
+          level: 'Information', message: msg, stack: '', url: window.location.href, ua: navigator.userAgent,
         }).catch(() => {})
       }
     } catch (e: any) {
