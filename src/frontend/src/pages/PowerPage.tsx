@@ -77,9 +77,15 @@ export function PowerPage(): JSX.Element {
   const refreshCpuPowerCaps = useCallback(async (): Promise<void> => {
     try {
       const caps = await getCpuPowerCapabilities()
+      if (!caps.success) {
+        setPowerError(caps.error ?? '获取 CPU 电源能力失败')
+        return
+      }
       setCpuPowerCaps(caps)
+      setPowerError(null)
     } catch (e) {
       console.error('获取 CPU 电源能力失败:', e)
+      setPowerError(e instanceof Error ? e.message : String(e))
     }
   }, [])
 

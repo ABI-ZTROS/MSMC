@@ -936,10 +936,10 @@ public sealed class CpuPowerService : ICpuPowerService, IDisposable
         };
         using var p = Process.Start(psi);
         if (p == null) throw new Win32Exception("无法启动 powercfg.exe");
-        await p.WaitForExitAsync();
+        await p.WaitForExitAsync().ConfigureAwait(false);
         if (p.ExitCode != 0)
         {
-            var err = await p.StandardError.ReadToEndAsync();
+            var err = await p.StandardError.ReadToEndAsync().ConfigureAwait(false);
             throw new InvalidOperationException($"powercfg {args} 失败 (ExitCode={p.ExitCode}): {err.Trim()}");
         }
     }
@@ -959,8 +959,8 @@ public sealed class CpuPowerService : ICpuPowerService, IDisposable
         };
         using var p = Process.Start(psi);
         if (p == null) return -1;
-        var output = await p.StandardOutput.ReadToEndAsync();
-        await p.WaitForExitAsync();
+        var output = await p.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+        await p.WaitForExitAsync().ConfigureAwait(false);
 
         // 解析 "当前交流电源设置索引: 0x00000002" 或英文 "Current AC Power Setting Index: 0x00000002"
         foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
