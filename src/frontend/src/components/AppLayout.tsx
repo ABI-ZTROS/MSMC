@@ -1,7 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { useAppStore } from '@/stores/appStore'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { FaShield } from 'react-icons/fa6'
 import { ParticleField } from '@/components/ui/ParticleField'
 
@@ -114,7 +114,27 @@ export function AppLayout(): JSX.Element {
               )}
               {/* 新页：md-page-enter 触发弹簧入场 + 模糊消散 */}
               <div key={pageKey} className="flex-1 overflow-y-auto md-page-enter">
-                <Outlet />
+                <Suspense
+                  fallback={
+                    <div
+                      className="h-full flex items-center justify-center"
+                      style={{ backgroundColor: 'var(--md-deep-background)' }}
+                    >
+                      <div
+                        className="md-breathe"
+                        style={{
+                          fontSize: 13,
+                          color: 'var(--md-body-lighter)',
+                          letterSpacing: '0.1em',
+                        }}
+                      >
+                        正在加载页面...
+                      </div>
+                    </div>
+                  }
+                >
+                  <Outlet />
+                </Suspense>
               </div>
             </>
           ) : (

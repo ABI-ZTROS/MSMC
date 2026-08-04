@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy } from 'react'
+import { createHashRouter, RouterProvider, createRoutesFromElements, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/AppLayout'
 import { ToastContainer } from '@/components/ui/Toast'
 import { ParticleField } from '@/components/ui/ParticleField'
@@ -13,6 +13,21 @@ const ConfigEditorPage = lazy(() => import('@/pages/ConfigEditorPage').then(m =>
 const SystemMonitorPage = lazy(() => import('@/pages/SystemMonitorPage').then(m => ({ default: m.SystemMonitorPage })))
 const NetworkMonitorPage = lazy(() => import('@/pages/NetworkMonitorPage').then(m => ({ default: m.NetworkMonitorPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+
+// Data Router（createHashRouter）：支持 useBlocker 等 Data Router 专属 API。
+// 原 <HashRouter>+<Routes> 不支持 useBlocker，会导致 ConfigEditorPage 渲染时抛错。
+const router = createHashRouter(
+  createRoutesFromElements(
+    <Route element={<AppLayout />}>
+      <Route path="/" element={<DashboardPage />} />
+      <Route path="/config" element={<ConfigEditorPage />} />
+      <Route path="/system" element={<SystemMonitorPage />} />
+      <Route path="/network" element={<NetworkMonitorPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Route>
+  )
+)
 
 function App(): JSX.Element {
   useBridgeInit()
@@ -160,38 +175,7 @@ function App(): JSX.Element {
 
   return (
     <>
-      <HashRouter>
-        <Suspense
-          fallback={
-            <div
-              className="h-full flex items-center justify-center"
-              style={{ backgroundColor: 'var(--md-deep-background)' }}
-            >
-              <div
-                className="md-breathe"
-                style={{
-                  fontSize: 13,
-                  color: 'var(--md-body-lighter)',
-                  letterSpacing: '0.1em',
-                }}
-              >
-                正在加载页面...
-              </div>
-            </div>
-          }
-        >
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/config" element={<ConfigEditorPage />} />
-              <Route path="/system" element={<SystemMonitorPage />} />
-              <Route path="/network" element={<NetworkMonitorPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Routes>
-        </Suspense>
-      </HashRouter>
+      <RouterProvider router={router} />
       <ToastContainer />
     </>
   )
