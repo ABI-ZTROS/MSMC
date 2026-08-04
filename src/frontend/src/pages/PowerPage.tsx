@@ -4,6 +4,7 @@ import {
   FaMicrochip,
   FaClock,
   FaPlug,
+  FaFlask,
 } from 'react-icons/fa6'
 import {
   getCpuPowerCapabilities,
@@ -227,6 +228,25 @@ export function PowerPage(): JSX.Element {
       <div className="flex items-center mb-4">
         <FaBolt size={18} style={{ marginRight: 8, color: 'var(--md-warning)' }} />
         <h1 className="text-lg font-bold text-[var(--md-body)]">电源管理</h1>
+      </div>
+
+      <div
+        className="md-card p-3 mb-4 md-stagger-item"
+        style={{
+          borderLeft: '3px solid var(--md-warning)',
+          background: 'var(--md-primary-subtle-background)',
+          fontSize: 12,
+          color: 'var(--md-body)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+          <FaFlask size={13} style={{ color: 'var(--md-warning)' }} />
+          <span style={{ fontWeight: 600, color: 'var(--md-warning)' }}>实验性功能</span>
+        </div>
+        <div style={{ color: 'var(--md-body-light)', lineHeight: 1.6 }}>
+          本页涉及系统级电源策略、处理器睿频与调度参数的底层修改，属于实验性能力，不对其安全性与稳定性作保证。
+          异常断电或操作不当可能导致系统电源方案损坏、处理器调度异常，请确保已了解风险后再使用，并在使用前关闭其他重要任务。
+        </div>
       </div>
 
       {/* CPU 电源档位 */}
