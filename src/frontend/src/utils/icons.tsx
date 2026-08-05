@@ -10,13 +10,8 @@
 import type { ComponentType } from 'react'
 import type { IconBaseProps } from 'react-icons'
 import {
-  FaServer,
-  FaGaugeHigh,
-  FaFilePen,
   FaMicrochip,
-  FaNetworkWired,
   FaGear,
-  FaFolder,
   FaFolderOpen,
   FaCirclePlus,
   FaTrashCan,
@@ -29,15 +24,10 @@ import {
   FaMugHot,
   FaTriangleExclamation,
   FaTerminal,
-  FaBook,
   FaDesktop,
   FaBolt,
   FaMemory,
-  FaHardDrive,
   FaEthernet,
-  FaArrowTrendUp,
-  FaCircleInfo,
-  FaShieldHalved,
   FaPlay,
   FaPause,
   FaStop,
@@ -58,30 +48,20 @@ import {
  */
 export const ICON_MAP: Record<string, ComponentType<IconBaseProps>> = {
   // ===== 侧边栏 / 顶层 Tabs =====
-  dashboard:  FaGaugeHigh,
-  server:     FaServer,
-  config:     FaFilePen,
   monitor:    FaMicrochip,
-  network:    FaNetworkWired,
-  settings:   FaGear,
   gear:       FaGear,
 
   // ===== Dashboard / 首页组件 =====
   desktop:    FaDesktop,
-  library:    FaBook,
-  folder:     FaFolder,
   folderOpen: FaFolderOpen,
   add:        FaCirclePlus,
   trash:      FaTrashCan,
   search:     FaMagnifyingGlass,
   close:      FaXmark,
   refresh:    FaRotate,
-  rotate:     FaRotate,
   star:       FaStar,
   terminal:   FaTerminal,
-  info:       FaCircleInfo,
   save:       FaFloppyDisk,
-  floppy:     FaFloppyDisk,
   sliders:    FaSliders,
   check:      FaCheck,
   edit:       FaPenToSquare,
@@ -105,14 +85,10 @@ export const ICON_MAP: Record<string, ComponentType<IconBaseProps>> = {
 
   // ===== 系统监控页 =====
   bolt:       FaBolt,
-  cpu:        FaMicrochip,
   memory:     FaMemory,
-  disk:       FaHardDrive,
   net:        FaEthernet,
-  trend:      FaArrowTrendUp,
 
   // ===== 通用 =====
-  security:   FaShieldHalved,
   link:       FaLink,
 }
 

@@ -427,32 +427,35 @@ public partial class App : Application
             catch { /* 真的连兜底都炸了，继续用 ForceLog */ }
         }
 
-        // 清理 7 天前的旧日志文件（主日志 + 调试日志归档一起清）
-        try
+        // 清理 7 天前的旧日志文件（主日志 + 调试日志归档一起清）—— 移到后台线程避免阻塞启动
+        _ = Task.Run(() =>
         {
-            var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
-            var oldFiles = Directory.GetFiles(logDir, "mcserverguard-*.log")
-                .Concat(Directory.GetFiles(logDir, "debug-*.log"))
-                .Concat(Directory.GetFiles(logDir, "mcserverguard-fallback-*.log"))
-                .Select(f => new FileInfo(f))
-                .Where(f => (DateTime.Now - f.CreationTime).TotalDays > 7)
-                .ToList();
-            foreach (var file in oldFiles)
+            try
             {
-                try { file.Delete(); }
-                catch { /* 忽略单个文件删除失败 */ }
+                var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
+                var oldFiles = Directory.GetFiles(logDir, "mcserverguard-*.log")
+                    .Concat(Directory.GetFiles(logDir, "debug-*.log"))
+                    .Concat(Directory.GetFiles(logDir, "mcserverguard-fallback-*.log"))
+                    .Select(f => new FileInfo(f))
+                    .Where(f => (DateTime.Now - f.CreationTime).TotalDays > 7)
+                    .ToList();
+                foreach (var file in oldFiles)
+                {
+                    try { file.Delete(); }
+                    catch { /* 忽略单个文件删除失败 */ }
+                }
+                if (oldFiles.Count > 0)
+                {
+                    ForceLog($"[BOOT-2] [CLEAN] 已清理 {oldFiles.Count} 个旧日志文件（主+调试+兜底）");
+                    try { Log.Information("[CLEAN] 已清理 {Count} 个旧日志文件", oldFiles.Count); } catch { }
+                }
             }
-            if (oldFiles.Count > 0)
+            catch (Exception ex)
             {
-                ForceLog($"[BOOT-2] [CLEAN] 已清理 {oldFiles.Count} 个旧日志文件（主+调试+兜底）");
-                try { Log.Information("[CLEAN] 已清理 {Count} 个旧日志文件", oldFiles.Count); } catch { }
+                ForceLog($"[BOOT-2] [WARN] 清理旧日志失败: {ex.Message}");
+                try { Log.Warning(ex, "清理旧日志文件失败"); } catch { }
             }
-        }
-        catch (Exception ex)
-        {
-            ForceLog($"[BOOT-2] [WARN] 清理旧日志失败: {ex.Message}");
-            try { Log.Warning(ex, "清理旧日志文件失败"); } catch { }
-        }
+        });
 
         // 再挂载一次 SetupGlobalExceptionHandling（主要是把 Serilog 版本的也挂上，ForceLog 版本在 .cctor 已经挂了）
         SetupGlobalExceptionHandling();
@@ -470,9 +473,23 @@ public partial class App : Application
             // ─────────────────────────────────────────────────────
             // 阶段 -1：用户协议前置校验（优先级最高，必须在任何 UI / NTP / 配置 / 启动页之前）
             // 未同意协议 → 直接 Shutdown，启动窗口根本不会出现
+            //
+            // 【启动优化】三个独立文件读并行化：
+            //   用户协议 Load / 主题 LoadSettings / 电源管理预读
+            //   均为纯文件读 + JSON 解析，无副作用且相互独立，可安全并行
             // ─────────────────────────────────────────────────────
             var userAgreementService = new UserAgreementService();
-            userAgreementService.Load();
+            var earlyThemeService = new ThemeService();
+            var loadAgreementTask = Task.Run(() => userAgreementService.Load());
+            var loadThemeTask = Task.Run(() =>
+            {
+                try { earlyThemeService.LoadSettings(); }
+                catch { /* 忽略加载失败，使用默认主题 */ }
+            });
+            var powerMgmtEnabledTask = Task.Run(() => ReadEnablePowerManagementEarly());
+
+            // 协议加载结果立即需要（可能弹窗），等待完成
+            loadAgreementTask.GetAwaiter().GetResult();
             if (userAgreementService.RequiresReagreement)
             {
                 Log.Information("[LOG] 需要用户同意协议（首次使用或协议已更新），在启动窗口之前弹出协议窗口...");
@@ -490,10 +507,11 @@ public partial class App : Application
             // ─────────────────────────────────────────────────────
             // 阶段 0：提前初始化主题服务（用于启动窗口主题）
             // ─────────────────────────────────────────────────────
-            var earlyThemeService = new ThemeService();
-            try { earlyThemeService.LoadSettings(); }
-            catch { /* 忽略加载失败，使用默认主题 */ }
+            loadThemeTask.GetAwaiter().GetResult();
             earlyThemeService.ApplyTheme();
+
+            // 电源管理预读结果稍后在 DI 注册阶段使用，提前等待并捕获到闭包变量
+            var powerMgmtEnabled = powerMgmtEnabledTask.GetAwaiter().GetResult();
 
             // ─────────────────────────────────────────────────────
             // 阶段 1：显示启动窗口
@@ -567,7 +585,6 @@ public partial class App : Application
                     {
                         startupWindow.SetProgress(percent, status);
                         startupWindow.AppendLog(log);
-                        await Task.Delay(100);  // 100ms 强制延迟，避免竞争态
                     }
 
                     // ServiceCollection 必须在辅助方法之前声明，否则 CS0841
@@ -583,7 +600,7 @@ public partial class App : Application
                     {
                         startupWindow.SetProgress(percent, $"{category} · {displayName}");
                         startupWindow.AppendLog($"[LOAD] {category} 正在装载 {displayName} ...");
-                        await Task.Delay(40);
+                        
                         try
                         {
                             services.AddSingleton<TService, TImpl>();
@@ -595,7 +612,7 @@ public partial class App : Application
                             bootStats.Fail++;
                             startupWindow.AppendLog($"[ERR]  {displayName,-28} 加载失败: {ex.Message}", isError: true);
                         }
-                        await Task.Delay(40);
+                        
                     }
 
                     // 注册单个实例工厂
@@ -604,7 +621,7 @@ public partial class App : Application
                     {
                         startupWindow.SetProgress(percent, $"{category} · {displayName}");
                         startupWindow.AppendLog($"[LOAD] {category} 正在装载 {displayName} ...");
-                        await Task.Delay(40);
+                        
                         try
                         {
                             services.AddSingleton<TService>(factory);
@@ -616,7 +633,7 @@ public partial class App : Application
                             bootStats.Fail++;
                             startupWindow.AppendLog($"[ERR]  {displayName,-28} 加载失败: {ex.Message}", isError: true);
                         }
-                        await Task.Delay(40);
+                        
                     }
 
                     // 注册裸实现类型（无接口）
@@ -625,7 +642,7 @@ public partial class App : Application
                     {
                         startupWindow.SetProgress(percent, $"{category} · {displayName}");
                         startupWindow.AppendLog($"[LOAD] {category} 正在装载 {displayName} ...");
-                        await Task.Delay(40);
+                        
                         try
                         {
                             services.AddSingleton<TImpl>();
@@ -637,13 +654,12 @@ public partial class App : Application
                             bootStats.Fail++;
                             startupWindow.AppendLog($"[ERR]  {displayName,-28} 加载失败: {ex.Message}", isError: true);
                         }
-                        await Task.Delay(40);
+                        
                     }
 
                     await Step(5, "正在搭建 DI 容器...", "[BOOT] io.NET.ZTR_OS 启动序列开始");
                     await Step(6, "正在搭建 DI 容器...", "[BUILD] 解析服务契约拓扑...");
                     await Step(7, "正在搭建 DI 容器...", "[BUILD] ServiceCollection 已实例化，等待注册");
-                    await Task.Delay(80);
 
                     // ════════════ 时间服务 ════════════
                     await RegisterType<TimeService>(8, "[TIME]", "TimeService", "系统时钟/NTP 偏差诊断");
@@ -691,9 +707,7 @@ public partial class App : Application
                     await Register<IProcessSupervisorService, ProcessSupervisorService>(44, "[METRIC]", "ProcessSupervisorService", "Job进程监管/崩溃重启/睡眠防止");
 
                     // 电源管理模块默认关闭（实验性能力）—— 启用后才注册 CpuPowerService
-                    // 此处提前读取 app-config.json 的 EnablePowerManagement 字段
-                    // （IAppConfigService 此时还未 Load，但文件路径是固定的，可独立预读）
-                    var powerMgmtEnabled = ReadEnablePowerManagementEarly();
+                    // EnablePowerManagement 已在启动早期并行预读（见阶段 -1），此处直接使用捕获的 powerMgmtEnabled
                     if (powerMgmtEnabled)
                     {
                         await Register<ICpuPowerService, CpuPowerService>(45, "[METRIC]", "CpuPowerService", "CPU电源/QoS档位/睿频管控");
@@ -892,8 +906,7 @@ public partial class App : Application
 
                     startupWindow.MarkCompleted();
 
-                    // 短暂延迟让用户看到"启动完成"
-                    await Task.Delay(600);
+                    // 短暂延迟让用户看到"启动完成"（已移除人为延迟以加速冷启动）
 
                     // ─────────────────────────────────────────────────────
                     // 【核心切换点】Show MainWindow → 切 ShutdownMode → Close StartupWindow

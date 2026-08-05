@@ -78,18 +78,6 @@ public class EmbeddedResourceProvider : IFrontendResourceProvider
                 Log.Information("[PKG-DIAG]   entry: {Key}", k);
             if (_entryMap.Count > 30)
                 Log.Information("[PKG-DIAG]   ... 共 {Total} 条，仅展示前 30 条。", _entryMap.Count);
-            // 关键资源存在性断言：缺失会导致"白屏但 DOM 在"的现象，直接打 WARNING
-            void AssertEntry(string prefix, string alias)
-            {
-                var exists = _entryMap.Keys.Any(k => k.Contains(prefix, StringComparison.OrdinalIgnoreCase));
-                Log.Information("[PKG-DIAG]   {Alias}: {Exists} (前缀 {Pfx})", alias, exists ? "YES" : "MISSING", prefix);
-            }
-            AssertEntry("index.html",    "入口 index.html");
-            AssertEntry(".css",          "CSS 资源");
-            AssertEntry("/assets/main-", "main.js chunk");
-            AssertEntry("/assets/vendor-","vendor.js chunk");
-            AssertEntry("/assets/globals-","globals.js chunk");
-            AssertEntry("startup.html",  "启动页 startup.html");
         }
         catch (Exception ex)
         {

@@ -67,10 +67,19 @@ export default defineConfig({
         crash: path.resolve(__dirname, 'crash.html'),
       },
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          charts: ['recharts'],
-          icons: ['react-icons'],
+        // 函数形式：精确匹配路径，避免 react-icons 被误归到 vendor，
+        // 同时让 recharts 不再单独成 chunk，随使用它的页面（DashboardPage 等）自然 lazy chunk。
+        // 注意：`node_modules/react/` 加斜杠是为了不匹配 react-icons（react-icons 也以 react 开头）
+        manualChunks(id: string) {
+          if (id.includes('node_modules/react-icons')) return 'icons'
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/react-router')
+          ) {
+            return 'vendor'
+          }
+          return undefined
         },
       },
     },

@@ -44,6 +44,9 @@ export function Sidebar() {
   //    如果 CSS 变量没加载 → width 会算成 auto / 空 / initial
   //    如果图标没加载 → navItems[i].icon.type 会是 undefined 而非 function
   useState(() => {
+    // [FE-DIAG] 诊断代码仅在 DEV 构建生效；生产构建时 import.meta.env.DEV 被 Vite 静态替换为 false，
+    // 下面的 try 块成为死代码会被 esbuild/rollup tree-shake 移除，不会进入生产 bundle。
+    if (!import.meta.env.DEV) return
     try {
       const cs = getComputedStyle(document.documentElement)
       const cssVars = {

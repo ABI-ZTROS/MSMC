@@ -753,15 +753,8 @@
   /* ═══════════════════════════════════════════════════════════════ */
   /* 🪟 弹窗动画 */
   /* ═══════════════════════════════════════════════════════════════ */
-  @keyframes mdFadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
+  /* 注：mdFadeIn 唯一定义在下方 @layer utilities（带 translateY 的更完整版本），
+     此处早期重复定义已被移除以避免覆盖歧义。 */
   @keyframes mdModalIn {
     from {
       opacity: 0;
@@ -1581,15 +1574,7 @@
     animation: mdOrbitReverse 1.8s linear infinite;
   }
 
-  @keyframes mdOrbit {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
+  /* 注：mdOrbit 与 @layer utilities 中的定义完全相同，此处重复定义已移除。 */
   @keyframes mdOrbitReverse {
     from {
       transform: rotate(360deg);
@@ -1604,13 +1589,8 @@
     animation: mdFlow 1.6s var(--md-ease-standard) infinite;
   }
 
-  @keyframes mdFlow {
-    0% {
-      transform: translateX(-100%);
-    }
-    100% {
-      transform: translateX(350%);
-    }
-  }
+  /* 注：mdFlow 实际生效的是 @layer utilities 中的 background-position 版本
+     （utilities 层优先级高于 components，且 .md-flow 在 utilities 中被引用），
+     此处 translateX 重复定义已移除以避免覆盖歧义。 */
 }
 

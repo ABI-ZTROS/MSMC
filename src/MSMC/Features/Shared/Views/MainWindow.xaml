@@ -28,14 +28,6 @@
                       UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
 
-    <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/MSMC;component/Features/Shared/Themes/AppResources.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </Window.Resources>
-
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- [LAYOUT] 整体布局：自定义标题栏 + WebView2（占满，状态栏改到网页里） -->
     <!-- ═══════════════════════════════════════════════════════════════ -->

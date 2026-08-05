@@ -448,7 +448,8 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         try
         {
             // 获取资源流（P1 修复：使用 await 替代 GetAwaiter().GetResult()，消除同步阻塞死锁风险）
-            using var resourceStream = await provider.GetResourceAsync(relativePath);
+            // 注意：移除 using —— CanSeek 分支将 resourceStream 直传 WebView2（异步读取），不能提前 dispose
+            var resourceStream = await provider.GetResourceAsync(relativePath);
             if (resourceStream == null)
             {
                 // favicon.ico 通常不打包进前端资源，浏览器会默认请求它。
@@ -472,10 +473,27 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                 return;
             }
 
-            // 将流读到内存中，避免 ZipArchive 流的生命周期问题
-            var memoryStream = new MemoryStream();
-            resourceStream.CopyTo(memoryStream);
-            memoryStream.Position = 0;
+            // 【启动优化】如果资源流可定位（如 FolderResourceProvider 的 FileStream），
+            // 直接传给 WebView2，避免 MemoryStream 拷贝。
+            // 不可定位流（如 EmbeddedResourceProvider 的 ZipArchiveEntry 流）必须拷贝：
+            //   其 CanSeek=false、Length 抛 NotSupportedException，且生命周期绑定 ZipArchive。
+            Stream responseStream;
+            long contentLength;
+            if (resourceStream.CanSeek)
+            {
+                responseStream = resourceStream;
+                contentLength = resourceStream.Length;
+                // resourceStream 由 WebView2 异步读取，不在此 dispose
+            }
+            else
+            {
+                var memoryStream = new MemoryStream();
+                resourceStream.CopyTo(memoryStream);
+                memoryStream.Position = 0;
+                responseStream = memoryStream;
+                contentLength = memoryStream.Length;
+                resourceStream.Dispose(); // 数据已拷贝，释放原始流
+            }
 
             // 获取 MIME 类型
             var mimeType = provider.GetMimeType(relativePath);
@@ -484,13 +502,13 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             //    导致 Content-Type/MIME 丢失，JS 模块被当成纯文本拒绝执行 → 侧边栏/图标 chunk 全挂
             var headers =
                 $"Content-Type: {mimeType}\r\n" +
-                $"Content-Length: {memoryStream.Length}\r\n" +
+                $"Content-Length: {contentLength}\r\n" +
                 $"Cache-Control: public, max-age=3600\r\n" +
                 $"Access-Control-Allow-Origin: *\r\n";
 
             // 构造响应
             var response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
-                memoryStream,
+                responseStream,
                 200,
                 "OK",
                 headers);
@@ -513,12 +531,12 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                                 "Headers=\"{Hd}\"",
                     ctx, relativePath,
                     actualStatusCode, actualReason,
-                    mimeType, memoryStream.Length,
+                    mimeType, contentLength,
                     headers.Replace("\r\n", " \\r\\n "));
             }
             else
             {
-                Log.Information("[OK] 嵌入资源响应: {Path} ({MimeType}, {Size} bytes)", relativePath, mimeType, memoryStream.Length);
+                Log.Information("[OK] 嵌入资源响应: {Path} ({MimeType}, {Size} bytes)", relativePath, mimeType, contentLength);
             }
         }
         catch (Exception ex)
