@@ -19,6 +19,8 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using io.NET.ZTR_OS.Features.ConfigEditor.Models;
 using io.NET.ZTR_OS.Features.ConfigEditor.Services;
+using io.NET.ZTR_OS.Features.ConfigPreview.Models;
+using io.NET.ZTR_OS.Features.ConfigPreview.Services;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Models;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Services;
 using io.NET.ZTR_OS.Features.ServerDetection.Models;
@@ -32,6 +34,9 @@ using io.NET.ZTR_OS.Features.Shared.ViewModels;
 using io.NET.ZTR_OS.Features.Startup.Services;
 using io.NET.ZTR_OS.Features.JavaInstallation.Constants;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Constants;
+using io.NET.ZTR_OS.Features.CoreDownloader.Services;
+using io.NET.ZTR_OS.Features.PluginManager.Services;
+using System.Security.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -2015,6 +2020,384 @@ public partial class MainWindow : Window
         RegisterNetworkApis();
         RegisterConfigApis();
         RegisterSettingsApis();
+
+        // === 核心下载器 Bridge RPC API (coredl:*) ===
+
+        // 1) 列出核心类型（10 种硬编码给前端）
+        _bridgeService.RegisterRequestHandler("coredl:listSources", _ =>
+        {
+            try
+            {
+                var sources = new[]
+                {
+                    new { key = "vanilla", name = "Vanilla (原版)", desc = "官方 Minecraft 服务端", priority = 1, forCountryHint = (string?)null },
+                    new { key = "paper", name = "PaperMC", desc = "高性能插件兼容服务端（Fill API）", priority = 2, forCountryHint = (string?)null },
+                    new { key = "purpur", name = "PurpurMC", desc = "Paper 分支，更多优化与可调参数", priority = 3, forCountryHint = (string?)null },
+                    new { key = "spigot", name = "SpigotMC", desc = "老牌 Bukkit 插件服务端", priority = 4, forCountryHint = (string?)null },
+                    new { key = "craftbukkit", name = "CraftBukkit", desc = "原始 Bukkit 插件服务端", priority = 5, forCountryHint = (string?)null },
+                    new { key = "fabric", name = "Fabric", desc = "轻量级模组加载器（服务端）", priority = 6, forCountryHint = (string?)null },
+                    new { key = "forge", name = "Forge", desc = "经典 Minecraft Forge 模组服务端", priority = 7, forCountryHint = (string?)null },
+                    new { key = "neoforge", name = "NeoForge", desc = "Forge 现代分支（1.20.1+）", priority = 8, forCountryHint = (string?)null },
+                    new { key = "folia", name = "Folia", desc = "Paper 多线程区块调度分支", priority = 9, forCountryHint = (string?)null },
+                    new { key = "catserver", name = "CatServer", desc = "高版本 Forge+Bukkit 混合端（中国）", priority = 10, forCountryHint = "CN" },
+                };
+                return Task.FromResult<object?>(new { sources });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "coredl:listSources 失败");
+                return Task.FromResult<object?>(new { success = false, error = $"DI not ready: {ex.Message}" });
+            }
+        });
+
+        // 2) 列出指定核心类型的可用版本
+        _bridgeService.RegisterRequestHandler("coredl:listVersions", async payload =>
+        {
+            try
+            {
+                var coreType = "paper";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    coreType = el.TryGetProperty("coreType", out var ct) ? ct.GetString() ?? "paper" : "paper";
+
+                var svc = App.Services.GetService<CoreDownloadService>();
+                if (svc == null)
+                    return new { success = false, error = "DI not ready: CoreDownloadService 未注册" };
+
+                var versions = await svc.ListVersionsAsync(coreType);
+                return new { success = true, versions };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "coredl:listVersions 失败");
+                return new { success = false, error = $"DI not ready: {ex.Message}" };
+            }
+        });
+
+        // 3) 探测下载源可用性与延迟排名
+        _bridgeService.RegisterRequestHandler("coredl:probe", async payload =>
+        {
+            try
+            {
+                string coreType = "paper", version = "latest";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    coreType = el.TryGetProperty("core", out var c) ? c.GetString() ?? "paper" : "paper";
+                    version = el.TryGetProperty("version", out var v) ? v.GetString() ?? "latest" : "latest";
+                }
+
+                var svc = App.Services.GetService<CoreDownloadService>();
+                if (svc == null)
+                    return new { success = false, error = "DI not ready: CoreDownloadService 未注册" };
+
+                var rankedRaw = await svc.ProbeAndRankSourcesAsync(coreType, version);
+                var ranked = rankedRaw.Select(r => new { name = r.Name, latencyMs = r.LatencyMs, alive = r.Alive }).ToList();
+                return new { success = true, ranked };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "coredl:probe 失败");
+                return new { success = false, error = $"DI not ready: {ex.Message}" };
+            }
+        });
+
+        // 4) 下载核心 JAR（带进度/完成事件）
+        _bridgeService.RegisterRequestHandler("coredl:download", async payload =>
+        {
+            try
+            {
+                string coreType = "paper", version = "latest", destDir = "./cores", fileName = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    coreType = el.TryGetProperty("core", out var c) ? c.GetString() ?? "paper" : "paper";
+                    version = el.TryGetProperty("version", out var v) ? v.GetString() ?? "latest" : "latest";
+                    destDir = el.TryGetProperty("dir", out var d) ? d.GetString() ?? "./cores" : "./cores";
+                    fileName = el.TryGetProperty("fileName", out var fn) ? fn.GetString() ?? "" : "";
+                }
+
+                var svc = App.Services.GetService<CoreDownloadService>();
+                if (svc == null)
+                    return new { success = false, error = "DI not ready: CoreDownloadService 未注册" };
+
+                var downloadId = Guid.NewGuid().ToString("N").Substring(0, 12);
+                var progress = new Progress<(long Downloaded, long Total)>(t =>
+                {
+                    var (d, total) = t;
+                    var pct = total > 0 ? Math.Round(d * 100.0 / total, 2) : 0.0;
+                    _ = _bridgeService.SendEventAsync("coredl:progress", new
+                    {
+                        id = downloadId,
+                        downloaded = d,
+                        total,
+                        pct
+                    }).ContinueWith(t2 => Log.Warning(t2.Exception, "推送 coredl:progress 失败"),
+                        TaskContinuationOptions.OnlyOnFaulted);
+                });
+
+                var destFn = string.IsNullOrEmpty(fileName) ? null : fileName;
+                var result = await svc.DownloadSmartAsync(coreType, version, destDir, destFn, progress);
+
+                var success = result.Status == CoreDownloader.Models.CoreDownloadStatus.Completed;
+                _ = _bridgeService.SendEventAsync("coredl:completed", new
+                {
+                    id = downloadId,
+                    savedPath = result.SavedFilePath,
+                    hashVerified = result.HashVerified,
+                    elapsedMs = result.ElapsedMs
+                }).ContinueWith(t2 => Log.Warning(t2.Exception, "推送 coredl:completed 失败"),
+                    TaskContinuationOptions.OnlyOnFaulted);
+
+                return new
+                {
+                    success,
+                    savedPath = result.SavedFilePath,
+                    hashVerified = result.HashVerified,
+                    error = result.ErrorMessage
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "coredl:download 失败");
+                return new { success = false, error = $"DI not ready: {ex.Message}" };
+            }
+        });
+
+        // 5) 取消下载（简化占位版）
+        _bridgeService.RegisterRequestHandler("coredl:cancel", _ =>
+        {
+            try
+            {
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "coredl:cancel 失败");
+                return Task.FromResult<object?>(new { success = false, error = $"DI not ready: {ex.Message}" });
+            }
+        });
+
+        // 6) 校验文件 Hash
+        _bridgeService.RegisterRequestHandler("coredl:verifyHash", payload =>
+        {
+            try
+            {
+                string filePath = "", expectedHash = "", algo = "sha256";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    filePath = el.TryGetProperty("file", out var f) ? f.GetString() ?? "" : "";
+                    expectedHash = el.TryGetProperty("expectedHash", out var eh) ? eh.GetString() ?? "" : "";
+                    algo = el.TryGetProperty("algo", out var a) ? a.GetString() ?? "sha256" : "sha256";
+                }
+
+                if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+                    return Task.FromResult<object?>(new { success = false, verified = false, actualHash = "", error = "文件不存在" });
+
+                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                byte[] hashBytes;
+                string actualHash;
+                switch (algo.Trim().ToLowerInvariant())
+                {
+                    case "sha1":
+                        using (var sha1 = SHA1.Create())
+                            hashBytes = sha1.ComputeHash(fs);
+                        actualHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                        break;
+                    case "sha256":
+                    default:
+                        using (var sha256 = SHA256.Create())
+                            hashBytes = sha256.ComputeHash(fs);
+                        actualHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                        break;
+                }
+
+                var verified = !string.IsNullOrEmpty(expectedHash)
+                    && string.Equals(actualHash, expectedHash.Trim(), StringComparison.OrdinalIgnoreCase);
+
+                return Task.FromResult<object?>(new { success = true, verified, actualHash });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "coredl:verifyHash 失败");
+                return Task.FromResult<object?>(new { success = false, verified = false, actualHash = "", error = $"DI not ready: {ex.Message}" });
+            }
+        });
+
+        // === 插件管理 Bridge RPC API (plugin:*) ===
+
+        // 1) 扫描插件目录
+        _bridgeService.RegisterRequestHandler("plugin:scan", payload =>
+        {
+            try
+            {
+                var serverDir = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    serverDir = el.TryGetProperty("serverDir", out var sd) ? sd.GetString() ?? "" : "";
+
+                // serverDir 为空时尝试用当前选中服务器的工作目录
+                string pluginsDir;
+                if (!string.IsNullOrEmpty(serverDir) && Directory.Exists(serverDir))
+                {
+                    pluginsDir = Path.Combine(serverDir, "plugins");
+                }
+                else
+                {
+                    var vm = _vm;
+                    var wd = vm?.DetectionPage?.SelectedServer?.WorkingDirectory;
+                    if (string.IsNullOrEmpty(wd) || !Directory.Exists(wd))
+                    {
+                        return Task.FromResult<object?>(new
+                        {
+                            items = Array.Empty<object>(),
+                            success = false,
+                            error = "未找到服务器工作目录，请先在 Dashboard 选中一个服务器",
+                        });
+                    }
+                    pluginsDir = Path.Combine(wd, "plugins");
+                }
+
+                if (!Directory.Exists(pluginsDir))
+                {
+                    try { Directory.CreateDirectory(pluginsDir); }
+                    catch { /* 忽略创建失败，返回空列表 */ }
+                }
+
+                var svc = App.Services.GetService<PluginManagerService>() ?? new PluginManagerService();
+                var list = svc.ScanPlugins(pluginsDir);
+                var items = list.Select(p => new
+                {
+                    p.Name,
+                    p.Version,
+                    p.Author,
+                    p.Main,
+                    p.Description,
+                    p.FilePath,
+                    p.Enabled,
+                    p.IsValid,
+                }).ToArray();
+
+                return Task.FromResult<object?>(new { items, pluginsDir, success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "plugin:scan 失败");
+                return Task.FromResult<object?>(new { items = Array.Empty<object>(), success = false, error = ex.Message });
+            }
+        });
+
+        // 2) 切换插件启用/禁用
+        _bridgeService.RegisterRequestHandler("plugin:toggle", payload =>
+        {
+            try
+            {
+                string file = "";
+                bool? enable = null;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    file = el.TryGetProperty("file", out var f) ? f.GetString() ?? "" : "";
+                    if (el.TryGetProperty("enable", out var en) && en.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                        enable = en.GetBoolean();
+                }
+
+                if (string.IsNullOrEmpty(file))
+                    return Task.FromResult<object?>(new { success = false, error = "file 不能为空" });
+
+                var svc = App.Services.GetService<PluginManagerService>() ?? new PluginManagerService();
+                var ok = svc.TogglePlugin(file, enable);
+                return Task.FromResult<object?>(new { success = ok });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "plugin:toggle 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 3) 删除插件
+        _bridgeService.RegisterRequestHandler("plugin:delete", payload =>
+        {
+            try
+            {
+                var file = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    file = el.TryGetProperty("file", out var f) ? f.GetString() ?? "" : "";
+
+                if (string.IsNullOrEmpty(file))
+                    return Task.FromResult<object?>(new { success = false, error = "file 不能为空" });
+
+                var svc = App.Services.GetService<PluginManagerService>() ?? new PluginManagerService();
+                var ok = svc.DeletePlugin(file);
+                return Task.FromResult<object?>(new { success = ok });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "plugin:delete 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 4) 打开插件文件夹
+        _bridgeService.RegisterRequestHandler("plugin:openFolder", payload =>
+        {
+            try
+            {
+                var pluginsDir = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    pluginsDir = el.TryGetProperty("pluginsDir", out var pd) ? pd.GetString() ?? "" : "";
+
+                if (string.IsNullOrEmpty(pluginsDir) || !Directory.Exists(pluginsDir))
+                {
+                    // 兜底：尝试当前选中服务器
+                    var vm = _vm;
+                    var wd = vm?.DetectionPage?.SelectedServer?.WorkingDirectory;
+                    if (!string.IsNullOrEmpty(wd) && Directory.Exists(wd))
+                        pluginsDir = Path.Combine(wd, "plugins");
+                }
+
+                if (string.IsNullOrEmpty(pluginsDir) || !Directory.Exists(pluginsDir))
+                    return Task.FromResult<object?>(new { success = false, error = "插件目录不存在" });
+
+                try
+                {
+                    // Windows: explorer.exe
+                    if (OperatingSystem.IsWindows())
+                    {
+                        Process.Start(new ProcessStartInfo("explorer.exe", pluginsDir) { UseShellExecute = true });
+                    }
+                    else if (OperatingSystem.IsMacOS())
+                    {
+                        Process.Start(new ProcessStartInfo("open", pluginsDir) { UseShellExecute = true });
+                    }
+                    else
+                    {
+                        Process.Start(new ProcessStartInfo("xdg-open", pluginsDir) { UseShellExecute = true });
+                    }
+                    return Task.FromResult<object?>(new { success = true });
+                }
+                catch (Exception openEx)
+                {
+                    Log.Warning(openEx, "打开插件文件夹失败，平台不支持或命令不存在");
+                    return Task.FromResult<object?>(new { success = false, error = openEx.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "plugin:openFolder 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 5) 跳转到配置编辑（简化版：直接返回 success=true，前端自己跳 hash 路由 #/config）
+        _bridgeService.RegisterRequestHandler("plugin:gotoConfig", _ =>
+        {
+            try
+            {
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "plugin:gotoConfig 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
 
         // 订阅来自 JS 的事件（调试用）
         _bridgeService.SubscribeToEvents((action, payload) =>

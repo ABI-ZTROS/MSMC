@@ -15,6 +15,7 @@ const NetworkMonitorPage = lazy(() => import('@/pages/NetworkMonitorPage').then(
 const PowerPage = lazy(() => import('@/pages/PowerPage').then(m => ({ default: m.PowerPage })))
 const JavaPage = lazy(() => import('@/pages/JavaPage').then(m => ({ default: m.JavaPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const SetupWizardPage = lazy(() => import('@/pages/SetupWizardPage').then(m => ({ default: m.SetupWizardPage })))
 
 // Data Router（createHashRouter）：支持 useBlocker 等 Data Router 专属 API。
 // 原 <HashRouter>+<Routes> 不支持 useBlocker，会导致 ConfigEditorPage 渲染时抛错。
@@ -22,6 +23,7 @@ const router = createHashRouter(
   createRoutesFromElements(
     <Route element={<AppLayout />}>
       <Route path="/" element={<DashboardPage />} />
+      <Route path="/wizard" element={<SetupWizardPage />} />
       <Route path="/config" element={<ConfigEditorPage />} />
       <Route path="/system" element={<SystemMonitorPage />} />
       <Route path="/network" element={<NetworkMonitorPage />} />

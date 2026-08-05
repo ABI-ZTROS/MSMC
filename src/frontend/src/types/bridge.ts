@@ -630,3 +630,67 @@ export interface SetAffinityRequest {
   pid: number
   affinityMask: number
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 插件管理类型
+// ─────────────────────────────────────────────────────────────────────
+
+export interface PluginInfoItem {
+  name: string
+  version: string
+  author: string
+  main: string
+  description: string
+  filePath: string
+  enabled: boolean
+  isValid: boolean
+}
+
+export interface PluginScanResponse {
+  items: PluginInfoItem[]
+  pluginsDir: string
+  success: boolean
+  error?: string
+}
+
+export interface PluginOpResult {
+  success: boolean
+  error?: string
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 核心下载类型 (CoreDownloader)
+// ─────────────────────────────────────────────────────────────────────
+
+export interface ListVersionsResult {
+  success: boolean
+  versions: string[]
+  error?: string
+}
+
+export interface CoreDownloadProgress {
+  id: string
+  downloaded: number
+  total: number
+  pct: number
+}
+
+export interface CoreDownloadCompleted {
+  id: string
+  savedPath: string
+  hashVerified: boolean
+  elapsedMs: number
+  error?: string
+}
+
+export interface ProbeRankedSource {
+  name: string
+  latencyMs: number
+  alive: boolean
+}
+
+export interface ProbeResult {
+  success: boolean
+  ranked: ProbeRankedSource[]
+  error?: string
+}

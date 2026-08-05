@@ -31,6 +31,7 @@ using io.NET.ZTR_OS.Features.SystemMonitoring.ViewModels;
 using io.NET.ZTR_OS.Features.Shared.Views;
 using io.NET.ZTR_OS.Features.Startup.Views;
 using io.NET.ZTR_OS.Features.UserAgreement.Views;
+using io.NET.ZTR_OS.Features.CoreDownloader.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -718,6 +719,11 @@ public partial class App : Application
                     await Register<IToastNotificationService, ToastNotificationService>(50, "[BASE]", "ToastNotificationService", "原生 Toast 通知");
                     await RegisterType<MemoryOptimizerService>(51, "[BASE]", "MemoryOptimizerService", "工作集 GC 整理");
                     await Register<IWebView2BridgeService, WebView2BridgeService>(52, "[BASE]", "WebView2BridgeService", "WebView2 ↔ C# 桥接");
+
+                    // ════════════ 核心下载器模块 ════════════
+                    services.AddCoreDownloader();
+                    bootStats.Ok += 4;
+                    startupWindow.AppendLog("[OK]   CoreDownloader 模块已装配（4 个下载源 + 智能调度服务）", isSuccess: true);
 
                     // ════════════ ViewModel ════════════
                     await Step(55, "正在注册 ViewModel...", "[VM] === ViewModel 装配 ===");

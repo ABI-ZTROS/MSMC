@@ -42,6 +42,12 @@ import type {
   PriorityBoostResult,
   TimerResolutionResult,
   PowerRequestResult,
+  PluginScanResponse,
+  PluginOpResult,
+  ListVersionsResult,
+  CoreDownloadProgress,
+  CoreDownloadCompleted,
+  ProbeResult,
 } from '@/types/bridge'
 
 declare global {
@@ -922,4 +928,37 @@ export function stopPowerRequest(): Promise<PowerRequestResult> {
 /** 查询 Power Request 当前状态 */
 export function getPowerRequestState(): Promise<PowerRequestResult> {
   return bridge.invoke<PowerRequestResult>('cpuPower:getPowerRequestState')
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 核心下载 API (CoreDownloader)
+// ═════════════════════════════════════════════════════════════════════
+
+export function listCoreVersions(coreType: string): Promise<ListVersionsResult> {
+  return bridge.invoke<ListVersionsResult>('coredl:listVersions', { coreType })
+}
+
+export function probeCoreSources(core: string, version: string): Promise<ProbeResult> {
+  return bridge.invoke<ProbeResult>('coredl:probe', { core, version })
+}
+
+export function downloadCore(
+  core: string,
+  version: string,
+  dir: string,
+  fileName?: string,
+): Promise<{ success: boolean; savedPath?: string; hashVerified?: boolean; error?: string }> {
+  return bridge.invoke('coredl:download', { core, version, dir, fileName })
+}
+
+export function onCoreDownloadProgress(
+  cb: (p: CoreDownloadProgress) => void,
+): () => void {
+  return bridge.on('coredl:progress', (payload) => cb(payload as CoreDownloadProgress))
+}
+
+export function onCoreDownloadCompleted(
+  cb: (c: CoreDownloadCompleted) => void,
+): () => void {
+  return bridge.on('coredl:completed', (payload) => cb(payload as CoreDownloadCompleted))
 }
