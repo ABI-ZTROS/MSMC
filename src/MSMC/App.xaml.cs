@@ -727,7 +727,6 @@ public partial class App : Application
 
                     // ════════════ 新手服主开箱套件模块 ════════════
                     services.AddSingleton<io.NET.ZTR_OS.Features.PluginManager.Services.PluginManagerService>();
-                    services.AddSingleton<io.NET.ZTR_OS.Features.PlayerManager.Services.PlayerLogParser>();
                     services.AddSingleton<io.NET.ZTR_OS.Features.PlayerManager.Services.JsonFileService>();
                     services.AddSingleton<io.NET.ZTR_OS.Features.BackupManager.Services.BackupService>();
                     services.AddSingleton<io.NET.ZTR_OS.Features.BackupManager.Services.RestoreService>();

@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using io.NET.ZTR_OS.Features.CoreDownloader.Models;

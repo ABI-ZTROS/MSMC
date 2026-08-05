@@ -1,3 +1,4 @@
+using System.IO;
 using System.IO.Compression;
 using io.NET.ZTR_OS.Features.BackupManager.Models;
 
@@ -18,8 +19,7 @@ public class RestoreService
 
     public async Task RestoreAsync(string serverDir, BackupSnapshot snapshot)
     {
-        if (snapshot == null)
-            throw new ArgumentNullException(nameof(snapshot));
+        ArgumentNullException.ThrowIfNull(snapshot);
         await RestoreAsync(serverDir, snapshot.BackupFilePath);
     }
 

@@ -2045,7 +2045,7 @@ public partial class MainWindow : Window
                     new { key = "forge", name = "Forge", desc = "经典 Minecraft Forge 模组服务端", priority = 7, forCountryHint = (string?)null },
                     new { key = "neoforge", name = "NeoForge", desc = "Forge 现代分支（1.20.1+）", priority = 8, forCountryHint = (string?)null },
                     new { key = "folia", name = "Folia", desc = "Paper 多线程区块调度分支", priority = 9, forCountryHint = (string?)null },
-                    new { key = "catserver", name = "CatServer", desc = "高版本 Forge+Bukkit 混合端（中国）", priority = 10, forCountryHint = "CN" },
+                    new { key = "catserver", name = "CatServer", desc = "高版本 Forge+Bukkit 混合端（中国）", priority = 10, forCountryHint = (string?)"CN" },
                 };
                 return Task.FromResult<object?>(new { sources });
             }
@@ -2069,7 +2069,10 @@ public partial class MainWindow : Window
                 if (svc == null)
                     return new { success = false, error = "DI not ready: CoreDownloadService 未注册" };
 
-                var versions = await svc.ListVersionsAsync(coreType);
+                var source = svc.Sources.FirstOrDefault();
+                if (source == null)
+                    return new { success = false, error = "无可用下载源" };
+                var versions = await source.ListVersionsAsync(coreType);
                 return new { success = true, versions };
             }
             catch (Exception ex)
@@ -2095,7 +2098,7 @@ public partial class MainWindow : Window
                 if (svc == null)
                     return new { success = false, error = "DI not ready: CoreDownloadService 未注册" };
 
-                var rankedRaw = await svc.ProbeAndRankSourcesAsync(coreType, version);
+                var rankedRaw = await svc.ProbeAndRankSourcesAsync();
                 var ranked = rankedRaw.Select(r => new { name = r.Name, latencyMs = r.LatencyMs, alive = r.Alive }).ToList();
                 return new { success = true, ranked };
             }
@@ -2205,13 +2208,13 @@ public partial class MainWindow : Window
                     case "sha1":
                         using (var sha1 = SHA1.Create())
                             hashBytes = sha1.ComputeHash(fs);
-                        actualHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                        actualHash = Convert.ToHexStringLower(hashBytes);
                         break;
                     case "sha256":
                     default:
                         using (var sha256 = SHA256.Create())
                             hashBytes = sha256.ComputeHash(fs);
-                        actualHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                        actualHash = Convert.ToHexStringLower(hashBytes);
                         break;
                 }
 

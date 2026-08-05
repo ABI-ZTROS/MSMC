@@ -6,6 +6,7 @@
 // 设计模式: 策略模式（HttpJson + StunUdp），责任链（失败自动降级）
 // -----------------------------------------------------------------------------
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -248,8 +249,8 @@ public class PublicIpDetector
         request[2] = 0; request[3] = 0;
         // Magic Cookie (BE)
         request[4] = (byte)(StunMagicCookie >> 24);
-        request[5] = (byte)(StunMagicCookie >> 16);
-        request[6] = (byte)(StunMagicCookie >> 8);
+        request[5] = unchecked((byte)(StunMagicCookie >> 16));
+        request[6] = unchecked((byte)(StunMagicCookie >> 8));
         request[7] = (byte)(StunMagicCookie & 0xFF);
         // TransactionID
         Buffer.BlockCopy(txId, 0, request, 8, 12);
