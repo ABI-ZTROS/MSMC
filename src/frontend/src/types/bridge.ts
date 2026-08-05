@@ -694,3 +694,93 @@ export interface ProbeResult {
   ranked: ProbeRankedSource[]
   error?: string
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 插件管理（Plugin Manager）类型
+// ─────────────────────────────────────────────────────────────────────
+
+export interface PluginInfo {
+  name: string
+  version: string
+  author: string
+  description: string
+  filePath: string
+  enabled: boolean
+  isValid: boolean
+}
+
+export interface PluginScanResult {
+  success: boolean
+  items: PluginInfo[]
+  error?: string
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 玩家管理（Player Manager）类型
+// ─────────────────────────────────────────────────────────────────────
+
+export interface OnlinePlayer {
+  name: string
+  online: boolean
+  lastSeen: string
+}
+
+export interface PlayerListResult {
+  success: boolean
+  entries: any[]
+  error?: string
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 备份管理（Backup Manager）类型
+// ─────────────────────────────────────────────────────────────────────
+
+export interface BackupSnapshot {
+  timestamp: string
+  label: string
+  sizeBytes: number
+  backupFilePath: string
+  sha1: string
+  worldNames: string[]
+}
+
+export interface BackupListResult {
+  success: boolean
+  snapshots: BackupSnapshot[]
+  error?: string
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 安全模式（SafeMode）类型
+// ─────────────────────────────────────────────────────────────────────
+
+export interface SafeModeStatus {
+  triggered: boolean
+  crashStreak: number
+  currentLevel?: string
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 启动诊断（Diagnostics）类型
+// ─────────────────────────────────────────────────────────────────────
+
+export interface StartupDiagnosis {
+  severity: 'Info' | 'Warning' | 'Critical'
+  description: string
+  recommendation?: string
+  oneClickFixCommandId?: string
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 配置预演（Config Preview）类型
+// ─────────────────────────────────────────────────────────────────────
+
+export interface ConfigImpactSummary {
+  key: string
+  beforeValue: string
+  afterValue: string
+  severity: 'High' | 'Medium' | 'Info'
+  icon: string
+  description: string
+  recommendation?: string
+}

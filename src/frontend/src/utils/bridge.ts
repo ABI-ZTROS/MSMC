@@ -42,12 +42,18 @@ import type {
   PriorityBoostResult,
   TimerResolutionResult,
   PowerRequestResult,
-  PluginScanResponse,
-  PluginOpResult,
   ListVersionsResult,
   CoreDownloadProgress,
   CoreDownloadCompleted,
   ProbeResult,
+  PluginScanResult,
+  OnlinePlayer,
+  PlayerListResult,
+  BackupSnapshot,
+  BackupListResult,
+  SafeModeStatus,
+  StartupDiagnosis,
+  ConfigImpactSummary,
 } from '@/types/bridge'
 
 declare global {
@@ -961,4 +967,101 @@ export function onCoreDownloadCompleted(
   cb: (c: CoreDownloadCompleted) => void,
 ): () => void {
   return bridge.on('coredl:completed', (payload) => cb(payload as CoreDownloadCompleted))
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 插件管理 API (PluginManager)
+// ═════════════════════════════════════════════════════════════════════
+
+export function scanPlugins(serverDir: string): Promise<PluginScanResult> {
+  return bridge.invoke<PluginScanResult>('plugin:scan', { serverDir })
+}
+
+export function togglePlugin(file: string, enable: boolean): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('plugin:toggle', { file, enable })
+}
+
+export function deletePlugin(file: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('plugin:delete', { file })
+}
+
+export function openPluginFolder(pluginsDir: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('plugin:openFolder', { pluginsDir })
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 玩家管理 API (PlayerManager)
+// ═════════════════════════════════════════════════════════════════════
+
+export function getOnlinePlayers(logPath?: string): Promise<{ success: boolean; players: OnlinePlayer[] }> {
+  return bridge.invoke<{ success: boolean; players: OnlinePlayer[] }>('player:getOnline', { logPath })
+}
+
+export function listPlayerFiles(type: string, serverDir: string): Promise<PlayerListResult> {
+  return bridge.invoke<PlayerListResult>('player:list', { type, serverDir })
+}
+
+export function upsertPlayerEntry(type: string, serverDir: string, entry: any): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('player:upsert', { type, serverDir, entry })
+}
+
+export function removePlayerEntry(type: string, serverDir: string, nameOrUuid: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('player:remove', { type, serverDir, nameOrUuid })
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 备份管理 API (BackupManager)
+// ═════════════════════════════════════════════════════════════════════
+
+export function createBackup(serverDir: string, label?: string): Promise<{ success: boolean; snapshot?: BackupSnapshot }> {
+  return bridge.invoke<{ success: boolean; snapshot?: BackupSnapshot }>('backup:create', { serverDir, label })
+}
+
+export function listBackups(serverDir: string): Promise<BackupListResult> {
+  return bridge.invoke<BackupListResult>('backup:list', { serverDir })
+}
+
+export function restoreBackup(serverDir: string, backupPath: string): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('backup:restore', { serverDir, backupPath })
+}
+
+export function deleteBackup(backupPath: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('backup:delete', { backupPath })
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 安全模式 API (SafeMode)
+// ═════════════════════════════════════════════════════════════════════
+
+export function getSafeModeStatus(serverDir: string): Promise<{ success: boolean; status?: SafeModeStatus }> {
+  return bridge.invoke<{ success: boolean; status?: SafeModeStatus }>('safeMode:status', { serverDir })
+}
+
+export function exitSafeMode(serverDir: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('safeMode:exit', { serverDir })
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 启动诊断 API (Diagnostics)
+// ═════════════════════════════════════════════════════════════════════
+
+export function runStartupDiagnostics(params: {
+  lastExitCode: number
+  logTail: string
+  serverDir: string
+  coreType?: string
+  mcVersion?: string
+  javaMajor?: number
+}): Promise<{ success: boolean; diagnoses: StartupDiagnosis[] }> {
+  return bridge.invoke<{ success: boolean; diagnoses: StartupDiagnosis[] }>('diag:startup', params)
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 配置预演 API (Config Impact)
+// ═════════════════════════════════════════════════════════════════════
+
+export function analyzeConfigImpact(
+  changedKVs: Array<{ key: string; before?: string; after?: string }>,
+): Promise<{ success: boolean; summaries: ConfigImpactSummary[] }> {
+  return bridge.invoke<{ success: boolean; summaries: ConfigImpactSummary[] }>('config:analyzeImpact', { changedKVs })
 }

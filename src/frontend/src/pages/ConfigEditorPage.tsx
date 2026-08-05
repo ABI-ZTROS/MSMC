@@ -32,6 +32,8 @@ import {
   // 手动定位 JAR
   selectJarManually,
   getBridge,
+  // 配置预演
+  analyzeConfigImpact,
 } from '@/utils/bridge'
 import { Reveal } from '@/components/ui/Reveal'
 import { useToastStore } from '@/stores/toastStore'
@@ -41,6 +43,7 @@ import type {
   ConfigEntry,
   ConfigEntryGroup,
   ConfigEntriesResponse,
+  ConfigImpactSummary,
 } from '@/types/bridge'
 
 // ─────────────────────────────────────────────────────────────────────
@@ -860,6 +863,60 @@ export function ConfigEditorPage(): JSX.Element {
     }
   }
 
+  // ── 配置预演面板：分析 pendingValues 相对 originalValue 的变更影响 ──
+  const [impactSummaries, setImpactSummaries] = useState<ConfigImpactSummary[]>([])
+  const [impactExpanded, setImpactExpanded] = useState(false)
+  const impactDebounceRef = useRef<number | null>(null)
+
+  // 计算变更的键值对：pendingValues[key] !== entry.originalValue
+  const changedKVs = useMemo(() => {
+    const result: Array<{ key: string; before?: string; after?: string }> = []
+    for (const g of configGroups) {
+      for (const e of g.items) {
+        if (e.key === '__ERROR__') continue
+        if (e.key in pendingValues) {
+          const before = e.originalValue
+          const after = pendingValues[e.key]
+          if (before !== after) {
+            result.push({ key: e.key, before, after })
+          }
+        }
+      }
+    }
+    return result
+  }, [configGroups, pendingValues])
+
+  // 300ms 防抖调用 analyzeConfigImpact
+  useEffect(() => {
+    if (impactDebounceRef.current) {
+      window.clearTimeout(impactDebounceRef.current)
+    }
+    if (changedKVs.length === 0) {
+      if (mountedRef.current) setImpactSummaries([])
+      return
+    }
+    impactDebounceRef.current = window.setTimeout(async () => {
+      try {
+        const resp = await analyzeConfigImpact(changedKVs)
+        if (mountedRef.current && resp.success) {
+          setImpactSummaries(resp.summaries ?? [])
+        }
+      } catch (e) {
+        console.error('配置预演分析失败:', e)
+      }
+    }, 300)
+    return () => {
+      if (impactDebounceRef.current) {
+        window.clearTimeout(impactDebounceRef.current)
+      }
+    }
+  }, [changedKVs])
+
+  const highCount = impactSummaries.filter((s) => s.severity === 'High').length
+  const medCount = impactSummaries.filter((s) => s.severity === 'Medium').length
+  const infoCount = impactSummaries.filter((s) => s.severity === 'Info').length
+  const hasImpact = highCount + medCount + infoCount > 0
+
   const getDisplayValue = (entry: ConfigEntry): string =>
     entry.key in pendingValues ? pendingValues[entry.key] : entry.value
 
@@ -994,6 +1051,95 @@ export function ConfigEditorPage(): JSX.Element {
       <div className="flex-1 flex flex-col gap-3 min-w-0">
         {/* 顶部操作栏 */}
         <Reveal direction="up" delay={80} className="md-card md-card-elevated p-4 flex flex-col gap-2">
+          {/* 配置影响预演面板（仅在有变更影响时显示） */}
+          {hasImpact && (
+            <div
+              className="rounded-lg border overflow-hidden"
+              style={{
+                borderColor: highCount > 0 ? 'var(--md-warning-subtle-border)' : 'var(--md-subtle-border)',
+                backgroundColor: 'var(--md-card-background)',
+              }}
+            >
+              <button
+                onClick={() => setImpactExpanded((v) => !v)}
+                className="w-full flex items-center gap-2 px-3 py-2"
+                style={{ cursor: 'pointer' }}
+              >
+                <FaChevronRight
+                  size={11}
+                  style={{
+                    color: 'var(--md-body-light)',
+                    transition: 'transform 150ms var(--md-ease-standard)',
+                    transform: impactExpanded ? 'rotate(90deg)' : 'none',
+                  }}
+                />
+                <FaLightbulb size={13} style={{ color: 'var(--md-gauge-yellow)' }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--md-body)' }}>
+                  配置影响预演
+                </span>
+                <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--md-body-light)' }}>
+                  🔴 {highCount} &nbsp;🟡 {medCount} &nbsp;🔵 {infoCount}
+                </span>
+              </button>
+              {impactExpanded && (
+                <div className="px-3 pb-2 space-y-1.5">
+                  {impactSummaries.map((s, idx) => (
+                    <div
+                      key={s.key + idx}
+                      className="flex items-start gap-2 rounded-md p-2"
+                      style={{ backgroundColor: 'var(--md-card-hover)' }}
+                    >
+                      <span style={{ fontSize: 14, flexShrink: 0, lineHeight: '20px' }}>
+                        {s.icon || '•'}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--md-body)' }}>
+                          {s.description}
+                        </div>
+                        <div
+                          className="mt-0.5 flex items-center gap-2 flex-wrap"
+                          style={{ fontSize: 10, color: 'var(--md-body-light)', opacity: 0.8 }}
+                        >
+                          <span style={{ fontFamily: 'var(--md-font-mono)' }}>
+                            {s.beforeValue} → {s.afterValue}
+                          </span>
+                          <span
+                            style={{
+                              padding: '1px 6px',
+                              borderRadius: 'var(--md-radius-small)',
+                              backgroundColor:
+                                s.severity === 'High'
+                                  ? 'var(--md-error-subtle)'
+                                  : s.severity === 'Medium'
+                                  ? 'var(--md-warning-subtle-background)'
+                                  : 'var(--md-primary-subtle-background)',
+                              color:
+                                s.severity === 'High'
+                                  ? 'var(--md-error-text)'
+                                  : s.severity === 'Medium'
+                                  ? 'var(--md-gauge-yellow)'
+                                  : 'var(--md-primary-hue-mid)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {s.severity}
+                          </span>
+                        </div>
+                        {s.recommendation && (
+                          <div
+                            className="mt-1"
+                            style={{ fontSize: 11, color: 'var(--md-body-light)', lineHeight: 1.5 }}
+                          >
+                            💡 {s.recommendation}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3">
             {/* 左侧：当前文件名 + 副标题 */}
             <div className="min-w-0">

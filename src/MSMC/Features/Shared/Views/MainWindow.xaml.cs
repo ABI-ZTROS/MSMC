@@ -36,6 +36,12 @@ using io.NET.ZTR_OS.Features.JavaInstallation.Constants;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Constants;
 using io.NET.ZTR_OS.Features.CoreDownloader.Services;
 using io.NET.ZTR_OS.Features.PluginManager.Services;
+using io.NET.ZTR_OS.Features.PlayerManager.Services;
+using io.NET.ZTR_OS.Features.PlayerManager.Models;
+using io.NET.ZTR_OS.Features.BackupManager.Services;
+using io.NET.ZTR_OS.Features.SafeModeKeeper.Services;
+using io.NET.ZTR_OS.Features.SafeModeKeeper.Models;
+using io.NET.ZTR_OS.Features.StartupDiagnostics.Services;
 using System.Security.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -2395,6 +2401,415 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 Log.Error(ex, "plugin:gotoConfig 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════
+        // === 玩家管理 Bridge RPC API (player:*) ===
+        // ═══════════════════════════════════════════════════════
+
+        // 1) 解析最新日志获取在线玩家
+        _bridgeService.RegisterRequestHandler("player:getOnline", payload =>
+        {
+            try
+            {
+                string logPath = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    logPath = el.TryGetProperty("logPath", out var lp) ? lp.GetString() ?? "" : "";
+
+                if (string.IsNullOrEmpty(logPath))
+                    return Task.FromResult<object?>(new { success = true, players = Array.Empty<object>() });
+
+                var players = PlayerLogParser.ParseLogFile(logPath)
+                    .Select(p => new { name = p.Name, online = p.Online, lastSeen = p.At.ToString(@"hh\:mm\:ss") })
+                    .ToList();
+                return Task.FromResult<object?>(new { success = true, players });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "player:getOnline 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 2) 读取白名单/封禁/OP 列表
+        _bridgeService.RegisterRequestHandler("player:listFiles", payload =>
+        {
+            try
+            {
+                string type = "wl", serverDir = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    type = el.TryGetProperty("type", out var t) ? t.GetString() ?? "wl" : "wl";
+                    serverDir = el.TryGetProperty("serverDir", out var sd) ? sd.GetString() ?? "" : "";
+                }
+
+                var svc = App.Services.GetService<JsonFileService>();
+                if (svc == null)
+                    return Task.FromResult<object?>(new { success = false, error = "DI not ready: JsonFileService 未注册" });
+
+                object entries;
+                if (type == "wl")
+                    entries = svc.ReadJson<WhitelistEntry>(serverDir, type);
+                else if (type == "ops")
+                    entries = svc.ReadJson<OpEntry>(serverDir, type);
+                else if (type == "ban")
+                    entries = svc.ReadJson<BanEntry>(serverDir, type);
+                else
+                    throw new ArgumentException($"Unknown type: {type}");
+
+                return Task.FromResult<object?>(new { success = true, entries });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "player:listFiles 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 3) 新增/更新白名单/封禁/OP 条目
+        _bridgeService.RegisterRequestHandler("player:upsert", payload =>
+        {
+            try
+            {
+                string type = "wl", serverDir = "";
+                JsonElement? entryEl = null;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    type = el.TryGetProperty("type", out var t) ? t.GetString() ?? "wl" : "wl";
+                    serverDir = el.TryGetProperty("serverDir", out var sd) ? sd.GetString() ?? "" : "";
+                    if (el.TryGetProperty("entry", out var e) && e.ValueKind == JsonValueKind.Object)
+                        entryEl = e;
+                }
+
+                if (entryEl == null)
+                    return Task.FromResult<object?>(new { success = false, error = "缺少 entry 字段" });
+
+                var svc = App.Services.GetService<JsonFileService>();
+                if (svc == null)
+                    return Task.FromResult<object?>(new { success = false, error = "DI not ready: JsonFileService 未注册" });
+
+                var raw = entryEl.Value.GetRawText();
+                switch (type)
+                {
+                    case "wl":
+                        svc.Upsert(serverDir, type, JsonSerializer.Deserialize<WhitelistEntry>(raw)!);
+                        break;
+                    case "ops":
+                        svc.Upsert(serverDir, type, JsonSerializer.Deserialize<OpEntry>(raw)!);
+                        break;
+                    case "ban":
+                        svc.Upsert(serverDir, type, JsonSerializer.Deserialize<BanEntry>(raw)!);
+                        break;
+                    default:
+                        throw new ArgumentException($"Unknown type: {type}");
+                }
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "player:upsert 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 4) 删除白名单/封禁/OP 条目
+        _bridgeService.RegisterRequestHandler("player:remove", payload =>
+        {
+            try
+            {
+                string type = "wl", serverDir = "", nameOrUuid = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    type = el.TryGetProperty("type", out var t) ? t.GetString() ?? "wl" : "wl";
+                    serverDir = el.TryGetProperty("serverDir", out var sd) ? sd.GetString() ?? "" : "";
+                    nameOrUuid = el.TryGetProperty("nameOrUuid", out var n) ? n.GetString() ?? "" : "";
+                }
+
+                var svc = App.Services.GetService<JsonFileService>();
+                if (svc == null)
+                    return Task.FromResult<object?>(new { success = false, error = "DI not ready: JsonFileService 未注册" });
+
+                var removed = svc.Remove(serverDir, type, nameOrUuid);
+                return Task.FromResult<object?>(new { success = true, removed });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "player:remove 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 5) Rcon 命令（占位）
+        _bridgeService.RegisterRequestHandler("player:rconCmd", _ =>
+        {
+            try
+            {
+                return Task.FromResult<object?>(new { success = false, error = "Rcon 功能暂未实现" });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "player:rconCmd 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════
+        // === 备份管理 Bridge RPC API (backup:*) ===
+        // ═══════════════════════════════════════════════════════
+
+        // 1) 创建备份
+        _bridgeService.RegisterRequestHandler("backup:create", async payload =>
+        {
+            try
+            {
+                string serverDir = "", label = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    serverDir = el.TryGetProperty("serverDir", out var sd) ? sd.GetString() ?? "" : "";
+                    label = el.TryGetProperty("label", out var l) ? l.GetString() ?? "" : "";
+                }
+
+                var svc = App.Services.GetService<BackupService>();
+                if (svc == null)
+                    return new { success = false, error = "DI not ready: BackupService 未注册" };
+
+                var snapshot = await svc.CreateAsync(serverDir, label);
+                return new { success = true, snapshot };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "backup:create 失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // 2) 列出备份
+        _bridgeService.RegisterRequestHandler("backup:list", async payload =>
+        {
+            try
+            {
+                string serverDir = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    serverDir = el.TryGetProperty("serverDir", out var sd) ? sd.GetString() ?? "" : "";
+
+                var svc = App.Services.GetService<BackupService>();
+                if (svc == null)
+                    return new { success = false, error = "DI not ready: BackupService 未注册" };
+
+                var snapshots = await svc.ListAsync(serverDir);
+                return new { success = true, snapshots };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "backup:list 失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // 3) 还原备份
+        _bridgeService.RegisterRequestHandler("backup:restore", async payload =>
+        {
+            try
+            {
+                string serverDir = "", backupPath = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    serverDir = el.TryGetProperty("serverDir", out var sd) ? sd.GetString() ?? "" : "";
+                    if (el.TryGetProperty("backupPath", out var bp) && bp.ValueKind == JsonValueKind.String)
+                        backupPath = bp.GetString() ?? "";
+                    else if (el.TryGetProperty("backupId", out var bid) && bid.ValueKind == JsonValueKind.String)
+                        backupPath = bid.GetString() ?? "";
+                }
+
+                var svc = App.Services.GetService<RestoreService>();
+                if (svc == null)
+                    return new { success = false, error = "DI not ready: RestoreService 未注册" };
+
+                await svc.RestoreAsync(serverDir, backupPath);
+                return new { success = true };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "backup:restore 失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // 4) 删除备份
+        _bridgeService.RegisterRequestHandler("backup:delete", payload =>
+        {
+            try
+            {
+                string backupPath = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    if (el.TryGetProperty("backupPath", out var bp) && bp.ValueKind == JsonValueKind.String)
+                        backupPath = bp.GetString() ?? "";
+                    else if (el.TryGetProperty("backupId", out var bid) && bid.ValueKind == JsonValueKind.String)
+                        backupPath = bid.GetString() ?? "";
+                }
+
+                if (string.IsNullOrEmpty(backupPath))
+                    return Task.FromResult<object?>(new { success = false, error = "缺少 backupPath/backupId" });
+
+                if (File.Exists(backupPath))
+                    File.Delete(backupPath);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "backup:delete 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════
+        // === 安全模式 Bridge RPC API (safemode:*) ===
+        // ═══════════════════════════════════════════════════════
+
+        // 1) 读取安全模式状态
+        _bridgeService.RegisterRequestHandler("safemode:getStatus", payload =>
+        {
+            try
+            {
+                string serverDir = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    serverDir = el.TryGetProperty("serverDir", out var sd) ? sd.GetString() ?? "" : "";
+
+                if (string.IsNullOrEmpty(serverDir))
+                    return Task.FromResult<object?>(new { success = false, error = "缺少 serverDir" });
+
+                var tracker = new CrashTrackerService(serverDir);
+                SafeModeLevel? currentLevel = null;
+                var manifestPath = Path.Combine(serverDir, ".msmc", "safemode_manifest.json");
+                if (File.Exists(manifestPath))
+                {
+                    try
+                    {
+                        var manifest = JsonSerializer.Deserialize<SafeModeManifest>(File.ReadAllText(manifestPath));
+                        if (manifest != null)
+                            currentLevel = manifest.AppliedLevel;
+                    }
+                    catch
+                    {
+                        // manifest 损坏不影响状态读取
+                    }
+                }
+
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    triggered = tracker.SafeModeTriggered,
+                    crashStreak = tracker.CurrentCrashStreak,
+                    currentLevel,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "safemode:getStatus 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 2) 退出安全模式
+        _bridgeService.RegisterRequestHandler("safemode:exitSafeMode", payload =>
+        {
+            try
+            {
+                string serverDir = "";
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    serverDir = el.TryGetProperty("serverDir", out var sd) ? sd.GetString() ?? "" : "";
+
+                var svc = App.Services.GetService<SafeModeBootstrapper>();
+                if (svc == null)
+                    return Task.FromResult<object?>(new { success = false, error = "DI not ready: SafeModeBootstrapper 未注册" });
+
+                svc.ExitSafeMode(serverDir);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "safemode:exitSafeMode 失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════
+        // === 启动诊断 Bridge RPC API (diag:*) ===
+        // ═══════════════════════════════════════════════════════
+
+        // 1) 启动失败时运行诊断
+        _bridgeService.RegisterRequestHandler("diag:runOnFailedStart", async payload =>
+        {
+            try
+            {
+                string logTail = "", coreType = "", mcVersion = "";
+                int javaMajor = 0;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    logTail = el.TryGetProperty("logTail", out var lt) ? lt.GetString() ?? "" : "";
+                    coreType = el.TryGetProperty("coreType", out var ct) ? ct.GetString() ?? "" : "";
+                    mcVersion = el.TryGetProperty("mcVersion", out var mv) ? mv.GetString() ?? "" : "";
+                    if (el.TryGetProperty("javaMajor", out var jm) && jm.ValueKind == JsonValueKind.Number)
+                        javaMajor = jm.GetInt32();
+                }
+
+                var svc = App.Services.GetService<StartupDiagnosticService>();
+                if (svc == null)
+                    return new { success = false, error = "DI not ready: StartupDiagnosticService 未注册" };
+
+                var diagnoses = await svc.RunAllAsync(logTail, coreType, mcVersion, javaMajor);
+                return new { success = true, diagnoses };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "diag:runOnFailedStart 失败");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════
+        // === 配置预览 Bridge RPC API (cfgpreview:*) ===
+        // ═══════════════════════════════════════════════════════
+
+        // 1) 分析配置变更影响
+        _bridgeService.RegisterRequestHandler("cfgpreview:analyze", payload =>
+        {
+            try
+            {
+                var changedKVs = new List<(string key, string? before, string? after)>();
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object
+                    && el.TryGetProperty("changedKVs", out var arr) && arr.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in arr.EnumerateArray())
+                    {
+                        if (item.ValueKind != JsonValueKind.Object) continue;
+                        var key = item.TryGetProperty("key", out var k) ? k.GetString() ?? "" : "";
+                        string? before = null, after = null;
+                        if (item.TryGetProperty("before", out var b))
+                            before = b.ValueKind == JsonValueKind.Null ? null
+                                : b.ValueKind == JsonValueKind.String ? b.GetString()
+                                : b.GetRawText();
+                        if (item.TryGetProperty("after", out var a))
+                            after = a.ValueKind == JsonValueKind.Null ? null
+                                : a.ValueKind == JsonValueKind.String ? a.GetString()
+                                : a.GetRawText();
+                        changedKVs.Add((key, before, after));
+                    }
+                }
+
+                var svc = App.Services.GetService<ConfigImpactAnalyzer>();
+                if (svc == null)
+                    return Task.FromResult<object?>(new { success = false, error = "DI not ready: ConfigImpactAnalyzer 未注册" });
+
+                var summaries = svc.Analyze(changedKVs);
+                return Task.FromResult<object?>(new { success = true, summaries });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "cfgpreview:analyze 失败");
                 return Task.FromResult<object?>(new { success = false, error = ex.Message });
             }
         });

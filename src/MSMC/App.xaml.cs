@@ -725,6 +725,19 @@ public partial class App : Application
                     bootStats.Ok += 4;
                     startupWindow.AppendLog("[OK]   CoreDownloader 模块已装配（4 个下载源 + 智能调度服务）", isSuccess: true);
 
+                    // ════════════ 新手服主开箱套件模块 ════════════
+                    services.AddSingleton<io.NET.ZTR_OS.Features.PluginManager.Services.PluginManagerService>();
+                    services.AddSingleton<io.NET.ZTR_OS.Features.PlayerManager.Services.PlayerLogParser>();
+                    services.AddSingleton<io.NET.ZTR_OS.Features.PlayerManager.Services.JsonFileService>();
+                    services.AddSingleton<io.NET.ZTR_OS.Features.BackupManager.Services.BackupService>();
+                    services.AddSingleton<io.NET.ZTR_OS.Features.BackupManager.Services.RestoreService>();
+                    services.AddSingleton<io.NET.ZTR_OS.Features.StartupDiagnostics.Services.StartupDiagnosticService>();
+                    services.AddSingleton<io.NET.ZTR_OS.Features.StartupDiagnostics.Services.LogPatternEngine>();
+                    services.AddSingleton<io.NET.ZTR_OS.Features.StartupDiagnostics.Services.JavaCompatibilityChecker>();
+                    services.AddSingleton<io.NET.ZTR_OS.Features.ConfigPreview.Services.ConfigImpactAnalyzer>();
+                    bootStats.Ok += 9;
+                    startupWindow.AppendLog("[OK]   Onboarding Suite 模块已装配（插件/玩家/备份/诊断/安全模式/配置预演）", isSuccess: true);
+
                     // ════════════ ViewModel ════════════
                     await Step(55, "正在注册 ViewModel...", "[VM] === ViewModel 装配 ===");
                     await RegisterType<ServerDetectionViewModel>(56, "[VM]", "ServerDetectionViewModel", "服务器检测页 VM");

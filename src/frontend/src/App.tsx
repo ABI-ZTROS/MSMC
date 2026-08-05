@@ -16,6 +16,9 @@ const PowerPage = lazy(() => import('@/pages/PowerPage').then(m => ({ default: m
 const JavaPage = lazy(() => import('@/pages/JavaPage').then(m => ({ default: m.JavaPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const SetupWizardPage = lazy(() => import('@/pages/SetupWizardPage').then(m => ({ default: m.SetupWizardPage })))
+const PluginManagerPage = lazy(() => import('@/pages/PluginManagerPage').then(m => ({ default: m.PluginManagerPage })))
+const PlayerManagerPage = lazy(() => import('@/pages/PlayerManagerPage').then(m => ({ default: m.PlayerManagerPage })))
+const BackupManagerPage = lazy(() => import('@/pages/BackupManagerPage').then(m => ({ default: m.BackupManagerPage })))
 
 // Data Router（createHashRouter）：支持 useBlocker 等 Data Router 专属 API。
 // 原 <HashRouter>+<Routes> 不支持 useBlocker，会导致 ConfigEditorPage 渲染时抛错。
@@ -25,6 +28,9 @@ const router = createHashRouter(
       <Route path="/" element={<DashboardPage />} />
       <Route path="/wizard" element={<SetupWizardPage />} />
       <Route path="/config" element={<ConfigEditorPage />} />
+      <Route path="/plugins" element={<PluginManagerPage />} />
+      <Route path="/players" element={<PlayerManagerPage />} />
+      <Route path="/backup" element={<BackupManagerPage />} />
       <Route path="/system" element={<SystemMonitorPage />} />
       <Route path="/network" element={<NetworkMonitorPage />} />
       <Route path="/power" element={<PowerPage />} />

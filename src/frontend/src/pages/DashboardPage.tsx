@@ -1346,7 +1346,14 @@ export function DashboardPage(): JSX.Element {
                   <div className="md-empty-state-text" style={{ fontSize: 11 }}>
                     还没有已知服务器
                   </div>
-                  <div style={{ fontSize: 10, opacity: 0.5 }}>点击「导入服务器」开始</div>
+                  <div style={{ fontSize: 10, opacity: 0.5, marginBottom: 8 }}>点击「导入服务器」开始</div>
+                  <button
+                    className="md-btn md-btn-primary"
+                    style={{ fontSize: 11, padding: '4px 12px' }}
+                    onClick={() => { window.location.hash = '#/wizard' }}
+                  >
+                    🎉 第一次使用？启动开服向导
+                  </button>
                 </div>
               ) : (
                 knownServers.map((server, idx) => (
