@@ -6,6 +6,7 @@
 // 设计模式: 策略模式（HttpJson + StunUdp），责任链（失败自动降级）
 // -----------------------------------------------------------------------------
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -247,10 +248,10 @@ public class PublicIpDetector
         // Length = 0（无属性）
         request[2] = 0; request[3] = 0;
         // Magic Cookie (BE)
-        request[4] = (byte)(StunMagicCookie >> 24);
-        request[5] = (byte)(StunMagicCookie >> 16);
-        request[6] = (byte)(StunMagicCookie >> 8);
-        request[7] = (byte)(StunMagicCookie & 0xFF);
+        request[4] = unchecked((byte)(StunMagicCookie >> 24));
+        request[5] = unchecked((byte)(StunMagicCookie >> 16));
+        request[6] = unchecked((byte)(StunMagicCookie >> 8));
+        request[7] = unchecked((byte)(StunMagicCookie & 0xFF));
         // TransactionID
         Buffer.BlockCopy(txId, 0, request, 8, 12);
 
@@ -317,9 +318,9 @@ public class PublicIpDetector
                 uint realAddr = xAddr ^ StunMagicCookie;
                 var ipBytes = new[]
                 {
-                    (byte)(realAddr >> 24),
-                    (byte)(realAddr >> 16),
-                    (byte)(realAddr >> 8),
+                    unchecked((byte)(realAddr >> 24)),
+                    unchecked((byte)(realAddr >> 16)),
+                    unchecked((byte)(realAddr >> 8)),
                     (byte)(realAddr & 0xFF),
                 };
                 return new IPAddress(ipBytes).ToString();

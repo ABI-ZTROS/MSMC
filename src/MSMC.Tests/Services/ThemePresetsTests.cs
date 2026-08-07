@@ -31,9 +31,9 @@ public class ThemePresetsTests
         {
             Assert.False(string.IsNullOrWhiteSpace(p.Key), "预设 Key 不能为空");
             Assert.False(string.IsNullOrWhiteSpace(p.Label), $"预设 {p.Key} 的中文名缺失");
-            Assert.Matches("^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", p.PrimaryColorHex,
+            Assert.True(System.Text.RegularExpressions.Regex.IsMatch(p.PrimaryColorHex, "^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"),
                 $"预设 {p.Key} 主色不是有效的 HEX: {p.PrimaryColorHex}");
-            Assert.Matches("^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", p.AccentColorHex,
+            Assert.True(System.Text.RegularExpressions.Regex.IsMatch(p.AccentColorHex, "^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"),
                 $"预设 {p.Key} 强调色不是有效的 HEX: {p.AccentColorHex}");
 
             primaries.Add(p.PrimaryColorHex);
