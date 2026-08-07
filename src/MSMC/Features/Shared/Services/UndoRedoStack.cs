@@ -84,25 +84,18 @@ public class UndoRedoStack<T>
     /// <param name="state">新的当前状态</param>
     /// <remarks>
     /// 行为：
-    /// 1) 若 Current 已经被设置过（不是第一次 Push），把旧 Current 放进 Undo 栈
+    /// 1) 把旧 Current 放进 Undo 栈（首次 Push 也会入栈，使可撤销回 default 状态）
     /// 2) 更新 Current = state
     /// 3) 清空 Redo 栈（分支产生，旧 Redo 路径作废）
     /// 4) 超过容量时，从 Undo 栈底移除最老的条目
     /// </remarks>
     public void Push(T state)
     {
-        // 第一次 Push：Current 尚未被初始化，不需要入 Undo
-        if (_undo.Count > 0 || !EqualityComparer<T>.Default.Equals(Current, default))
-        {
-            // 如果 Current 与新 state 完全相同，可以选择跳过压栈避免重复记录
-            // 这里保持严格语义：调用方 Push 就记录一次
-            _undo.Add(Current);
+        _undo.Add(Current);
 
-            // 容量淘汰：移除最老条目（List 头部 = 栈底）
-            if (_maxHistory > 0 && _undo.Count > _maxHistory)
-            {
-                _undo.RemoveAt(0);
-            }
+        if (_maxHistory > 0 && _undo.Count >= _maxHistory)
+        {
+            _undo.RemoveAt(0);
         }
 
         Current = state;

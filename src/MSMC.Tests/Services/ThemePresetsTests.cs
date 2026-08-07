@@ -50,8 +50,10 @@ public class ThemePresetsTests
     {
         var svc = new ThemeService();
         var originalPrimary = svc.PrimaryColor;
+        var originalHex = $"#{originalPrimary.R:X2}{originalPrimary.G:X2}{originalPrimary.B:X2}";
+
         var preset = ThemePresetRegistry.GetAllPresets()
-            .First(p => !p.PrimaryColorHex.EndsWith(originalPrimary.ToString().Trim('#'), StringComparison.OrdinalIgnoreCase));
+            .First(p => !string.Equals(p.PrimaryColorHex, originalHex, StringComparison.OrdinalIgnoreCase));
 
         ThemePresetRegistry.ApplyPreset(svc, preset.Key);
 
