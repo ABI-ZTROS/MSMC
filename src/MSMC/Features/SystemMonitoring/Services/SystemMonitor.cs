@@ -493,13 +493,15 @@ public class SystemMonitor : ISystemMonitor
 
     /// <summary>
     /// CPU 采集是否处于降级模式（主链路持续失败后切换到 WMI 备用链路）
+    /// volatile 修饰确保多线程可见性：Timer 回调线程池写入，采集线程读取
     /// </summary>
-    private bool _cpuFallbackMode;
+    private volatile bool _cpuFallbackMode;
 
     /// <summary>
     /// CPU 主链路连续失败计数器，达到阈值后触发降级
+    /// volatile 修饰确保多线程可见性
     /// </summary>
-    private int _cpuPrimaryFailureCount;
+    private volatile int _cpuPrimaryFailureCount;
 
     /// <summary>
     /// 触发降级的连续失败阈值

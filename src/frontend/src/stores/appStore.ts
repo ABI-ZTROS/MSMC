@@ -34,15 +34,23 @@ export const useAppStore = create<AppState>((set) => ({
   setVersion: (version) => set({ version }),
   setAdmin: (isAdmin) => set({ isAdmin }),
   setTheme: (theme) => {
-    if (theme.mode === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
+    try {
+      // 防御性检查：确保在浏览器环境中执行（避免 SSR/Node 环境报错）
+      if (typeof document !== 'undefined' && document.documentElement) {
+        if (theme.mode === 'dark') {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+      }
+      if (theme.primaryColor) {
+        applyPrimaryColor(theme.primaryColor)
+      }
+      set({ theme })
+    } catch (error) {
+      console.error('应用主题失败:', error)
+      set({ theme })
     }
-    if (theme.primaryColor) {
-      applyPrimaryColor(theme.primaryColor)
-    }
-    set({ theme })
   },
   setStatusMessage: (message) => set({ statusMessage: message }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),

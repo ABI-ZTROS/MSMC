@@ -67,7 +67,7 @@ public class NetworkService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "获取端口列表失败");
+            Log.Warning(ex, "获取端口列表失败（将返回空列表）");
             return [];
         }
     }
@@ -163,40 +163,44 @@ public class NetworkService
         try
         {
             var portInfo = GetPortInfo(port);
-            if (portInfo?.ProcessId == null)
+            if (portInfo == null || !portInfo.ProcessId.HasValue)
+            {
+                Log.Debug("端口 {Port} 无关联进程，无需终止", port);
                 return false;
+            }
 
-            using var process = Process.GetProcessById(portInfo.ProcessId.Value);
+            var pid = portInfo.ProcessId.Value;
+            var processName = portInfo.ProcessName ?? "unknown";
+
+            using var process = Process.GetProcessById(pid);
 
             try
             {
                 if (process.CloseMainWindow())
                 {
                     Log.Information("已请求优雅停止端口 {Port} 的进程 {Name} (PID={Pid})，等待 3 秒",
-                        port, portInfo.ProcessName, portInfo.ProcessId);
+                        port, processName, pid);
                     if (process.WaitForExit(3000))
                     {
-                        Log.Information("进程已优雅退出: {Name} (PID={Pid})",
-                            portInfo.ProcessName, portInfo.ProcessId);
+                        Log.Information("进程已优雅退出: {Name} (PID={Pid})", processName, pid);
                         return true;
                     }
-                    Log.Warning("优雅停止超时，强杀进程: {Name} (PID={Pid})",
-                        portInfo.ProcessName, portInfo.ProcessId);
+                    Log.Warning("优雅停止超时，强杀进程: {Name} (PID={Pid})", processName, pid);
                 }
             }
             catch (Exception ex)
             {
-                Log.Warning(ex, "CloseMainWindow 失败，降级到强杀");
+                Log.Warning(ex, "CloseMainWindow 失败，降级到强杀: {Name} (PID={Pid})", processName, pid);
             }
 
             process.Kill();
             Log.Information("已强杀占用端口 {Port} 的进程 {Name} (PID={Pid})",
-                port, portInfo.ProcessName, portInfo.ProcessId);
+                port, processName, pid);
             return true;
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 5)
         {
-            Log.Error(ex, "结束端口 {Port} 的进程失败：权限不足，请以管理员身份运行程序", port);
+            Log.Warning(ex, "结束端口 {Port} 的进程失败：权限不足，请以管理员身份运行程序", port);
             return false;
         }
         catch (Exception ex)
