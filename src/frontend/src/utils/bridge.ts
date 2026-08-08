@@ -42,6 +42,14 @@ import type {
   PriorityBoostResult,
   TimerResolutionResult,
   PowerRequestResult,
+  NotificationEvent,
+  NotificationDispatchResult,
+  ScheduledTask,
+  ExecutionRecord,
+  MarketProject,
+  MarketVersion,
+  InstallResult,
+  InstalledPlugin,
 } from '@/types/bridge'
 
 declare global {
@@ -922,4 +930,56 @@ export function stopPowerRequest(): Promise<PowerRequestResult> {
 /** 查询 Power Request 当前状态 */
 export function getPowerRequestState(): Promise<PowerRequestResult> {
   return bridge.invoke<PowerRequestResult>('cpuPower:getPowerRequestState')
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 通知系统 API
+// ═════════════════════════════════════════════════════════════════════
+
+export function dispatchNotification(evt: NotificationEvent): Promise<NotificationDispatchResult> {
+  return bridge.invoke<NotificationDispatchResult>('notify.dispatch', evt)
+}
+
+export function testNotificationChannel(message?: string): Promise<NotificationDispatchResult> {
+  return bridge.invoke<NotificationDispatchResult>('notify.test', message)
+}
+
+export function getScheduledTasks(): Promise<ScheduledTask[]> {
+  return bridge.invoke<ScheduledTask[]>('scheduler.list')
+}
+
+export function addScheduledTask(task: ScheduledTask): Promise<{ success: boolean; id: string }> {
+  return bridge.invoke<{ success: boolean; id: string }>('scheduler.add', task)
+}
+
+export function deleteScheduledTask(id: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('scheduler.delete', id)
+}
+
+export function runScheduledTaskNow(id: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('scheduler.runNow', id)
+}
+
+export function getSchedulerHistory(maxRecords: number = 50): Promise<ExecutionRecord[]> {
+  return bridge.invoke<ExecutionRecord[]>('scheduler.history', maxRecords)
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// 插件市场 API
+// ═════════════════════════════════════════════════════════════════════
+
+export function searchMarket(query: string, limit: number = 20): Promise<MarketProject[]> {
+  return bridge.invoke<MarketProject[]>('market.search', { query, limit })
+}
+
+export function getMarketVersions(projectId: string): Promise<MarketVersion[]> {
+  return bridge.invoke<MarketVersion[]>('market.versions', projectId)
+}
+
+export function installPlugin(version: MarketVersion, serverPath: string): Promise<InstallResult> {
+  return bridge.invoke<InstallResult>('market.install', { version, serverPath })
+}
+
+export function getInstalledPlugins(serverPath: string): Promise<InstalledPlugin[]> {
+  return bridge.invoke<InstalledPlugin[]>('market.listInstalled', serverPath)
 }

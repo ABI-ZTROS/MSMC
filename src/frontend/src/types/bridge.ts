@@ -630,3 +630,165 @@ export interface SetAffinityRequest {
   pid: number
   affinityMask: number
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 通知系统类型
+// ─────────────────────────────────────────────────────────────────────
+
+export type NotificationEventType =
+  | 'ServerStarted'
+  | 'ServerStopped'
+  | 'ServerCrashed'
+  | 'BackupCompleted'
+  | 'BackupFailed'
+  | 'PluginInstalled'
+  | 'PluginUpdateAvailable'
+  | 'ScheduleCompleted'
+  | 'ManualTest'
+  | 'SystemAlert'
+
+export interface NotificationEvent {
+  id?: string
+  eventType: NotificationEventType
+  title: string
+  message: string
+  sourceModule?: string
+  targetServerId?: string
+}
+
+export interface NotificationChannelConfig {
+  discord?: {
+    enabled: boolean
+    webhookUrl: string
+    botUsername?: string
+    avatarUrl?: string
+  }
+  genericWebhook?: {
+    enabled: boolean
+    url: string
+    authorizationHeader?: string
+  }
+  email?: {
+    enabled: boolean
+    smtpHost: string
+    smtpPort: number
+    username: string
+    password: string
+    fromAddress: string
+    toAddresses: string
+    useTls: boolean
+  }
+  windowsToast?: {
+    enabled: boolean
+  }
+  retryMaxAttempts: number
+  retryBaseDelayMs: number
+}
+
+export interface NotificationDispatchResult {
+  eventId: string
+  totalChannels: number
+  successfulChannels: number
+  channelResults?: Record<string, boolean>
+  isSuccess: boolean
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 调度系统类型
+// ─────────────────────────────────────────────────────────────────────
+
+export type TriggerType = 'Interval' | 'Cron' | 'OneTime'
+export type ActionType = 'SendNotification' | 'RunCommand' | 'Backup'
+export type TaskStatus = 'Idle' | 'Running' | 'Completed' | 'Failed'
+
+export interface TriggerConfig {
+  type: TriggerType
+  interval?: string
+  cronExpression?: string
+  oneTimeAt?: string
+}
+
+export interface ActionConfig {
+  type: ActionType
+  commandOrPath?: string
+}
+
+export interface ScheduledTask {
+  id: string
+  name: string
+  enabled: boolean
+  trigger: TriggerConfig
+  action: ActionConfig
+  maxConsecutiveFailures: number
+  consecutiveFailures: number
+  totalRunCount: number
+  nextRunTime?: string
+  lastRunTime?: string
+  lastStatus?: TaskStatus
+}
+
+export interface ExecutionRecord {
+  taskId: string
+  taskName: string
+  status: TaskStatus
+  startedAt: string
+  completedAt?: string
+  duration?: string
+  errorMessage?: string
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 插件市场类型
+// ─────────────────────────────────────────────────────────────────────
+
+export interface MarketSearchRequest {
+  query: string
+  limit: number
+}
+
+export interface MarketProject {
+  id: string
+  name: string
+  description?: string
+  iconUrl?: string
+  projectType?: string
+  downloads?: number
+  likes?: number
+  versions?: MarketVersion[]
+}
+
+export interface MarketVersion {
+  id: string
+  projectId: string
+  versionNumber: string
+  changelog?: string
+  releaseDate?: string
+  files?: MarketFileInfo[]
+}
+
+export interface MarketFileInfo {
+  fileName: string
+  fileUrl: string
+  fileSize: number
+  sha1Hash?: string
+}
+
+export interface InstalledPlugin {
+  id: string
+  projectId: string
+  projectName: string
+  version: string
+  installedAt: string
+  backupPath?: string
+  serverPath: string
+}
+
+export interface InstallResult {
+  success: boolean
+  error?: string
+  projectId: string
+  projectName?: string
+  version: string
+  installedAt: string
+  backupPath?: string
+}

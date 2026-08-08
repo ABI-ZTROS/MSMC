@@ -15,6 +15,9 @@ const NetworkMonitorPage = lazy(() => import('@/pages/NetworkMonitorPage').then(
 const PowerPage = lazy(() => import('@/pages/PowerPage').then(m => ({ default: m.PowerPage })))
 const JavaPage = lazy(() => import('@/pages/JavaPage').then(m => ({ default: m.JavaPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const NotificationSettingsPage = lazy(() => import('@/pages/NotificationSettingsPage').then(m => ({ default: m.NotificationSettingsPage })))
+const SchedulerPage = lazy(() => import('@/pages/SchedulerPage').then(m => ({ default: m.SchedulerPage })))
+const MarketPage = lazy(() => import('@/pages/MarketPage').then(m => ({ default: m.MarketPage })))
 
 // Data Router（createHashRouter）：支持 useBlocker 等 Data Router 专属 API。
 // 原 <HashRouter>+<Routes> 不支持 useBlocker，会导致 ConfigEditorPage 渲染时抛错。
@@ -28,6 +31,9 @@ const router = createHashRouter(
       <Route path="/power" element={<PowerPage />} />
       <Route path="/java" element={<JavaPage />} />
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/notifications" element={<NotificationSettingsPage />} />
+      <Route path="/scheduler" element={<SchedulerPage />} />
+      <Route path="/market" element={<MarketPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Route>
   )

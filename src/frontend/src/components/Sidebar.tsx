@@ -11,6 +11,9 @@ import {
   FaChevronRight,
   FaBolt,
   FaMugHot,
+  FaBell,
+  FaClock,
+  FaStore,
 } from 'react-icons/fa6'
 
 interface NavItem {
@@ -26,6 +29,9 @@ const navItems: NavItem[] = [
   { path: '/config', label: '配置编辑', icon: <FaSliders size={16} /> },
   { path: '/power', label: '电源管理', icon: <FaBolt size={16} /> },
   { path: '/java', label: 'Java 管理', icon: <FaMugHot size={16} /> },
+  { path: '/notifications', label: '通知中心', icon: <FaBell size={16} /> },
+  { path: '/scheduler', label: '计划任务', icon: <FaClock size={16} /> },
+  { path: '/market', label: '插件市场', icon: <FaStore size={16} /> },
   { path: '/settings', label: '设置', icon: <FaGear size={16} /> },
 ]
 
