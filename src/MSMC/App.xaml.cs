@@ -723,20 +723,32 @@ public partial class App : Application
                     await RegisterType<MemoryOptimizerService>(51, "[BASE]", "MemoryOptimizerService", "工作集 GC 整理");
                     await Register<IWebView2BridgeService, WebView2BridgeService>(52, "[BASE]", "WebView2BridgeService", "WebView2 ↔ C# 桥接");
 
-                    // ════════════ 通知模块 (P0) ════════════
-                    await Step(53, "正在注册通知模块...", "[NOTIFY] === 通知模块 (P0) ===");
+                    // ════════════ 通知模块 (P0+P1) ════════════
+                    await Step(53, "正在注册通知模块...", "[NOTIFY] === 通知模块 (P0+P1) ===");
                     await Register<IDiscordWebhookSender, DiscordWebhookSender>(53, "[NOTIFY]", "DiscordWebhookSender", "Discord Webhook 发送（指数退避+429）");
                     await RegisterInstance<NotificationChannelConfig>(53, "[NOTIFY]", "NotificationChannelConfig", "通知通道配置", _ => new NotificationChannelConfig());
+                    await RegisterType<NotificationConfigService>(53, "[NOTIFY]", "NotificationConfigService", "通知配置持久化");
+                    await RegisterType<GenericWebhookSender>(53, "[NOTIFY]", "GenericWebhookSender", "通用 Webhook 发送");
+                    await RegisterType<EmailNotificationService>(53, "[NOTIFY]", "EmailNotificationService", "SMTP 邮件通知");
                     await Register<INotificationService, NotificationService>(54, "[NOTIFY]", "NotificationService", "通知路由调度（通道隔离+失败兜底）");
 
-                    // ════════════ 调度模块 (P0) ════════════
-                    await Step(54, "正在注册调度模块...", "[SCHED] === 调度模块 (P0) ===");
+                    // ════════════ 调度模块 (P0+P1) ════════════
+                    await Step(54, "正在注册调度模块...", "[SCHED] === 调度模块 (P0+P1) ===");
+                    await RegisterType<SchedulerStorageService>(54, "[SCHED]", "SchedulerStorageService", "调度任务持久化");
                     await Register<ISchedulerService, SchedulerService>(54, "[SCHED]", "SchedulerService", "计划任务调度（防重入+失败阈值自动禁用）");
 
                     // ════════════ 插件市场模块 (P0) ════════════
                     await Step(55, "正在注册插件市场模块...", "[MARKET] === 插件市场模块 (P0) ===");
                     await Register<IMarketProvider, ModrinthProvider>(55, "[MARKET]", "ModrinthProvider", "Modrinth API 集成（搜索/版本/下载+进度回调）");
                     await RegisterType<PluginManagerService>(55, "[MARKET]", "PluginManagerService", "插件管理（原子写入+SHA1校验+安全备份）");
+
+                    // ════════════ 系统监控与告警 (P2) ════════════
+                    await Step(56, "正在注册系统监控模块...", "[MONITOR] === 系统监控与告警 (P2) ===");
+                    await RegisterType<HistoryAlertService>(56, "[MONITOR]", "HistoryAlertService", "历史数据告警（CPU/内存/磁盘阈值）");
+
+                    // ════════════ 自动更新 (P2) ════════════
+                    await Step(57, "正在注册自动更新模块...", "[UPDATE] === 自动更新 (P2) ===");
+                    await RegisterType<AutoUpdateService>(57, "[UPDATE]", "AutoUpdateService", "自动更新（版本检查+哈希校验+下载）");
 
                     // ════════════ ViewModel ════════════
                     await Step(55, "正在注册 ViewModel...", "[VM] === ViewModel 装配 ===");
