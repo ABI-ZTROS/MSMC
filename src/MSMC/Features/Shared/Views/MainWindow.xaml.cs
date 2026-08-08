@@ -22,6 +22,7 @@ using io.NET.ZTR_OS.Features.ConfigEditor.Services;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Models;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Services;
 using io.NET.ZTR_OS.Features.ServerDetection.Models;
+using io.NET.ZTR_OS.Features.ServerDetection.Services;
 using io.NET.ZTR_OS.Features.Settings.Colors;
 using io.NET.ZTR_OS.Features.Settings.Services;
 using io.NET.ZTR_OS.Features.SystemMonitoring.Services;
@@ -1603,7 +1604,7 @@ public partial class MainWindow : Window
         });
 
         // 导入服务器
-        _bridgeService.RegisterRequestHandler("server:import", _ =>
+        _bridgeService.RegisterRequestHandler("server:import", async _ =>
         {
             try
             {
@@ -1612,13 +1613,92 @@ public partial class MainWindow : Window
                     _vm.DetectionPage.BrowseAndImportServerCommand.Execute(null);
                     var msg = _vm.DetectionPage.OperationMessage;
                     var isSuccess = !msg?.StartsWith("[ERR]") ?? true;
-                    return Task.FromResult<object?>(new { success = isSuccess, message = msg });
+                    
+                    // 导入成功后，自动尝试解析 start.bat
+                    if (isSuccess && _vm.DetectionPage.CurrentServer != null)
+                    {
+                        var server = _vm.DetectionPage.CurrentServer;
+                        if (!string.IsNullOrEmpty(server.WorkingDirectory))
+                        {
+                            var parseResult = StartBatParserService.ParseFromDirectory(server.WorkingDirectory);
+                            if (parseResult.Success)
+                            {
+                                // 回填解析结果到服务器配置
+                                if (!string.IsNullOrEmpty(parseResult.JarPath))
+                                    server.ServerJarPath = parseResult.JarPath;
+                                if (parseResult.MaxHeapBytes.HasValue)
+                                    server.MaxHeapMemoryBytes = parseResult.MaxHeapBytes.Value;
+                                if (parseResult.InitialHeapBytes.HasValue)
+                                    server.InitialHeapMemoryBytes = parseResult.InitialHeapBytes.Value;
+                                
+                                Log.Information("start.bat 自动解析成功: Jar={Jar}, MaxMem={Max}, InitMem={Init}, Unknown={UnknownCount}",
+                                    parseResult.JarPath,
+                                    parseResult.MaxHeapBytes,
+                                    parseResult.InitialHeapBytes,
+                                    parseResult.UnknownArgs.Count);
+                            }
+                            else
+                            {
+                                Log.Debug("start.bat 未找到或解析失败: {Err}", parseResult.ErrorMessage);
+                            }
+                        }
+                    }
+
+                    // 如果有未知参数，在消息中提示
+                    string unknownWarning = "";
+                    if (isSuccess && _vm.DetectionPage.CurrentServer != null)
+                    {
+                        var checkResult = StartBatParserService.ParseFromDirectory(_vm.DetectionPage.CurrentServer.WorkingDirectory);
+                        if (checkResult.UnknownArgs.Count > 0)
+                        {
+                            unknownWarning = $"\n⚠️ 发现未识别参数: {string.Join(", ", checkResult.UnknownArgs)}";
+                        }
+                    }
+                    
+                    return Task.FromResult<object?>(new { success = isSuccess, message = msg + unknownWarning });
                 }
                 return Task.FromResult<object?>(new { success = false, error = "未选择服务器" });
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "导入服务器失败");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 解析 start.bat
+        _bridgeService.RegisterRequestHandler("server:parseStartBat", payload =>
+        {
+            try
+            {
+                string? dir = null;
+                if (payload is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                {
+                    dir = el.TryGetProperty("directory", out var dirProp) ? dirProp.GetString() : null;
+                }
+                else
+                {
+                    dir = payload?.ToString();
+                }
+
+                if (string.IsNullOrEmpty(dir))
+                    return Task.FromResult<object?>(new { success = false, error = "未提供服务器目录" });
+
+                var result = StartBatParserService.ParseFromDirectory(dir);
+                return Task.FromResult<object?>(new
+                {
+                    success = result.Success,
+                    jarPath = result.JarPath,
+                    maxHeapBytes = result.MaxHeapBytes,
+                    initialHeapBytes = result.InitialHeapBytes,
+                    jvmArguments = result.JvmArguments,
+                    unknownArgs = result.UnknownArgs,
+                    errorMessage = result.ErrorMessage
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "解析 start.bat 失败");
                 return Task.FromResult<object?>(new { success = false, error = ex.Message });
             }
         });
