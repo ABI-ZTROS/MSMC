@@ -102,6 +102,18 @@ public partial class MainWindow : Window
                 RegisterBridgeApis();
                 Log.Information("[UI-5] [OK] 桥接 API 注册完成");
 
+                // 注册三大 P0 模块的桥接 actions（通知/调度/市场）
+                try
+                {
+                    var bridge = App.Services.GetRequiredService<IWebView2BridgeService>();
+                    BridgeActionRegistrar.RegisterAll(bridge, App.Services, Log.Logger);
+                    Log.Information("[UI-5.1] [OK] 三模块桥接 actions 注册完成 (NOTIFY + SCHED + MARKET)");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "[UI-5.1] [ERR] 三模块桥接 actions 注册失败（不阻塞主流程）");
+                }
+
                 // 虚拟主机名必须【短 + 纯 ASCII + 不要带点/不要用.local】！
                 // 之前用 "msmc.local"（带 .local + 点号），WebView2 老版本 Windows 10 (18363) 下
                 // 会真走 LLMNR/mDNS 解析 .local，导致 30 秒超时；且 Chromium 内核对含点号的

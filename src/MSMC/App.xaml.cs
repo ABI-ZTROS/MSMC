@@ -20,6 +20,10 @@ using io.NET.ZTR_OS.Features.ServerDetection.Services;
 using io.NET.ZTR_OS.Features.SystemMonitoring.Services;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Services;
 using io.NET.ZTR_OS.Features.WebView2.Services;
+using io.NET.ZTR_OS.Features.Notifications.Models;
+using io.NET.ZTR_OS.Features.Notifications.Services;
+using io.NET.ZTR_OS.Features.Scheduler.Services;
+using io.NET.ZTR_OS.Features.ContentMarket.Services;
 using io.NET.ZTR_OS.Features.ConfigEditor.ViewModels;
 using io.NET.ZTR_OS.Features.NetworkMonitor.ViewModels;
 using io.NET.ZTR_OS.Features.ServerDetection.ViewModels;
@@ -718,6 +722,21 @@ public partial class App : Application
                     await Register<IToastNotificationService, ToastNotificationService>(50, "[BASE]", "ToastNotificationService", "原生 Toast 通知");
                     await RegisterType<MemoryOptimizerService>(51, "[BASE]", "MemoryOptimizerService", "工作集 GC 整理");
                     await Register<IWebView2BridgeService, WebView2BridgeService>(52, "[BASE]", "WebView2BridgeService", "WebView2 ↔ C# 桥接");
+
+                    // ════════════ 通知模块 (P0) ════════════
+                    await Step(53, "正在注册通知模块...", "[NOTIFY] === 通知模块 (P0) ===");
+                    await Register<IDiscordWebhookSender, DiscordWebhookSender>(53, "[NOTIFY]", "DiscordWebhookSender", "Discord Webhook 发送（指数退避+429）");
+                    await RegisterInstance<NotificationChannelConfig>(53, "[NOTIFY]", "NotificationChannelConfig", "通知通道配置", _ => new NotificationChannelConfig());
+                    await Register<INotificationService, NotificationService>(54, "[NOTIFY]", "NotificationService", "通知路由调度（通道隔离+失败兜底）");
+
+                    // ════════════ 调度模块 (P0) ════════════
+                    await Step(54, "正在注册调度模块...", "[SCHED] === 调度模块 (P0) ===");
+                    await Register<ISchedulerService, SchedulerService>(54, "[SCHED]", "SchedulerService", "计划任务调度（防重入+失败阈值自动禁用）");
+
+                    // ════════════ 插件市场模块 (P0) ════════════
+                    await Step(55, "正在注册插件市场模块...", "[MARKET] === 插件市场模块 (P0) ===");
+                    await Register<IMarketProvider, ModrinthProvider>(55, "[MARKET]", "ModrinthProvider", "Modrinth API 集成（搜索/版本/下载+进度回调）");
+                    await RegisterType<PluginManagerService>(55, "[MARKET]", "PluginManagerService", "插件管理（原子写入+SHA1校验+安全备份）");
 
                     // ════════════ ViewModel ════════════
                     await Step(55, "正在注册 ViewModel...", "[VM] === ViewModel 装配 ===");
