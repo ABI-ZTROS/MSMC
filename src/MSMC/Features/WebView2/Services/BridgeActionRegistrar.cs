@@ -29,7 +29,7 @@ public static class BridgeActionRegistrar
     public static void RegisterAll(
         IWebView2BridgeService bridge,
         IServiceProvider serviceProvider,
-        ILogger logger)
+        Serilog.ILogger logger)
     {
         Log.Information("[BRDG-REG] 开始注册桥接 actions (NOTIFY + SCHED + MARKET)...");
 
@@ -156,7 +156,7 @@ public static class BridgeActionRegistrar
         IWebView2BridgeService bridge,
         string actionName,
         Func<string?, Task<object?>> handler,
-        ILogger logger,
+        Serilog.ILogger logger,
         ref int registered,
         ref int failed)
     {
