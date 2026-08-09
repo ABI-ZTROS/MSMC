@@ -109,31 +109,52 @@ public class DownloadProgress
 }
 
 /// <summary>
-/// 安装结果
+/// 安装结果（与前端 TS 类型 InstallResult 对齐，序列化为 camelCase）
 /// </summary>
 public class InstallResult
 {
     public bool Success { get; set; }
-    public string? InstalledPath { get; set; }
-    public string? Message { get; set; }
+    public string? Error { get; set; }
+    public string ProjectId { get; set; } = string.Empty;
+    public string? ProjectName { get; set; }
+    public string Version { get; set; } = string.Empty;
+    public DateTimeOffset InstalledAt { get; set; } = DateTimeOffset.UtcNow;
     public string? BackupPath { get; set; }
 
-    public static InstallResult Succeeded(string path) => new() { Success = true, InstalledPath = path };
-    public static InstallResult Failed(string message) => new() { Success = false, Message = message };
+    public static InstallResult Succeeded(string projectId, string projectName, string version, string? backupPath = null) => new()
+    {
+        Success = true,
+        ProjectId = projectId,
+        ProjectName = projectName,
+        Version = version,
+        InstalledAt = DateTimeOffset.UtcNow,
+        BackupPath = backupPath
+    };
+
+    public static InstallResult Failed(string projectId, string error) => new()
+    {
+        Success = false,
+        ProjectId = projectId,
+        Error = error,
+        Version = string.Empty
+    };
 }
 
 /// <summary>
-/// 已安装插件记录
+/// 已安装插件记录（与前端 TS 类型 InstalledPlugin 对齐，序列化为 camelCase）
 /// </summary>
 public class InstalledPlugin
 {
+    public string Id { get; set; } = string.Empty;
     public string ProjectId { get; set; } = string.Empty;
     public string ProjectName { get; set; } = string.Empty;
-    public string VersionId { get; set; } = string.Empty;
-    public string VersionNumber { get; set; } = string.Empty;
-    public string FileName { get; set; } = string.Empty;
-    public string Sha1Hash { get; set; } = string.Empty;
-    public MarketSource Source { get; set; }
+    public string Version { get; set; } = string.Empty;
     public DateTimeOffset InstalledAt { get; set; } = DateTimeOffset.UtcNow;
-    public string? ServerId { get; set; }
+    public string? BackupPath { get; set; }
+    public string ServerPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 内部用：文件名（用于卸载时定位文件，不暴露给前端 TS 类型）
+    /// </summary>
+    public string FileName { get; set; } = string.Empty;
 }

@@ -50,6 +50,12 @@ export function PowerPage(): JSX.Element {
   const [powerError, setPowerError] = useState<string | null>(null)
   const [restoringProfile, setRestoringProfile] = useState(false)
 
+  // ═══════════════════════════════════════════════════════════════════
+  // ⚠️ 以下设置项当前仅保存在浏览器 localStorage，未持久化到后端 C# AppConfig
+  //    —— 它们是「服务器启动时自动应用」的偏好设置，而非实时系统状态。
+  //    TODO: 待后端提供 power:saveProfile / cpuPower:savePreferences 等
+  //          持久化 API 后，改为通过 bridge 调用回传后端配置。
+  // ═══════════════════════════════════════════════════════════════════
   const [serverQoSTier, setServerQoSTier] = useState<ProcessQoSTier>(() => {
     try {
       const saved = localStorage.getItem('msmc_server_qos')
@@ -483,6 +489,22 @@ export function PowerPage(): JSX.Element {
           <div style={{ fontSize: 10, color: 'var(--md-body-lighter)', marginTop: 6 }}>
             当前选择：<strong>{serverQoSTier}</strong> — 将在服务器启动时自动应用到此进程
           </div>
+          {/* ⚠️ 持久化提示 */}
+          <div
+            style={{
+              marginTop: 8,
+              padding: '6px 10px',
+              borderRadius: 6,
+              fontSize: 10,
+              lineHeight: 1.5,
+              background: 'var(--md-warning-subtle-background, rgba(255, 193, 7, 0.08))',
+              color: 'var(--md-warning, #f39c12)',
+              borderLeft: '2px solid var(--md-warning, #f39c12)',
+            }}
+          >
+            注意：此偏好当前仅保存在本地（localStorage），尚未同步到后端配置。
+            清除浏览器数据或重装 MSMC 后将恢复默认值。
+          </div>
         </div>
       </div>
 
@@ -564,6 +586,23 @@ export function PowerPage(): JSX.Element {
               )}
             </span>
           </label>
+          {/* ⚠️ 持久化提示 */}
+          {cpuSetTopology?.isHybridCpu && (
+            <div
+              style={{
+                marginTop: 6,
+                padding: '5px 10px',
+                borderRadius: 6,
+                fontSize: 10,
+                lineHeight: 1.5,
+                background: 'var(--md-warning-subtle-background, rgba(255, 193, 7, 0.08))',
+                color: 'var(--md-warning, #f39c12)',
+                borderLeft: '2px solid var(--md-warning, #f39c12)',
+              }}
+            >
+              注意：此偏好当前仅保存在本地（localStorage）。
+            </div>
+          )}
         </div>
 
         {/* winmm 定时器精度 */}
@@ -673,6 +712,21 @@ export function PowerPage(): JSX.Element {
                   </button>
                 )
               })}
+            </div>
+            {/* ⚠️ 持久化提示 */}
+            <div
+              style={{
+                marginTop: 8,
+                padding: '5px 10px',
+                borderRadius: 6,
+                fontSize: 10,
+                lineHeight: 1.5,
+                background: 'var(--md-warning-subtle-background, rgba(255, 193, 7, 0.08))',
+                color: 'var(--md-warning, #f39c12)',
+                borderLeft: '2px solid var(--md-warning, #f39c12)',
+              }}
+            >
+              注意：此偏好当前仅保存在本地（localStorage）。
             </div>
           </div>
 

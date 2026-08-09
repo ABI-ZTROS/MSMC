@@ -38,9 +38,9 @@ public class PluginManagerService
 
         // 1. 校验输入
         if (string.IsNullOrEmpty(serverPath))
-            return InstallResult.Failed("Server path cannot be empty");
+            return InstallResult.Failed(version.ProjectId, "Server path cannot be empty");
         if (string.IsNullOrEmpty(version.DownloadUrl))
-            return InstallResult.Failed("No download URL available for this version");
+            return InstallResult.Failed(version.ProjectId, "No download URL available for this version");
 
         var pluginsDir = Path.Combine(serverPath, "plugins");
         try
@@ -50,7 +50,7 @@ public class PluginManagerService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[PluginMgr] Failed to create plugins directory: {Path}", pluginsDir);
-            return InstallResult.Failed($"Cannot create plugins directory: {ex.Message}");
+            return InstallResult.Failed(version.ProjectId, $"Cannot create plugins directory: {ex.Message}");
         }
 
         // 2. 计算目标文件名
@@ -86,7 +86,7 @@ public class PluginManagerService
         {
             _logger.LogError(ex, "[PluginMgr] Download failed for version {VersionId}", version.Id);
             RestoreFromBackup(backupPath, destPath);
-            return InstallResult.Failed($"Download failed: {ex.Message}");
+            return InstallResult.Failed(version.ProjectId, $"Download failed: {ex.Message}");
         }
 
         // 5. SHA1 校验
@@ -98,7 +98,7 @@ public class PluginManagerService
                 _logger.LogError("[PluginMgr] SHA1 hash mismatch. Expected={Expected}, Actual={Actual}",
                     version.Sha1Hash, actualHash);
                 RestoreFromBackup(backupPath, destPath);
-                return InstallResult.Failed($"SHA1 hash mismatch: expected {version.Sha1Hash}, got {actualHash}");
+                return InstallResult.Failed(version.ProjectId, $"SHA1 hash mismatch: expected {version.Sha1Hash}, got {actualHash}");
             }
             _logger.LogInformation("[PluginMgr] SHA1 hash verified: {Hash}", actualHash);
         }
@@ -117,30 +117,28 @@ public class PluginManagerService
         {
             _logger.LogError(ex, "[PluginMgr] Failed to write plugin file");
             RestoreFromBackup(backupPath, destPath);
-            return InstallResult.Failed($"File write failed: {ex.Message}");
+            return InstallResult.Failed(version.ProjectId, $"File write failed: {ex.Message}");
         }
 
         // 7. 记录安装信息
         await SaveInstallRecordAsync(serverPath, new InstalledPlugin
         {
+            Id = version.Id,
             ProjectId = version.ProjectId,
             ProjectName = version.Name,
-            VersionId = version.Id,
-            VersionNumber = version.VersionNumber,
-            FileName = $"{safeName}.jar",
-            Sha1Hash = version.Sha1Hash ?? ComputeSha1Hash(fileBytes),
-            Source = _provider.Source,
+            Version = version.VersionNumber,
             InstalledAt = DateTimeOffset.UtcNow,
-            ServerId = serverPath
+            BackupPath = backupPath,
+            ServerPath = serverPath,
+            FileName = $"{safeName}.jar"
         });
 
         _logger.LogInformation("[PluginMgr] Installation complete: {Name} v{Version}", version.Name, version.VersionNumber);
-        return new InstallResult
-        {
-            Success = true,
-            InstalledPath = destPath,
-            BackupPath = backupPath
-        };
+        return InstallResult.Succeeded(
+            projectId: version.ProjectId,
+            projectName: version.Name,
+            version: version.VersionNumber,
+            backupPath: backupPath);
     }
 
     /// <summary>
@@ -206,32 +204,64 @@ public class PluginManagerService
 
     private async Task SaveInstallRecordAsync(string serverPath, InstalledPlugin record)
     {
-        string metaDir = Path.Combine(serverPath, "plugins", ".msmc");
-        Directory.CreateDirectory(metaDir);
-
-        string metaPath = GetInstalledPluginsPath(serverPath);
-        var list = GetInstalledPlugins(serverPath).ToList();
-
-        // 更新或添加
-        var existing = list.FirstOrDefault(p => p.FileName == record.FileName);
-        if (existing != null)
+        try
         {
-            list.Remove(existing);
-        }
-        list.Add(record);
+            string metaDir = Path.Combine(serverPath, "plugins", ".msmc");
+            Directory.CreateDirectory(metaDir);
 
-        await File.WriteAllTextAsync(metaPath, JsonSerializer.Serialize(list, _jsonOptions));
-        _logger.LogDebug("[PluginMgr] Install record saved: {File}", record.FileName);
+            string metaPath = GetInstalledPluginsPath(serverPath);
+            var list = GetInstalledPlugins(serverPath).ToList();
+
+            // 更新或添加
+            var existing = list.FirstOrDefault(p => p.FileName == record.FileName);
+            if (existing != null)
+            {
+                list.Remove(existing);
+            }
+            list.Add(record);
+
+            // 原子写：先写临时文件再替换，防止写入中途崩溃损坏安装记录
+            string tmpPath = metaPath + ".tmp";
+            await File.WriteAllTextAsync(tmpPath, JsonSerializer.Serialize(list, _jsonOptions));
+            if (File.Exists(metaPath))
+                File.Replace(tmpPath, metaPath, null);
+            else
+                File.Move(tmpPath, metaPath);
+
+            _logger.LogDebug("[PluginMgr] Install record saved: {File}", record.FileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[PluginMgr] Failed to save install record: {File}", record.FileName);
+            throw;
+        }
     }
 
     private async Task RemoveInstallRecordAsync(string serverPath, string fileName)
     {
-        string metaPath = GetInstalledPluginsPath(serverPath);
-        if (!File.Exists(metaPath)) return;
+        try
+        {
+            string metaPath = GetInstalledPluginsPath(serverPath);
+            if (!File.Exists(metaPath)) return;
 
-        var list = GetInstalledPlugins(serverPath).ToList();
-        list.RemoveAll(p => p.FileName == fileName);
-        await File.WriteAllTextAsync(metaPath, JsonSerializer.Serialize(list, _jsonOptions));
+            string metaDir = Path.Combine(serverPath, "plugins", ".msmc");
+            Directory.CreateDirectory(metaDir);
+
+            var list = GetInstalledPlugins(serverPath).ToList();
+            list.RemoveAll(p => p.FileName == fileName);
+
+            // 原子写：先写临时文件再替换，防止写入中途崩溃损坏安装记录
+            string tmpPath = metaPath + ".tmp";
+            await File.WriteAllTextAsync(tmpPath, JsonSerializer.Serialize(list, _jsonOptions));
+            File.Replace(tmpPath, metaPath, null);
+
+            _logger.LogDebug("[PluginMgr] Install record removed: {File}", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[PluginMgr] Failed to remove install record: {File}", fileName);
+            throw;
+        }
     }
 
     private static void RestoreFromBackup(string? backupPath, string destPath)

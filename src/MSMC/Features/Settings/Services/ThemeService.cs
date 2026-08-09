@@ -703,7 +703,13 @@ public class ThemeService : IThemeService
                 WriteIndented = true
             });
 
-            File.WriteAllText(SettingsFilePath, json);
+            // 原子写：先写临时文件再替换，防止写入中途崩溃损坏配置
+            var tmpPath = SettingsFilePath + ".tmp";
+            File.WriteAllText(tmpPath, json);
+            if (File.Exists(SettingsFilePath))
+                File.Replace(tmpPath, SettingsFilePath, null);
+            else
+                File.Move(tmpPath, SettingsFilePath);
 
             Log.Information("[SAVE] 主题设置已保存");
         }

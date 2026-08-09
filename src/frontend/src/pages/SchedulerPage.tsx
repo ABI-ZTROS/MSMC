@@ -18,6 +18,9 @@ import {
   runScheduledTaskNow,
   getSchedulerHistory,
 } from '@/utils/bridge'
+// TODO: 启用/禁用任务切换 —— 当前 bridge 仅提供 scheduler.list / add / delete / runNow / history，
+//       缺少 scheduler.update 或 scheduler.setEnabled 等修改任务状态的 API。
+//       待后端补齐后，应在任务列表项中添加开关控件，调用对应 bridge action 切换 enabled 状态。
 import type { ScheduledTask, ExecutionRecord, TriggerType, ActionType } from '@/types/bridge'
 
 export function SchedulerPage(): JSX.Element {
@@ -277,6 +280,7 @@ export function SchedulerPage(): JSX.Element {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {/* TODO: 启用/禁用开关 —— 待后端提供 scheduler.update API 后替换为可交互的 toggle 控件 */}
                     <span
                       style={{
                         fontSize: 10,
@@ -286,7 +290,10 @@ export function SchedulerPage(): JSX.Element {
                           ? 'var(--md-success-subtle-background)'
                           : 'var(--md-subtle-background)',
                         color: task.enabled ? 'var(--md-success-text)' : 'var(--md-body-light)',
+                        cursor: 'default',
+                        opacity: 0.85,
                       }}
+                      title="任务启用状态（切换功能即将开放）"
                     >
                       {task.enabled ? '启用' : '禁用'}
                     </span>

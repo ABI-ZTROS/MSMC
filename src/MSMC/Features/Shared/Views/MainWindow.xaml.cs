@@ -1679,6 +1679,7 @@ public partial class MainWindow : Window
         });
 
         // 解析 start.bat
+        // TODO: 目前前端未调用此 action，暂保留以备后续使用（死代码候选）
         _bridgeService.RegisterRequestHandler("server:parseStartBat", payload =>
         {
             try

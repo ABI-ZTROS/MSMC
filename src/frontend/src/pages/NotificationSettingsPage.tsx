@@ -5,6 +5,7 @@ import {
   FaEnvelope,
   FaWindows,
   FaServer,
+  FaLock,
 } from 'react-icons/fa6'
 import { testNotificationChannel, dispatchNotification } from '@/utils/bridge'
 import type {
@@ -12,6 +13,46 @@ import type {
   NotificationEventType,
   NotificationDispatchResult,
 } from '@/types/bridge'
+
+// 通道定义 —— 诚实化 UI：目前仅展示通道名称与测试能力，配置入口尚未开放
+const channels = [
+  {
+    key: 'discord',
+    name: 'Discord Webhook',
+    desc: '支持消息嵌入和格式化',
+    icon: FaDiscord,
+    iconColor: '#5865F2',
+    status: 'comingSoon',
+    statusText: '配置入口即将开放',
+  },
+  {
+    key: 'windows',
+    name: 'Windows 通知',
+    desc: '系统托盘弹出提示',
+    icon: FaWindows,
+    iconColor: '#0078D4',
+    status: 'comingSoon',
+    statusText: '配置入口即将开放',
+  },
+  {
+    key: 'email',
+    name: '邮件通知',
+    desc: 'SMTP 邮件推送',
+    icon: FaEnvelope,
+    iconColor: '#EA4335',
+    status: 'comingSoon',
+    statusText: '配置入口即将开放',
+  },
+  {
+    key: 'webhook',
+    name: '通用 Webhook',
+    desc: '自定义 HTTP 端点',
+    icon: FaServer,
+    iconColor: 'var(--md-accent-text)',
+    status: 'comingSoon',
+    statusText: '配置入口即将开放',
+  },
+] as const
 
 export function NotificationSettingsPage(): JSX.Element {
   const [testing, setTesting] = useState(false)
@@ -74,86 +115,86 @@ export function NotificationSettingsPage(): JSX.Element {
         </div>
       </div>
 
-      {/* 通道卡片 */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="md-card p-4" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
+      {/* 通道状态展示 —— 诚实化 UI：配置入口尚未开放，仅展示通道列表与状态 */}
+      <div className="md-card md-card-elevated p-5 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="md-section-title" style={{ color: 'var(--md-accent-text)', margin: 0 }}>
+            通知通道
+          </h2>
+          <span
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 8,
-              background: 'var(--md-primary-subtle-background)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              fontSize: 11,
+              padding: '3px 10px',
+              borderRadius: 10,
+              background: 'var(--md-card-hover)',
+              color: 'var(--md-body-light)',
             }}
           >
-            <FaDiscord size={20} style={{ color: '#5865F2' }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--md-body)' }}>Discord Webhook</div>
-            <div style={{ fontSize: 11, color: 'var(--md-body-light)' }}>支持消息嵌入和格式化</div>
-          </div>
+            配置入口即将开放
+          </span>
         </div>
-
-        <div className="md-card p-4" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 8,
-              background: 'var(--md-primary-subtle-background)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <FaWindows size={20} style={{ color: '#0078D4' }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--md-body)' }}>Windows 通知</div>
-            <div style={{ fontSize: 11, color: 'var(--md-body-light)' }}>系统托盘弹出提示</div>
-          </div>
-        </div>
-
-        <div className="md-card p-4" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 8,
-              background: 'var(--md-primary-subtle-background)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <FaEnvelope size={20} style={{ color: '#EA4335' }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--md-body)' }}>邮件通知</div>
-            <div style={{ fontSize: 11, color: 'var(--md-body-light)' }}>SMTP 邮件推送</div>
-          </div>
-        </div>
-
-        <div className="md-card p-4" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 8,
-              background: 'var(--md-primary-subtle-background)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <FaServer size={20} style={{ color: 'var(--md-accent-text)' }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--md-body)' }}>通用 Webhook</div>
-            <div style={{ fontSize: 11, color: 'var(--md-body-light)' }}>自定义 HTTP 端点</div>
-          </div>
+        <p style={{ fontSize: 12, color: 'var(--md-body-light)', marginBottom: 14, lineHeight: 1.5 }}>
+          MSMC 支持多通道通知推送。各通道的详细配置功能将在后续版本中开放，届时可在此页面设置 Webhook 地址、邮件 SMTP 等参数。
+          当前可通过下方「通知测试」验证已配置的通道是否正常工作。
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {channels.map((ch) => {
+            const Icon = ch.icon
+            return (
+              <div
+                key={ch.key}
+                className="md-card"
+                style={{
+                  padding: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  opacity: 0.75,
+                  cursor: 'default',
+                }}
+              >
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 8,
+                    background: 'var(--md-card-hover)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Icon size={20} style={{ color: ch.iconColor, opacity: 0.8 }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--md-body)' }}>
+                    {ch.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--md-body-light)' }}>
+                    {ch.desc}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 10,
+                    color: 'var(--md-body-lighter)',
+                    padding: '3px 8px',
+                    borderRadius: 10,
+                    background: 'var(--md-subtle-background)',
+                    flexShrink: 0,
+                  }}
+                  title="配置入口即将开放"
+                >
+                  <FaLock size={10} />
+                  <span>待配置</span>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
 

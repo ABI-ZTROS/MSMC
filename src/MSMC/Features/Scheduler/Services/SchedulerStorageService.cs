@@ -16,9 +16,19 @@ using Microsoft.Extensions.Logging;
 namespace io.NET.ZTR_OS.Features.Scheduler.Services;
 
 /// <summary>
+/// 调度任务持久化服务接口
+/// </summary>
+public interface ISchedulerStorageService
+{
+    IReadOnlyList<ScheduledTask> LoadAll();
+    void SaveAll(IEnumerable<ScheduledTask> tasks);
+    Task SaveAllAsync(IEnumerable<ScheduledTask> tasks, CancellationToken ct = default);
+}
+
+/// <summary>
 /// 调度任务持久化服务
 /// </summary>
-public class SchedulerStorageService
+public class SchedulerStorageService : ISchedulerStorageService
 {
     private readonly ILogger<SchedulerStorageService> _logger;
     private readonly string _storagePath;

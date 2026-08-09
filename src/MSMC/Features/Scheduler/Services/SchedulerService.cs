@@ -18,11 +18,13 @@ namespace io.NET.ZTR_OS.Features.Scheduler.Services;
 public class SchedulerService : ISchedulerService, IDisposable
 {
     private readonly ConcurrentDictionary<Guid, ScheduledTask> _tasks = new();
-    private readonly ConcurrentBag<ExecutionRecord> _executionHistory = new();
-    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private readonly List<ExecutionRecord> _executionHistory = new();
+    private readonly object _historyLock = new();
+    private const int MaxExecutionHistory = 500;
+    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _taskSemaphores = new();
     private readonly ILogger<SchedulerService> _logger;
     private readonly INotificationService _notificationService;
-    private readonly SchedulerStorageService _storage;
+    private readonly ISchedulerStorageService _storage;
     private Timer? _timer;
     private bool _isRunning;
     private bool _disposed;
@@ -30,7 +32,7 @@ public class SchedulerService : ISchedulerService, IDisposable
     public SchedulerService(
         ILogger<SchedulerService> logger, 
         INotificationService notificationService,
-        SchedulerStorageService storage)
+        ISchedulerStorageService storage)
     {
         _logger = logger;
         _notificationService = notificationService;
@@ -126,7 +128,8 @@ public class SchedulerService : ISchedulerService, IDisposable
 
     private async Task ExecuteTaskAsync(ScheduledTask task)
     {
-        if (!await _semaphore.WaitAsync(0))
+        var semaphore = _taskSemaphores.GetOrAdd(task.Id, _ => new SemaphoreSlim(1, 1));
+        if (!await semaphore.WaitAsync(0))
         {
             _logger.LogWarning("[Scheduler] Task {Name} already running, skipping", task.Name);
             return;
@@ -201,18 +204,17 @@ public class SchedulerService : ISchedulerService, IDisposable
         }
         finally
         {
-            _executionHistory.Add(record);
-            
-            // 限制历史记录数量
-            if (_executionHistory.Count > 1000)
+            lock (_historyLock)
             {
-                var toRemove = _executionHistory.OrderByDescending(r => r.StartedAt).Skip(500).ToList();
-                foreach (var r in toRemove)
+                _executionHistory.Add(record);
+
+                // 限制历史记录数量，超过上限后移除最早的记录
+                if (_executionHistory.Count > MaxExecutionHistory)
                 {
-                    // ConcurrentBag 不支持移除，这里只是记录数量
+                    // 按时间排序后移除最早的记录，只保留最新的 MaxExecutionHistory 条
+                    _executionHistory.Sort((a, b) => b.StartedAt.CompareTo(a.StartedAt));
+                    _executionHistory.RemoveRange(MaxExecutionHistory, _executionHistory.Count - MaxExecutionHistory);
                 }
-                // 简单清空重建（注意：这会丢失所有历史，仅用于防止内存泄漏，生产环境应优化）
-                // 实际上 ConcurrentBag 没有 Clear，我们用一个新列表
             }
             
             // 计算下次运行时间
@@ -225,7 +227,7 @@ public class SchedulerService : ISchedulerService, IDisposable
             }
             catch { /* 持久化失败不影响执行 */ }
             
-            _semaphore.Release();
+            semaphore.Release();
         }
     }
 
@@ -293,7 +295,7 @@ public class SchedulerService : ISchedulerService, IDisposable
 
     public IReadOnlyList<ScheduledTask> GetAllTasks() => _tasks.Values.ToList();
     
-    public ScheduledTask? GetTask(Guid taskId) => _tasks.GetOrAdd(taskId, _ => null!);
+    public ScheduledTask? GetTask(Guid taskId) => _tasks.TryGetValue(taskId, out var task) ? task : null;
 
     public void AddTask(ScheduledTask task)
     {
@@ -365,10 +367,13 @@ public class SchedulerService : ISchedulerService, IDisposable
 
     public IReadOnlyList<ExecutionRecord> GetExecutionHistory(int maxRecords = 100)
     {
-        return _executionHistory
-            .OrderByDescending(r => r.StartedAt)
-            .Take(maxRecords)
-            .ToList();
+        lock (_historyLock)
+        {
+            return _executionHistory
+                .OrderByDescending(r => r.StartedAt)
+                .Take(maxRecords)
+                .ToList();
+        }
     }
 
     public void Dispose()
@@ -377,6 +382,5 @@ public class SchedulerService : ISchedulerService, IDisposable
         _disposed = true;
         
         Stop();
-        _semaphore.Dispose();
     }
 }

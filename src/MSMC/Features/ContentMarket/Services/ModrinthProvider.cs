@@ -44,7 +44,7 @@ public class ModrinthProvider : IMarketProvider
     /// <summary>
     /// 搜索 Modrinth 项目
     /// </summary>
-    public async Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken ct = default)
+    public async Task<IReadOnlyList<MarketProject>> SearchAsync(SearchRequest request, CancellationToken ct = default)
     {
         var queryString = HttpUtility.ParseQueryString(string.Empty);
         queryString["query"] = request.Query;
@@ -69,7 +69,7 @@ public class ModrinthProvider : IMarketProvider
         {
             var json = await _httpClient.GetStringAsync(url, ct);
             var response = JsonSerializer.Deserialize<ModrinthSearchResponse>(json, _jsonOptions);
-            if (response == null) return new SearchResponse();
+            if (response == null) return new List<MarketProject>();
 
             var projects = response.Hits.Select(h => new MarketProject
             {
@@ -91,16 +91,12 @@ public class ModrinthProvider : IMarketProvider
 
             _logger.LogInformation("[Modrinth] Found {Count} results", projects.Count);
 
-            return new SearchResponse
-            {
-                TotalHits = response.TotalHits,
-                Projects = projects
-            };
+            return projects;
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "[Modrinth] Search failed for query: {Query}", request.Query);
-            return new SearchResponse();
+            return new List<MarketProject>();
         }
     }
 

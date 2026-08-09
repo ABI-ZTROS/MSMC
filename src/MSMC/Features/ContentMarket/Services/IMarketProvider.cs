@@ -11,7 +11,7 @@ namespace io.NET.ZTR_OS.Features.ContentMarket.Services;
 public interface IMarketProvider
 {
     MarketSource Source { get; }
-    Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken ct = default);
+    Task<IReadOnlyList<MarketProject>> SearchAsync(SearchRequest request, CancellationToken ct = default);
     Task<IReadOnlyList<MarketVersion>> GetVersionsAsync(string projectId, CancellationToken ct = default);
     Task<byte[]> DownloadVersionAsync(string versionId, IProgress<DownloadProgress>? progress = null, CancellationToken ct = default);
 }

@@ -85,20 +85,6 @@ public sealed class PropertiesDocument
 /// </remarks>
 public static class PropertiesParser
 {
-    #region 原始文档缓存（Save 时用于还原行顺序）
-
-    /// <summary>
-    /// 以文件路径为 Key，缓存最近一次读到的原始 PropertiesDocument。
-    /// ConditionalWeakTable 不能用 string 作键，改用 ConcurrentDictionary 手动管理。
-    /// Save 时若能命中缓存则直接按缓存结构回写；否则先重新 Parse 一次当前磁盘文件。
-    /// </summary>
-    private static readonly Dictionary<string, PropertiesDocument> _documentCache = new(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>缓存锁（避免多线程读写 Dictionary）</summary>
-    private static readonly object _cacheLock = new();
-
-    #endregion
-
     /// <summary>
     /// 解析 server.properties 格式的文本内容（对外公开 API，保持契约不变）
     /// </summary>
@@ -232,12 +218,12 @@ public static class PropertiesParser
 
     /// <summary>
     /// 将键值对字典序列化为 server.properties 格式文本。
-    /// 优先按文件路径查 PropertiesDocument 缓存进行**无损回写**（保留注释、行顺序、重复键）；
-    /// 找不到缓存时退化为按键排序的新文档。
+    /// 若提供 filePath 且磁盘文件存在，则按原文件结构无损回写（保留注释、行顺序、重复键）；
+    /// 否则退化为按键排序的新文档。
     /// </summary>
     /// <param name="config">配置键值对字典</param>
     /// <param name="filePath">
-    /// 可选的文件路径。若提供且能命中磁盘文件或缓存，则按原结构无损回写；
+    /// 可选的文件路径。若提供且磁盘文件存在，则按原结构无损回写；
     /// 未提供则退化为字母顺序输出（保持旧行为的兼容兜底）。
     /// </param>
     /// <returns>序列化后的 Properties 文本</returns>
@@ -246,26 +232,19 @@ public static class PropertiesParser
         ArgumentNullException.ThrowIfNull(config);
         Log.Debug("PropertiesParser.Serialize: {Count} 键, File={Path}", config.Count, filePath);
 
-        // 1) 尝试拿原文档结构：先缓存，再读磁盘当前文件
+        // 1) 尝试拿原文档结构：读磁盘当前文件
         PropertiesDocument? doc = null;
-        if (!string.IsNullOrEmpty(filePath))
+        if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
         {
-            lock (_cacheLock)
+            try
             {
-                _documentCache.TryGetValue(filePath, out doc);
+                // 极简：默认 FileShare，不管占用；读不到就走兜底字母顺序
+                doc = ParseDocument(File.ReadAllText(filePath));
             }
-            if (doc is null && File.Exists(filePath))
+            catch (Exception ex)
             {
-                try
-                {
-                    // 极简：默认 FileShare，不管占用；读不到就走兜底字母顺序
-                    doc = ParseDocument(File.ReadAllText(filePath));
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "PropertiesParser: 读取原文件重建结构失败，将退化为字母顺序输出。Path={Path}", filePath);
-                    doc = null;
-                }
+                Log.Warning(ex, "PropertiesParser: 读取原文件重建结构失败，将退化为字母顺序输出。Path={Path}", filePath);
+                doc = null;
             }
         }
 
@@ -347,31 +326,5 @@ public static class PropertiesParser
         return sb.ToString();
     }
 
-    #region 缓存管理（ConfigManager.Read/Save 钩子）
-
-    /// <summary>
-    /// 从磁盘读文件 Parse 之后调用，把 PropertiesDocument 按路径缓存起来，供后续 Save 无损回写。
-    /// </summary>
-    public static void CacheDocument(string filePath, PropertiesDocument doc)
-    {
-        if (string.IsNullOrEmpty(filePath) || doc is null) return;
-        lock (_cacheLock)
-        {
-            _documentCache[filePath] = doc;
-        }
-    }
-
-    /// <summary>
-    /// 显式移除某文件的缓存（例如文件被外部删除时）
-    /// </summary>
-    public static void EvictCache(string filePath)
-    {
-        if (string.IsNullOrEmpty(filePath)) return;
-        lock (_cacheLock)
-        {
-            _documentCache.Remove(filePath, out _);
-        }
-    }
-
-    #endregion
 }
+

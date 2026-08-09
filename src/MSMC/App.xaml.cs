@@ -727,14 +727,30 @@ public partial class App : Application
                     await Step(53, "正在注册通知模块...", "[NOTIFY] === 通知模块 (P0+P1) ===");
                     await Register<IDiscordWebhookSender, DiscordWebhookSender>(53, "[NOTIFY]", "DiscordWebhookSender", "Discord Webhook 发送（指数退避+429）");
                     await RegisterInstance<NotificationChannelConfig>(53, "[NOTIFY]", "NotificationChannelConfig", "通知通道配置", _ => new NotificationChannelConfig());
-                    await RegisterType<NotificationConfigService>(53, "[NOTIFY]", "NotificationConfigService", "通知配置持久化");
+                    await RegisterInstance<INotificationConfigService>(53, "[NOTIFY]", "NotificationConfigService", "通知配置持久化", sp =>
+                    {
+                        var configPath = Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                            "io.NET.ZTR_OS", "notifications", "config.json");
+                        return new NotificationConfigService(
+                            sp.GetRequiredService<ILogger<NotificationConfigService>>(),
+                            configPath);
+                    });
                     await RegisterType<GenericWebhookSender>(53, "[NOTIFY]", "GenericWebhookSender", "通用 Webhook 发送");
                     await RegisterType<EmailNotificationService>(53, "[NOTIFY]", "EmailNotificationService", "SMTP 邮件通知");
                     await Register<INotificationService, NotificationService>(54, "[NOTIFY]", "NotificationService", "通知路由调度（通道隔离+失败兜底）");
 
                     // ════════════ 调度模块 (P0+P1) ════════════
                     await Step(54, "正在注册调度模块...", "[SCHED] === 调度模块 (P0+P1) ===");
-                    await RegisterType<SchedulerStorageService>(54, "[SCHED]", "SchedulerStorageService", "调度任务持久化");
+                    await RegisterInstance<ISchedulerStorageService>(54, "[SCHED]", "SchedulerStorageService", "调度任务持久化", sp =>
+                    {
+                        var storagePath = Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                            "io.NET.ZTR_OS", "scheduler", "tasks.json");
+                        return new SchedulerStorageService(
+                            sp.GetRequiredService<ILogger<SchedulerStorageService>>(),
+                            storagePath);
+                    });
                     await Register<ISchedulerService, SchedulerService>(54, "[SCHED]", "SchedulerService", "计划任务调度（防重入+失败阈值自动禁用）");
 
                     // ════════════ 插件市场模块 (P0) ════════════
@@ -901,6 +917,14 @@ public partial class App : Application
                     {
                         try { _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start(); }
                         catch (Exception moEx) { ForceLog($"[BOOT-5] [WARN] MemoryOptimizer.Start 失败（不致命）: {moEx.Message}"); }
+                    });
+
+                    // 启动调度器服务
+                    await Step(97, "正在启动调度器...", "[SCHED] 启动计划任务调度器...");
+                    await startupWindow.Dispatcher.InvokeAsync(() =>
+                    {
+                        try { _serviceProvider.GetRequiredService<ISchedulerService>().Start(); }
+                        catch (Exception schedEx) { ForceLog($"[BOOT-5] [WARN] Scheduler.Start 失败（不致命）: {schedEx.Message}"); }
                     });
 
                     startupWindow.MarkCompleted();

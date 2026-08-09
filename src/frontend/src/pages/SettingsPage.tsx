@@ -250,12 +250,14 @@ export function SettingsPage(): JSX.Element {
   const handleTestNotification = async (): Promise<void> => {
     try {
       const result = await testNotification()
-      if (!result.success) {
-        setStatusMessage('发送测试通知失败')
+      if (result.success) {
+        setStatusMessage('✅ 测试通知已发送，请检查通知通道')
+      } else {
+        setStatusMessage('❌ 发送测试通知失败')
       }
     } catch (e) {
       console.error('发送测试通知失败:', e)
-      setStatusMessage('发送测试通知失败')
+      setStatusMessage('❌ 发送测试通知失败')
     }
   }
 

@@ -37,16 +37,16 @@ public static class BridgeActionRegistrar
         int failed = 0;
 
         // ════════════ 通知模块 actions ════════════
-        registered += SafeRegister(bridge, "notify.dispatch", payload =>
+        registered += SafeRegister(bridge, "notify.dispatch", async payload =>
         {
             var notifService = serviceProvider.GetRequiredService<INotificationService>();
             var evt = JsonSerializer.Deserialize<NotificationEvent>(payload ?? "{}");
             if (evt == null) throw new InvalidOperationException("Invalid notification event payload");
             Log.Information("[BRDG-REG] [NOTIFY] notify.dispatch: {EventType} ({EventId})", evt.EventType, evt.Id);
-            return notifService.DispatchAsync(evt).GetAwaiter().GetResult();
+            return await notifService.DispatchAsync(evt);
         }, logger, ref registered, ref failed);
 
-        registered += SafeRegister(bridge, "notify.test", payload =>
+        registered += SafeRegister(bridge, "notify.test", async payload =>
         {
             var notifService = serviceProvider.GetRequiredService<INotificationService>();
             Log.Information("[BRDG-REG] [NOTIFY] notify.test: manual test dispatch");
@@ -56,7 +56,7 @@ public static class BridgeActionRegistrar
                 Title = "手动测试通知",
                 Message = payload ?? "这是一条测试通知"
             };
-            return notifService.DispatchAsync(evt).GetAwaiter().GetResult();
+            return await notifService.DispatchAsync(evt);
         }, logger, ref registered, ref failed);
 
         // ════════════ 调度模块 actions ════════════
@@ -65,7 +65,7 @@ public static class BridgeActionRegistrar
             var schedService = serviceProvider.GetRequiredService<ISchedulerService>();
             var tasks = schedService.GetAllTasks();
             Log.Information("[BRDG-REG] [SCHED] scheduler.list: {Count} tasks", tasks.Count);
-            return tasks;
+            return Task.FromResult<object?>(tasks);
         }, logger, ref registered, ref failed);
 
         registered += SafeRegister(bridge, "scheduler.add", payload =>
@@ -75,7 +75,7 @@ public static class BridgeActionRegistrar
             if (task == null) throw new InvalidOperationException("Invalid task payload");
             Log.Information("[BRDG-REG] [SCHED] scheduler.add: {TaskName}", task.Name);
             schedService.AddTask(task);
-            return new { success = true, id = task.Id };
+            return Task.FromResult<object?>(new { success = true, id = task.Id });
         }, logger, ref registered, ref failed);
 
         registered += SafeRegister(bridge, "scheduler.delete", payload =>
@@ -85,16 +85,16 @@ public static class BridgeActionRegistrar
             var id = Guid.Parse(idStr);
             Log.Information("[BRDG-REG] [SCHED] scheduler.delete: {Id}", id);
             var ok = schedService.DeleteTask(id);
-            return new { success = ok };
+            return Task.FromResult<object?>(new { success = ok });
         }, logger, ref registered, ref failed);
 
-        registered += SafeRegister(bridge, "scheduler.runNow", payload =>
+        registered += SafeRegister(bridge, "scheduler.runNow", async payload =>
         {
             var schedService = serviceProvider.GetRequiredService<ISchedulerService>();
             var idStr = payload?.Trim('"') ?? string.Empty;
             var id = Guid.Parse(idStr);
             Log.Information("[BRDG-REG] [SCHED] scheduler.runNow: {Id}", id);
-            var ok = schedService.RunNowAsync(id).GetAwaiter().GetResult();
+            var ok = await schedService.RunNowAsync(id);
             return new { success = ok };
         }, logger, ref registered, ref failed);
 
@@ -103,27 +103,27 @@ public static class BridgeActionRegistrar
             var schedService = serviceProvider.GetRequiredService<ISchedulerService>();
             var history = schedService.GetExecutionHistory(50);
             Log.Information("[BRDG-REG] [SCHED] scheduler.history: {Count} records", history.Count);
-            return history;
+            return Task.FromResult<object?>(history);
         }, logger, ref registered, ref failed);
 
         // ════════════ 市场模块 actions ════════════
-        registered += SafeRegister(bridge, "market.search", payload =>
+        registered += SafeRegister(bridge, "market.search", async payload =>
         {
             var provider = serviceProvider.GetRequiredService<IMarketProvider>();
             var request = JsonSerializer.Deserialize<SearchRequest>(payload ?? "{}") ?? new SearchRequest();
             Log.Information("[BRDG-REG] [MARKET] market.search: \"{Query}\" (limit={Limit})", request.Query, request.Limit);
-            return provider.SearchAsync(request).GetAwaiter().GetResult();
+            return await provider.SearchAsync(request);
         }, logger, ref registered, ref failed);
 
-        registered += SafeRegister(bridge, "market.versions", payload =>
+        registered += SafeRegister(bridge, "market.versions", async payload =>
         {
             var provider = serviceProvider.GetRequiredService<IMarketProvider>();
             var idStr = payload?.Trim('"') ?? string.Empty;
             Log.Information("[BRDG-REG] [MARKET] market.versions: {ProjectId}", idStr);
-            return provider.GetVersionsAsync(idStr).GetAwaiter().GetResult();
+            return await provider.GetVersionsAsync(idStr);
         }, logger, ref registered, ref failed);
 
-        registered += SafeRegister(bridge, "market.install", payload =>
+        registered += SafeRegister(bridge, "market.install", async payload =>
         {
             var mgr = serviceProvider.GetRequiredService<PluginManagerService>();
             var body = JsonSerializer.Deserialize<MarketInstallPayload>(payload ?? "{}");
@@ -132,7 +132,7 @@ public static class BridgeActionRegistrar
 
             Log.Information("[BRDG-REG] [MARKET] market.install: {ProjectId} v{Version} → {ServerPath}",
                 body.Version.ProjectId, body.Version.VersionNumber, body.ServerPath);
-            return mgr.InstallAsync(body.Version, body.ServerPath).GetAwaiter().GetResult();
+            return await mgr.InstallAsync(body.Version, body.ServerPath);
         }, logger, ref registered, ref failed);
 
         registered += SafeRegister(bridge, "market.listInstalled", payload =>
@@ -143,7 +143,7 @@ public static class BridgeActionRegistrar
                 throw new InvalidOperationException("serverPath is required");
             var records = mgr.GetInstalledPlugins(serverPath);
             Log.Information("[BRDG-REG] [MARKET] market.listInstalled: {Count} records at {Path}", records.Count, serverPath);
-            return records;
+            return Task.FromResult<object?>(records);
         }, logger, ref registered, ref failed);
 
         Log.Information("[BRDG-REG] [OK] 桥接 actions 注册完成: {Ok} OK / {Fail} FAIL", registered, failed);
@@ -155,7 +155,7 @@ public static class BridgeActionRegistrar
     private static int SafeRegister(
         IWebView2BridgeService bridge,
         string actionName,
-        Func<string?, object?> handler,
+        Func<string?, Task<object?>> handler,
         ILogger logger,
         ref int registered,
         ref int failed)
@@ -167,7 +167,7 @@ public static class BridgeActionRegistrar
                 Log.Debug("[BRDG-REG] [HOOK] Executing action: {Action}", actionName);
                 try
                 {
-                    var result = handler(payload);
+                    var result = await handler(payload);
                     Log.Debug("[BRDG-REG] [HOOK] Action {Action} completed", actionName);
                     return result;
                 }

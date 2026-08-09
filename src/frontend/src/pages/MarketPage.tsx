@@ -6,8 +6,8 @@ import {
   FaStore,
   FaServer,
 } from 'react-icons/fa6'
-import { searchMarket, getMarketVersions, installPlugin, getInstalledPlugins } from '@/utils/bridge'
-import type { MarketProject, MarketVersion, InstalledPlugin, InstallResult } from '@/types/bridge'
+import { searchMarket, getMarketVersions, installPlugin, getInstalledPlugins, getSelectedServer } from '@/utils/bridge'
+import type { MarketProject, MarketVersion, InstalledPlugin, InstallResult, ServerInfo } from '@/types/bridge'
 
 export function MarketPage(): JSX.Element {
   const [searchQuery, setSearchQuery] = useState('')
@@ -20,6 +20,8 @@ export function MarketPage(): JSX.Element {
   const [installedPlugins, setInstalledPlugins] = useState<InstalledPlugin[]>([])
   const [statusMsg, setStatusMsg] = useState('')
   const [selectedVersion, setSelectedVersion] = useState<MarketVersion | null>(null)
+  const [selectedServer, setSelectedServer] = useState<ServerInfo | null>(null)
+  const [loadingServer, setLoadingServer] = useState(true)
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -58,10 +60,15 @@ export function MarketPage(): JSX.Element {
 
   const handleInstall = async () => {
     if (!selectedProject || !selectedVersion) return
+    const serverPath = selectedServer?.workingDirectory ?? ''
+    if (!serverPath) {
+      setStatusMsg('❌ 未检测到选中的服务器，请先在仪表盘选择一台服务器')
+      return
+    }
     setInstalling(true)
     setInstallResult(null)
     try {
-      const result = await installPlugin(selectedVersion, '')
+      const result = await installPlugin(selectedVersion, serverPath)
       setInstallResult(result)
       if (result.success) {
         setStatusMsg(`✅ 插件 ${selectedProject.name} v${selectedVersion.versionNumber} 安装成功`)
@@ -77,17 +84,41 @@ export function MarketPage(): JSX.Element {
   }
 
   const loadInstalledPlugins = useCallback(async () => {
+    const serverPath = selectedServer?.workingDirectory ?? ''
+    if (!serverPath) {
+      setInstalledPlugins([])
+      return
+    }
     try {
-      const plugins = await getInstalledPlugins('')
+      const plugins = await getInstalledPlugins(serverPath)
       setInstalledPlugins(plugins)
     } catch (e) {
       console.error('加载已安装插件失败:', e)
     }
+  }, [selectedServer])
+
+  const loadSelectedServer = useCallback(async () => {
+    try {
+      setLoadingServer(true)
+      const server = await getSelectedServer()
+      setSelectedServer(server)
+    } catch (e) {
+      console.error('获取选中服务器失败:', e)
+      setSelectedServer(null)
+    } finally {
+      setLoadingServer(false)
+    }
   }, [])
 
   useEffect(() => {
-    loadInstalledPlugins()
-  }, [loadInstalledPlugins])
+    loadSelectedServer()
+  }, [loadSelectedServer])
+
+  useEffect(() => {
+    if (!loadingServer) {
+      loadInstalledPlugins()
+    }
+  }, [loadInstalledPlugins, loadingServer])
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSearch()
@@ -120,6 +151,38 @@ export function MarketPage(): JSX.Element {
           {statusMsg}
         </div>
       )}
+
+      {/* 当前服务器上下文提示 */}
+      <div
+        style={{
+          marginBottom: 12,
+          padding: '10px 14px',
+          background: selectedServer
+            ? 'var(--md-primary-subtle-background)'
+            : 'var(--md-warning-subtle-background, rgba(255, 193, 7, 0.1))',
+          borderRadius: 'var(--md-radius)',
+          fontSize: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        <FaServer size={14} style={{ color: selectedServer ? 'var(--md-primary)' : 'var(--md-warning, #f39c12)' }} />
+        {loadingServer ? (
+          <span style={{ color: 'var(--md-body-light)' }}>正在加载服务器信息...</span>
+        ) : selectedServer ? (
+          <span style={{ color: 'var(--md-body)' }}>
+            当前服务器：<strong>{selectedServer.displayName}</strong>
+            <span style={{ color: 'var(--md-body-light)', marginLeft: 8 }}>
+              ({selectedServer.workingDirectory})
+            </span>
+          </span>
+        ) : (
+          <span style={{ color: 'var(--md-warning, #f39c12)' }}>
+            未检测到选中的服务器。请先在仪表盘选择一台服务器，插件将安装到该服务器的 plugins 目录。
+          </span>
+        )}
+      </div>
 
       {/* 搜索栏 */}
       <div className="md-card p-4 mb-4">

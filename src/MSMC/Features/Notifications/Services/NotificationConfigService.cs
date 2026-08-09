@@ -14,9 +14,19 @@ using Microsoft.Extensions.Logging;
 namespace io.NET.ZTR_OS.Features.Notifications.Services;
 
 /// <summary>
+/// 通知配置持久化服务接口
+/// </summary>
+public interface INotificationConfigService
+{
+    NotificationChannelConfig Load();
+    void Save(NotificationChannelConfig config);
+    Task SaveAsync(NotificationChannelConfig config, CancellationToken ct = default);
+}
+
+/// <summary>
 /// 通知配置持久化服务
 /// </summary>
-public class NotificationConfigService
+public class NotificationConfigService : INotificationConfigService
 {
     private readonly ILogger<NotificationConfigService> _logger;
     private readonly string _configPath;

@@ -6,10 +6,8 @@
 // -----------------------------------------------------------------------------
 
 using io.NET.ZTR_OS.Features.Notifications.Models;
+using io.NET.ZTR_OS.Features.Settings.Services;
 using Microsoft.Extensions.Logging;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
 
 namespace io.NET.ZTR_OS.Features.Notifications.Services;
 
@@ -20,15 +18,24 @@ public class NotificationService : INotificationService
 {
     private readonly ILogger<NotificationService> _logger;
     private readonly IDiscordWebhookSender _discordSender;
+    private readonly IToastNotificationService _toastService;
+    private readonly EmailNotificationService _emailService;
+    private readonly GenericWebhookSender _genericWebhookSender;
     private readonly NotificationChannelConfig _config;
 
     public NotificationService(
         ILogger<NotificationService> logger,
         IDiscordWebhookSender discordSender,
+        IToastNotificationService toastService,
+        EmailNotificationService emailService,
+        GenericWebhookSender genericWebhookSender,
         NotificationChannelConfig config)
     {
         _logger = logger;
         _discordSender = discordSender;
+        _toastService = toastService;
+        _emailService = emailService;
+        _genericWebhookSender = genericWebhookSender;
         _config = config;
     }
 
@@ -76,7 +83,7 @@ public class NotificationService : INotificationService
         {
             try
             {
-                bool success = await SendGenericWebhookAsync(evt, ct);
+                bool success = await _genericWebhookSender.SendAsync(evt, ct);
                 results[NotificationChannelType.GenericWebhook] = success;
             }
             catch (Exception ex)
@@ -91,15 +98,46 @@ public class NotificationService : INotificationService
         {
             try
             {
-                // 注：Windows Toast 通知依赖 Microsoft.Toolkit.Uwp.Notifications，
-                // 在实际 WPF 集成中由 ToastNotificationService 处理，此处为占位
-                _logger.LogDebug("[Notify] Windows Toast would fire for event {EventId}", evt.Id);
+                switch (evt.EventType)
+                {
+                    case NotificationEventType.ServerCrashed:
+                    case NotificationEventType.BackupFailed:
+                        _toastService.ShowError(evt.Title, evt.Message);
+                        break;
+                    case NotificationEventType.ServerStarted:
+                    case NotificationEventType.BackupCompleted:
+                    case NotificationEventType.PluginInstalled:
+                        _toastService.ShowSuccess(evt.Title, evt.Message);
+                        break;
+                    case NotificationEventType.ServerStopped:
+                    case NotificationEventType.PluginUpdateAvailable:
+                        _toastService.ShowWarning(evt.Title, evt.Message);
+                        break;
+                    default:
+                        _toastService.ShowInfo(evt.Title, evt.Message);
+                        break;
+                }
                 results[NotificationChannelType.WindowsToast] = true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Notify] Windows Toast dispatch failed");
+                _logger.LogError(ex, "[Notify] Windows Toast dispatch failed for event {EventId}", evt.Id);
                 results[NotificationChannelType.WindowsToast] = false;
+            }
+        }
+
+        // Email 通道
+        if (_config.Email.Enabled)
+        {
+            try
+            {
+                bool success = await _emailService.SendAsync(evt, ct);
+                results[NotificationChannelType.Email] = success;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Notify] Email dispatch failed for event {EventId}", evt.Id);
+                results[NotificationChannelType.Email] = false;
             }
         }
 
@@ -151,27 +189,6 @@ public class NotificationService : INotificationService
         return embed;
     }
 
-    private static readonly HttpClient _genericHttpClient = new()
-    {
-        Timeout = TimeSpan.FromSeconds(10)
-    };
-
-    private async Task<bool> SendGenericWebhookAsync(NotificationEvent evt, CancellationToken ct)
-    {
-        var payload = new
-        {
-            eventId = evt.Id,
-            eventType = evt.EventType.ToString(),
-            title = evt.Title,
-            message = evt.Message,
-            timestamp = evt.CreatedAt.ToString("o"),
-            metadata = evt.Metadata
-        };
-        var json = JsonSerializer.Serialize(payload);
-        using var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _genericHttpClient.PostAsync(_config.GenericWebhook.Url, content, ct);
-        return response.IsSuccessStatusCode;
-    }
 }
 
 /// <summary>

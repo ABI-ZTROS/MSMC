@@ -98,9 +98,10 @@ public class MetricsPersistenceService : IMetricsPersistenceService
                 }
 
                 // 编码记录：8 字节时间戳 + 4 字节 CPU + 4 字节内存
-                // v2: 直接通过 DateTimeOffset 把「北京时间(UTC+8)」转换为 Unix 毫秒；不再经过 NTP 偏移
+                // v3: 使用系统本地时区正确转换为 UTC Unix 毫秒，替代硬编码 UTC+8 偏移
+                //     避免非东八区环境或夏令时切换导致的时间漂移（因果链原则）
                 var timestampMs = new DateTimeOffset(
-                        DateTime.SpecifyKind(timestamp.AddHours(-8), DateTimeKind.Utc))
+                        DateTime.SpecifyKind(timestamp, DateTimeKind.Local))
                     .ToUnixTimeMilliseconds();
                 var cpuFloat = (float)Math.Round(cpuUsagePercent, 2);
                 var memFloat = (float)Math.Round(memoryUsagePercent, 2);
@@ -381,11 +382,10 @@ public class MetricsPersistenceService : IMetricsPersistenceService
             var cpuBits = (int)(recordBuffer[8] | (recordBuffer[9] << 8) | (recordBuffer[10] << 16) | (recordBuffer[11] << 24));
             var memBits = (int)(recordBuffer[12] | (recordBuffer[13] << 8) | (recordBuffer[14] << 16) | (recordBuffer[15] << 24));
 
-            // v2: 直接用 DateTimeOffset 把 UnixMs 还原为 UTC+8 北京时间，不再经过 NTP 偏移
+            // v3: 将 UTC Unix 毫秒转换为本地时区时间，替代硬编码 +8 小时偏移
             var timestamp = DateTimeOffset
                 .FromUnixTimeMilliseconds(timestampMs)
-                .UtcDateTime
-                .AddHours(8);
+                .LocalDateTime;
             var cpu = Math.Round(BitConverter.Int32BitsToSingle(cpuBits), 2);
             var mem = Math.Round(BitConverter.Int32BitsToSingle(memBits), 2);
 

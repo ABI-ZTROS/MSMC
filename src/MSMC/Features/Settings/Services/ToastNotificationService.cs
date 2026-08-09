@@ -88,11 +88,15 @@ public class ToastNotificationService : IToastNotificationService
     /// <summary>
     /// 初始化通知服务
     /// </summary>
+    /// <remarks>
+    /// Microsoft.Toolkit.Uwp.Notifications 的 ToastNotificationManagerCompat 不需要显式初始化，
+    /// 调用 Show() 时会自动处理。此处保留方法以满足接口契约，并记录应用标识供调试参考。
+    /// </remarks>
     public void Initialize()
     {
         try
         {
-            Log.Information("[TOAST] Toast 通知服务已初始化");
+            Log.Information("[TOAST] Toast 通知服务已就绪 (AppId={AppId})", AppId);
         }
         catch (Exception ex)
         {
@@ -175,6 +179,7 @@ public class ToastNotificationService : IToastNotificationService
     {
         try
         {
+            ToastNotificationManagerCompat.History.Clear();
             Log.Information("[TOAST] 所有 Toast 通知已清除");
         }
         catch (Exception ex)

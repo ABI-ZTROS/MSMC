@@ -12,6 +12,7 @@ namespace io.NET.ZTR_OS.Features.SystemMonitoring.Services;
 using System.Diagnostics;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Threading;
 using io.NET.ZTR_OS.Features.SystemMonitoring.Models;
 using io.NET.ZTR_OS.Features.SystemMonitoring.Models.Hardware;
 using io.NET.ZTR_OS.Features.Startup.Services;
@@ -53,6 +54,13 @@ public class SystemMonitor : ISystemMonitor
     private Timer? _monitoringTimer;
 
     private bool _isMonitoring;
+
+    /// <summary>
+    /// 当前正在执行的回调计数（Timer 回调 + 异步采集延续）
+    /// 用于 StopMonitoringAsync 等待所有在途回调完成后再释放资源，
+    /// 避免回调访问已释放的 CTS 导致 ObjectDisposedException。
+    /// </summary>
+    private int _activeCallbackCount;
 
     /// <summary>
     /// 监控生命周期锁 —— 防止 Start/Stop 并发调用导致的竞态条件
@@ -242,6 +250,9 @@ public class SystemMonitor : ISystemMonitor
         // 周期采集
         _monitoringTimer = new Timer(_ =>
         {
+            // P1 修复：在途回调计数，确保 StopMonitoringAsync 等待所有回调完成后再释放资源
+            Interlocked.Increment(ref _activeCallbackCount);
+            bool startedAsync = false;
             try
             {
                 if (_monitoringCts?.IsCancellationRequested == true)
@@ -254,25 +265,33 @@ public class SystemMonitor : ISystemMonitor
                 }
 
                 _isCollecting = true;
+                startedAsync = true;
                 _ = CollectSnapshotAsync().ContinueWith(t =>
                 {
-                    _isCollecting = false;
-                    if (t.IsCompletedSuccessfully)
+                    try
                     {
-                        try { callback(t.Result); }
-                        catch (TaskCanceledException)
+                        _isCollecting = false;
+                        if (t.IsCompletedSuccessfully)
                         {
-                            // Dispatcher 已关闭，静默忽略
+                            try { callback(t.Result); }
+                            catch (TaskCanceledException)
+                            {
+                                // Dispatcher 已关闭，静默忽略
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error(ex, "回调执行失败: {Message}", ex.Message);
+                            }
                         }
-                        catch (Exception ex)
+                        else if (t.IsFaulted)
                         {
-                            Log.Error(ex, "回调执行失败: {Message}", ex.Message);
+                            Log.Error(t.Exception, "定时采集失败: {Message}",
+                                t.Exception?.GetBaseException().Message);
                         }
                     }
-                    else if (t.IsFaulted)
+                    finally
                     {
-                        Log.Error(t.Exception, "定时采集失败: {Message}",
-                            t.Exception?.GetBaseException().Message);
+                        Interlocked.Decrement(ref _activeCallbackCount);
                     }
                 }, TaskScheduler.Default);
             }
@@ -281,23 +300,40 @@ public class SystemMonitor : ISystemMonitor
                 // 周期采集失败
                 Log.Error(ex, "定时采集失败: {Message}", ex.Message);
             }
+            finally
+            {
+                // 若未启动异步采集（提前返回或异常），在此处递减计数
+                if (!startedAsync)
+                {
+                    Interlocked.Decrement(ref _activeCallbackCount);
+                }
+            }
         }, null, TimeSpan.Zero, interval);
     }
 
     /// <summary>
-    /// 停止持续监控
+    /// 异步停止持续监控
     /// </summary>
     /// <remarks>
     /// 采用防御式编程：重复调用 Stop 不会导致异常。
-    /// 释放 Timer 与 CancellationTokenSource 资源，将状态标志重置为停止状态。
-    /// Timer 使用 DisposeAsync 释放，等待进行中的回调完成后再回收，避免回调访问已释放资源的竞态。
+    /// 执行链安全保证（严格按以下顺序执行）：
+    /// 1. 停止 Timer（Change(Timeout.Infinite)），防止新的回调触发
+    /// 2. 取消 CTS，通知在途操作尽早退出
+    /// 3. 等待在途回调完成（带 10 秒超时保护，防止死锁）
+    /// 4. 释放 Timer（DisposeAsync 等待 Timer 自身回调完全结束）
+    /// 5. 最后释放 CTS（此时所有回调均已完成，不会再访问 CTS）
+    /// 确保方法返回后，Timer 回调不再访问已释放的资源。
+    /// 失败均有日志记录，不静默失败（返回链原则）。
     /// </remarks>
-    public void StopMonitoring()
+    public async Task StopMonitoringAsync()
     {
         // 停止监控入口
-        Log.Information("⏹️ 停止监控");
+        Log.Information("⏹️ 停止监控（异步）");
 
         Timer? timerToDispose;
+        CancellationTokenSource? ctsToDispose;
+        bool needWaitForDrain;
+
         lock (_monitorLock)
         {
             if (!_isMonitoring)
@@ -306,13 +342,20 @@ public class SystemMonitor : ISystemMonitor
                 return;
             }
 
-            // 先置空字段并取消 CTS，使后续回调立即跳过采集
+            // 1. 先停止 Timer，防止新的回调触发
+            _monitoringTimer?.Change(Timeout.Infinite, Timeout.Infinite);
             timerToDispose = _monitoringTimer;
             _monitoringTimer = null;
+
+            // 2. 取消 CTS，通知正在进行的操作停止
             _monitoringCts?.Cancel();
-            _monitoringCts?.Dispose();
+            ctsToDispose = _monitoringCts;
             _monitoringCts = null;
+
             _isMonitoring = false;
+
+            // 3. 检查是否有在途回调需要等待
+            needWaitForDrain = Volatile.Read(ref _activeCallbackCount) > 0;
         }
 
         // 重置降级状态，下次启动时重新评估主链路可用性
@@ -320,16 +363,59 @@ public class SystemMonitor : ISystemMonitor
         _cpuPrimaryFailureCount = 0;
         Log.Debug("CPU 采集链路降级状态已重置");
 
-        // 在锁外异步释放 Timer —— DisposeAsync 会等待当前正在执行的回调完成，
-        // 避免回调中访问已 Dispose 的 CTS 而抛 ObjectDisposedException。
-        // 用 Task.Run 包裹 await 避免 CA2012（ValueTask 未使用警告），
-        // 同时将等待操作放到线程池，不阻塞 StopMonitoring 调用方。
-        if (timerToDispose != null)
+        // 4. 等待在途回调完成（带超时保护，防止死锁）
+        if (needWaitForDrain)
         {
-            _ = Task.Run(async () => await timerToDispose.DisposeAsync().ConfigureAwait(false));
+            var timeout = TimeSpan.FromSeconds(10);
+            using var timeoutCts = new CancellationTokenSource(timeout);
+            bool timedOut = false;
+            while (Volatile.Read(ref _activeCallbackCount) > 0)
+            {
+                try
+                {
+                    await Task.Delay(10, timeoutCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    timedOut = true;
+                    break;
+                }
+            }
+
+            if (timedOut)
+            {
+                Log.Warning("等待监控回调完成超时（{Timeout}秒），仍有 {Count} 个回调在执行，强制释放资源",
+                    timeout.TotalSeconds, Volatile.Read(ref _activeCallbackCount));
+            }
+            else
+            {
+                Log.Debug("所有在途监控回调已完成");
+            }
         }
 
+        // 5. 释放 Timer（DisposeAsync 确保 Timer 自身回调完全结束）
+        if (timerToDispose != null)
+        {
+            await timerToDispose.DisposeAsync().ConfigureAwait(false);
+        }
+
+        // 6. 最后释放 CTS —— 此时所有回调均已完成，不会再访问 CTS，
+        //    从根源上避免 ObjectDisposedException
+        ctsToDispose?.Dispose();
+
         Log.Information("系统监控已停止");
+    }
+
+    /// <summary>
+    /// 停止持续监控（同步兼容版）
+    /// </summary>
+    /// <remarks>
+    /// 内部调用 <see cref="StopMonitoringAsync"/> 并同步等待，仅用于兼容旧调用方。
+    /// 推荐优先使用异步版本以获得更好的执行链安全保证。
+    /// </remarks>
+    public void StopMonitoring()
+    {
+        StopMonitoringAsync().GetAwaiter().GetResult();
     }
 
     /// <summary>

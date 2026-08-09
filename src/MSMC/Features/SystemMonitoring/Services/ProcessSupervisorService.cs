@@ -31,8 +31,8 @@ namespace io.NET.ZTR_OS.Features.SystemMonitoring.Services;
 [SupportedOSPlatform("windows")]
 public sealed class SupervisedProcessHandle : IAsyncDisposable, IDisposable
 {
-    private readonly SafeJobHandle _job;
-    private readonly Process _process;
+    private SafeJobHandle _job;
+    private Process _process;
     private readonly CancellationTokenSource _lifetimeCts;
     private readonly ILogger _log;
     private int _crashCount;
@@ -41,6 +41,8 @@ public sealed class SupervisedProcessHandle : IAsyncDisposable, IDisposable
     public int ProcessId => _process.Id;
     public bool HasExited => _process.HasExited;
     public int CrashCount => Volatile.Read(ref _crashCount);
+    /// <summary>监管生命周期是否已被取消（用户主动 Stop / Dispose 后为 true）</summary>
+    public bool IsCancellationRequested => _lifetimeCts.IsCancellationRequested;
     public event EventHandler<int>? ProcessExited;
     public event EventHandler<int>? ProcessCrashedAndWillRestart;
 
@@ -100,6 +102,40 @@ public sealed class SupervisedProcessHandle : IAsyncDisposable, IDisposable
         {
             _log.Warning(ex, "[Supervisor] Terminate PID={Pid} 失败（可能已退出）", _process.Id);
         }
+    }
+
+    /// <summary>
+    /// 内部方法：用新进程和新 Job 替换当前句柄（崩溃自动重启时调用）。
+    /// 会取消旧进程的 Exited 事件订阅、Dispose 旧 Job，
+    /// 并为新进程启用 EnableRaisingEvents + 订阅 Exited 事件。
+    /// crashCount 保持累加，不会重置。
+    /// </summary>
+    internal void UpdateProcess(Process newProcess, SafeJobHandle newJob)
+    {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            // 已释放：直接清理新传入的资源，避免泄漏
+            newProcess.Dispose();
+            newJob.Dispose();
+            return;
+        }
+
+        // 取消旧进程的事件订阅
+        _process.Exited -= OnProcessExited;
+        var oldProc = _process;
+        var oldJob = _job;
+
+        // 替换为新进程和新 Job
+        _process = newProcess;
+        _job = newJob;
+        _process.EnableRaisingEvents = true;
+        _process.Exited += OnProcessExited;
+
+        // 释放旧资源（旧进程可能已经退出，但仍需 Dispose 释放句柄）
+        try { oldProc.Dispose(); } catch { /* ignore */ }
+        try { oldJob.Dispose(); } catch { /* ignore */ }
+
+        _log.Debug("[Supervisor] 进程句柄已更新：旧 PID={OldPid} → 新 PID={NewPid}", oldProc.Id, newProcess.Id);
     }
 
     public void Dispose()
@@ -259,8 +295,15 @@ public sealed class ProcessSupervisorService : IProcessSupervisorService
             var handle = new SupervisedProcessHandle(
                 job ?? new SafeJobHandle(), // 没绑 Job 时给个空句柄（Dispose 不会空引用）
                 process, lifetimeCts, _log, options);
-            handle.ProcessCrashedAndWillRestart += async (_, exitCode) =>
-                await OnRestartAsync(handle, executablePath, arguments, workingDirectory, options, exitCode).ConfigureAwait(false);
+            handle.ProcessCrashedAndWillRestart += (_, exitCode) =>
+            {
+                _ = OnRestartAsync(handle, executablePath, arguments, workingDirectory, options, exitCode)
+                    .ContinueWith(t =>
+                    {
+                        if (t.IsFaulted)
+                            _log.Error(t.Exception, "[Supervisor] 重启任务发生未观察异常");
+                    }, TaskContinuationOptions.OnlyOnFaulted);
+            };
             return handle;
         }
         catch
@@ -297,8 +340,8 @@ public sealed class ProcessSupervisorService : IProcessSupervisorService
             // 冷却时间：避免 1s 10 次重启打爆磁盘/CPU
             await Task.Delay(opts.RestartCooldownMs).ConfigureAwait(false);
 
-            // 如果此时句柄已经被 Dispose（用户主动点 Stop），立刻退出，不再拉起
-            if (handle.HasExited && handle.CrashCount == 0)
+            // 如果此时用户已主动 Stop/Dispose（生命周期取消），立刻退出，不再拉起
+            if (handle.IsCancellationRequested)
             {
                 handle.ScheduledRestartAtUtc = null;
                 return;
@@ -318,13 +361,23 @@ public sealed class ProcessSupervisorService : IProcessSupervisorService
                 return;
             }
             _log.Information("[Supervisor] 第 {N} 次重启成功 → 新 PID={NewPid}", handle.CrashCount, newProc.Id);
-            // 新进程也进 Job
-            using var job = CreateBoundJob(opts);
-            if (!NativeMethods.AssignProcessToJobObject(job, newProc.Handle))
+
+            // 新进程也进 Job（注意：不要 using，handle.UpdateProcess 会接管所有权）
+            SafeJobHandle? job = null;
+            if (opts.BindToJobObject)
             {
-                var err = Marshal.GetLastWin32Error();
-                _log.Warning("[Supervisor] 重启进程 Job 绑定失败 win32={E}", err);
+                job = CreateBoundJob(opts);
+                if (!NativeMethods.AssignProcessToJobObject(job, newProc.Handle))
+                {
+                    var err = Marshal.GetLastWin32Error();
+                    _log.Warning("[Supervisor] 重启进程 Job 绑定失败 win32={E}", err);
+                    job.Dispose();
+                    job = null;
+                }
             }
+
+            // 用新进程和新 Job 更新句柄（替换 _process/_job、转移 Exited 事件订阅）
+            handle.UpdateProcess(newProc, job ?? new SafeJobHandle());
 
             // 重启成功，清除「计划重启时间」
             handle.ScheduledRestartAtUtc = null;
