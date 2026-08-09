@@ -112,8 +112,8 @@ public static class StartBatParserService
                 }
                 else if (inJavaCommand && line.EndsWith("^"))
                 {
-                    // 续行符，继续
-                    line = line[..^];
+                    // 续行符，继续（去掉末尾的 ^）
+                    line = line[..^1];
                 }
                 else if (inJavaCommand)
                 {
