@@ -6,9 +6,11 @@
 // -----------------------------------------------------------------------------
 
 using System.Collections.Concurrent;
+using io.NET.ZTR_OS.Features.Notifications.Models;
 using io.NET.ZTR_OS.Features.Notifications.Services;
 using io.NET.ZTR_OS.Features.Scheduler.Models;
 using Microsoft.Extensions.Logging;
+using TaskStatus = io.NET.ZTR_OS.Features.Scheduler.Models.TaskStatus;
 
 namespace io.NET.ZTR_OS.Features.Scheduler.Services;
 
@@ -157,7 +159,7 @@ public class SchedulerService : ISchedulerService, IDisposable
                     await ExecuteCommandAction(task);
                     break;
                     
-                case ActionType.Backup:
+                case ActionType.RunBackup:
                     await ExecuteBackupAction(task);
                     break;
                     

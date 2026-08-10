@@ -35,6 +35,7 @@ using io.NET.ZTR_OS.Features.SystemMonitoring.ViewModels;
 using io.NET.ZTR_OS.Features.Shared.Views;
 using io.NET.ZTR_OS.Features.Startup.Views;
 using io.NET.ZTR_OS.Features.UserAgreement.Views;
+using io.NET.ZTR_OS.Features.Update.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -733,7 +734,7 @@ public partial class App : Application
                             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                             "io.NET.ZTR_OS", "notifications", "config.json");
                         return new NotificationConfigService(
-                            sp.GetRequiredService<ILogger<NotificationConfigService>>(),
+                            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<NotificationConfigService>>(),
                             configPath);
                     });
                     await RegisterType<GenericWebhookSender>(53, "[NOTIFY]", "GenericWebhookSender", "通用 Webhook 发送");
@@ -748,7 +749,7 @@ public partial class App : Application
                             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                             "io.NET.ZTR_OS", "scheduler", "tasks.json");
                         return new SchedulerStorageService(
-                            sp.GetRequiredService<ILogger<SchedulerStorageService>>(),
+                            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SchedulerStorageService>>(),
                             storagePath);
                     });
                     await Register<ISchedulerService, SchedulerService>(54, "[SCHED]", "SchedulerService", "计划任务调度（防重入+失败阈值自动禁用）");

@@ -167,7 +167,7 @@ public static class BridgeActionRegistrar
                 Log.Debug("[BRDG-REG] [HOOK] Executing action: {Action}", actionName);
                 try
                 {
-                    var result = await handler(payload);
+                    var result = await handler(payload?.ToString());
                     Log.Debug("[BRDG-REG] [HOOK] Action {Action} completed", actionName);
                     return result;
                 }

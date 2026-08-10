@@ -1627,9 +1627,9 @@ public partial class MainWindow : Window
                     var isSuccess = !msg?.StartsWith("[ERR]") ?? true;
                     
                     // 导入成功后，自动尝试解析 start.bat
-                    if (isSuccess && _vm.DetectionPage.CurrentServer != null)
+                    if (isSuccess && _vm.DetectionPage.SelectedServer != null)
                     {
-                        var server = _vm.DetectionPage.CurrentServer;
+                        var server = _vm.DetectionPage.SelectedServer;
                         if (!string.IsNullOrEmpty(server.WorkingDirectory))
                         {
                             var parseResult = StartBatParserService.ParseFromDirectory(server.WorkingDirectory);
@@ -1658,9 +1658,9 @@ public partial class MainWindow : Window
 
                     // 如果有未知参数，在消息中提示
                     string unknownWarning = "";
-                    if (isSuccess && _vm.DetectionPage.CurrentServer != null)
+                    if (isSuccess && _vm.DetectionPage.SelectedServer != null)
                     {
-                        var checkResult = StartBatParserService.ParseFromDirectory(_vm.DetectionPage.CurrentServer.WorkingDirectory);
+                        var checkResult = StartBatParserService.ParseFromDirectory(_vm.DetectionPage.SelectedServer.WorkingDirectory);
                         if (checkResult.UnknownArgs.Count > 0)
                         {
                             unknownWarning = $"\n⚠️ 发现未识别参数: {string.Join(", ", checkResult.UnknownArgs)}";

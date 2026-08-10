@@ -12,6 +12,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using io.NET.ZTR_OS.Features.Scheduler.Models;
 using Microsoft.Extensions.Logging;
+using TaskStatus = io.NET.ZTR_OS.Features.Scheduler.Models.TaskStatus;
 
 namespace io.NET.ZTR_OS.Features.Scheduler.Services;
 

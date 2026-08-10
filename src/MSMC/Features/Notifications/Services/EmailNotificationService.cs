@@ -95,16 +95,6 @@ public class EmailNotificationService
             client.Credentials = new NetworkCredential(_config.Email.Username, _config.Email.Password);
         }
 
-        // 允许自签名证书（开发/内网环境）
-        if (_config.Email.UseTls)
-        {
-            client.ServerCertificateValidationCallback = (sender, cert, chain, sslPolicyErrors) =>
-            {
-                _logger.LogDebug("[Email] SSL validation: {Errors}", sslPolicyErrors);
-                return true; // 简化处理，生产环境应校验
-            };
-        }
-
         return client;
     }
 

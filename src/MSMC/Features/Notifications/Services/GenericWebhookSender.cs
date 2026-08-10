@@ -129,7 +129,7 @@ public class GenericWebhookSender
                 NotificationEventType.ServerCrashed => new { severity = "critical" },
                 NotificationEventType.ServerStarted => new { severity = "info" },
                 NotificationEventType.BackupCompleted => new { severity = "success" },
-                _ => new { }
+                _ => new { severity = "" }
             }
         };
     }

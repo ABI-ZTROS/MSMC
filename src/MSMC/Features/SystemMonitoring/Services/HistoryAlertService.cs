@@ -73,7 +73,8 @@ public class HistoryAlertService
     {
         try
         {
-            var metrics = await _metricsService.GetLatestMetricsAsync();
+            var recentPoints = _metricsService.LoadRecentDays(1);
+            var metrics = recentPoints.Count > 0 ? recentPoints[recentPoints.Count - 1] : null;
             if (metrics == null) return;
 
             var now = DateTimeOffset.UtcNow;

@@ -5,6 +5,7 @@
 // 设计模式: 三链原则 - 因果链：搜索请求 → 项目列表；执行链：HTTP 容错 + 进度回调
 // -----------------------------------------------------------------------------
 
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -193,13 +194,13 @@ public class ModrinthProvider : IMarketProvider
                 long reportThreshold = Math.Max(totalBytes.Value / 20, 102400);
                 if (totalRead - lastProgressReport >= reportThreshold || totalRead == totalBytes.Value)
                 {
-                    progress.Report(new DownloadProgress(totalRead, totalBytes.Value));
+                    progress.Report(new DownloadProgress { BytesDownloaded = totalRead, TotalBytes = totalBytes.Value });
                     lastProgressReport = totalRead;
                 }
             }
         }
 
-        progress?.Report(new DownloadProgress(totalRead, totalBytes ?? 0));
+        progress?.Report(new DownloadProgress { BytesDownloaded = totalRead, TotalBytes = totalBytes ?? 0 });
         _logger.LogInformation("[Modrinth] Download complete: {Bytes} bytes for version {VersionId}",
             totalRead, versionId);
 
