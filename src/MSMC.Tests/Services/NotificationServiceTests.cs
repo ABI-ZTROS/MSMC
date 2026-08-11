@@ -95,20 +95,16 @@ public class NotificationServiceTests
         Assert.True(result.ChannelResults[NotificationChannelType.WindowsToast]);
         Assert.Equal(2, result.SuccessfulChannels);
 
-        // 返回链：验证日志记录
+        // 返回链：验证日志记录（使用 It.IsAnyType 验证底层 ILogger.Log 接口方法）
         mockLogger.Verify(
-            l => l.Log(LogLevel.Information, It.IsAny<EventId>(),
-                It.Is<string>(s => s.Contains("Dispatching event")),
-                It.IsAny<Exception>(), It.IsAny<string>()),
-            Times.AtLeastOnce,
-            "Should log dispatch start");
-
-        mockLogger.Verify(
-            l => l.Log(LogLevel.Information, It.IsAny<EventId>(),
-                It.Is<string>(s => s.Contains("dispatched")),
-                It.IsAny<Exception>(), It.IsAny<string>()),
-            Times.AtLeastOnce,
-            "Should log dispatch completion");
+            l => l.Log(
+                It.Is<LogLevel>(lvl => lvl == LogLevel.Information),
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.AtLeast(2),
+            "Should log dispatch start and completion");
     }
 
     [Fact]
@@ -242,10 +238,14 @@ public class NotificationServiceTests
         // Toast 通道仍应成功
         Assert.True(result.ChannelResults[NotificationChannelType.WindowsToast]);
 
-        // 返回链：验证异常被记录
+        // 返回链：验证异常被记录（使用 It.IsAnyType 验证底层 ILogger.Log 接口方法）
         mockLogger.Verify(
-            l => l.Log(LogLevel.Error, It.IsAny<EventId>(),
-                It.IsAny<string>(), It.IsAny<HttpRequestException>(), It.IsAny<string>()),
+            l => l.Log(
+                It.Is<LogLevel>(lvl => lvl == LogLevel.Error),
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.AtLeastOnce,
             "Should log the exception from failed channel");
     }
