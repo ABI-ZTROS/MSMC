@@ -114,24 +114,6 @@ public class HistoryAlertService
                 
                 _lastMemoryAlert = now;
             }
-
-            // 磁盘告警
-            if (metrics.DiskUsagePercent > _diskThresholdPercent && 
-                (now - _lastDiskAlert) > _alertCooldown)
-            {
-                _logger.LogWarning("[HistoryAlert] Disk usage {Usage}% exceeds threshold {Threshold}%", 
-                    metrics.DiskUsagePercent, _diskThresholdPercent);
-                
-                await _notificationService.DispatchAsync(new NotificationEvent
-                {
-                    EventType = NotificationEventType.SystemAlert,
-                    Title = "High Disk Usage",
-                    Message = $"Disk usage is at {metrics.DiskUsagePercent:F1}% (threshold: {_diskThresholdPercent}%)",
-                    SourceModule = "SystemMonitor"
-                });
-                
-                _lastDiskAlert = now;
-            }
         }
         catch (Exception ex)
         {
