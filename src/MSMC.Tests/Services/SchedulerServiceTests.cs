@@ -18,11 +18,13 @@ public class SchedulerServiceTests
 {
     private SchedulerService CreateService(
         Mock<ILogger<SchedulerService>>? logger = null,
-        Mock<INotificationService>? notificationService = null)
+        Mock<INotificationService>? notificationService = null,
+        Mock<ISchedulerStorageService>? storage = null)
     {
         logger ??= new Mock<ILogger<SchedulerService>>();
         notificationService ??= new Mock<INotificationService>();
-        return new SchedulerService(logger.Object, notificationService.Object);
+        storage ??= new Mock<ISchedulerStorageService>();
+        return new SchedulerService(logger.Object, notificationService.Object, storage.Object);
     }
 
     [Fact]
@@ -99,7 +101,8 @@ public class SchedulerServiceTests
                 SuccessfulChannels = 1
             });
 
-        var service = new SchedulerService(mockLogger.Object, mockNotifService.Object);
+        var mockStorage = new Mock<ISchedulerStorageService>();
+        var service = new SchedulerService(mockLogger.Object, mockNotifService.Object, mockStorage.Object);
 
         var task = new ScheduledTask
         {
@@ -135,7 +138,8 @@ public class SchedulerServiceTests
                 SuccessfulChannels = 0
             });
 
-        var service = new SchedulerService(mockLogger.Object, mockNotifService.Object);
+        var mockStorage = new Mock<ISchedulerStorageService>();
+        var service = new SchedulerService(mockLogger.Object, mockNotifService.Object, mockStorage.Object);
 
         var task = new ScheduledTask
         {

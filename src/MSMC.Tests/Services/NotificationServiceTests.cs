@@ -9,6 +9,7 @@ using Moq;
 using Microsoft.Extensions.Logging;
 using io.NET.ZTR_OS.Features.Notifications.Models;
 using io.NET.ZTR_OS.Features.Notifications.Services;
+using io.NET.ZTR_OS.Features.Settings.Services;
 
 namespace MSMC.Tests.Services;
 
@@ -38,6 +39,32 @@ public class NotificationServiceTests
         };
     }
 
+    private NotificationService CreateTestService(
+        Mock<ILogger<NotificationService>>? logger = null,
+        Mock<IDiscordWebhookSender>? discordSender = null,
+        NotificationChannelConfig? config = null)
+    {
+        logger ??= new Mock<ILogger<NotificationService>>();
+        discordSender ??= new Mock<IDiscordWebhookSender>();
+        config ??= CreateTestConfig();
+
+        var mockToastService = new Mock<IToastNotificationService>();
+
+        var mockEmailLogger = new Mock<ILogger<EmailNotificationService>>();
+        var emailService = new EmailNotificationService(mockEmailLogger.Object, config);
+
+        var mockGenericLogger = new Mock<ILogger<GenericWebhookSender>>();
+        var genericWebhookSender = new GenericWebhookSender(mockGenericLogger.Object, config);
+
+        return new NotificationService(
+            logger.Object,
+            discordSender.Object,
+            mockToastService.Object,
+            emailService,
+            genericWebhookSender,
+            config);
+    }
+
     [Fact]
     public async Task DispatchAsync_AllChannelsEnabled_DispatchesToAll()
     {
@@ -48,7 +75,7 @@ public class NotificationServiceTests
             .ReturnsAsync(true);
 
         var config = CreateTestConfig(discordEnabled: true, genericEnabled: false, toastEnabled: true);
-        var service = new NotificationService(mockLogger.Object, mockDiscordSender.Object, config);
+        var service = CreateTestService(mockLogger, mockDiscordSender, config);
 
         var evt = new NotificationEvent
         {
@@ -94,7 +121,7 @@ public class NotificationServiceTests
             .ReturnsAsync(false); // Discord 失败
 
         var config = CreateTestConfig(discordEnabled: true, genericEnabled: false, toastEnabled: true);
-        var service = new NotificationService(mockLogger.Object, mockDiscordSender.Object, config);
+        var service = CreateTestService(mockLogger, mockDiscordSender, config);
 
         var evt = new NotificationEvent
         {
@@ -119,7 +146,7 @@ public class NotificationServiceTests
         var mockLogger = new Mock<ILogger<NotificationService>>();
         var mockDiscordSender = new Mock<IDiscordWebhookSender>();
         var config = CreateTestConfig(discordEnabled: false, genericEnabled: false, toastEnabled: false);
-        var service = new NotificationService(mockLogger.Object, mockDiscordSender.Object, config);
+        var service = CreateTestService(mockLogger, mockDiscordSender, config);
 
         var evt = new NotificationEvent
         {
@@ -149,7 +176,7 @@ public class NotificationServiceTests
             .Callback<string, EmbeddedMessage, CancellationToken>((_, embed, _) => capturedEmbed = embed);
 
         var config = CreateTestConfig();
-        var service = new NotificationService(mockLogger.Object, mockDiscordSender.Object, config);
+        var service = CreateTestService(mockLogger, mockDiscordSender, config);
 
         var evt = new NotificationEvent
         {
@@ -175,7 +202,7 @@ public class NotificationServiceTests
             .Callback<string, EmbeddedMessage, CancellationToken>((_, embed, _) => capturedEmbed = embed);
 
         var config = CreateTestConfig();
-        var service = new NotificationService(mockLogger.Object, mockDiscordSender.Object, config);
+        var service = CreateTestService(mockLogger, mockDiscordSender, config);
 
         var evt = new NotificationEvent
         {
@@ -200,7 +227,7 @@ public class NotificationServiceTests
             .ThrowsAsync(new HttpRequestException("Network error"));
 
         var config = CreateTestConfig();
-        var service = new NotificationService(mockLogger.Object, mockDiscordSender.Object, config);
+        var service = CreateTestService(mockLogger, mockDiscordSender, config);
 
         var evt = new NotificationEvent
         {

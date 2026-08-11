@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using io.NET.ZTR_OS.Features.Scheduler.Models;
 using io.NET.ZTR_OS.Features.Scheduler.Services;
+using TaskStatus = io.NET.ZTR_OS.Features.Scheduler.Models.TaskStatus;
 
 namespace MSMC.Tests.Services;
 
