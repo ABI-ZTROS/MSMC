@@ -194,14 +194,21 @@ public class SchedulerService : ISchedulerService, IDisposable
                     task.Name, task.ConsecutiveFailures);
                 task.Enabled = false;
                 
-                // 发送告警通知
-                await _notificationService.DispatchAsync(new NotificationEvent
+                // 发送告警通知（失败时通知本身的失败不应阻断任务状态更新）
+                try
                 {
-                    EventType = NotificationEventType.SystemAlert,
-                    Title = $"Task Auto-Disabled: {task.Name}",
-                    Message = $"Task has been disabled after {task.ConsecutiveFailures} consecutive failures.",
-                    SourceModule = "Scheduler"
-                });
+                    await _notificationService.DispatchAsync(new NotificationEvent
+                    {
+                        EventType = NotificationEventType.SystemAlert,
+                        Title = $"Task Auto-Disabled: {task.Name}",
+                        Message = $"Task has been disabled after {task.ConsecutiveFailures} consecutive failures.",
+                        SourceModule = "Scheduler"
+                    });
+                }
+                catch (Exception notifEx)
+                {
+                    _logger.LogError(notifEx, "[Scheduler] Failed to send auto-disable notification for task {Name}", task.Name);
+                }
             }
         }
         finally
@@ -243,7 +250,11 @@ public class SchedulerService : ISchedulerService, IDisposable
             SourceModule = "Scheduler"
         };
         
-        await _notificationService.DispatchAsync(evt);
+        var result = await _notificationService.DispatchAsync(evt);
+        if (!result.IsSuccess || result.SuccessfulChannels == 0)
+        {
+            throw new InvalidOperationException($"Notification dispatch failed: {result.SuccessfulChannels}/{result.TotalChannels} channels succeeded");
+        }
     }
 
     private Task ExecuteCommandAction(ScheduledTask task)
