@@ -1724,7 +1724,7 @@ public partial class MainWindow : Window
             try
             {
                 var knownServerId = ExtractStringFromPayload(payload, "knownServerId");
-                var known = _vm?.DetectionPage?.KnownServers
+                var known = _vm?.DetectionPage?.AllKnownServers
                     .FirstOrDefault(s => s.Id == knownServerId);
                 if (known == null)
                     return Task.FromResult<object?>(new { success = false, error = "服务器不存在" });
@@ -1751,7 +1751,7 @@ public partial class MainWindow : Window
             {
                 var knownServerId = ExtractStringFromPayload(payload, "knownServerId");
                 var modeStr = ExtractStringFromPayload(payload, "mode") ?? "Manual";
-                var known = _vm?.DetectionPage?.KnownServers
+                var known = _vm?.DetectionPage?.AllKnownServers
                     .FirstOrDefault(s => s.Id == knownServerId);
                 if (known == null)
                     return Task.FromResult<object?>(new { success = false, error = "服务器不存在" });
@@ -1763,7 +1763,7 @@ public partial class MainWindow : Window
                 known.Startup ??= new StartupConfig();
 
                 known.Startup.Mode = mode;
-                _appConfigService.UpdateKnownServer(known);
+                App.Services.GetService<io.NET.ZTR_OS.Features.Settings.Services.IAppConfigService>()?.UpdateKnownServer(known);
 
                 Log.Information("[SCRIPT] 用户切换启动模式: Server={Server}, Mode={Mode}", known.Name, mode);
                 return Task.FromResult<object?>(new { success = true });
@@ -1782,7 +1782,7 @@ public partial class MainWindow : Window
             {
                 var knownServerId = ExtractStringFromPayload(payload, "knownServerId");
                 var scriptPath = ExtractStringFromPayload(payload, "scriptPath") ?? "";
-                var known = _vm?.DetectionPage?.KnownServers
+                var known = _vm?.DetectionPage?.AllKnownServers
                     .FirstOrDefault(s => s.Id == knownServerId);
                 if (known == null)
                     return Task.FromResult<object?>(new { success = false, error = "服务器不存在" });
@@ -1799,7 +1799,7 @@ public partial class MainWindow : Window
                     Mode = StartupMode.Script,
                 };
                 known.Startup.Mode = StartupMode.Script;
-                _appConfigService.UpdateKnownServer(known);
+                App.Services.GetService<io.NET.ZTR_OS.Features.Settings.Services.IAppConfigService>()?.UpdateKnownServer(known);
 
                 return Task.FromResult<object?>(new
                 {
@@ -1820,7 +1820,7 @@ public partial class MainWindow : Window
             try
             {
                 var knownServerId = ExtractStringFromPayload(payload, "knownServerId");
-                var known = _vm?.DetectionPage?.KnownServers
+                var known = _vm?.DetectionPage?.AllKnownServers
                     .FirstOrDefault(s => s.Id == knownServerId);
                 if (known == null)
                     return Task.FromResult<object?>(new { success = false, error = "服务器不存在" });

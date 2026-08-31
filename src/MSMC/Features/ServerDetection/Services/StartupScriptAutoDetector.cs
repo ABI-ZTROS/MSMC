@@ -18,7 +18,7 @@ namespace io.NET.ZTR_OS.Features.ServerDetection.Services;
 
 public static class StartupScriptAutoDetector
 {
-    private static readonly ILogger Log = Serilog.Log.ForContext<StartupScriptAutoDetector>();
+    private static readonly ILogger Log = Serilog.Log.ForContext("StartupScriptAutoDetector");
 
     /// <summary>标准脚本文件名（按优先级）</summary>
     private static readonly string[] StandardPatterns = ["start.bat", "run.bat", "start.cmd", "run.cmd"];

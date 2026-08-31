@@ -673,7 +673,7 @@ public class ServerManagerService : IServerManagerService
             CreateNoWindow = false,
         };
 
-        Process process;
+        Process? process;
         try
         {
             process = Process.Start(startInfo);
