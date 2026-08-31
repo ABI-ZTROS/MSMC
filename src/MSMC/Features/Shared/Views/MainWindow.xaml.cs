@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -52,6 +53,14 @@ public partial class MainWindow : Window
 {
     private readonly IThemeService _themeService;
     private readonly IWebView2BridgeService _bridgeService;
+
+    /// <summary>Bridge handler 统一 JSON 选项 —— 匹配前端 camelCase + enum 字符串</summary>
+    private static readonly JsonSerializerOptions BridgeJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     private MainViewModel? _vm;
     private bool _isClosing;
 
@@ -3669,7 +3678,7 @@ public partial class MainWindow : Window
                     return new { success = false, error = "通知服务不可用" };
 
                 var evtJson = payload is JsonElement el ? el.GetRawText() : "{}";
-                var evt = JsonSerializer.Deserialize<NotificationEvent>(evtJson);
+                var evt = JsonSerializer.Deserialize<NotificationEvent>(evtJson, BridgeJsonOptions);
                 if (evt == null)
                     return new { success = false, error = "无效的通知事件数据" };
 
@@ -3834,7 +3843,7 @@ public partial class MainWindow : Window
 
                 var serverPath = el.TryGetProperty("serverPath", out var sp) ? sp.GetString() ?? "" : "";
                 var versionJson = el.TryGetProperty("version", out var vj) ? vj.GetRawText() : "{}";
-                var version = JsonSerializer.Deserialize<MarketVersion>(versionJson);
+                var version = JsonSerializer.Deserialize<MarketVersion>(versionJson, BridgeJsonOptions);
 
                 if (version == null)
                     return new { success = false, error = "无效的版本数据" };
