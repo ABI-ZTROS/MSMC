@@ -29,6 +29,12 @@ using io.NET.ZTR_OS.Features.SystemMonitoring.Services;
 using io.NET.ZTR_OS.Features.WebView2.Frontend;
 using io.NET.ZTR_OS.Features.WebView2.Services;
 using io.NET.ZTR_OS.Features.ConfigEditor.ViewModels;
+using io.NET.ZTR_OS.Features.ContentMarket.Services;
+using io.NET.ZTR_OS.Features.ContentMarket.Models;
+using io.NET.ZTR_OS.Features.Notifications.Services;
+using io.NET.ZTR_OS.Features.Notifications.Models;
+using io.NET.ZTR_OS.Features.Scheduler.Services;
+using io.NET.ZTR_OS.Features.Scheduler.Models;
 using io.NET.ZTR_OS.Features.Shared.ViewModels;
 using io.NET.ZTR_OS.Features.Startup.Services;
 using io.NET.ZTR_OS.Features.JavaInstallation.Constants;
@@ -3647,6 +3653,310 @@ public partial class MainWindow : Window
                     }
                 }
             });
+        });
+
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🔔 Notification Bridge Handlers
+        // ═══════════════════════════════════════════════════════════════
+
+        _bridgeService.RegisterRequestHandler("notify.dispatch", async payload =>
+        {
+            try
+            {
+                var notifSvc = App.Services.GetService<INotificationService>();
+                if (notifSvc == null)
+                    return new { success = false, error = "通知服务不可用" };
+
+                var evtJson = payload is JsonElement el ? el.GetRawText() : "{}";
+                var evt = JsonSerializer.Deserialize<NotificationEvent>(evtJson);
+                if (evt == null)
+                    return new { success = false, error = "无效的通知事件数据" };
+
+                var result = await notifSvc.DispatchAsync(evt);
+                return new
+                {
+                    success = true,
+                    eventId = result.EventId.ToString(),
+                    eventType = result.EventType.ToString(),
+                    totalChannels = result.TotalChannels,
+                    successfulChannels = result.SuccessfulChannels,
+                    channelResults = result.ChannelResults.ToDictionary(
+                        kv => kv.Key.ToString(),
+                        kv => kv.Value)
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "notify.dispatch 异常");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("notify.test", async payload =>
+        {
+            try
+            {
+                var notifSvc = App.Services.GetService<INotificationService>();
+                if (notifSvc == null)
+                    return new { success = false, error = "通知服务不可用" };
+
+                var message = payload is string s ? s :
+                    payload is JsonElement el2 ? el2.GetString() ?? "MSMC 测试通知" :
+                    "MSMC 测试通知";
+
+                var testEvent = new NotificationEvent
+                {
+                    EventType = NotificationEventType.PluginInstalled,
+                    SourceModule = "WebView2",
+                    Title = "MSMC 测试通知",
+                    Message = message,
+                };
+
+                var result = await notifSvc.DispatchAsync(testEvent);
+                return new
+                {
+                    success = true,
+                    eventId = result.EventId.ToString(),
+                    eventType = result.EventType.ToString(),
+                    totalChannels = result.TotalChannels,
+                    successfulChannels = result.SuccessfulChannels,
+                    channelResults = result.ChannelResults.ToDictionary(
+                        kv => kv.Key.ToString(),
+                        kv => kv.Value)
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "notify.test 异常");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🌐 Market (Modrinth) Bridge Handlers
+        // ═══════════════════════════════════════════════════════════════
+
+        _bridgeService.RegisterRequestHandler("market.search", async payload =>
+        {
+            try
+            {
+                var provider = App.Services.GetService<IMarketProvider>();
+                if (provider == null)
+                    return new { success = false, error = "市场服务不可用" };
+
+                string query = "";
+                int limit = 20;
+                if (payload is JsonElement el)
+                {
+                    query = el.TryGetProperty("query", out var q) ? q.GetString() ?? "" : "";
+                    limit = el.TryGetProperty("limit", out var l) ? l.GetInt32() : 20;
+                }
+
+                if (string.IsNullOrWhiteSpace(query))
+                    return new { success = false, error = "搜索关键词不能为空" };
+
+                var request = new SearchRequest { Query = query, Limit = limit };
+                var results = await provider.SearchAsync(request);
+
+                return new
+                {
+                    success = true,
+                    projects = results.Select(p => new
+                    {
+                        id = p.Id,
+                        slug = p.Slug,
+                        title = p.Title,
+                        description = p.Description,
+                        author = p.Author,
+                        source = p.Source.ToString(),
+                        modLoader = p.ModLoader.ToString(),
+                        downloads = p.Downloads,
+                        iconUrl = p.IconUrl,
+                    }).ToList()
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "market.search 异常");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("market.versions", async payload =>
+        {
+            try
+            {
+                var provider = App.Services.GetService<IMarketProvider>();
+                if (provider == null)
+                    return new { success = false, error = "市场服务不可用" };
+
+                string projectId = payload is string s2 ? s2 :
+                    payload is JsonElement el2 ? (el2.GetString() ?? "") : "";
+
+                if (string.IsNullOrWhiteSpace(projectId))
+                    return new { success = false, error = "项目 ID 不能为空" };
+
+                var versions = await provider.GetVersionsAsync(projectId);
+
+                return new
+                {
+                    success = true,
+                    versions = versions.Select(v => new
+                    {
+                        id = v.Id,
+                        version = v.Version,
+                        versionType = v.VersionType.ToString(),
+                        releaseDate = v.ReleaseDate?.ToString("o"),
+                        changelog = v.Changelog,
+                        downloads = v.Downloads,
+                    }).ToList()
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "market.versions 异常");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("market.install", async payload =>
+        {
+            try
+            {
+                var provider = App.Services.GetService<IMarketProvider>();
+                var pluginMgr = App.Services.GetService<PluginManagerService>();
+                if (provider == null || pluginMgr == null)
+                    return new { success = false, error = "市场/插件服务不可用" };
+
+                if (payload is not JsonElement el || el.ValueKind != JsonValueKind.Object)
+                    return new { success = false, error = "无效 payload，期望 { version, serverPath }" };
+
+                var serverPath = el.TryGetProperty("serverPath", out var sp) ? sp.GetString() ?? "" : "";
+                var versionJson = el.TryGetProperty("version", out var vj) ? vj.GetRawText() : "{}";
+                var version = JsonSerializer.Deserialize<MarketVersion>(versionJson);
+
+                if (version == null)
+                    return new { success = false, error = "无效的版本数据" };
+                if (string.IsNullOrWhiteSpace(serverPath))
+                    return new { success = false, error = "服务器路径不能为空" };
+
+                var result = await pluginMgr.InstallAsync(version, serverPath);
+                return new
+                {
+                    success = result.Success,
+                    error = result.Error,
+                    projectId = result.ProjectId,
+                    projectName = result.ProjectName,
+                    version = result.Version,
+                    installedAt = result.InstalledAt.ToString("o"),
+                    backupPath = result.BackupPath,
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "market.install 异常");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("market.listInstalled", payload =>
+        {
+            try
+            {
+                var pluginMgr = App.Services.GetService<PluginManagerService>();
+                if (pluginMgr == null)
+                    return Task.FromResult<object?>(new { success = false, error = "插件服务不可用" });
+
+                string serverPath = payload is string s3 ? s3 :
+                    payload is JsonElement el3 ? (el3.GetString() ?? "") : "";
+
+                if (string.IsNullOrWhiteSpace(serverPath))
+                    return Task.FromResult<object?>(new { success = false, error = "服务器路径不能为空" });
+
+                var plugins = pluginMgr.GetInstalledPlugins(serverPath);
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    plugins = plugins.Select(p => new
+                    {
+                        id = p.Id,
+                        projectId = p.ProjectId,
+                        projectName = p.ProjectName,
+                        version = p.Version,
+                        installedAt = p.InstalledAt.ToString("o"),
+                        backupPath = p.BackupPath,
+                        serverPath = p.ServerPath,
+                    }).ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "market.listInstalled 异常");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // ⏰ Scheduler Bridge Handlers
+        // ═══════════════════════════════════════════════════════════════
+
+        _bridgeService.RegisterRequestHandler("scheduler.list", _ =>
+        {
+            try
+            {
+                var svc = App.Services.GetService<ISchedulerService>();
+                if (svc == null)
+                    return Task.FromResult<object?>(new { success = false, error = "调度服务不可用" });
+
+                var tasks = svc.GetAllTasks();
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    tasks = tasks.Select(t => new
+                    {
+                        id = t.Id.ToString(),
+                        name = t.Name,
+                        triggerType = t.TriggerType.ToString(),
+                        cronExpression = t.CronExpression,
+                        intervalSeconds = t.IntervalSeconds,
+                        nextRunTime = t.NextRunTime?.ToString("o"),
+                        lastRunTime = t.LastRunTime?.ToString("o"),
+                        status = t.Status.ToString(),
+                        isEnabled = t.IsEnabled,
+                        actionType = t.ActionType.ToString(),
+                    }).ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "scheduler.list 异常");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("scheduler.runNow", async payload =>
+        {
+            try
+            {
+                var svc = App.Services.GetService<ISchedulerService>();
+                if (svc == null)
+                    return new { success = false, error = "调度服务不可用" };
+
+                string taskIdStr = payload is string s4 ? s4 :
+                    payload is JsonElement el4 ? (el4.GetString() ?? "") : "";
+
+                if (!Guid.TryParse(taskIdStr, out var taskId))
+                    return new { success = false, error = "无效的任务 ID" };
+
+                var ok = await svc.RunNowAsync(taskId);
+                return new { success = ok };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "scheduler.runNow 异常");
+                return new { success = false, error = ex.Message };
+            }
         });
 
         Log.Information("[OK] 设置 API 注册完成");
