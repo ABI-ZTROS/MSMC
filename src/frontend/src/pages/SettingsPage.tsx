@@ -30,6 +30,16 @@ import {
   getPrimarySwatches,
   getAccentSwatches,
   getTeamInfo,
+  setBackgroundColor,
+  setCardColor,
+  setTextColor,
+  setBorderColor,
+  setSuccessColor,
+  setWarningColor,
+  setErrorColor,
+  setGaugeGreenColor,
+  setGaugeYellowColor,
+  setGaugeRedColor,
 } from '@/utils/bridge'
 import type {
   SettingsData,
@@ -45,6 +55,11 @@ import {
   applyAccentColor,
   applyCornerRadius,
   applyAnimationSettings,
+  applyBackgroundColor,
+  applyCardColor,
+  applyTextColor,
+  applyBorderColor,
+  applySemanticColors,
 } from '@/utils/theme'
 import { ColorPicker } from '@/components/ui/ColorPicker'
 import abiAvatar from '@/assets/avatars/ABI-ZTROS.png'
@@ -220,6 +235,146 @@ export function SettingsPage(): JSX.Element {
     }
   }
 
+  // ─── 背景色 ───
+  const handleBackgroundPreview = (hex: string): void => {
+    applyBackgroundColor(hex)
+  }
+
+  const handleSetBackground = async (hex: string): Promise<void> => {
+    try {
+      await setBackgroundColor(hex)
+      await loadSettings()
+    } catch (e) {
+      console.error('设置背景色失败:', e)
+    }
+  }
+
+  // ─── 卡片色 ───
+  const handleCardPreview = (hex: string): void => {
+    applyCardColor(hex)
+  }
+
+  const handleSetCard = async (hex: string): Promise<void> => {
+    try {
+      await setCardColor(hex)
+      await loadSettings()
+    } catch (e) {
+      console.error('设置卡片色失败:', e)
+    }
+  }
+
+  // ─── 文字色 ───
+  const handleTextPreview = (hex: string): void => {
+    applyTextColor(hex)
+  }
+
+  const handleSetText = async (hex: string): Promise<void> => {
+    try {
+      await setTextColor(hex)
+      await loadSettings()
+    } catch (e) {
+      console.error('设置文字色失败:', e)
+    }
+  }
+
+  // ─── 边框色 ───
+  const handleBorderPreview = (hex: string): void => {
+    applyBorderColor(hex)
+  }
+
+  const handleSetBorder = async (hex: string): Promise<void> => {
+    try {
+      await setBorderColor(hex)
+      await loadSettings()
+    } catch (e) {
+      console.error('设置边框色失败:', e)
+    }
+  }
+
+  // ─── 成功色 ───
+  const handleSuccessPreview = (hex: string): void => {
+    applySemanticColors({ success: hex, warning: warningColorHex, error: errorColorHex, gaugeGreen: gaugeGreenColorHex, gaugeYellow: gaugeYellowColorHex, gaugeRed: gaugeRedColorHex })
+  }
+
+  const handleSetSuccess = async (hex: string): Promise<void> => {
+    try {
+      await setSuccessColor(hex)
+      await loadSettings()
+    } catch (e) {
+      console.error('设置成功色失败:', e)
+    }
+  }
+
+  // ─── 警告色 ───
+  const handleWarningPreview = (hex: string): void => {
+    applySemanticColors({ success: successColorHex, warning: hex, error: errorColorHex, gaugeGreen: gaugeGreenColorHex, gaugeYellow: gaugeYellowColorHex, gaugeRed: gaugeRedColorHex })
+  }
+
+  const handleSetWarning = async (hex: string): Promise<void> => {
+    try {
+      await setWarningColor(hex)
+      await loadSettings()
+    } catch (e) {
+      console.error('设置警告色失败:', e)
+    }
+  }
+
+  // ─── 错误色 ───
+  const handleErrorPreview = (hex: string): void => {
+    applySemanticColors({ success: successColorHex, warning: warningColorHex, error: hex, gaugeGreen: gaugeGreenColorHex, gaugeYellow: gaugeYellowColorHex, gaugeRed: gaugeRedColorHex })
+  }
+
+  const handleSetError = async (hex: string): Promise<void> => {
+    try {
+      await setErrorColor(hex)
+      await loadSettings()
+    } catch (e) {
+      console.error('设置错误色失败:', e)
+    }
+  }
+
+  // ─── 仪表盘绿 ───
+  const handleGaugeGreenPreview = (hex: string): void => {
+    applySemanticColors({ success: successColorHex, warning: warningColorHex, error: errorColorHex, gaugeGreen: hex, gaugeYellow: gaugeYellowColorHex, gaugeRed: gaugeRedColorHex })
+  }
+
+  const handleSetGaugeGreen = async (hex: string): Promise<void> => {
+    try {
+      await setGaugeGreenColor(hex)
+      await loadSettings()
+    } catch (e) {
+      console.error('设置仪表盘绿失败:', e)
+    }
+  }
+
+  // ─── 仪表盘黄 ───
+  const handleGaugeYellowPreview = (hex: string): void => {
+    applySemanticColors({ success: successColorHex, warning: warningColorHex, error: errorColorHex, gaugeGreen: gaugeGreenColorHex, gaugeYellow: hex, gaugeRed: gaugeRedColorHex })
+  }
+
+  const handleSetGaugeYellow = async (hex: string): Promise<void> => {
+    try {
+      await setGaugeYellowColor(hex)
+      await loadSettings()
+    } catch (e) {
+      console.error('设置仪表盘黄失败:', e)
+    }
+  }
+
+  // ─── 仪表盘红 ───
+  const handleGaugeRedPreview = (hex: string): void => {
+    applySemanticColors({ success: successColorHex, warning: warningColorHex, error: errorColorHex, gaugeGreen: gaugeGreenColorHex, gaugeYellow: gaugeYellowColorHex, gaugeRed: hex })
+  }
+
+  const handleSetGaugeRed = async (hex: string): Promise<void> => {
+    try {
+      await setGaugeRedColor(hex)
+      await loadSettings()
+    } catch (e) {
+      console.error('设置仪表盘红失败:', e)
+    }
+  }
+
   const handleSetPreset = async (preset: ThemePreset): Promise<void> => {
     try {
       const result = await setPreset(preset)
@@ -344,6 +499,18 @@ export function SettingsPage(): JSX.Element {
   const primaryColorHex = settings?.primaryColorHex ?? '#3B82F6'
   const accentColorHex = settings?.accentColorHex ?? '#FB7185'
 
+  // 新增 10 个颜色默认值（依赖后端 settings 扩展字段）
+  const backgroundColorHex = settings?.backgroundColorHex ?? '#020617'
+  const cardColorHex = settings?.cardColorHex ?? '#0F172A'
+  const textColorHex = settings?.textColorHex ?? '#E2E8F0'
+  const borderColorHex = settings?.borderColorHex ?? '#334155'
+  const successColorHex = settings?.successColorHex ?? '#4CAF50'
+  const warningColorHex = settings?.warningColorHex ?? '#FFC107'
+  const errorColorHex = settings?.errorColorHex ?? '#E53935'
+  const gaugeGreenColorHex = settings?.gaugeGreenColorHex ?? '#4CAF50'
+  const gaugeYellowColorHex = settings?.gaugeYellowColorHex ?? '#FFC107'
+  const gaugeRedColorHex = settings?.gaugeRedColorHex ?? '#F4364C'
+
   return (
     <div className="md-page-enter p-4 pb-8 max-w-4xl mx-auto">
       {/* ═══ 标题 ═══ */}
@@ -393,6 +560,84 @@ export function SettingsPage(): JSX.Element {
             onChangeEnd={handleSetAccent}
             presets={accentSwatches.map((s) => s.color)}
           />
+          <ColorPicker
+            label="背景色"
+            value={backgroundColorHex}
+            onChange={handleBackgroundPreview}
+            onChangeEnd={handleSetBackground}
+          />
+          <ColorPicker
+            label="卡片色"
+            value={cardColorHex}
+            onChange={handleCardPreview}
+            onChangeEnd={handleSetCard}
+          />
+          <ColorPicker
+            label="文字色"
+            value={textColorHex}
+            onChange={handleTextPreview}
+            onChangeEnd={handleSetText}
+          />
+          <ColorPicker
+            label="边框色"
+            value={borderColorHex}
+            onChange={handleBorderPreview}
+            onChangeEnd={handleSetBorder}
+          />
+        </div>
+
+        {/* 语义与仪表盘色 */}
+        <div
+          style={{
+            marginTop: 16,
+            paddingTop: 16,
+            borderTop: '1px solid var(--md-card-subtle-border)',
+          }}
+        >
+          <h2
+            className="md-section-title"
+            style={{ color: 'var(--md-accent-text)', margin: '0 0 12px 0' }}
+          >
+            语义与仪表盘色
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            <ColorPicker
+              label="成功色"
+              value={successColorHex}
+              onChange={handleSuccessPreview}
+              onChangeEnd={handleSetSuccess}
+            />
+            <ColorPicker
+              label="警告色"
+              value={warningColorHex}
+              onChange={handleWarningPreview}
+              onChangeEnd={handleSetWarning}
+            />
+            <ColorPicker
+              label="错误色"
+              value={errorColorHex}
+              onChange={handleErrorPreview}
+              onChangeEnd={handleSetError}
+            />
+            <ColorPicker
+              label="仪表盘绿"
+              value={gaugeGreenColorHex}
+              onChange={handleGaugeGreenPreview}
+              onChangeEnd={handleSetGaugeGreen}
+            />
+            <ColorPicker
+              label="仪表盘黄"
+              value={gaugeYellowColorHex}
+              onChange={handleGaugeYellowPreview}
+              onChangeEnd={handleSetGaugeYellow}
+            />
+            <ColorPicker
+              label="仪表盘红"
+              value={gaugeRedColorHex}
+              onChange={handleGaugeRedPreview}
+              onChangeEnd={handleSetGaugeRed}
+            />
+          </div>
         </div>
 
         {/* 快速预设方案 */}

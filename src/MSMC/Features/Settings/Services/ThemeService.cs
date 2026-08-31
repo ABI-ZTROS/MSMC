@@ -53,6 +53,36 @@ public interface IThemeService
     Color BorderColor { get; set; }
 
     /// <summary>
+    /// 成功色 😄（用于成功提示、通过状态等）
+    /// </summary>
+    Color SuccessColor { get; set; }
+
+    /// <summary>
+    /// 警告色 ⚠️（用于警告提示、低危状态等）
+    /// </summary>
+    Color WarningColor { get; set; }
+
+    /// <summary>
+    /// 错误色 ❌（用于错误提示、失败状态等）
+    /// </summary>
+    Color ErrorColor { get; set; }
+
+    /// <summary>
+    /// 仪表盘绿色 🟢（用于指标正向区间）
+    /// </summary>
+    Color GaugeGreenColor { get; set; }
+
+    /// <summary>
+    /// 仪表盘黄色 🟡（用于指标中间区间）
+    /// </summary>
+    Color GaugeYellowColor { get; set; }
+
+    /// <summary>
+    /// 仪表盘红色 🔴（用于指标负向区间）
+    /// </summary>
+    Color GaugeRedColor { get; set; }
+
+    /// <summary>
     /// 圆角半径（像素）
     /// </summary>
     int CornerRadius { get; set; }
@@ -147,6 +177,36 @@ public class ThemeSettings
     public string BorderColor { get; set; } = "#FF334155";
 
     /// <summary>
+    /// 成功色值（十六进制字符串）——成功提示、通过状态
+    /// </summary>
+    public string SuccessColor { get; set; } = "#FF4CAF50";
+
+    /// <summary>
+    /// 警告色值（十六进制字符串）——警告提示、低危状态
+    /// </summary>
+    public string WarningColor { get; set; } = "#FFFFC107";
+
+    /// <summary>
+    /// 错误色值（十六进制字符串）——错误提示、失败状态
+    /// </summary>
+    public string ErrorColor { get; set; } = "#FFE53935";
+
+    /// <summary>
+    /// 仪表盘绿色值（十六进制字符串）——指标正向区间
+    /// </summary>
+    public string GaugeGreenColor { get; set; } = "#FF4CAF50";
+
+    /// <summary>
+    /// 仪表盘黄色值（十六进制字符串）——指标中间区间
+    /// </summary>
+    public string GaugeYellowColor { get; set; } = "#FFFFC107";
+
+    /// <summary>
+    /// 仪表盘红色值（十六进制字符串）——指标负向区间
+    /// </summary>
+    public string GaugeRedColor { get; set; } = "#FFF4364C";
+
+    /// <summary>
     /// 圆角半径（像素）
     /// </summary>
     public int CornerRadius { get; set; } = 12;
@@ -209,6 +269,36 @@ public class ThemeService : IThemeService
     private Color _textColor = Color.FromRgb(0xE2, 0xE8, 0xF0);
 
     private Color _borderColor = Color.FromRgb(0x33, 0x41, 0x55);
+
+    /// <summary>
+    /// 成功色字段（成功提示、通过状态）🎉
+    /// </summary>
+    private Color _successColor = Color.FromRgb(0x4C, 0xAF, 0x50);
+
+    /// <summary>
+    /// 警告色字段（警告提示、低危状态）⚠️
+    /// </summary>
+    private Color _warningColor = Color.FromRgb(0xFF, 0xC1, 0x07);
+
+    /// <summary>
+    /// 错误色字段（错误提示、失败状态）🚨
+    /// </summary>
+    private Color _errorColor = Color.FromRgb(0xE5, 0x39, 0x35);
+
+    /// <summary>
+    /// 仪表盘绿色字段（指标正向区间）🟢
+    /// </summary>
+    private Color _gaugeGreenColor = Color.FromRgb(0x4C, 0xAF, 0x50);
+
+    /// <summary>
+    /// 仪表盘黄色字段（指标中间区间）🟡
+    /// </summary>
+    private Color _gaugeYellowColor = Color.FromRgb(0xFF, 0xC1, 0x07);
+
+    /// <summary>
+    /// 仪表盘红色字段（指标负向区间）🔴
+    /// </summary>
+    private Color _gaugeRedColor = Color.FromRgb(0xF4, 0x36, 0x4C);
 
     private int _cornerRadius = 12;
 
@@ -296,6 +386,84 @@ public class ThemeService : IThemeService
         set
         {
             _borderColor = value;
+            if (!_isBatchUpdating) ApplyTheme();
+        }
+    }
+
+    /// <summary>
+    /// 成功色（成功提示、通过状态）🎉
+    /// </summary>
+    public Color SuccessColor
+    {
+        get => _successColor;
+        set
+        {
+            _successColor = value;
+            if (!_isBatchUpdating) ApplyTheme();
+        }
+    }
+
+    /// <summary>
+    /// 警告色（警告提示、低危状态）⚠️
+    /// </summary>
+    public Color WarningColor
+    {
+        get => _warningColor;
+        set
+        {
+            _warningColor = value;
+            if (!_isBatchUpdating) ApplyTheme();
+        }
+    }
+
+    /// <summary>
+    /// 错误色（错误提示、失败状态）🚨
+    /// </summary>
+    public Color ErrorColor
+    {
+        get => _errorColor;
+        set
+        {
+            _errorColor = value;
+            if (!_isBatchUpdating) ApplyTheme();
+        }
+    }
+
+    /// <summary>
+    /// 仪表盘绿色（指标正向区间）🟢
+    /// </summary>
+    public Color GaugeGreenColor
+    {
+        get => _gaugeGreenColor;
+        set
+        {
+            _gaugeGreenColor = value;
+            if (!_isBatchUpdating) ApplyTheme();
+        }
+    }
+
+    /// <summary>
+    /// 仪表盘黄色（指标中间区间）🟡
+    /// </summary>
+    public Color GaugeYellowColor
+    {
+        get => _gaugeYellowColor;
+        set
+        {
+            _gaugeYellowColor = value;
+            if (!_isBatchUpdating) ApplyTheme();
+        }
+    }
+
+    /// <summary>
+    /// 仪表盘红色（指标负向区间）🔴
+    /// </summary>
+    public Color GaugeRedColor
+    {
+        get => _gaugeRedColor;
+        set
+        {
+            _gaugeRedColor = value;
             if (!_isBatchUpdating) ApplyTheme();
         }
     }
@@ -518,27 +686,52 @@ public class ThemeService : IThemeService
         accentGradient.Freeze();
         resources["AccentGradientBrush"] = accentGradient;
 
-        // 信号灯色族 + 危险色 + 主色半透明
-        var gaugeGreen = new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50));
-        gaugeGreen.Freeze();
-        var gaugeYellow = new SolidColorBrush(Color.FromRgb(0xFF, 0xC1, 0x07));
-        gaugeYellow.Freeze();
-        var gaugeRed = new SolidColorBrush(Color.FromRgb(0xF4, 0x36, 0x4C));
-        gaugeRed.Freeze();
-        var dangerBrush = new SolidColorBrush(Color.FromRgb(0xE5, 0x39, 0x35));
+        // 信号灯色族 + 危险色 + 主色半透明（均由对应颜色通道派生）
+        var gaugeGreenBrush = new SolidColorBrush(_gaugeGreenColor);
+        gaugeGreenBrush.Freeze();
+        var gaugeYellowBrush = new SolidColorBrush(_gaugeYellowColor);
+        gaugeYellowBrush.Freeze();
+        var gaugeRedBrush = new SolidColorBrush(_gaugeRedColor);
+        gaugeRedBrush.Freeze();
+        var dangerBrush = new SolidColorBrush(_errorColor);
         dangerBrush.Freeze();
-        var errorTextBrush = new SolidColorBrush(_accentColor);
+        var errorTextBrush = new SolidColorBrush(LightenColor(_errorColor, 0.35));
         errorTextBrush.Freeze();
+        // 成功/警告/错误 subtle 色系（背景 0x1A、边框 0x4D 半透明）
+        var successSubtleBgBrush = new SolidColorBrush(
+            Color.FromArgb(0x1A, _successColor.R, _successColor.G, _successColor.B));
+        successSubtleBgBrush.Freeze();
+        var successSubtleBorderBrush = new SolidColorBrush(
+            Color.FromArgb(0x4D, _successColor.R, _successColor.G, _successColor.B));
+        successSubtleBorderBrush.Freeze();
+        var warningSubtleBgBrush = new SolidColorBrush(
+            Color.FromArgb(0x1A, _warningColor.R, _warningColor.G, _warningColor.B));
+        warningSubtleBgBrush.Freeze();
+        var warningSubtleBorderBrush = new SolidColorBrush(
+            Color.FromArgb(0x4D, _warningColor.R, _warningColor.G, _warningColor.B));
+        warningSubtleBorderBrush.Freeze();
+        var dangerSubtleBgBrush = new SolidColorBrush(
+            Color.FromArgb(0x1A, _errorColor.R, _errorColor.G, _errorColor.B));
+        dangerSubtleBgBrush.Freeze();
+        var dangerSubtleBorderBrush = new SolidColorBrush(
+            Color.FromArgb(0x4D, _errorColor.R, _errorColor.G, _errorColor.B));
+        dangerSubtleBorderBrush.Freeze();
         var primarySubtleBgBrush = new SolidColorBrush(
             Color.FromArgb(0x1A, _primaryColor.R, _primaryColor.G, _primaryColor.B));
         primarySubtleBgBrush.Freeze();
 
-        resources["GaugeGreenBrush"] = gaugeGreen;
-        resources["GaugeYellowBrush"] = gaugeYellow;
-        resources["GaugeRedBrush"] = gaugeRed;
+        resources["GaugeGreenBrush"] = gaugeGreenBrush;
+        resources["GaugeYellowBrush"] = gaugeYellowBrush;
+        resources["GaugeRedBrush"] = gaugeRedBrush;
         resources["DangerBrush"] = dangerBrush;
         resources["ErrorTextBrush"] = errorTextBrush;
         resources["PrimarySubtleBackgroundBrush"] = primarySubtleBgBrush;
+        resources["SuccessSubtleBackgroundBrush"] = successSubtleBgBrush;
+        resources["SuccessSubtleBorderBrush"] = successSubtleBorderBrush;
+        resources["WarningSubtleBackgroundBrush"] = warningSubtleBgBrush;
+        resources["WarningSubtleBorderBrush"] = warningSubtleBorderBrush;
+        resources["DangerSubtleBackgroundBrush"] = dangerSubtleBgBrush;
+        resources["DangerSubtleBorderBrush"] = dangerSubtleBorderBrush;
 
         // 字体 —— 嵌入 Space Grotesk + 简体中文回退
         // Space Grotesk 是纯英文字体，不含中文字形。
@@ -646,6 +839,24 @@ public class ThemeService : IThemeService
                     if (!string.IsNullOrEmpty(settings.BorderColor))
                         _borderColor = (Color)ColorConverter.ConvertFromString(settings.BorderColor);
 
+                    if (!string.IsNullOrEmpty(settings.SuccessColor))
+                        _successColor = (Color)ColorConverter.ConvertFromString(settings.SuccessColor);
+
+                    if (!string.IsNullOrEmpty(settings.WarningColor))
+                        _warningColor = (Color)ColorConverter.ConvertFromString(settings.WarningColor);
+
+                    if (!string.IsNullOrEmpty(settings.ErrorColor))
+                        _errorColor = (Color)ColorConverter.ConvertFromString(settings.ErrorColor);
+
+                    if (!string.IsNullOrEmpty(settings.GaugeGreenColor))
+                        _gaugeGreenColor = (Color)ColorConverter.ConvertFromString(settings.GaugeGreenColor);
+
+                    if (!string.IsNullOrEmpty(settings.GaugeYellowColor))
+                        _gaugeYellowColor = (Color)ColorConverter.ConvertFromString(settings.GaugeYellowColor);
+
+                    if (!string.IsNullOrEmpty(settings.GaugeRedColor))
+                        _gaugeRedColor = (Color)ColorConverter.ConvertFromString(settings.GaugeRedColor);
+
                     _cornerRadius = Math.Clamp(settings.CornerRadius, 0, 24);
                     _animationDuration = Math.Clamp(settings.AnimationDuration, 0, 2000);
                     _enableAnimations = settings.EnableAnimations;
@@ -693,6 +904,12 @@ public class ThemeService : IThemeService
                 CardColor = _cardColor.ToString(),
                 TextColor = _textColor.ToString(),
                 BorderColor = _borderColor.ToString(),
+                SuccessColor = _successColor.ToString(),
+                WarningColor = _warningColor.ToString(),
+                ErrorColor = _errorColor.ToString(),
+                GaugeGreenColor = _gaugeGreenColor.ToString(),
+                GaugeYellowColor = _gaugeYellowColor.ToString(),
+                GaugeRedColor = _gaugeRedColor.ToString(),
                 CornerRadius = _cornerRadius,
                 AnimationDuration = _animationDuration,
                 EnableAnimations = _enableAnimations
@@ -731,6 +948,12 @@ public class ThemeService : IThemeService
         _cardColor = Color.FromRgb(0x0F, 0x17, 0x2A);
         _textColor = Color.FromRgb(0xE2, 0xE8, 0xF0);
         _borderColor = Color.FromRgb(0x33, 0x41, 0x55);
+        _successColor = Color.FromRgb(0x4C, 0xAF, 0x50);
+        _warningColor = Color.FromRgb(0xFF, 0xC1, 0x07);
+        _errorColor = Color.FromRgb(0xE5, 0x39, 0x35);
+        _gaugeGreenColor = Color.FromRgb(0x4C, 0xAF, 0x50);
+        _gaugeYellowColor = Color.FromRgb(0xFF, 0xC1, 0x07);
+        _gaugeRedColor = Color.FromRgb(0xF4, 0x36, 0x4C);
         _cornerRadius = 12;
         _animationDuration = 300;
         _enableAnimations = true;

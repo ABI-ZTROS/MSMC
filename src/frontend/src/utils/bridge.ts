@@ -660,6 +660,50 @@ export function setAccentColor(hex: string): Promise<{ success: boolean }> {
   return bridge.invoke<{ success: boolean }>('settings:setAccentColor', hex)
 }
 
+// ═════════════════════════════════════════════════════════════════════
+// ✅ 12 色体系 — 10 个颜色 setter
+// ═════════════════════════════════════════════════════════════════════
+
+export function setBackgroundColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setBackgroundColor', hex)
+}
+
+export function setCardColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setCardColor', hex)
+}
+
+export function setTextColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setTextColor', hex)
+}
+
+export function setBorderColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setBorderColor', hex)
+}
+
+export function setSuccessColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setSuccessColor', hex)
+}
+
+export function setWarningColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setWarningColor', hex)
+}
+
+export function setErrorColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setErrorColor', hex)
+}
+
+export function setGaugeGreenColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setGaugeGreenColor', hex)
+}
+
+export function setGaugeYellowColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setGaugeYellowColor', hex)
+}
+
+export function setGaugeRedColor(hex: string): Promise<{ success: boolean }> {
+  return bridge.invoke<{ success: boolean }>('settings:setGaugeRedColor', hex)
+}
+
 export function applyTheme(): Promise<ThemeApplyResult> {
   return bridge.invoke<ThemeApplyResult>('settings:applyTheme')
 }

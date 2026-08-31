@@ -3140,6 +3140,12 @@ public partial class MainWindow : Window
                 cardColorHex = ArgbToRgb(settings?.CardColorHex),
                 textColorHex = ArgbToRgb(settings?.TextColorHex),
                 borderColorHex = ArgbToRgb(settings?.BorderColorHex),
+                successColorHex = ArgbToRgb(settings?.SuccessColorHex),
+                warningColorHex = ArgbToRgb(settings?.WarningColorHex),
+                errorColorHex = ArgbToRgb(settings?.ErrorColorHex),
+                gaugeGreenColorHex = ArgbToRgb(settings?.GaugeGreenColorHex),
+                gaugeYellowColorHex = ArgbToRgb(settings?.GaugeYellowColorHex),
+                gaugeRedColorHex = ArgbToRgb(settings?.GaugeRedColorHex),
                 cornerRadius = settings?.CornerRadius ?? 12,
                 animationDuration = settings?.AnimationDuration ?? 300,
                 enableAnimations = settings?.EnableAnimations ?? true,
@@ -3194,6 +3200,196 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 Log.Warning(ex, "设置强调色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置背景色 🎨
+        _bridgeService.RegisterRequestHandler("settings:setBackgroundColor", payload =>
+        {
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#020617";
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetBackgroundColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置背景色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置卡片色 🎨
+        _bridgeService.RegisterRequestHandler("settings:setCardColor", payload =>
+        {
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#0F172A";
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetCardColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置卡片色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置文字色 🎨
+        _bridgeService.RegisterRequestHandler("settings:setTextColor", payload =>
+        {
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#E2E8F0";
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetTextColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置文字色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置边框色 🎨
+        _bridgeService.RegisterRequestHandler("settings:setBorderColor", payload =>
+        {
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#334155";
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetBorderColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置边框色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置成功色 🎨
+        _bridgeService.RegisterRequestHandler("settings:setSuccessColor", payload =>
+        {
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#4CAF50";
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetSuccessColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置成功色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置警告色 🎨
+        _bridgeService.RegisterRequestHandler("settings:setWarningColor", payload =>
+        {
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#FFC107";
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetWarningColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置警告色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置错误色 🎨
+        _bridgeService.RegisterRequestHandler("settings:setErrorColor", payload =>
+        {
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#E53935";
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetErrorColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置错误色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置仪表盘绿色 🎨
+        _bridgeService.RegisterRequestHandler("settings:setGaugeGreenColor", payload =>
+        {
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#4CAF50";
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetGaugeGreenColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置仪表盘绿色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置仪表盘黄色 🎨
+        _bridgeService.RegisterRequestHandler("settings:setGaugeYellowColor", payload =>
+        {
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#FFC107";
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetGaugeYellowColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置仪表盘黄色失败: {Hex}", hex);
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 设置仪表盘红色 🎨
+        _bridgeService.RegisterRequestHandler("settings:setGaugeRedColor", payload =>
+        {
+            var hex = ExtractStringPayload(payload);
+            if (string.IsNullOrEmpty(hex)) hex = "#F4364C";
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                settings?.SetGaugeRedColorCommand.Execute(hex);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "设置仪表盘红色失败: {Hex}", hex);
                 return Task.FromResult<object?>(new { success = false, error = ex.Message });
             }
         });
@@ -3305,13 +3501,16 @@ public partial class MainWindow : Window
             }
         });
 
-        // 应用预设
+        // 应用预设（诚实返回：key 不存在则失败而非默默回退默认）
         _bridgeService.RegisterRequestHandler("settings:setPreset", payload =>
         {
             try
             {
                 var preset = ExtractStringPayload(payload);
-                if (string.IsNullOrEmpty(preset)) preset = "SkyBlue";
+                if (string.IsNullOrEmpty(preset) || ThemePresetRegistry.GetPresetByKey(preset) == null)
+                {
+                    return Task.FromResult<object?>(new { success = false, error = $"未找到预设: {preset}" });
+                }
                 settings?.SetPresetCommand.Execute(preset);
                 return Task.FromResult<object?>(new
                 {
