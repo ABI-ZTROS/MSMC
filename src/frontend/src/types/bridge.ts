@@ -792,3 +792,38 @@ export interface InstallResult {
   installedAt: string
   backupPath?: string
 }
+
+// ─── 启动脚本类型 ───
+
+export type StartupMode = 'Manual' | 'Script'
+
+export interface StartupConfig {
+  mode: StartupMode
+  scriptPath?: string
+  scriptName?: string
+  lastParseTime?: string
+  hasAutoRestart: boolean
+  jvmArgs: string[]
+  jarPath?: string
+  maxHeapBytes: number
+  initialHeapBytes: number
+}
+
+export interface DiffReport {
+  jarPathChanged: boolean
+  heapMaxFrom?: string
+  heapMaxTo?: string
+  heapInitFrom?: string
+  heapInitTo?: string
+  jvmArgsAdded: string[]
+  jvmArgsRemoved: string[]
+}
+
+// ─── KnownServer 扩展（支持 startup 字段） ───
+
+export interface KnownServerWithStartup {
+  id: string
+  name: string
+  workingDirectory?: string
+  startup?: StartupConfig | null
+}

@@ -112,6 +112,52 @@ public class KnownServer
     /// 其余字段走全局默认（实现字段级而非整对象级覆盖）。
     /// </summary>
     public PerServerSupervisorPolicy? Supervisor { get; set; }
+
+    /// <summary>
+    /// 启动配置子对象 — 启动模式、脚本路径、解析快照。
+    /// 可空：旧 KnownServer JSON 没有此字段时为 null，启动时自动检测一次。
+    /// </summary>
+    public StartupConfig? Startup { get; set; }
+}
+
+/// <summary>启动模式枚举</summary>
+public enum StartupMode
+{
+    /// <summary>手动组装 java 命令（默认）</summary>
+    Manual = 0,
+    /// <summary>直接调用 .bat 启动脚本</summary>
+    Script = 1,
+}
+
+/// <summary>启动脚本配置快照 — 固化扫描 + 解析结果，避免每次启动重 parse</summary>
+public class StartupConfig
+{
+    /// <summary>启动模式：Manual=手动组装java命令, Script=直接调.bat</summary>
+    public StartupMode Mode { get; set; } = StartupMode.Manual;
+
+    /// <summary>识别到/用户指定的启动脚本绝对路径</summary>
+    public string? ScriptPath { get; set; }
+
+    /// <summary>脚本文件名（start.bat / run.bat / 自定义）</summary>
+    public string? ScriptName { get; set; }
+
+    /// <summary>脚本最后一次解析时间</summary>
+    public DateTime? LastParseTime { get; set; }
+
+    /// <summary>脚本是否包含自动重启循环（Supervisor 据此互斥禁用崩溃自动重启）</summary>
+    public bool HasAutoRestart { get; set; }
+
+    /// <summary>上次解析时提取的 JVM 参数快照（用于 diff 对比用户手动改动）</summary>
+    public List<string> ScriptJvmArgs { get; set; } = [];
+
+    /// <summary>上次解析时提取的 Jar 路径（用于启动时 sanity check）</summary>
+    public string? ScriptJarPath { get; set; }
+
+    /// <summary>上次解析时提取的最大堆内存（字节）</summary>
+    public long ScriptMaxHeapBytes { get; set; }
+
+    /// <summary>上次解析时提取的初始堆内存（字节）</summary>
+    public long ScriptInitialHeapBytes { get; set; }
 }
 
 /// <summary>

@@ -1660,6 +1660,29 @@ public partial class ServerDetectionViewModel : ObservableObject, IDisposable
                 ServerPort = server.Port
             };
 
+            // ===== 新增：StartupConfig 传播 =====
+            if (server.Startup != null)
+            {
+                instance.StartupScriptPath = server.Startup.ScriptPath;
+                instance.StartupMode = server.Startup.Mode;
+                instance.ScriptHasAutoRestart = server.Startup.HasAutoRestart;
+            }
+            else
+            {
+                // KnownServer 没 StartupConfig → 自动检测一次，写回 KnownServer
+                var detected = StartupScriptAutoDetector.AutoDetectAndPopulateStartup(server.WorkingDirectory);
+                if (detected != null)
+                {
+                    server.Startup = detected;
+                    _appConfigService.UpdateKnownServer(server);
+                    instance.StartupScriptPath = detected.ScriptPath;
+                    instance.StartupMode = detected.Mode;
+                    instance.ScriptHasAutoRestart = detected.HasAutoRestart;
+                    Log.Information("[SCRIPT] 首次启动自动检测: {Script}, Mode={Mode}", detected.ScriptName, detected.Mode);
+                }
+            }
+            // ===== end 新增 =====
+
             var process = await Task.Run(() => _serverManager.StartServer(instance));
 
             if (process != null)

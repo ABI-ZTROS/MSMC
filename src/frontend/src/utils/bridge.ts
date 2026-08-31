@@ -50,6 +50,9 @@ import type {
   MarketVersion,
   InstallResult,
   InstalledPlugin,
+  StartupMode,
+  StartupConfig,
+  DiffReport,
 } from '@/types/bridge'
 
 declare global {
@@ -982,4 +985,37 @@ export function installPlugin(version: MarketVersion, serverPath: string): Promi
 
 export function getInstalledPlugins(serverPath: string): Promise<InstalledPlugin[]> {
   return bridge.invoke<InstalledPlugin[]>('market.listInstalled', serverPath)
+}
+
+// ─── 启动脚本 API ───
+
+export function detectStartupScript(knownServerId: string): Promise<{
+  success: boolean
+  startup?: StartupConfig
+  error?: string
+}> {
+  return bridge.invoke('server:detectStartupScript', { knownServerId })
+}
+
+export function setStartupMode(knownServerId: string, mode: StartupMode): Promise<{
+  success: boolean
+}> {
+  return bridge.invoke('server:setStartupMode', { knownServerId, mode })
+}
+
+export function setScriptPath(knownServerId: string, scriptPath: string): Promise<{
+  success: boolean
+  startup?: StartupConfig
+  error?: string
+}> {
+  return bridge.invoke('server:setScriptPath', { knownServerId, scriptPath })
+}
+
+export function reparseScript(knownServerId: string): Promise<{
+  success: boolean
+  startup?: StartupConfig
+  diff?: DiffReport
+  error?: string
+}> {
+  return bridge.invoke('server:reparseScript', { knownServerId })
 }

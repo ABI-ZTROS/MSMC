@@ -55,6 +55,17 @@ public partial class ServerInstance : ObservableObject
     [ObservableProperty] private string? _startupScriptPath;
 
     /// <summary>
+    /// 启动模式 — Manual=手动组装java命令, Script=直接调.bat
+    /// 来自 KnownServer.Startup.Mode 传播。
+    /// </summary>
+    [ObservableProperty] private StartupMode _startupMode = StartupMode.Manual;
+
+    /// <summary>
+    /// 脚本是否含自动重启循环（Supervisor 互斥禁用崩溃重启用）
+    /// </summary>
+    [ObservableProperty] private bool _scriptHasAutoRestart;
+
+    /// <summary>
     /// 进程完整命令行字符串，用于追溯原始启动参数。
     /// </summary>
     [ObservableProperty] private string _fullCommandLine = string.Empty;

@@ -580,6 +580,49 @@ public class ServerManagerService : IServerManagerService
     /// </summary>
     public Process? StartServer(ServerInstance server)
     {
+        // ===== 新增：Mode 分叉（Script vs Manual） =====
+        if (server.StartupMode == StartupMode.Script && !string.IsNullOrEmpty(server.StartupScriptPath))
+        {
+            // 用户选了 bat 模式 → 直调脚本
+            Log.Information("[BOOT] Mode=Script，走 bat 启动路径: {Script}", server.StartupScriptPath);
+            var batProcess = LaunchViaBat(server);
+
+            if (batProcess != null && _supervisor != null)
+            {
+                try
+                {
+                    var scriptInfo = new ScriptSupervisorInfo
+                    {
+                        ScriptPath = server.StartupScriptPath,
+                        HasAutoRestart = server.ScriptHasAutoRestart,
+                    };
+                    // Supervisor 进程树绑定 — 如果 Supervisor 支持 TrackExistingProcessTree
+                    // （当前接口可能没有，这里先 try-catch 安全调用）
+                    var supType = _supervisor.GetType();
+                    var trackMethod = supType.GetMethod("TrackExistingProcessTree");
+                    if (trackMethod != null)
+                    {
+                        var handle = trackMethod.Invoke(_supervisor, new object[] { batProcess.Id, scriptInfo });
+                        if (handle != null)
+                        {
+                            Log.Information("[SUP] 进程树已绑定 PID={Pid}, HasAutoRestart={AR}", batProcess.Id, server.ScriptHasAutoRestart);
+                        }
+                    }
+                    else
+                    {
+                        Log.Warning("[SUP] Supervisor 未实现 TrackExistingProcessTree，bat 进程树未绑定");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "[SUP] Supervisor 绑定进程树失败，降级为裸 bat 启动");
+                }
+            }
+
+            return batProcess;
+        }
+        // ===== end 新增 =====
+
         // Case A: 监管模式可用
         if (_supervisor != null)
         {
@@ -602,6 +645,72 @@ public class ServerManagerService : IServerManagerService
 
         // Case B: 旧版裸 Process.Start 流程（保持与原实现完全一致）
         return StartServerLegacy(server);
+    }
+
+    /// <summary>
+    /// 通过 .bat / .cmd 脚本启动服务器进程。
+    /// UseShellExecute=false 让 .NET 通过 cmd.exe 执行脚本，方便拿到 PID 绑定进程树。
+    /// bat 启动后 2 秒内检查进程是否立即退出（返回链兜底诊断）。
+    /// </summary>
+    private Process? LaunchViaBat(ServerInstance server)
+    {
+        var scriptPath = server.StartupScriptPath!;
+        var batDir = Path.GetDirectoryName(scriptPath) ?? server.WorkingDirectory;
+
+        if (!File.Exists(scriptPath))
+        {
+            Log.Error("[BOOT] 脚本不存在: {Path}，回退到手动 Java 启动", scriptPath);
+            return null;
+        }
+
+        Log.Information("[BOOT] 走 bat 启动路径: Script={Script}, WorkingDir={Dir}", scriptPath, batDir);
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = scriptPath,
+            WorkingDirectory = batDir,
+            UseShellExecute = false,
+            CreateNoWindow = false,
+        };
+
+        Process process;
+        try
+        {
+            process = Process.Start(startInfo);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[BOOT] 启动 bat 异常");
+            return null;
+        }
+
+        if (process == null)
+        {
+            Log.Error("[BOOT] Process.Start 返回 null");
+            return null;
+        }
+
+        Log.Information("[OK] bat 进程已启动 PID={Pid}", process.Id);
+
+        // 返回链：短暂等待后检查进程是否存活，异常退出时读日志做诊断
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(2000);
+            try
+            {
+                if (process.HasExited)
+                {
+                    Log.Warning("[BOOT] bat 进程 2 秒内退出 ExitCode={Code}", process.ExitCode);
+                    ReadServerCrashDetailsLegacy(server.WorkingDirectory);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "[BOOT] 检查 bat 存活时异常（可能进程已释放）");
+            }
+        });
+
+        return process;
     }
 
     /// <summary>

@@ -1716,7 +1716,176 @@ public partial class MainWindow : Window
             }
         });
 
-        // 切换自动检测
+        // ===== 新增：启动脚本相关 Bridge Actions =====
+
+        // 检测 / 解析服务器目录下的启动脚本
+        _bridgeService.RegisterRequestHandler("server:detectStartupScript", payload =>
+        {
+            try
+            {
+                var knownServerId = ExtractStringFromPayload(payload, "knownServerId");
+                var known = _vm?.DetectionPage?.KnownServers
+                    .FirstOrDefault(s => s.Id == knownServerId);
+                if (known == null)
+                    return Task.FromResult<object?>(new { success = false, error = "服务器不存在" });
+
+                var config = StartupScriptAutoDetector.AutoDetectAndPopulateStartup(
+                    known.WorkingDirectory, known.Startup?.ScriptPath);
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    startup = SerializeStartupConfig(config),
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "detectStartupScript 异常");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 切换启动模式（Manual / Script）
+        _bridgeService.RegisterRequestHandler("server:setStartupMode", payload =>
+        {
+            try
+            {
+                var knownServerId = ExtractStringFromPayload(payload, "knownServerId");
+                var modeStr = ExtractStringFromPayload(payload, "mode") ?? "Manual";
+                var known = _vm?.DetectionPage?.KnownServers
+                    .FirstOrDefault(s => s.Id == knownServerId);
+                if (known == null)
+                    return Task.FromResult<object?>(new { success = false, error = "服务器不存在" });
+
+                var mode = modeStr == "Script" ? StartupMode.Script : StartupMode.Manual;
+
+                // 确保 KnownServer 有 StartupConfig
+                known.Startup ??= StartupScriptAutoDetector.AutoDetectAndPopulateStartup(known.WorkingDirectory);
+                known.Startup ??= new StartupConfig();
+
+                known.Startup.Mode = mode;
+                _appConfigService.UpdateKnownServer(known);
+
+                Log.Information("[SCRIPT] 用户切换启动模式: Server={Server}, Mode={Mode}", known.Name, mode);
+                return Task.FromResult<object?>(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "setStartupMode 异常");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 用户手动指定脚本路径
+        _bridgeService.RegisterRequestHandler("server:setScriptPath", payload =>
+        {
+            try
+            {
+                var knownServerId = ExtractStringFromPayload(payload, "knownServerId");
+                var scriptPath = ExtractStringFromPayload(payload, "scriptPath") ?? "";
+                var known = _vm?.DetectionPage?.KnownServers
+                    .FirstOrDefault(s => s.Id == knownServerId);
+                if (known == null)
+                    return Task.FromResult<object?>(new { success = false, error = "服务器不存在" });
+
+                if (!File.Exists(scriptPath))
+                    return Task.FromResult<object?>(new { success = false, error = "脚本文件不存在" });
+
+                var config = StartupScriptAutoDetector.AutoDetectAndPopulateStartup(
+                    known.WorkingDirectory, scriptPath);
+                known.Startup = config ?? new StartupConfig
+                {
+                    ScriptPath = scriptPath,
+                    ScriptName = Path.GetFileName(scriptPath),
+                    Mode = StartupMode.Script,
+                };
+                known.Startup.Mode = StartupMode.Script;
+                _appConfigService.UpdateKnownServer(known);
+
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    startup = SerializeStartupConfig(known.Startup),
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "setScriptPath 异常");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // 重新解析脚本 + 返回 diff 报告
+        _bridgeService.RegisterRequestHandler("server:reparseScript", payload =>
+        {
+            try
+            {
+                var knownServerId = ExtractStringFromPayload(payload, "knownServerId");
+                var known = _vm?.DetectionPage?.KnownServers
+                    .FirstOrDefault(s => s.Id == knownServerId);
+                if (known == null)
+                    return Task.FromResult<object?>(new { success = false, error = "服务器不存在" });
+
+                var config = StartupScriptAutoDetector.AutoDetectAndPopulateStartup(
+                    known.WorkingDirectory, known.Startup?.ScriptPath);
+                if (config == null)
+                    return Task.FromResult<object?>(new { success = false, error = "解析失败或未找到脚本" });
+
+                config.Mode = known.Startup?.Mode ?? StartupMode.Manual;
+                known.Startup = config;
+
+                var diff = StartupScriptAutoDetector.ComputeDiff(known, config);
+
+                return Task.FromResult<object?>(new
+                {
+                    success = true,
+                    startup = SerializeStartupConfig(config),
+                    diff = new
+                    {
+                        jarPathChanged = diff?.JarPathChanged ?? false,
+                        heapMaxFrom = diff?.HeapMaxFrom,
+                        heapMaxTo = diff?.HeapMaxTo,
+                        heapInitFrom = diff?.HeapInitFrom,
+                        heapInitTo = diff?.HeapInitTo,
+                        jvmArgsAdded = diff?.JvmArgsAdded ?? new List<string>(),
+                        jvmArgsRemoved = diff?.JvmArgsRemoved ?? new List<string>(),
+                    },
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "reparseScript 异常");
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
+            }
+        });
+
+        // ===== 辅助方法 =====
+        static string? ExtractStringFromPayload(object? payload, string fieldName)
+        {
+            if (payload is System.Text.Json.JsonElement el && el.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                return el.TryGetProperty(fieldName, out var p) ? p.GetString() : null;
+            }
+            return null;
+        }
+
+        static object? SerializeStartupConfig(StartupConfig? c)
+        {
+            if (c == null) return null;
+            return new
+            {
+                mode = c.Mode.ToString(),
+                scriptPath = c.ScriptPath,
+                scriptName = c.ScriptName,
+                lastParseTime = c.LastParseTime?.ToString("o"),
+                hasAutoRestart = c.HasAutoRestart,
+                jvmArgs = c.ScriptJvmArgs,
+                jarPath = c.ScriptJarPath,
+                maxHeapBytes = c.ScriptMaxHeapBytes,
+                initialHeapBytes = c.ScriptInitialHeapBytes,
+            };
+        }
+
+        // ===== end 新增 Bridge Actions =====
         _bridgeService.RegisterRequestHandler("server:toggleAutoDetect", _ =>
         {
             try
