@@ -1731,6 +1731,8 @@ public partial class MainWindow : Window
 
                 var config = StartupScriptAutoDetector.AutoDetectAndPopulateStartup(
                     known.WorkingDirectory, known.Startup?.ScriptPath);
+                if (config == null)
+                    return Task.FromResult<object?>(new { success = false, error = "未找到启动脚本或解析失败" });
                 return Task.FromResult<object?>(new
                 {
                     success = true,
@@ -1763,7 +1765,10 @@ public partial class MainWindow : Window
                 known.Startup ??= new StartupConfig();
 
                 known.Startup.Mode = mode;
-                App.Services.GetService<io.NET.ZTR_OS.Features.Settings.Services.IAppConfigService>()?.UpdateKnownServer(known);
+                var cfgSvc = App.Services.GetService<io.NET.ZTR_OS.Features.Settings.Services.IAppConfigService>();
+                if (cfgSvc == null)
+                    return Task.FromResult<object?>(new { success = false, error = "配置服务不可用" });
+                cfgSvc.UpdateKnownServer(known);
 
                 Log.Information("[SCRIPT] 用户切换启动模式: Server={Server}, Mode={Mode}", known.Name, mode);
                 return Task.FromResult<object?>(new { success = true });
@@ -1799,7 +1804,10 @@ public partial class MainWindow : Window
                     Mode = StartupMode.Script,
                 };
                 known.Startup.Mode = StartupMode.Script;
-                App.Services.GetService<io.NET.ZTR_OS.Features.Settings.Services.IAppConfigService>()?.UpdateKnownServer(known);
+                var cfgSvc2 = App.Services.GetService<io.NET.ZTR_OS.Features.Settings.Services.IAppConfigService>();
+                if (cfgSvc2 == null)
+                    return Task.FromResult<object?>(new { success = false, error = "配置服务不可用" });
+                cfgSvc2.UpdateKnownServer(known);
 
                 return Task.FromResult<object?>(new
                 {
