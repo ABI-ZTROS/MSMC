@@ -346,6 +346,13 @@ export interface SettingsData {
   cardColorHex: string
   textColorHex: string
   borderColorHex: string
+  // ✅ 12 色体系新增 6 个语义色字段（#RRGGBB）
+  successColorHex: string
+  warningColorHex: string
+  errorColorHex: string
+  gaugeGreenColorHex: string
+  gaugeYellowColorHex: string
+  gaugeRedColorHex: string
   cornerRadius: number
   animationDuration: number
   enableAnimations: boolean

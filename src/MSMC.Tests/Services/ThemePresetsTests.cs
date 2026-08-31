@@ -99,4 +99,82 @@ public class ThemePresetsTests
             "SakuraPink","MidnightGold","ArcticGray" };
         return string.Join(", ", expected.Where(k => !have.Contains(k)));
     }
+
+    [Fact]
+    public void EveryPreset_WhenApplied_SetsAllSixColors()
+    {
+        var presets = ThemePresetRegistry.GetAllPresets();
+
+        foreach (var p in presets)
+        {
+            // 🟢 每套预设独立 new 一个 ThemeService，避免状态串扰
+            var svc = new ThemeService();
+            Assert.True(ThemePresetRegistry.ApplyPreset(svc, p.Key),
+                $"预设 {p.Key} 应用失败");
+
+            // 基础四通道（主色/强调色/背景/卡片）按预设落地
+            // 注：ThemePreset 只暴露 PrimaryColor/AccentColor 两个 Color 派生属性，
+            // 背景/卡片为 HEX 字符串，需经 ColorConverter 解析后与 svc 比对
+            Assert.Equal(p.PrimaryColor, svc.PrimaryColor);
+            Assert.Equal(p.AccentColor, svc.AccentColor);
+            Assert.Equal(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(p.BackgroundColorHex!)!,
+                svc.BackgroundColor);
+            Assert.Equal(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(p.CardColorHex!)!,
+                svc.CardColor);
+
+            // 文字色与边框色必须非空且解析后与预设完全等价
+            Assert.False(string.IsNullOrWhiteSpace(p.TextColorHex), $"预设 {p.Key} 文字色缺失");
+            Assert.False(string.IsNullOrWhiteSpace(p.BorderColorHex), $"预设 {p.Key} 边框色缺失");
+            Assert.Equal(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(p.TextColorHex)!,
+                svc.TextColor);
+            Assert.Equal(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(p.BorderColorHex)!,
+                svc.BorderColor);
+        }
+    }
+
+    [Fact]
+    public void AllPresets_HaveCompleteValidSixColorScheme()
+    {
+        var presets = ThemePresetRegistry.GetAllPresets();
+
+        foreach (var p in presets)
+        {
+            // 六通道中的文字色/边框色必须已定义且为合法 HEX（与现有测试正则风格一致）
+            Assert.False(string.IsNullOrEmpty(p.TextColorHex), $"预设 {p.Key} 文字色未定义");
+            Assert.False(string.IsNullOrEmpty(p.BorderColorHex), $"预设 {p.Key} 边框色未定义");
+            Assert.True(System.Text.RegularExpressions.Regex.IsMatch(p.TextColorHex, "^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"),
+                $"预设 {p.Key} 文字色不是有效 HEX: {p.TextColorHex}");
+            Assert.True(System.Text.RegularExpressions.Regex.IsMatch(p.BorderColorHex, "^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"),
+                $"预设 {p.Key} 边框色不是有效 HEX: {p.BorderColorHex}");
+        }
+    }
+
+    [Fact]
+    public void ApplyPreset_UnknownKey_ReturnsFalseAndLeavesColorsUnchanged()
+    {
+        var svc = new ThemeService();
+
+        // 记录应用前的六色默认值
+        var defaultPrimary = svc.PrimaryColor;
+        var defaultAccent = svc.AccentColor;
+        var defaultBackground = svc.BackgroundColor;
+        var defaultCard = svc.CardColor;
+        var defaultText = svc.TextColor;
+        var defaultBorder = svc.BorderColor;
+
+        // 未知 key 必须返回 false 且不抛异常
+        Assert.False(ThemePresetRegistry.ApplyPreset(svc, "NonExistentPresetKey"));
+
+        // 六色通道必须保持不变
+        Assert.Equal(defaultPrimary, svc.PrimaryColor);
+        Assert.Equal(defaultAccent, svc.AccentColor);
+        Assert.Equal(defaultBackground, svc.BackgroundColor);
+        Assert.Equal(defaultCard, svc.CardColor);
+        Assert.Equal(defaultText, svc.TextColor);
+        Assert.Equal(defaultBorder, svc.BorderColor);
+    }
 }

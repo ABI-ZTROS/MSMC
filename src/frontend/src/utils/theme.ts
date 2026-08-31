@@ -41,7 +41,7 @@ function applyTextScale(baseHex: string, style: CSSStyleDeclaration): void {
   style.setProperty('--md-white', '#FFFFFF')
 }
 
-function applyBorderColor(baseHex: string, style: CSSStyleDeclaration): void {
+function applyBorderColorScale(baseHex: string, style: CSSStyleDeclaration): void {
   style.setProperty('--md-subtle-border', baseHex)
   style.setProperty('--md-card-subtle-border', rgba(baseHex, 0.2))
   style.setProperty('--md-swatch-hover-border', '#FFFFFF')
@@ -92,19 +92,28 @@ function applyLegacyAliases(primaryHex: string, style: CSSStyleDeclaration): voi
   style.setProperty('--md-primary-border', rgba(scale[5], 0.2))
 }
 
-function applyStatusColors(style: CSSStyleDeclaration): void {
-  style.setProperty('--md-gauge-green', '#4CAF50')
-  style.setProperty('--md-gauge-yellow', '#FFC107')
-  style.setProperty('--md-gauge-red', '#F4364C')
-  style.setProperty('--md-danger', '#E53935')
-  style.setProperty('--md-error-text', '#FB7185')
+function applyStatusColors(
+  style: CSSStyleDeclaration,
+  success: string,
+  warning: string,
+  error: string,
+  gaugeGreen: string,
+  gaugeYellow: string,
+  gaugeRed: string,
+): void {
+  // ✅ 12 色体系：语义色由 settings:get 下发的 #RRGGBB（已大写归一化）驱动
+  style.setProperty('--md-gauge-green', gaugeGreen)
+  style.setProperty('--md-gauge-yellow', gaugeYellow)
+  style.setProperty('--md-gauge-red', gaugeRed)
+  style.setProperty('--md-danger', error)
+  style.setProperty('--md-error-text', lightenOklch(error, 0.35))
 
-  style.setProperty('--md-success-subtle-background', 'rgba(76, 175, 80, 0.1)')
-  style.setProperty('--md-success-subtle-border', 'rgba(76, 175, 80, 0.3)')
-  style.setProperty('--md-warning-subtle-background', 'rgba(255, 193, 7, 0.1)')
-  style.setProperty('--md-warning-subtle-border', 'rgba(255, 193, 7, 0.3)')
-  style.setProperty('--md-danger-subtle-background', 'rgba(244, 54, 76, 0.1)')
-  style.setProperty('--md-danger-subtle-border', 'rgba(244, 54, 76, 0.3)')
+  style.setProperty('--md-success-subtle-background', rgba(success, 0.1))
+  style.setProperty('--md-success-subtle-border', rgba(success, 0.3))
+  style.setProperty('--md-warning-subtle-background', rgba(warning, 0.1))
+  style.setProperty('--md-warning-subtle-border', rgba(warning, 0.3))
+  style.setProperty('--md-danger-subtle-background', rgba(error, 0.1))
+  style.setProperty('--md-danger-subtle-border', rgba(error, 0.3))
 }
 
 function applyMemorialColors(style: CSSStyleDeclaration): void {
@@ -173,13 +182,20 @@ export function applySettingsToCss(settings: SettingsData): void {
   const bg = normalizeHex(settings.backgroundColorHex)
   const text = normalizeHex(settings.textColorHex)
   const border = normalizeHex(settings.borderColorHex)
+  // ✅ 12 色体系语义色
+  const success = normalizeHex(settings.successColorHex)
+  const warning = normalizeHex(settings.warningColorHex)
+  const error = normalizeHex(settings.errorColorHex)
+  const gaugeGreen = normalizeHex(settings.gaugeGreenColorHex)
+  const gaugeYellow = normalizeHex(settings.gaugeYellowColorHex)
+  const gaugeRed = normalizeHex(settings.gaugeRedColorHex)
 
   applyPrimaryScale(primary, '--md-primary', style)
   applyAccentColorScale(accent, style)
   applySurfaceScale(bg, style)
   applyTextScale(text, style)
-  applyBorderColor(border, style)
-  applyStatusColors(style)
+  applyBorderColorScale(border, style)
+  applyStatusColors(style, success, warning, error, gaugeGreen, gaugeYellow, gaugeRed)
   applyMemorialColors(style)
   applyLegacyAliases(primary, style)
   applyRadius(settings.cornerRadius, style)
@@ -193,4 +209,53 @@ export function applyPrimaryColor(hex: string): void {
   const primary = normalizeHex(hex)
   applyPrimaryScale(primary, '--md-primary', style)
   applyLegacyAliases(primary, style)
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// ✅ 12 色体系 — 预览函数（实时应用单颜色，不放宽/保存）
+// ═════════════════════════════════════════════════════════════════════
+
+export function applyBackgroundColor(hex: string): void {
+  const style = document.documentElement.style
+  applySurfaceScale(normalizeHex(hex), style)
+}
+
+export function applyCardColor(hex: string): void {
+  const style = document.documentElement.style
+  const scale = generate9StepScale(normalizeHex(hex))
+  // ✅ 卡片 -> 终端 -> 表面层级统一由 9 步色阶驱动
+  style.setProperty('--md-card-background', scale[8])
+  style.setProperty('--md-card-hover', lightenOklch(scale[8], 0.06))
+  style.setProperty('--md-terminal-background', darkenOklch(scale[8], 0.1))
+  style.setProperty('--md-surface-1', scale[8])
+  style.setProperty('--md-surface-2', scale[7])
+}
+
+export function applyTextColor(hex: string): void {
+  const style = document.documentElement.style
+  applyTextScale(normalizeHex(hex), style)
+}
+
+export function applyBorderColor(hex: string): void {
+  const style = document.documentElement.style
+  applyBorderColorScale(normalizeHex(hex), style)
+}
+
+export function applySemanticColors(semantic: {
+  success: string
+  warning: string
+  error: string
+  gaugeGreen: string
+  gaugeYellow: string
+  gaugeRed: string
+}): void {
+  // ✅ 12 色体系语义色统一预览入口
+  const style = document.documentElement.style
+  const success = normalizeHex(semantic.success)
+  const warning = normalizeHex(semantic.warning)
+  const error = normalizeHex(semantic.error)
+  const gaugeGreen = normalizeHex(semantic.gaugeGreen)
+  const gaugeYellow = normalizeHex(semantic.gaugeYellow)
+  const gaugeRed = normalizeHex(semantic.gaugeRed)
+  applyStatusColors(style, success, warning, error, gaugeGreen, gaugeYellow, gaugeRed)
 }

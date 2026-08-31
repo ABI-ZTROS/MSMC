@@ -63,6 +63,30 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private Color _borderColor = Color.FromRgb(0x33, 0x41, 0x55);
 
+    /// <summary>成功色（用于成功提示、通过状态）🎉</summary>
+    [ObservableProperty]
+    private Color _successColor = Color.FromRgb(0x4C, 0xAF, 0x50);
+
+    /// <summary>警告色（用于警告提示、低危状态）⚠️</summary>
+    [ObservableProperty]
+    private Color _warningColor = Color.FromRgb(0xFF, 0xC1, 0x07);
+
+    /// <summary>错误色（用于错误提示、失败状态）❌</summary>
+    [ObservableProperty]
+    private Color _errorColor = Color.FromRgb(0xE5, 0x39, 0x35);
+
+    /// <summary>仪表盘绿色（用于指标正向区间）🟢</summary>
+    [ObservableProperty]
+    private Color _gaugeGreenColor = Color.FromRgb(0x4C, 0xAF, 0x50);
+
+    /// <summary>仪表盘黄色（用于指标中间区间）🟡</summary>
+    [ObservableProperty]
+    private Color _gaugeYellowColor = Color.FromRgb(0xFF, 0xC1, 0x07);
+
+    /// <summary>仪表盘红色（用于指标负向区间）🔴</summary>
+    [ObservableProperty]
+    private Color _gaugeRedColor = Color.FromRgb(0xF4, 0x36, 0x4C);
+
     /// <summary>主色画刷（供 Border.Background 等画刷属性绑定）</summary>
     public SolidColorBrush PrimaryColorBrush => new SolidColorBrush(PrimaryColor);
 
@@ -80,6 +104,24 @@ public partial class SettingsViewModel : ObservableObject
 
     /// <summary>边框色画刷</summary>
     public SolidColorBrush BorderColorBrush => new SolidColorBrush(BorderColor);
+
+    /// <summary>成功色画刷</summary>
+    public SolidColorBrush SuccessColorBrush => new SolidColorBrush(SuccessColor);
+
+    /// <summary>警告色画刷</summary>
+    public SolidColorBrush WarningColorBrush => new SolidColorBrush(WarningColor);
+
+    /// <summary>错误色画刷</summary>
+    public SolidColorBrush ErrorColorBrush => new SolidColorBrush(ErrorColor);
+
+    /// <summary>仪表盘绿色画刷</summary>
+    public SolidColorBrush GaugeGreenColorBrush => new SolidColorBrush(GaugeGreenColor);
+
+    /// <summary>仪表盘黄色画刷</summary>
+    public SolidColorBrush GaugeYellowColorBrush => new SolidColorBrush(GaugeYellowColor);
+
+    /// <summary>仪表盘红色画刷</summary>
+    public SolidColorBrush GaugeRedColorBrush => new SolidColorBrush(GaugeRedColor);
 
     /// <summary>控件圆角半径（像素）</summary>
     [ObservableProperty]
@@ -249,6 +291,132 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     /// <summary>
+    /// 成功色的十六进制字符串表示
+    /// </summary>
+    public string SuccessColorHex
+    {
+        get => $"#{SuccessColor.A:X2}{SuccessColor.R:X2}{SuccessColor.G:X2}{SuccessColor.B:X2}";
+        set
+        {
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(value);
+                SuccessColor = color;
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "颜色解析失败（SuccessColorHex）: {Value}", value);
+                StatusMessage = "无效的颜色值";
+            }
+        }
+    }
+
+    /// <summary>
+    /// 警告色的十六进制字符串表示
+    /// </summary>
+    public string WarningColorHex
+    {
+        get => $"#{WarningColor.A:X2}{WarningColor.R:X2}{WarningColor.G:X2}{WarningColor.B:X2}";
+        set
+        {
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(value);
+                WarningColor = color;
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "颜色解析失败（WarningColorHex）: {Value}", value);
+                StatusMessage = "无效的颜色值";
+            }
+        }
+    }
+
+    /// <summary>
+    /// 错误色的十六进制字符串表示
+    /// </summary>
+    public string ErrorColorHex
+    {
+        get => $"#{ErrorColor.A:X2}{ErrorColor.R:X2}{ErrorColor.G:X2}{ErrorColor.B:X2}";
+        set
+        {
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(value);
+                ErrorColor = color;
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "颜色解析失败（ErrorColorHex）: {Value}", value);
+                StatusMessage = "无效的颜色值";
+            }
+        }
+    }
+
+    /// <summary>
+    /// 仪表盘绿色的十六进制字符串表示
+    /// </summary>
+    public string GaugeGreenColorHex
+    {
+        get => $"#{GaugeGreenColor.A:X2}{GaugeGreenColor.R:X2}{GaugeGreenColor.G:X2}{GaugeGreenColor.B:X2}";
+        set
+        {
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(value);
+                GaugeGreenColor = color;
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "颜色解析失败（GaugeGreenColorHex）: {Value}", value);
+                StatusMessage = "无效的颜色值";
+            }
+        }
+    }
+
+    /// <summary>
+    /// 仪表盘黄色的十六进制字符串表示
+    /// </summary>
+    public string GaugeYellowColorHex
+    {
+        get => $"#{GaugeYellowColor.A:X2}{GaugeYellowColor.R:X2}{GaugeYellowColor.G:X2}{GaugeYellowColor.B:X2}";
+        set
+        {
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(value);
+                GaugeYellowColor = color;
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "颜色解析失败（GaugeYellowColorHex）: {Value}", value);
+                StatusMessage = "无效的颜色值";
+            }
+        }
+    }
+
+    /// <summary>
+    /// 仪表盘红色的十六进制字符串表示
+    /// </summary>
+    public string GaugeRedColorHex
+    {
+        get => $"#{GaugeRedColor.A:X2}{GaugeRedColor.R:X2}{GaugeRedColor.G:X2}{GaugeRedColor.B:X2}";
+        set
+        {
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(value);
+                GaugeRedColor = color;
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "颜色解析失败（GaugeRedColorHex）: {Value}", value);
+                StatusMessage = "无效的颜色值";
+            }
+        }
+    }
+
+    /// <summary>
     /// 初始化设置视图模型的新实例
     /// </summary>
     /// <param name="themeService">主题服务</param>
@@ -279,6 +447,12 @@ public partial class SettingsViewModel : ObservableObject
         CardColor = _themeService.CardColor;
         TextColor = _themeService.TextColor;
         BorderColor = _themeService.BorderColor;
+        SuccessColor = _themeService.SuccessColor;
+        WarningColor = _themeService.WarningColor;
+        ErrorColor = _themeService.ErrorColor;
+        GaugeGreenColor = _themeService.GaugeGreenColor;
+        GaugeYellowColor = _themeService.GaugeYellowColor;
+        GaugeRedColor = _themeService.GaugeRedColor;
         CornerRadius = _themeService.CornerRadius;
         AnimationDuration = _themeService.AnimationDuration;
         EnableAnimations = _themeService.EnableAnimations;
@@ -405,6 +579,120 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     /// <summary>
+    /// 设置成功色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
+    [RelayCommand]
+    private void SetSuccessColor(string hex)
+    {
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex);
+            SuccessColor = color;
+            StatusMessage = "成功色已更新";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"颜色设置失败: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// 设置警告色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
+    [RelayCommand]
+    private void SetWarningColor(string hex)
+    {
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex);
+            WarningColor = color;
+            StatusMessage = "警告色已更新";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"颜色设置失败: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// 设置错误色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
+    [RelayCommand]
+    private void SetErrorColor(string hex)
+    {
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex);
+            ErrorColor = color;
+            StatusMessage = "错误色已更新";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"颜色设置失败: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// 设置仪表盘绿色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
+    [RelayCommand]
+    private void SetGaugeGreenColor(string hex)
+    {
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex);
+            GaugeGreenColor = color;
+            StatusMessage = "仪表盘绿色已更新";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"颜色设置失败: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// 设置仪表盘黄色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
+    [RelayCommand]
+    private void SetGaugeYellowColor(string hex)
+    {
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex);
+            GaugeYellowColor = color;
+            StatusMessage = "仪表盘黄色已更新";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"颜色设置失败: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// 设置仪表盘红色命令
+    /// </summary>
+    /// <param name="hex">十六进制颜色字符串</param>
+    [RelayCommand]
+    private void SetGaugeRedColor(string hex)
+    {
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex);
+            GaugeRedColor = color;
+            StatusMessage = "仪表盘红色已更新";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"颜色设置失败: {ex.Message}";
+        }
+    }
+
+    /// <summary>
     /// 应用主题命令
     /// </summary>
     /// <remarks>
@@ -424,6 +712,12 @@ public partial class SettingsViewModel : ObservableObject
             _themeService.CardColor = CardColor;
             _themeService.TextColor = TextColor;
             _themeService.BorderColor = BorderColor;
+            _themeService.SuccessColor = SuccessColor;
+            _themeService.WarningColor = WarningColor;
+            _themeService.ErrorColor = ErrorColor;
+            _themeService.GaugeGreenColor = GaugeGreenColor;
+            _themeService.GaugeYellowColor = GaugeYellowColor;
+            _themeService.GaugeRedColor = GaugeRedColor;
             _themeService.CornerRadius = CornerRadius;
             _themeService.AnimationDuration = AnimationDuration;
             _themeService.EnableAnimations = EnableAnimations;
@@ -482,49 +776,29 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private void SetPreset(string preset)
     {
-        switch (preset)
+        if (!ThemePresetRegistry.ApplyPreset(_themeService, preset))
         {
-            case "SkyBlue":
-                PrimaryColor = Color.FromRgb(0x3B, 0x82, 0xF6);
-                AccentColor = Color.FromRgb(0xFB, 0x71, 0x85);
-                BackgroundColor = Color.FromRgb(0x02, 0x06, 0x17);
-                CardColor = Color.FromRgb(0x0F, 0x17, 0x2A);
-                TextColor = Color.FromRgb(0xE2, 0xE8, 0xF0);
-                BorderColor = Color.FromRgb(0x33, 0x41, 0x55);
-                break;
-            case "OceanBlue":
-                PrimaryColor = Color.FromRgb(0x00, 0x97, 0xA7);
-                AccentColor = Color.FromRgb(0xFF, 0xD7, 0x40);
-                BackgroundColor = Color.FromRgb(0x0A, 0x19, 0x29);
-                CardColor = Color.FromRgb(0x13, 0x2F, 0x4C);
-                TextColor = Color.FromRgb(0xE3, 0xF2, 0xFD);
-                BorderColor = Color.FromRgb(0x1E, 0x49, 0x70);
-                break;
-            case "BlueOrange":
-                PrimaryColor = Color.FromRgb(21, 101, 192);
-                AccentColor = Color.FromRgb(255, 152, 0);
-                BackgroundColor = Color.FromRgb(0x0A, 0x14, 0x28);
-                CardColor = Color.FromRgb(0x16, 0x20, 0x3A);
-                TextColor = Color.FromRgb(0xE6, 0xED, 0xF3);
-                BorderColor = Color.FromRgb(0x1E, 0x3A, 0x5F);
-                break;
-            case "TealPink":
-                PrimaryColor = Color.FromRgb(0, 137, 123);
-                AccentColor = Color.FromRgb(233, 30, 99);
-                BackgroundColor = Color.FromRgb(0x0A, 0x1F, 0x1C);
-                CardColor = Color.FromRgb(0x14, 0x30, 0x2B);
-                TextColor = Color.FromRgb(0xE0, 0xF5, 0xF0);
-                BorderColor = Color.FromRgb(0x1F, 0x4A, 0x42);
-                break;
-            case "RedYellow":
-                PrimaryColor = Color.FromRgb(198, 40, 40);
-                AccentColor = Color.FromRgb(255, 214, 0);
-                BackgroundColor = Color.FromRgb(0x1A, 0x0F, 0x0A);
-                CardColor = Color.FromRgb(0x2E, 0x1E, 0x16);
-                TextColor = Color.FromRgb(0xF5, 0xE6, 0xE0);
-                BorderColor = Color.FromRgb(0x4A, 0x2A, 0x1F);
-                break;
+            StatusMessage = $"应用预设失败：未找到预设 {preset}";
+            Log.Warning("[THEME] 预设未找到: {Preset}", preset);
+            return;
         }
+
+        // 用批量更新把预设色回读回 VM，避免逐属性触发多次 ApplyTheme
+        _themeService.BeginBatchUpdate();
+        try
+        {
+            PrimaryColor = _themeService.PrimaryColor;
+            AccentColor = _themeService.AccentColor;
+            BackgroundColor = _themeService.BackgroundColor;
+            CardColor = _themeService.CardColor;
+            TextColor = _themeService.TextColor;
+            BorderColor = _themeService.BorderColor;
+        }
+        finally
+        {
+            _themeService.EndBatchUpdate();
+        }
+
         StatusMessage = $"已应用预设: {preset}";
         Log.Information("[THEME] 已应用预设: {Preset}", preset);
     }
@@ -550,6 +824,12 @@ public partial class SettingsViewModel : ObservableObject
             CardColor = _themeService.CardColor;
             TextColor = _themeService.TextColor;
             BorderColor = _themeService.BorderColor;
+            SuccessColor = _themeService.SuccessColor;
+            WarningColor = _themeService.WarningColor;
+            ErrorColor = _themeService.ErrorColor;
+            GaugeGreenColor = _themeService.GaugeGreenColor;
+            GaugeYellowColor = _themeService.GaugeYellowColor;
+            GaugeRedColor = _themeService.GaugeRedColor;
             CornerRadius = _themeService.CornerRadius;
             AnimationDuration = _themeService.AnimationDuration;
             EnableAnimations = _themeService.EnableAnimations;
@@ -559,6 +839,12 @@ public partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(CardColorHex));
             OnPropertyChanged(nameof(TextColorHex));
             OnPropertyChanged(nameof(BorderColorHex));
+            OnPropertyChanged(nameof(SuccessColorHex));
+            OnPropertyChanged(nameof(WarningColorHex));
+            OnPropertyChanged(nameof(ErrorColorHex));
+            OnPropertyChanged(nameof(GaugeGreenColorHex));
+            OnPropertyChanged(nameof(GaugeYellowColorHex));
+            OnPropertyChanged(nameof(GaugeRedColorHex));
 
             StatusMessage = "已重置为默认值";
             _toastService.ShowInfo("设置已重置", "所有设置已恢复为默认值");
@@ -656,6 +942,66 @@ public partial class SettingsViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(BorderColorHex));
         OnPropertyChanged(nameof(BorderColorBrush));
+    }
+
+    /// <summary>
+    /// SuccessColor 变更回调
+    /// </summary>
+    /// <param name="value">新的成功色值</param>
+    partial void OnSuccessColorChanged(Color value)
+    {
+        OnPropertyChanged(nameof(SuccessColorHex));
+        OnPropertyChanged(nameof(SuccessColorBrush));
+    }
+
+    /// <summary>
+    /// WarningColor 变更回调
+    /// </summary>
+    /// <param name="value">新的警告色值</param>
+    partial void OnWarningColorChanged(Color value)
+    {
+        OnPropertyChanged(nameof(WarningColorHex));
+        OnPropertyChanged(nameof(WarningColorBrush));
+    }
+
+    /// <summary>
+    /// ErrorColor 变更回调
+    /// </summary>
+    /// <param name="value">新的错误色值</param>
+    partial void OnErrorColorChanged(Color value)
+    {
+        OnPropertyChanged(nameof(ErrorColorHex));
+        OnPropertyChanged(nameof(ErrorColorBrush));
+    }
+
+    /// <summary>
+    /// GaugeGreenColor 变更回调
+    /// </summary>
+    /// <param name="value">新的仪表盘绿色值</param>
+    partial void OnGaugeGreenColorChanged(Color value)
+    {
+        OnPropertyChanged(nameof(GaugeGreenColorHex));
+        OnPropertyChanged(nameof(GaugeGreenColorBrush));
+    }
+
+    /// <summary>
+    /// GaugeYellowColor 变更回调
+    /// </summary>
+    /// <param name="value">新的仪表盘黄色值</param>
+    partial void OnGaugeYellowColorChanged(Color value)
+    {
+        OnPropertyChanged(nameof(GaugeYellowColorHex));
+        OnPropertyChanged(nameof(GaugeYellowColorBrush));
+    }
+
+    /// <summary>
+    /// GaugeRedColor 变更回调
+    /// </summary>
+    /// <param name="value">新的仪表盘红色值</param>
+    partial void OnGaugeRedColorChanged(Color value)
+    {
+        OnPropertyChanged(nameof(GaugeRedColorHex));
+        OnPropertyChanged(nameof(GaugeRedColorBrush));
     }
 
     /// <summary>

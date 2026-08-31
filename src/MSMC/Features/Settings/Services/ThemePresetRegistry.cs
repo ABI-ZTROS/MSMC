@@ -18,13 +18,17 @@ namespace io.NET.ZTR_OS.Features.Settings.Services;
 /// <param name="AccentColorHex">强调色 HEX</param>
 /// <param name="BackgroundColorHex">背景色 HEX（可选，null 时沿用当前背景）</param>
 /// <param name="CardColorHex">卡片背景色 HEX（可选）</param>
+/// <param name="TextColorHex">文字色 HEX（可选，null 时不改文字色）</param>
+/// <param name="BorderColorHex">边框色 HEX（可选，null 时不改边框色）</param>
 public record ThemePreset(
     string Key,
     string Label,
     string PrimaryColorHex,
     string AccentColorHex,
     string? BackgroundColorHex = null,
-    string? CardColorHex = null)
+    string? CardColorHex = null,
+    string? TextColorHex = null,
+    string? BorderColorHex = null)
 {
     /// <summary>
     /// 主色的 System.Windows.Media.Color
@@ -73,7 +77,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#3B82F6",
             AccentColorHex:  "#FB7185",
             BackgroundColorHex: "#020617",
-            CardColorHex:      "#0F172A"),
+            CardColorHex:      "#0F172A",
+            TextColorHex:      "#E2E8F0",
+            BorderColorHex:    "#334155"),
 
         new(
             Key: "BlueOrange",
@@ -81,7 +87,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#1565C0",
             AccentColorHex:  "#FF9800",
             BackgroundColorHex: "#0A0F1E",
-            CardColorHex:      "#172033"),
+            CardColorHex:      "#172033",
+            TextColorHex:      "#E6EDF3",
+            BorderColorHex:    "#1E3A5F"),
 
         new(
             Key: "TealPink",
@@ -89,7 +97,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#00897B",
             AccentColorHex:  "#E91E63",
             BackgroundColorHex: "#0B1F1A",
-            CardColorHex:      "#122B25"),
+            CardColorHex:      "#122B25",
+            TextColorHex:      "#E0F5F0",
+            BorderColorHex:    "#1F4A42"),
 
         new(
             Key: "RedYellow",
@@ -97,7 +107,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#C62828",
             AccentColorHex:  "#FFD600",
             BackgroundColorHex: "#1A0A0A",
-            CardColorHex:      "#2B1616"),
+            CardColorHex:      "#2B1616",
+            TextColorHex:      "#F5E6E0",
+            BorderColorHex:    "#4A2A1F"),
 
         new(
             Key: "OceanBlue",
@@ -105,7 +117,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#0097A7",
             AccentColorHex:  "#FFD740",
             BackgroundColorHex: "#04181C",
-            CardColorHex:      "#0E2A30"),
+            CardColorHex:      "#0E2A30",
+            TextColorHex:      "#E3F2FD",
+            BorderColorHex:    "#1E4970"),
 
         // ── README L3 品牌系统新增 8 套 ──
         new(
@@ -114,7 +128,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#1677FF",  // ColorOS 官方蓝
             AccentColorHex:  "#FF6B81",  // ColorOS 樱花粉强调色
             BackgroundColorHex: "#050B1A",
-            CardColorHex:      "#0E1C35"),
+            CardColorHex:      "#0E1C35",
+            TextColorHex:      "#E6EFFC",
+            BorderColorHex:    "#24406E"),
 
         new(
             Key: "AquarioCyan",
@@ -122,7 +138,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#06B6D4",  // Cyan-500
             AccentColorHex:  "#F472B6",  // Pink-400
             BackgroundColorHex: "#041218",
-            CardColorHex:      "#0C2430"),
+            CardColorHex:      "#0C2430",
+            TextColorHex:      "#E0F6FA",
+            BorderColorHex:    "#1B4A58"),
 
         new(
             Key: "AuroraPurple",
@@ -130,7 +148,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#8B5CF6",  // Violet-500
             AccentColorHex:  "#22D3EE",  // Cyan-400
             BackgroundColorHex: "#0C0820",
-            CardColorHex:      "#1E1440"),
+            CardColorHex:      "#1E1440",
+            TextColorHex:      "#EDEAFB",
+            BorderColorHex:    "#3B2B6E"),
 
         new(
             Key: "SunsetOrange",
@@ -138,7 +158,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#F97316",  // Orange-500
             AccentColorHex:  "#FACC15",  // Amber-400
             BackgroundColorHex: "#1A0D04",
-            CardColorHex:      "#301E0E"),
+            CardColorHex:      "#301E0E",
+            TextColorHex:      "#FDF0E5",
+            BorderColorHex:    "#5C3A20"),
 
         new(
             Key: "MintGreen",
@@ -146,7 +168,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#10B981",  // Emerald-500
             AccentColorHex:  "#A78BFA",  // Violet-400
             BackgroundColorHex: "#041813",
-            CardColorHex:      "#0C2A22"),
+            CardColorHex:      "#0C2A22",
+            TextColorHex:      "#E4F5ED",
+            BorderColorHex:    "#1E5C45"),
 
         new(
             Key: "SakuraPink",
@@ -154,7 +178,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#EC4899",  // Pink-500
             AccentColorHex:  "#60A5FA",  // Blue-400
             BackgroundColorHex: "#1A0A14",
-            CardColorHex:      "#2E1726"),
+            CardColorHex:      "#2E1726",
+            TextColorHex:      "#FBE9F2",
+            BorderColorHex:    "#5C2342"),
 
         new(
             Key: "MidnightGold",
@@ -162,7 +188,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#D4A017",  // 深金
             AccentColorHex:  "#F8FAFC",  // 近白
             BackgroundColorHex: "#0A0A05",
-            CardColorHex:      "#1C1A10"),
+            CardColorHex:      "#1C1A10",
+            TextColorHex:      "#F6EFD8",
+            BorderColorHex:    "#54471A"),
 
         new(
             Key: "ArcticGray",
@@ -170,7 +198,9 @@ public static class ThemePresetRegistry
             PrimaryColorHex: "#64748B",  // Slate-500
             AccentColorHex:  "#38BDF8",  // Sky-400
             BackgroundColorHex: "#0B1220",
-            CardColorHex:      "#1A2234"),
+            CardColorHex:      "#1A2234",
+            TextColorHex:      "#E8EEF5",
+            BorderColorHex:    "#33465E"),
     };
 
     /// <summary>
@@ -210,6 +240,10 @@ public static class ThemePresetRegistry
                 service.BackgroundColor = ParseHexSafe(preset.BackgroundColorHex);
             if (!string.IsNullOrEmpty(preset.CardColorHex))
                 service.CardColor = ParseHexSafe(preset.CardColorHex);
+            if (!string.IsNullOrEmpty(preset.TextColorHex))
+                service.TextColor = ParseHexSafe(preset.TextColorHex);
+            if (!string.IsNullOrEmpty(preset.BorderColorHex))
+                service.BorderColor = ParseHexSafe(preset.BorderColorHex);
         }
         finally
         {
