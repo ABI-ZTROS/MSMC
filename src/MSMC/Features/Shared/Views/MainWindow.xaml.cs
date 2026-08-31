@@ -3984,21 +3984,24 @@ public partial class MainWindow : Window
     }
 
     // 主题变更事件处理：转发到前端
+    // ⚠️ 契约缺口已修复：所有颜色字段名必须与前端 SettingsData 接口对齐（带 Hex 后缀）
+    // 之前发的是 primaryColor，前端 SettingsData 期望 primaryColorHex → 全部颜色 undefined → CSS 变量清空 → 调色暴毙
     private void OnThemeChanged(object? sender, EventArgs e)
     {
         if (!_bridgeService.IsInitialized) return;
 
         _ = _bridgeService.SendEventAsync("theme:changed", new
         {
-            primaryColor = ColorToHex(_themeService.PrimaryColor),
-            accentColor = ColorToHex(_themeService.AccentColor),
-            backgroundColor = ColorToHex(_themeService.BackgroundColor),
-            cardColor = ColorToHex(_themeService.CardColor),
-            textColor = ColorToHex(_themeService.TextColor),
-            borderColor = ColorToHex(_themeService.BorderColor),
+            primaryColorHex = ColorToHex(_themeService.PrimaryColor),
+            accentColorHex = ColorToHex(_themeService.AccentColor),
+            backgroundColorHex = ColorToHex(_themeService.BackgroundColor),
+            cardColorHex = ColorToHex(_themeService.CardColor),
+            textColorHex = ColorToHex(_themeService.TextColor),
+            borderColorHex = ColorToHex(_themeService.BorderColor),
             cornerRadius = _themeService.CornerRadius,
             animationDuration = _themeService.AnimationDuration,
             enableAnimations = _themeService.EnableAnimations,
+            isDarkMode = _themeService.IsDarkMode,
         }).ContinueWith(t => Log.Warning(t.Exception, "推送主题变更事件失败"),
             TaskContinuationOptions.OnlyOnFaulted);
     }
