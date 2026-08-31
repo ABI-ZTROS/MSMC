@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using io.NET.ZTR_OS.Features.ServerDetection.Models;
 using Serilog;
 
 namespace io.NET.ZTR_OS.Features.ServerDetection.Services;

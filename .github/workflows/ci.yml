@@ -224,10 +224,12 @@ jobs:
           $liteSize = (Get-Item "MSMC-win-x64-lite.7z").Length
           $fullMB = [math]::Round($fullSize/1MB, 2)
           $liteMB = [math]::Round($liteSize/1MB, 2)
-          $fullPre = [int64]${{ steps.pre_7z.outputs.full_pre_bytes }}
-          $litePre = [int64]${{ steps.pre_7z.outputs.lite_pre_bytes }}
-          $fullRatio = [math]::Round((1 - $fullSize/$fullPre)*100, 1)
-          $liteRatio = [math]::Round((1 - $liteSize/$litePre)*100, 1)
+          $fullPreStr = "${{ steps.pre_7z.outputs.full_pre_bytes }}"
+          $litePreStr = "${{ steps.pre_7z.outputs.lite_pre_bytes }}"
+          $fullPre = if ($fullPreStr) { [int64]$fullPreStr } else { 0 }
+          $litePre = if ($litePreStr) { [int64]$litePreStr } else { 0 }
+          $fullRatio = if ($fullPre -gt 0) { [math]::Round((1.0 - $fullSize / $fullPre) * 100, 1) } else { 0 }
+          $liteRatio = if ($litePre -gt 0) { [math]::Round((1.0 - $liteSize / $litePre) * 100, 1) } else { 0 }
           echo "full_post_bytes=$fullSize" >> $env:GITHUB_OUTPUT
           echo "lite_post_bytes=$liteSize" >> $env:GITHUB_OUTPUT
           echo "full_post_mb=$fullMB" >> $env:GITHUB_OUTPUT
@@ -240,8 +242,10 @@ jobs:
         if: success() || failure()
         shell: pwsh
         run: |
-          $fullRatio = [double]${{ steps.post_7z.outputs.full_ratio }}
-          $liteRatio = [double]${{ steps.post_7z.outputs.lite_ratio }}
+          $fullRatioStr = "${{ steps.post_7z.outputs.full_ratio }}"
+          $liteRatioStr = "${{ steps.post_7z.outputs.lite_ratio }}"
+          $fullRatio = if ($fullRatioStr) { [double]$fullRatioStr } else { 0.0 }
+          $liteRatio = if ($liteRatioStr) { [double]$liteRatioStr } else { 0.0 }
           # 期望至少 40% 压缩（.NET 二进制对 LZMA2 友好）
           if ($fullRatio -lt 40) {
             echo "⚠️ [full] 7z 压缩率仅 $fullRatio%（期望 >=40%）"
