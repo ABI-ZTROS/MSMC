@@ -3766,11 +3766,11 @@ public partial class MainWindow : Window
                     {
                         id = p.Id,
                         slug = p.Slug,
-                        title = p.Title,
+                        title = p.Name,
                         description = p.Description,
                         author = p.Author,
                         source = p.Source.ToString(),
-                        modLoader = p.ModLoader.ToString(),
+                        supportedLoaders = p.SupportedLoaders.Select(l => l.ToString()).ToList(),
                         downloads = p.Downloads,
                         iconUrl = p.IconUrl,
                     }).ToList()
@@ -3805,11 +3805,11 @@ public partial class MainWindow : Window
                     versions = versions.Select(v => new
                     {
                         id = v.Id,
-                        version = v.Version,
-                        versionType = v.VersionType.ToString(),
-                        releaseDate = v.ReleaseDate?.ToString("o"),
+                        versionNumber = v.VersionNumber,
+                        name = v.Name,
+                        isPreRelease = v.IsPreRelease,
+                        releasedAt = v.ReleasedAt?.ToString("o"),
                         changelog = v.Changelog,
-                        downloads = v.Downloads,
                     }).ToList()
                 };
             }
@@ -3917,14 +3917,14 @@ public partial class MainWindow : Window
                     {
                         id = t.Id.ToString(),
                         name = t.Name,
-                        triggerType = t.TriggerType.ToString(),
-                        cronExpression = t.CronExpression,
-                        intervalSeconds = t.IntervalSeconds,
+                        triggerType = t.Trigger.Type.ToString(),
+                        cronExpression = t.Trigger.CronExpression,
+                        intervalSeconds = t.Trigger.Interval?.TotalSeconds,
                         nextRunTime = t.NextRunTime?.ToString("o"),
                         lastRunTime = t.LastRunTime?.ToString("o"),
-                        status = t.Status.ToString(),
-                        isEnabled = t.IsEnabled,
-                        actionType = t.ActionType.ToString(),
+                        status = t.LastStatus.ToString(),
+                        isEnabled = t.Enabled,
+                        actionType = t.Action.Type.ToString(),
                     }).ToList()
                 });
             }
