@@ -74,7 +74,7 @@ public class BridgeContractTests
             Enabled = true,
             Trigger = new TriggerConfig { Type = TriggerType.Cron, CronExpression = "0 */6 * * *" },
             Action = new ActionConfig { Type = ActionType.RunBackup },
-            LastStatus = TaskStatus.Completed
+            LastStatus = io.NET.ZTR_OS.Features.Scheduler.Models.TaskStatus.Completed
         };
         Assert.Equal("Cron", task.Trigger.Type.ToString());
         Assert.Equal("0 */6 * * *", task.Trigger.CronExpression);

@@ -31,7 +31,8 @@ public class PluginManagerServiceTests : IDisposable
     private PluginManagerService CreateService()
     {
         var logger = new Mock<ILogger<PluginManagerService>>();
-        return new PluginManagerService(logger.Object);
+        var mockProvider = new Mock<IMarketProvider>();
+        return new PluginManagerService(logger.Object, mockProvider.Object);
     }
 
     [Fact]
