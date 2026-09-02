@@ -52,12 +52,32 @@ public class ModrinthProvider : IMarketProvider
         queryString["limit"] = request.Limit.ToString();
         queryString["offset"] = request.Offset.ToString();
 
-        // 构造 facets 过滤
-        var facets = new List<string> { "[\"project_type:mod\"]" };
+        // 构造 facets：默认搜 plugin（服务器插件），不是 mod（客户端模组）
+        var facets = new List<string> { "[\"project_type:plugin\"]" };
+
         if (!string.IsNullOrEmpty(request.GameVersion))
             facets.Add($"[\"versions:{request.GameVersion}\"]");
+
         if (request.Loader.HasValue)
-            facets.Add($"[\"categories:{request.Loader.Value.ToString().ToLowerInvariant()}\"]");
+        {
+            string loaderValue = request.Loader.Value switch
+            {
+                ModLoader.Bukkit => "bukkit",
+                ModLoader.Spigot => "spigot",
+                ModLoader.Paper => "paper",
+                ModLoader.Purpur => "purpur",
+                ModLoader.Folia => "folia",
+                ModLoader.Velocity => "velocity",
+                ModLoader.BungeeCord => "bungeecord",
+                ModLoader.Forge => "forge",
+                ModLoader.Fabric => "fabric",
+                ModLoader.Quilt => "quilt",
+                _ => ""
+            };
+            if (!string.IsNullOrEmpty(loaderValue))
+                facets.Add($"[\"loaders:{loaderValue}\"]");
+        }
+
         if (!string.IsNullOrEmpty(request.Category))
             facets.Add($"[\"categories:{request.Category}\"]");
 
@@ -218,6 +238,7 @@ public class ModrinthProvider : IMarketProvider
             "spigot" => ModLoader.Spigot,
             "paper" => ModLoader.Paper,
             "purpur" => ModLoader.Purpur,
+            "folia" => ModLoader.Folia,
             "velocity" => ModLoader.Velocity,
             "bungeecord" => ModLoader.BungeeCord,
             _ => ModLoader.Generic
