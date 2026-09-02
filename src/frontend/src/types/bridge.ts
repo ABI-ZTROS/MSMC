@@ -380,19 +380,13 @@ export interface JavaListResponse {
 }
 
 export type ThemePreset =
-  | 'SkyBlue'
-  | 'OceanBlue'
-  | 'BlueOrange'
-  | 'TealPink'
-  | 'RedYellow'
   | 'ColorOSBlue'
-  | 'AquarioCyan'
-  | 'AuroraPurple'
-  | 'SunsetOrange'
-  | 'MintGreen'
-  | 'SakuraPink'
-  | 'MidnightGold'
-  | 'ArcticGray'
+  | 'FurinaBlue'
+  | 'Dragonfruit'
+  | 'GreenApple'
+  | 'BloodRed'
+  | 'SunsetYellow'
+  | 'PrecePurple'
 
 export interface ThemeApplyResult {
   success: boolean

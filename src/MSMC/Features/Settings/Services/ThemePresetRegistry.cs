@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // 文件名: ThemePresetRegistry.cs
 // 命名空间: io.NET.ZTR_OS.Features.Settings.Services
-// 功能描述: 13 套品牌主题预设注册表（README L3 营销名 ↔ 颜色色阶映射）
+// 功能描述: 7 套品牌/参考主题预设注册表（参考物主色 ↔ 完整 12 色阶映射）
 // 依赖组件: System.Windows.Media (Color)
 // 设计模式: 注册表模式（只读字典）、策略模式（ApplyPreset 应用到 IThemeService）
 // -----------------------------------------------------------------------------
@@ -10,7 +10,7 @@ using System.Windows.Media;
 namespace io.NET.ZTR_OS.Features.Settings.Services;
 
 /// <summary>
-/// 主题预设记录
+/// 主题预设记录（完整 12 色：6 主题色 + 6 语义/仪表色）
 /// </summary>
 /// <param name="Key">英文标识（与前端 TypeScript ThemePreset 枚举对齐）</param>
 /// <param name="Label">中文展示名（设置页面预设卡片标题）</param>
@@ -20,6 +20,12 @@ namespace io.NET.ZTR_OS.Features.Settings.Services;
 /// <param name="CardColorHex">卡片背景色 HEX（可选）</param>
 /// <param name="TextColorHex">文字色 HEX（可选，null 时不改文字色）</param>
 /// <param name="BorderColorHex">边框色 HEX（可选，null 时不改边框色）</param>
+/// <param name="SuccessColorHex">成功色 HEX（可选）</param>
+/// <param name="WarningColorHex">警告色 HEX（可选）</param>
+/// <param name="ErrorColorHex">错误色 HEX（可选）</param>
+/// <param name="GaugeGreenColorHex">仪表盘绿色 HEX（可选）</param>
+/// <param name="GaugeYellowColorHex">仪表盘黄色 HEX（可选）</param>
+/// <param name="GaugeRedColorHex">仪表盘红色 HEX（可选）</param>
 public record ThemePreset(
     string Key,
     string Label,
@@ -28,7 +34,13 @@ public record ThemePreset(
     string? BackgroundColorHex = null,
     string? CardColorHex = null,
     string? TextColorHex = null,
-    string? BorderColorHex = null)
+    string? BorderColorHex = null,
+    string? SuccessColorHex = null,
+    string? WarningColorHex = null,
+    string? ErrorColorHex = null,
+    string? GaugeGreenColorHex = null,
+    string? GaugeYellowColorHex = null,
+    string? GaugeRedColorHex = null)
 {
     /// <summary>
     /// 主色的 System.Windows.Media.Color
@@ -48,163 +60,150 @@ public record ThemePreset(
         }
         catch
         {
-            // 兜底：README 里写的颜色都合法；如果被人改乱就用默认蓝
+            // 兜底：颜色都合法；如果被人改乱就用默认蓝
             return Color.FromRgb(0x3B, 0x82, 0xF6);
         }
     }
 }
 
 /// <summary>
-/// 13 套品牌主题预设注册表
+/// 7 套主题预设注册表
 /// </summary>
 /// <remarks>
-/// README L3 声明的 13 套颜色系统：
-/// 5 套沿用旧名称（SkyBlue / BlueOrange / TealPink / RedYellow / OceanBlue）
-/// + 8 套新增 ColorOS 品牌系统：ColorOSBlue / AquarioCyan / AuroraPurple /
-///   SunsetOrange / MintGreen / SakuraPink / MidnightGold / ArcticGray
+/// 7 套品牌/参考主题：
+/// ColorOS 蓝 / 芙宁娜蓝（原神 Furina Royal Blue）/ 火龙果 / 青苹果 /
+/// 血红（酒红）/ 日落黄（橙黄）/ 普瑞赛斯紫（明日方舟 Prece 紫瞳）
+/// 每套预设覆盖全部 12 个颜色通道（6 主题 + 6 语义/仪表）
 /// </remarks>
 public static class ThemePresetRegistry
 {
     /// <summary>
-    /// 所有 13 套预设（按 README 列出的顺序，方便前端 for 循环渲染卡片顺序与文档一致）
+    /// 所有 7 套预设
     /// </summary>
     private static readonly List<ThemePreset> _all = new()
     {
-        // ── 原有 5 套（保持向后兼容，TypeScript 旧 ThemePreset 类型已声明）──
-        new(
-            Key: "SkyBlue",
-            Label: "苍穹蓝",
-            PrimaryColorHex: "#3B82F6",
-            AccentColorHex:  "#FB7185",
-            BackgroundColorHex: "#020617",
-            CardColorHex:      "#0F172A",
-            TextColorHex:      "#E2E8F0",
-            BorderColorHex:    "#334155"),
-
-        new(
-            Key: "BlueOrange",
-            Label: "科技蓝",
-            PrimaryColorHex: "#1565C0",
-            AccentColorHex:  "#FF9800",
-            BackgroundColorHex: "#0A0F1E",
-            CardColorHex:      "#172033",
-            TextColorHex:      "#E6EDF3",
-            BorderColorHex:    "#1E3A5F"),
-
-        new(
-            Key: "TealPink",
-            Label: "清新绿",
-            PrimaryColorHex: "#00897B",
-            AccentColorHex:  "#E91E63",
-            BackgroundColorHex: "#0B1F1A",
-            CardColorHex:      "#122B25",
-            TextColorHex:      "#E0F5F0",
-            BorderColorHex:    "#1F4A42"),
-
-        new(
-            Key: "RedYellow",
-            Label: "火焰红",
-            PrimaryColorHex: "#C62828",
-            AccentColorHex:  "#FFD600",
-            BackgroundColorHex: "#1A0A0A",
-            CardColorHex:      "#2B1616",
-            TextColorHex:      "#F5E6E0",
-            BorderColorHex:    "#4A2A1F"),
-
-        new(
-            Key: "OceanBlue",
-            Label: "海洋蓝",
-            PrimaryColorHex: "#0097A7",
-            AccentColorHex:  "#FFD740",
-            BackgroundColorHex: "#04181C",
-            CardColorHex:      "#0E2A30",
-            TextColorHex:      "#E3F2FD",
-            BorderColorHex:    "#1E4970"),
-
-        // ── README L3 品牌系统新增 8 套 ──
+        // ── ColorOS 蓝：OPPO 品牌蓝（Find X8 极光蓝配色），冷调蓝绿 ──
         new(
             Key: "ColorOSBlue",
             Label: "ColorOS 蓝",
-            PrimaryColorHex: "#1677FF",  // ColorOS 官方蓝
-            AccentColorHex:  "#FF6B81",  // ColorOS 樱花粉强调色
-            BackgroundColorHex: "#050B1A",
-            CardColorHex:      "#0E1C35",
-            TextColorHex:      "#E6EFFC",
-            BorderColorHex:    "#24406E"),
+            PrimaryColorHex: "#0066FF",
+            AccentColorHex:  "#FF6B81",
+            BackgroundColorHex: "#030818",
+            CardColorHex:      "#0A1A32",
+            TextColorHex:      "#E6F0FF",
+            BorderColorHex:    "#1B3D6E",
+            SuccessColorHex:   "#10B981",
+            WarningColorHex:   "#F59E0B",
+            ErrorColorHex:     "#EF4444",
+            GaugeGreenColorHex:  "#22C55E",
+            GaugeYellowColorHex: "#EAB308",
+            GaugeRedColorHex:    "#F43F5E"),
 
+        // ── 芙宁娜蓝：原神 Furina Royal Blue + 金色强调 ──
         new(
-            Key: "AquarioCyan",
-            Label: "Aquario 蓝绿",
-            PrimaryColorHex: "#06B6D4",  // Cyan-500
-            AccentColorHex:  "#F472B6",  // Pink-400
-            BackgroundColorHex: "#041218",
-            CardColorHex:      "#0C2430",
-            TextColorHex:      "#E0F6FA",
-            BorderColorHex:    "#1B4A58"),
+            Key: "FurinaBlue",
+            Label: "芙宁娜蓝",
+            PrimaryColorHex: "#1E3A8A",
+            AccentColorHex:  "#D4A017",
+            BackgroundColorHex: "#050717",
+            CardColorHex:      "#0B1030",
+            TextColorHex:      "#E8ECFB",
+            BorderColorHex:    "#253B78",
+            SuccessColorHex:   "#10B981",
+            WarningColorHex:   "#F59E0B",
+            ErrorColorHex:     "#EF4444",
+            GaugeGreenColorHex:  "#22C55E",
+            GaugeYellowColorHex: "#EAB308",
+            GaugeRedColorHex:    "#F43F5E"),
 
+        // ── 火龙果：深洋红 + 金色强调 ──
         new(
-            Key: "AuroraPurple",
-            Label: "极光紫",
-            PrimaryColorHex: "#8B5CF6",  // Violet-500
-            AccentColorHex:  "#22D3EE",  // Cyan-400
-            BackgroundColorHex: "#0C0820",
-            CardColorHex:      "#1E1440",
-            TextColorHex:      "#EDEAFB",
-            BorderColorHex:    "#3B2B6E"),
-
-        new(
-            Key: "SunsetOrange",
-            Label: "日落橙",
-            PrimaryColorHex: "#F97316",  // Orange-500
-            AccentColorHex:  "#FACC15",  // Amber-400
-            BackgroundColorHex: "#1A0D04",
-            CardColorHex:      "#301E0E",
-            TextColorHex:      "#FDF0E5",
-            BorderColorHex:    "#5C3A20"),
-
-        new(
-            Key: "MintGreen",
-            Label: "薄荷青",
-            PrimaryColorHex: "#10B981",  // Emerald-500
-            AccentColorHex:  "#A78BFA",  // Violet-400
-            BackgroundColorHex: "#041813",
-            CardColorHex:      "#0C2A22",
-            TextColorHex:      "#E4F5ED",
-            BorderColorHex:    "#1E5C45"),
-
-        new(
-            Key: "SakuraPink",
-            Label: "樱花粉",
-            PrimaryColorHex: "#EC4899",  // Pink-500
-            AccentColorHex:  "#60A5FA",  // Blue-400
-            BackgroundColorHex: "#1A0A14",
-            CardColorHex:      "#2E1726",
+            Key: "Dragonfruit",
+            Label: "火龙果",
+            PrimaryColorHex: "#C71585",
+            AccentColorHex:  "#FFD700",
+            BackgroundColorHex: "#18060F",
+            CardColorHex:      "#2B101F",
             TextColorHex:      "#FBE9F2",
-            BorderColorHex:    "#5C2342"),
+            BorderColorHex:    "#5C2342",
+            SuccessColorHex:   "#22C55E",
+            WarningColorHex:   "#FBBF24",
+            ErrorColorHex:     "#F43F5E",
+            GaugeGreenColorHex:  "#10B981",
+            GaugeYellowColorHex: "#F59E0B",
+            GaugeRedColorHex:    "#DC143C"),
 
+        // ── 青苹果：黄绿 + 天蓝强调 ──
         new(
-            Key: "MidnightGold",
-            Label: "暗夜金",
-            PrimaryColorHex: "#D4A017",  // 深金
-            AccentColorHex:  "#F8FAFC",  // 近白
-            BackgroundColorHex: "#0A0A05",
-            CardColorHex:      "#1C1A10",
-            TextColorHex:      "#F6EFD8",
-            BorderColorHex:    "#54471A"),
+            Key: "GreenApple",
+            Label: "青苹果",
+            PrimaryColorHex: "#9ACD32",
+            AccentColorHex:  "#0EA5E9",
+            BackgroundColorHex: "#0A1208",
+            CardColorHex:      "#16220F",
+            TextColorHex:      "#E8F5D8",
+            BorderColorHex:    "#3E5C22",
+            SuccessColorHex:   "#10B981",
+            WarningColorHex:   "#FBBF24",
+            ErrorColorHex:     "#EF4444",
+            GaugeGreenColorHex:  "#22C55E",
+            GaugeYellowColorHex: "#EAB308",
+            GaugeRedColorHex:    "#F43F5E"),
 
+        // ── 血红：酒红 + 金色强调 ──
         new(
-            Key: "ArcticGray",
-            Label: "北极灰",
-            PrimaryColorHex: "#64748B",  // Slate-500
-            AccentColorHex:  "#38BDF8",  // Sky-400
-            BackgroundColorHex: "#0B1220",
-            CardColorHex:      "#1A2234",
-            TextColorHex:      "#E8EEF5",
-            BorderColorHex:    "#33465E"),
+            Key: "BloodRed",
+            Label: "血红",
+            PrimaryColorHex: "#722F37",
+            AccentColorHex:  "#D4A017",
+            BackgroundColorHex: "#0F0406",
+            CardColorHex:      "#200B10",
+            TextColorHex:      "#F5E8E0",
+            BorderColorHex:    "#4A2A2F",
+            SuccessColorHex:   "#10B981",
+            WarningColorHex:   "#FBBF24",
+            ErrorColorHex:     "#DC143C",
+            GaugeGreenColorHex:  "#22C55E",
+            GaugeYellowColorHex: "#F59E0B",
+            GaugeRedColorHex:    "#E53935"),
+
+        // ── 日落黄：橙黄 + 淡紫强调 ──
+        new(
+            Key: "SunsetYellow",
+            Label: "日落黄",
+            PrimaryColorHex: "#FF8C00",
+            AccentColorHex:  "#DA70D6",
+            BackgroundColorHex: "#1A0804",
+            CardColorHex:      "#32180C",
+            TextColorHex:      "#FDF2E0",
+            BorderColorHex:    "#5E3A20",
+            SuccessColorHex:   "#22C55E",
+            WarningColorHex:   "#F59E0B",
+            ErrorColorHex:     "#EF4444",
+            GaugeGreenColorHex:  "#10B981",
+            GaugeYellowColorHex: "#EAB308",
+            GaugeRedColorHex:    "#DC143C"),
+
+        // ── 普瑞赛斯紫：紫罗兰 + 青色强调（明日方舟 Prece 紫瞳） ──
+        new(
+            Key: "PrecePurple",
+            Label: "普瑞赛斯紫",
+            PrimaryColorHex: "#8B5CF6",
+            AccentColorHex:  "#22D3EE",
+            BackgroundColorHex: "#0C0620",
+            CardColorHex:      "#1E1238",
+            TextColorHex:      "#F0ECFB",
+            BorderColorHex:    "#3D2A6E",
+            SuccessColorHex:   "#10B981",
+            WarningColorHex:   "#F59E0B",
+            ErrorColorHex:     "#F43F5E",
+            GaugeGreenColorHex:  "#22C55E",
+            GaugeYellowColorHex: "#EAB308",
+            GaugeRedColorHex:    "#EF4444"),
     };
 
     /// <summary>
-    /// 获取全部 13 套预设（返回副本，防止外部修改内部列表）
+    /// 获取全部 7 套预设（返回副本，防止外部修改内部列表）
     /// </summary>
     public static List<ThemePreset> GetAllPresets() => new(_all);
 
@@ -234,6 +233,7 @@ public static class ThemePresetRegistry
         service.BeginBatchUpdate();
         try
         {
+            // ── 6 个主题色 ──
             service.PrimaryColor = preset.PrimaryColor;
             service.AccentColor = preset.AccentColor;
             if (!string.IsNullOrEmpty(preset.BackgroundColorHex))
@@ -244,6 +244,20 @@ public static class ThemePresetRegistry
                 service.TextColor = ParseHexSafe(preset.TextColorHex);
             if (!string.IsNullOrEmpty(preset.BorderColorHex))
                 service.BorderColor = ParseHexSafe(preset.BorderColorHex);
+
+            // ── 6 个语义/仪表色 ──
+            if (!string.IsNullOrEmpty(preset.SuccessColorHex))
+                service.SuccessColor = ParseHexSafe(preset.SuccessColorHex);
+            if (!string.IsNullOrEmpty(preset.WarningColorHex))
+                service.WarningColor = ParseHexSafe(preset.WarningColorHex);
+            if (!string.IsNullOrEmpty(preset.ErrorColorHex))
+                service.ErrorColor = ParseHexSafe(preset.ErrorColorHex);
+            if (!string.IsNullOrEmpty(preset.GaugeGreenColorHex))
+                service.GaugeGreenColor = ParseHexSafe(preset.GaugeGreenColorHex);
+            if (!string.IsNullOrEmpty(preset.GaugeYellowColorHex))
+                service.GaugeYellowColor = ParseHexSafe(preset.GaugeYellowColorHex);
+            if (!string.IsNullOrEmpty(preset.GaugeRedColorHex))
+                service.GaugeRedColor = ParseHexSafe(preset.GaugeRedColorHex);
         }
         finally
         {
