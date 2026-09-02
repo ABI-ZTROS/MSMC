@@ -756,7 +756,22 @@ public partial class App : Application
 
                     // ════════════ 插件市场模块 (P0) ════════════
                     await Step(55, "正在注册插件市场模块...", "[MARKET] === 插件市场模块 (P0) ===");
-                    await Register<IMarketProvider, ModrinthProvider>(55, "[MARKET]", "ModrinthProvider", "Modrinth API 集成（搜索/版本/下载+进度回调）");
+                    // 注册三个 Provider 为具体类型
+                    await RegisterType<ModrinthProvider>(55, "[MARKET]", "ModrinthProvider", "Modrinth API（通用 Mod/Plugin 搜索）");
+                    await RegisterType<HangarProvider>(55, "[MARKET]", "HangarProvider", "PaperMC Hangar（Paper/Purpur/Folia 官方插件源）");
+                    await RegisterType<SpigetProvider>(55, "[MARKET]", "SpigetProvider", "SpigotMC Spiget（Spigot 资源站）");
+                    // 注册 IMarketProvider fallback（取 Modrinth）
+                    services.AddSingleton<IMarketProvider>(sp => sp.GetRequiredService<ModrinthProvider>());
+                    // 注册 Provider 聚合 Factory
+                    await RegisterInstance<MarketProviderFactory>(55, "[MARKET]", "MarketProviderFactory", "多源并行搜索聚合",
+                        sp => new MarketProviderFactory(
+                            new IMarketProvider[]
+                            {
+                                sp.GetRequiredService<ModrinthProvider>(),
+                                sp.GetRequiredService<HangarProvider>(),
+                                sp.GetRequiredService<SpigetProvider>(),
+                            },
+                            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<MarketProviderFactory>>()));
                     await RegisterType<PluginManagerService>(55, "[MARKET]", "PluginManagerService", "插件管理（原子写入+SHA1校验+安全备份）");
 
                     // ════════════ 系统监控与告警 (P2) ════════════
