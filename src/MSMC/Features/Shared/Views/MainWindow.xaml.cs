@@ -3743,168 +3743,128 @@ public partial class MainWindow : Window
         });
 
         // ═══════════════════════════════════════════════════════════════
-        // 🌐 Market (Modrinth) Bridge Handlers
+        // 🌐 Market Bridge Handlers (多 Provider: Hangar + Modrinth + Spiget)
+        // 契约: 直接 return 数据（数组/对象），错误时 throw → Bridge 框架层自动转 success: false
         // ═══════════════════════════════════════════════════════════════
 
         _bridgeService.RegisterRequestHandler("market.search", async payload =>
         {
-            try
+            // Try Factory first (multi-source), fallback to single IMarketProvider
+            var factory = App.Services.GetService<MarketProviderFactory>();
+            if (factory != null)
             {
-                var provider = App.Services.GetService<IMarketProvider>();
-                if (provider == null)
-                    return new { success = false, error = "市场服务不可用" };
-
-                string query = "";
-                int limit = 20;
-                if (payload is JsonElement el)
-                {
-                    query = el.TryGetProperty("query", out var q) ? q.GetString() ?? "" : "";
-                    limit = el.TryGetProperty("limit", out var l) ? l.GetInt32() : 20;
-                }
-
-                if (string.IsNullOrWhiteSpace(query))
-                    return new { success = false, error = "搜索关键词不能为空" };
-
-                var request = new SearchRequest { Query = query, Limit = limit };
-                var results = await provider.SearchAsync(request);
-
-                return new
-                {
-                    success = true,
-                    projects = results.Select(p => new
-                    {
-                        id = p.Id,
-                        slug = p.Slug,
-                        title = p.Name,
-                        description = p.Description,
-                        author = p.Author,
-                        source = p.Source.ToString(),
-                        supportedLoaders = p.SupportedLoaders.Select(l => l.ToString()).ToList(),
-                        downloads = p.Downloads,
-                        iconUrl = p.IconUrl,
-                    }).ToList()
-                };
+                var req = ParseMarketSearchRequest(payload);
+                if (string.IsNullOrWhiteSpace(req.Query))
+                    throw new ArgumentException("搜索关键词不能为空");
+                string? source = payload is JsonElement pel ?
+                    (pel.TryGetProperty("source", out var s) ? s.GetString() : null) : null;
+                return await factory.SearchAsync(req, source);
             }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "market.search 异常");
-                return new { success = false, error = ex.Message };
-            }
+
+            var provider = App.Services.GetService<IMarketProvider>();
+            if (provider == null)
+                throw new InvalidOperationException("市场服务不可用");
+
+            var fallbackReq = ParseMarketSearchRequest(payload);
+            if (string.IsNullOrWhiteSpace(fallbackReq.Query))
+                throw new ArgumentException("搜索关键词不能为空");
+            return await provider.SearchAsync(fallbackReq);
         });
 
         _bridgeService.RegisterRequestHandler("market.versions", async payload =>
         {
-            try
+            string projectId, sourceStr = "Modrinth";
+
+            if (payload is string s)
             {
-                var provider = App.Services.GetService<IMarketProvider>();
-                if (provider == null)
-                    return new { success = false, error = "市场服务不可用" };
-
-                string projectId = payload is string s2 ? s2 :
-                    payload is JsonElement el2 ? (el2.GetString() ?? "") : "";
-
-                if (string.IsNullOrWhiteSpace(projectId))
-                    return new { success = false, error = "项目 ID 不能为空" };
-
-                var versions = await provider.GetVersionsAsync(projectId);
-
-                return new
-                {
-                    success = true,
-                    versions = versions.Select(v => new
-                    {
-                        id = v.Id,
-                        versionNumber = v.VersionNumber,
-                        name = v.Name,
-                        isPreRelease = v.IsPreRelease,
-                        releasedAt = v.ReleasedAt?.ToString("o"),
-                        changelog = v.Changelog,
-                    }).ToList()
-                };
+                projectId = s;
             }
-            catch (Exception ex)
+            else if (payload is JsonElement el)
             {
-                Log.Error(ex, "market.versions 异常");
-                return new { success = false, error = ex.Message };
+                projectId = el.TryGetProperty("projectId", out var pid) ? pid.GetString() ?? "" : "";
+                if (string.IsNullOrEmpty(projectId))
+                    projectId = el.GetString() ?? "";
+                sourceStr = el.TryGetProperty("source", out var src) ? src.GetString() ?? "Modrinth" : "Modrinth";
             }
+            else
+            {
+                throw new ArgumentException("无效 payload");
+            }
+
+            if (string.IsNullOrWhiteSpace(projectId))
+                throw new ArgumentException("项目 ID 不能为空");
+
+            var factory = App.Services.GetService<MarketProviderFactory>();
+            if (factory != null)
+                return await factory.GetVersionsAsync(projectId, sourceStr);
+
+            var provider = App.Services.GetService<IMarketProvider>();
+            if (provider == null)
+                throw new InvalidOperationException("市场服务不可用");
+            return await provider.GetVersionsAsync(projectId);
         });
 
         _bridgeService.RegisterRequestHandler("market.install", async payload =>
         {
-            try
-            {
-                var provider = App.Services.GetService<IMarketProvider>();
-                var pluginMgr = App.Services.GetService<PluginManagerService>();
-                if (provider == null || pluginMgr == null)
-                    return new { success = false, error = "市场/插件服务不可用" };
+            if (payload is not JsonElement el || el.ValueKind != JsonValueKind.Object)
+                throw new ArgumentException("无效 payload，期望 { version, serverPath }");
 
-                if (payload is not JsonElement el || el.ValueKind != JsonValueKind.Object)
-                    return new { success = false, error = "无效 payload，期望 { version, serverPath }" };
+            var serverPath = el.TryGetProperty("serverPath", out var sp) ? sp.GetString() ?? "" : "";
+            var versionJson = el.TryGetProperty("version", out var vj) ? vj.GetRawText() : "{}";
+            var version = JsonSerializer.Deserialize<MarketVersion>(versionJson, BridgeJsonOptions);
 
-                var serverPath = el.TryGetProperty("serverPath", out var sp) ? sp.GetString() ?? "" : "";
-                var versionJson = el.TryGetProperty("version", out var vj) ? vj.GetRawText() : "{}";
-                var version = JsonSerializer.Deserialize<MarketVersion>(versionJson, BridgeJsonOptions);
+            if (version == null)
+                throw new ArgumentException("无效的版本数据");
+            if (string.IsNullOrWhiteSpace(serverPath))
+                throw new ArgumentException("服务器路径不能为空");
 
-                if (version == null)
-                    return new { success = false, error = "无效的版本数据" };
-                if (string.IsNullOrWhiteSpace(serverPath))
-                    return new { success = false, error = "服务器路径不能为空" };
+            var pluginMgr = App.Services.GetService<PluginManagerService>();
+            if (pluginMgr == null)
+                throw new InvalidOperationException("插件服务不可用");
 
-                var result = await pluginMgr.InstallAsync(version, serverPath);
-                return new
-                {
-                    success = result.Success,
-                    error = result.Error,
-                    projectId = result.ProjectId,
-                    projectName = result.ProjectName,
-                    version = result.Version,
-                    installedAt = result.InstalledAt.ToString("o"),
-                    backupPath = result.BackupPath,
-                };
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "market.install 异常");
-                return new { success = false, error = ex.Message };
-            }
+            return await pluginMgr.InstallAsync(version, serverPath);
         });
 
         _bridgeService.RegisterRequestHandler("market.listInstalled", payload =>
         {
-            try
-            {
-                var pluginMgr = App.Services.GetService<PluginManagerService>();
-                if (pluginMgr == null)
-                    return Task.FromResult<object?>(new { success = false, error = "插件服务不可用" });
+            var pluginMgr = App.Services.GetService<PluginManagerService>();
+            if (pluginMgr == null)
+                return Task.FromException<object?>(new InvalidOperationException("插件服务不可用"));
 
-                string serverPath = payload is string s3 ? s3 :
-                    payload is JsonElement el3 ? (el3.GetString() ?? "") : "";
+            string serverPath = payload is string s ? s :
+                payload is JsonElement el ? (el.GetString() ?? "") : "";
 
-                if (string.IsNullOrWhiteSpace(serverPath))
-                    return Task.FromResult<object?>(new { success = false, error = "服务器路径不能为空" });
+            if (string.IsNullOrWhiteSpace(serverPath))
+                return Task.FromException<object?>(new ArgumentException("服务器路径不能为空"));
 
-                var plugins = pluginMgr.GetInstalledPlugins(serverPath);
-                return Task.FromResult<object?>(new
-                {
-                    success = true,
-                    plugins = plugins.Select(p => new
-                    {
-                        id = p.Id,
-                        projectId = p.ProjectId,
-                        projectName = p.ProjectName,
-                        version = p.Version,
-                        installedAt = p.InstalledAt.ToString("o"),
-                        backupPath = p.BackupPath,
-                        serverPath = p.ServerPath,
-                    }).ToList()
-                });
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "market.listInstalled 异常");
-                return Task.FromResult<object?>(new { success = false, error = ex.Message });
-            }
+            return Task.FromResult<object?>(pluginMgr.GetInstalledPlugins(serverPath));
         });
+
+        // ═══ Market helper methods ═══
+
+        static SearchRequest ParseMarketSearchRequest(object? payload)
+        {
+            var req = new SearchRequest();
+            if (payload is JsonElement el)
+            {
+                req.Query = el.TryGetProperty("query", out var q) ? q.GetString() ?? "" : "";
+                req.Limit = el.TryGetProperty("limit", out var l) ? l.GetInt32() : 20;
+                req.Offset = el.TryGetProperty("offset", out var o) ? o.GetInt32() : 0;
+                if (el.TryGetProperty("serverType", out var st) && st.GetString() is { } stStr
+                    && Enum.TryParse<ModLoader>(stStr, true, out var loader))
+                    req.Loader = loader;
+                if (el.TryGetProperty("gameVersion", out var gv))
+                    req.GameVersion = gv.GetString();
+                if (el.TryGetProperty("category", out var cat))
+                    req.Category = cat.GetString();
+            }
+            else if (payload is string s)
+            {
+                req.Query = s;
+                req.Limit = 20;
+            }
+            return req;
+        }
 
         // ═══════════════════════════════════════════════════════════════
         // ⏰ Scheduler Bridge Handlers
