@@ -10,29 +10,31 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-02-config-descriptors-gap-filling-design.md`
 
----
+***
 
 ## 仓库现状速览（执行者必读）
 
-| 项 | 值 |
-|---|---|
-| ConfigDescriptorRegistry.cs | 16,795 行 / 525KB / 43 个 Register* 方法 |
-| Python | 3.14.7，pytest 已装 |
-| dotnet | 沙盒里没有，Phase 4 之前不跑 build |
-| 已有 JDK | 25 (via mise) |
-| 需要装的 JDK | 8 / 11 / 17 / 21 |
-| .gitignore | 没有 cache/、generated-configs/、knowledge-base/ 条目，要加 |
-| GITHUB_TOKEN | 环境变量已配，完整 repo 权限 |
+| 项                           | 值                                                  |
+| --------------------------- | -------------------------------------------------- |
+| ConfigDescriptorRegistry.cs | 16,795 行 / 525KB / 43 个 Register\* 方法              |
+| Python                      | 3.14.7，pytest 已装                                   |
+| dotnet                      | 沙盒里没有，Phase 4 之前不跑 build                           |
+| 已有 JDK                      | 25 (via mise)                                      |
+| 需要装的 JDK                    | 8 / 11 / 17 / 21                                   |
+| .gitignore                  | 没有 cache/、generated-configs/、knowledge-base/ 条目，要加 |
+| GITHUB\_TOKEN               | 环境变量已配，完整 repo 权限                                  |
 
----
+***
 
 ### Task 1: 项目基础设施（.gitignore + 目录 + requirements.txt）
 
 **Files:**
-- Modify: `.gitignore`
-- Create: `tools/core-fetcher/requirements.txt`
 
-- [ ] **Step 1: 追加 .gitignore 条目**
+* Modify: `.gitignore`
+
+* Create: `tools/core-fetcher/requirements.txt`
+
+* [ ] **Step 1: 追加 .gitignore 条目**
 
 ```bash
 cat >> /workspace/.gitignore << 'EOF'
@@ -46,12 +48,12 @@ source-hints/
 EOF
 ```
 
-- [ ] **Step 2: 验证 .gitignore 追加正确**
+* [ ] **Step 2: 验证 .gitignore 追加正确**
 
 Run: `tail -10 /workspace/.gitignore`
 Expected: 看到 `cache/`、`generated-configs/`、`source-hints/`、`*.jar` 条目
 
-- [ ] **Step 3: 创建 requirements.txt**
+* [ ] **Step 3: 创建 requirements.txt**
 
 ```python
 # /workspace/tools/core-fetcher/requirements.txt
@@ -62,7 +64,7 @@ beautifulsoup4>=4.12.0
 lxml>=5.0.0
 ```
 
-- [ ] **Step 4: 安装依赖**
+* [ ] **Step 4: 安装依赖**
 
 ```bash
 pip install -r /workspace/tools/core-fetcher/requirements.txt 2>&1 | tail -5
@@ -70,26 +72,26 @@ pip install -r /workspace/tools/core-fetcher/requirements.txt 2>&1 | tail -5
 
 Expected: `Successfully installed` ...
 
-- [ ] **Step 5: Commit**
+* [ ] **Step 5: Commit**
 
 ```bash
 cd /workspace && git add .gitignore tools/core-fetcher/requirements.txt
 git commit -m "build: add gitignore entries for core-fetcher pipeline + python requirements"
 ```
 
----
+***
 
 ### Task 2: 安装 JDK 8/11/17/21
 
 **Files:** (no source files — 纯系统操作)
 
-- [ ] **Step 1: 确认 mise 可用**
+* [ ] **Step 1: 确认 mise 可用**
 
 ```bash
 which mise && mise --version
 ```
 
-- [ ] **Step 2: 列出当前已安装版本**
+* [ ] **Step 2: 列出当前已安装版本**
 
 ```bash
 mise ls java
@@ -97,7 +99,7 @@ mise ls java
 
 Expected: `openjdk@25` 至少有
 
-- [ ] **Step 3: 安装 4 个版本（并行）**
+* [ ] **Step 3: 安装 4 个版本（并行）**
 
 ```bash
 mise use -g java@8 2>&1 | tail -3
@@ -113,7 +115,7 @@ cd /workspace
 mise use java@8@global java@11@global java@17@global java@21@global
 ```
 
-- [ ] **Step 4: 验证安装**
+* [ ] **Step 4: 验证安装**
 
 ```bash
 for j in 8 11 17 21 25; do
@@ -124,7 +126,7 @@ done
 
 Expected: 每个版本都能输出 `openjdk version "$j.x.x"`
 
-- [ ] **Step 5: 记录 JDK 路径（后面脚本要用）**
+* [ ] **Step 5: 记录 JDK 路径（后面脚本要用）**
 
 ```bash
 mise which java@8 && mise which java@11 && mise which java@17 && mise which java@21 && mise which java@25
@@ -132,14 +134,15 @@ mise which java@8 && mise which java@11 && mise which java@17 && mise which java
 
 把输出记下来，后面 fetch.py / run.py 的 `JDK_PATHS` 要用。
 
----
+***
 
 ### Task 3: 核心清单 YAML（core-registry.yaml）
 
 **Files:**
-- Create: `tools/core-fetcher/core-registry.yaml`
 
-- [ ] **Step 1: 写完整 YAML（至少先 10 种核心，跑 demo）**
+* Create: `tools/core-fetcher/core-registry.yaml`
+
+* [ ] **Step 1: 写完整 YAML（至少先 10 种核心，跑 demo）**
 
 写完整 `tools/core-fetcher/core-registry.yaml`。先写 10 种代表性核心，后续批量阶段再补剩余 25+。
 
@@ -323,7 +326,7 @@ cores:
           type: properties
 ```
 
-- [ ] **Step 2: 用 Python 校验 YAML 可解析**
+* [ ] **Step 2: 用 Python 校验 YAML 可解析**
 
 ```python
 python3 -c "
@@ -337,21 +340,22 @@ print('count:', len(data['cores']))
 
 Expected: `cores: ['paper', 'purpur', 'leaf', 'folia', 'velocity', 'bungee', 'nukkit', 'glowstone', 'forge', 'fabric']`
 
-- [ ] **Step 3: Commit**
+* [ ] **Step 3: Commit**
 
 ```bash
 cd /workspace && git add tools/core-fetcher/core-registry.yaml
 git commit -m "feat: core-registry.yaml — 10 representative cores for initial pipeline"
 ```
 
----
+***
 
 ### Task 4: fetch.py — 下载层
 
 **Files:**
-- Create: `tools/core-fetcher/fetch.py`
 
-- [ ] **Step 1: 写 fetch.py**
+* Create: `tools/core-fetcher/fetch.py`
+
+* [ ] **Step 1: 写 fetch.py**
 
 完整代码见下方。核心功能：加载 YAML → 按 `download.kind` 分发版本发现 → 下载到 `cache/cores/<core>/<ver>.jar` → 写 meta.json。
 
@@ -654,16 +658,16 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: 跑 Paper latest 验证 fetch.py 能通**
+* [ ] **Step 2: 跑 Paper latest 验证 fetch.py 能通**
 
 ```bash
 cd /workspace/tools/core-fetcher
 python3 fetch.py --core paper --latest-only 2>&1 | tail -20
 ```
 
-Expected: 成功下载至少 1 个 Paper JAR 到 cache/cores/paper/，没有 [SKIP]/[FAIL]。
+Expected: 成功下载至少 1 个 Paper JAR 到 cache/cores/paper/，没有 \[SKIP]/\[FAIL]。
 
-- [ ] **Step 3: 跑 Purpur latest 再验证**
+* [ ] **Step 3: 跑 Purpur latest 再验证**
 
 ```bash
 python3 fetch.py --core purpur --latest-only 2>&1 | tail -10
@@ -671,21 +675,22 @@ python3 fetch.py --core purpur --latest-only 2>&1 | tail -10
 
 Expected: 成功。
 
-- [ ] **Step 4: Commit**
+* [ ] **Step 4: Commit**
 
 ```bash
 cd /workspace && git add tools/core-fetcher/fetch.py
 git commit -m "feat(core-fetcher): add fetch.py — download Minecraft core JARs from Hangar/GitHub/Maven"
 ```
 
----
+***
 
 ### Task 5: run.py — 运行层
 
 **Files:**
-- Create: `tools/core-fetcher/run.py`
 
-- [ ] **Step 1: 写 run.py**
+* Create: `tools/core-fetcher/run.py`
+
+* [ ] **Step 1: 写 run.py**
 
 完整代码见下方。核心功能：给定 JAR + YAML core 定义 → 选 JDK → 写 EULA → 启动 → 等 ready → `/stop` → 收集生成的配置文件 → 存 `generated-configs/<core>/<ver>/`。
 
@@ -971,11 +976,11 @@ if __name__ == "__main__":
 
 **IMPORTANT** Run this ONLY AFTER Task 2 is complete. Before running, update the `JDK_PATHS` dict in run.py with actual paths from `mise which java@8`.
 
-- [ ] **Step 2: 更新 run.py 里的 JDK_PATHS**
+* [ ] **Step 2: 更新 run.py 里的 JDK\_PATHS**
 
 Task 2 Step 5 输出的真实路径替换进去。
 
-- [ ] **Step 3: 跑 Paper latest 验证**
+* [ ] **Step 3: 跑 Paper latest 验证**
 
 ```bash
 cd /workspace/tools/core-fetcher
@@ -984,34 +989,36 @@ python3 run.py --core paper 2>&1 | tail -40
 
 Expected: JVM 启动日志出现、看到 `[READY]`、收集到 `paper-global.yml` / `paper-world-defaults.yml` / `spigot.yml` / `bukkit.yml` / `server.properties` 全部 5 个文件。
 
-- [ ] **Step 4: 验证输出**
+* [ ] **Step 4: 验证输出**
 
 ```bash
 ls -la /workspace/generated-configs/paper/
 ```
 
-Expected: 里面有 1 个子目录（版本号命名），子目录里有 5 个 yaml + _manifest.json。
+Expected: 里面有 1 个子目录（版本号命名），子目录里有 5 个 yaml + \_manifest.json。
 
-- [ ] **Step 5: Commit**
+* [ ] **Step 5: Commit**
 
 ```bash
 cd /workspace && git add tools/core-fetcher/run.py diffs/failures.json
 git commit -m "feat(core-fetcher): add run.py — launch cores in sandbox, capture default configs"
 ```
 
----
+***
 
 ### Task 6: diff.py — 比对层（合并运行时 + Registry 差异）
 
 **Files:**
-- Create: `tools/core-fetcher/diff.py`
 
-- [ ] **Step 1: 写 diff.py**
+* Create: `tools/core-fetcher/diff.py`
+
+* [ ] **Step 1: 写 diff.py**
 
 核心功能：
+
 1. 扫描 `generated-configs/<core>/<ver>/` 所有 manifest.json
 2. 把 YAML / Properties / TOML 扁平化为点号路径字典
-3. 跨版本构建键生命周期（introduced_in / removed_in / default_changes）
+3. 跨版本构建键生命周期（introduced\_in / removed\_in / default\_changes）
 4. 解析 ConfigDescriptorRegistry.cs 里已有的 `(ConfigFileName, Key)` 复合键（正则）
 5. 输出 `<core>.diff.json` 到 `diffs/`
 6. 输出 `diffs/summary.json` 全量汇总
@@ -1325,13 +1332,13 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: 装 toml 库（如果还没装）**
+* [ ] **Step 2: 装 toml 库（如果还没装）**
 
 ```bash
 pip install toml 2>&1 | tail -3
 ```
 
-- [ ] **Step 3: 跑 diff.py --core paper**
+* [ ] **Step 3: 跑 diff.py --core paper**
 
 ```bash
 cd /workspace/tools/core-fetcher
@@ -1340,31 +1347,38 @@ python3 diff.py --core paper 2>&1
 
 Expected: 输出 `[DIFF] Registry has X (config_file, key) pairs` 然后 Paper 的 diff 结果，有 `diffs/paper.diff.json` 生成。
 
-- [ ] **Step 4: 看看 diff.json 里面有多少 new_keys**
+* [ ] **Step 4: 看看 diff.json 里面有多少 new\_keys**
 
 ```bash
 python3 -c "import json; d=json.load(open('/workspace/diffs/paper.diff.json')); print('summary:', d['summary'])"
 ```
 
-- [ ] **Step 5: Commit**
+* [ ] **Step 5: Commit**
 
 ```bash
 cd /workspace && git add tools/core-fetcher/diff.py diffs/
 git commit -m "feat(core-fetcher): add diff.py — compare generated configs against Registry.cs, version evolution tracing"
 ```
 
----
+***
 
-### Task 7: translate.py — RAG 翻译注入（脚手架，不真调 AI）
+### Task 7: translate.py — RAG 翻译注入（脚手架 + 质量闸门）
 
 **Files:**
 - Create: `tools/core-fetcher/translate.py`
 
-- [ ] **Step 1: 写 translate.py（脚手架版本）**
+**⚠️ 质量闸门（必须过）** — 在 translate.py 里硬编码"机器翻译后必过人工 spot check"的流程：
+1. AI/RAG 翻译输出 `.snippets.cs` 片段
+2. 每个片段旁边打印 `# [AUTO]` 标记
+3. 生成一份 `translation-spotcheck-report.md` 列出所有带 `[AUTO]` 标记的条目
+4. **人工随机抽 20% 条目审核**，用 spec Section 3.5 的正/反例对照判定好坏
+5. 如果发现有任何一条落入 BAD 列，**整个 core 的翻译全部打回重翻**，prompt 必须加负例强化
+6. 人工确认后，把 `[AUTO]` 改成 `[APPROVED]`，才允许注入 Registry.cs
 
-这个脚手架只做**格式化输出**和**占位翻译**——把 `diff.json` 里的 `new_key` 条目列出，为每条生成一个 C# ServerConfigDescriptor 片段（DisplayName="TO_BE_TRANSLATED"），不真调 AI。真正的 RAG 翻译在后续迭代里接入。
+这个脚手架版本只做**格式化输出 + 占位翻译**，不真调 AI，但质量闸门逻辑必须搭好。
 
 核心产出：
+
 1. 为每个 `new_key` / `drifted` 生成 C# 代码片段（Display 占位）
 2. 输出到 `diffs/<core>.new-keys.snippets.cs`（可审阅）
 3. 不修改 ConfigDescriptorRegistry.cs——人工确认后再注入
@@ -1489,7 +1503,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: 跑 translate.py --core paper**
+* [ ] **Step 2: 跑 translate.py --core paper**
 
 ```bash
 cd /workspace/tools/core-fetcher
@@ -1498,7 +1512,7 @@ python3 translate.py --core paper 2>&1
 
 Expected: 输出 new key 数量，生成 `diffs/paper.new-keys.snippets.cs`。
 
-- [ ] **Step 3: 看 snippets.cs 内容**
+* [ ] **Step 3: 看 snippets.cs 内容**
 
 ```bash
 head -30 /workspace/diffs/paper.new-keys.snippets.cs
@@ -1506,23 +1520,24 @@ head -30 /workspace/diffs/paper.new-keys.snippets.cs
 
 Expected: 看到 C# 格式的 ServerConfigDescriptor 条目，DisplayName="TODO: ..."。
 
-- [ ] **Step 4: Commit**
+* [ ] **Step 4: Commit**
 
 ```bash
 cd /workspace && git add tools/core-fetcher/translate.py diffs/
 git commit -m "feat(core-fetcher): add translate.py — scaffold that formats diffs into C# snippets for human review"
 ```
 
----
+***
 
 ### Task 8: verify.py — 流水线自检 + 整合入口
 
 **Files:**
-- Create: `tools/core-fetcher/verify.py`
 
-- [ ] **Step 1: 写 verify.py**
+* Create: `tools/core-fetcher/verify.py`
 
-这是一个整合脚本——给定一个 core_id，依次跑 fetch → run → diff → translate，产出完整流水线输出 + 报告。
+* [ ] **Step 1: 写 verify.py**
+
+这是一个整合脚本——给定一个 core\_id，依次跑 fetch → run → diff → translate，产出完整流水线输出 + 报告。
 
 ```python
 #!/usr/bin/env python3
@@ -1611,7 +1626,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: 跑完整流水线验证**
+* [ ] **Step 2: 跑完整流水线验证**
 
 ```bash
 cd /workspace/tools/core-fetcher
@@ -1620,14 +1635,14 @@ python3 verify.py --core paper 2>&1
 
 Expected: 4 个步骤都 OK，最后有 summary 输出（new/existing/removed/drifted 计数）。
 
-- [ ] **Step 3: Commit**
+* [ ] **Step 3: Commit**
 
 ```bash
 cd /workspace && git add tools/core-fetcher/verify.py
 git commit -m "feat(core-fetcher): add verify.py — end-to-end pipeline wrapper for one core"
 ```
 
----
+***
 
 ### Task 9: C# Registry.cs 加版本字段 + 拆 partial class（不立即执行，先 plan）
 
@@ -1637,29 +1652,31 @@ git commit -m "feat(core-fetcher): add verify.py — end-to-end pipeline wrapper
 
 1. 在 `ServerConfigDescriptor` 类上加 `IntroducedIn` / `RemovedIn` / `ValueHistory` 字段
 2. 加 `ValueHistoryEntry` record
-3. 把 Registry.cs 里 43 个 Register* 方法按以下分组拆到 partial class 文件：
+3. 把 Registry.cs 里 43 个 Register\* 方法按以下分组拆到 partial class 文件：
 
-| 文件 | 包含的 Register* 方法 |
-|---|---|
-| `ConfigDescriptorRegistry.cs` | 类定义 + 构造函数 + 查找/比对方法（保留） |
-| `ConfigDescriptorRegistry.Vanilla.cs` | RegisterServerProperties, RegisterServerPropertiesExtras, RegisterBukkitYml, RegisterSpigotYml, RegisterCommandsYml, RegisterPermissionsYml, RegisterHelpYml |
-| `ConfigDescriptorRegistry.Paper.cs` | RegisterPaperGlobalYml, RegisterPaperWorldDefaultsYml, RegisterPurpurYml, RegisterPufferfishYml, RegisterLeavesYml, RegisterLeafYml, RegisterFoliaGlobalYml, RegisterKaiijuYml, RegisterNachoYml, RegisterUSpigotYml, RegisterAirplaneYml, RegisterTuinityYml, RegisterYatopiaYml, RegisterAkarinYml |
-| `ConfigDescriptorRegistry.Proxy.cs` | RegisterVelocityToml, RegisterBungeeCordConfigYml, RegisterWaterfallYml, RegisterFlameCordYml, RegisterHexaCordYml |
-| `ConfigDescriptorRegistry.ModLoader.cs` | RegisterForgeServerToml, RegisterNeoForgeYml, RegisterFabricServerProperties, RegisterQuiltServerProperties |
-| `ConfigDescriptorRegistry.Hybrid.cs` | RegisterArclightYml, RegisterBannerYml, RegisterCatServerYml, RegisterMagmaConf, RegisterMohistConfigYml |
-| `ConfigDescriptorRegistry.Other.cs` | RegisterGlowstoneConfig, RegisterSpongeGlobalConf, RegisterSpongeForgeConf, RegisterNukkitYml, RegisterNukkitServerProperties, RegisterPowerNukkitYml, RegisterPowerNukkitServerProperties |
+| 文件                                      | 包含的 Register\* 方法                                                                                                                                                                                                                                                                                    |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ConfigDescriptorRegistry.cs`           | 类定义 + 构造函数 + 查找/比对方法（保留）                                                                                                                                                                                                                                                                             |
+| `ConfigDescriptorRegistry.Vanilla.cs`   | RegisterServerProperties, RegisterServerPropertiesExtras, RegisterBukkitYml, RegisterSpigotYml, RegisterCommandsYml, RegisterPermissionsYml, RegisterHelpYml                                                                                                                                         |
+| `ConfigDescriptorRegistry.Paper.cs`     | RegisterPaperGlobalYml, RegisterPaperWorldDefaultsYml, RegisterPurpurYml, RegisterPufferfishYml, RegisterLeavesYml, RegisterLeafYml, RegisterFoliaGlobalYml, RegisterKaiijuYml, RegisterNachoYml, RegisterUSpigotYml, RegisterAirplaneYml, RegisterTuinityYml, RegisterYatopiaYml, RegisterAkarinYml |
+| `ConfigDescriptorRegistry.Proxy.cs`     | RegisterVelocityToml, RegisterBungeeCordConfigYml, RegisterWaterfallYml, RegisterFlameCordYml, RegisterHexaCordYml                                                                                                                                                                                   |
+| `ConfigDescriptorRegistry.ModLoader.cs` | RegisterForgeServerToml, RegisterNeoForgeYml, RegisterFabricServerProperties, RegisterQuiltServerProperties                                                                                                                                                                                          |
+| `ConfigDescriptorRegistry.Hybrid.cs`    | RegisterArclightYml, RegisterBannerYml, RegisterCatServerYml, RegisterMagmaConf, RegisterMohistConfigYml                                                                                                                                                                                             |
+| `ConfigDescriptorRegistry.Other.cs`     | RegisterGlowstoneConfig, RegisterSpongeGlobalConf, RegisterSpongeForgeConf, RegisterNukkitYml, RegisterNukkitServerProperties, RegisterPowerNukkitYml, RegisterPowerNukkitServerProperties                                                                                                           |
 
----
+***
 
 ### Task 10: rag.py — RAG 知识库构建（Phase 0）
 
 **Files:**
-- Create: `tools/core-fetcher/rag.py`
-- Create: `knowledge-base/` (git-tracked)
+
+* Create: `tools/core-fetcher/rag.py`
+
+* Create: `knowledge-base/` (git-tracked)
 
 **说明：** 这个脚本扫项目内已有的 `docs/server-cores/*.md`，把其中表格结构化抽取成 `knowledge-base/<core>/<config_file>.json`。MineBBS 和 中文 Minecraft Wiki 的爬取作为后续迭代——先把最可靠的数据源（已有人工翻译）入库。
 
-- [ ] **Step 1: 写 rag.py**
+* [ ] **Step 1: 写 rag.py**
 
 ```python
 #!/usr/bin/env python3
@@ -1862,7 +1879,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: 跑 rag.py 扫全部 doc**
+* [ ] **Step 2: 跑 rag.py 扫全部 doc**
 
 ```bash
 cd /workspace/tools/core-fetcher
@@ -1871,7 +1888,7 @@ python3 rag.py 2>&1 | tail -30
 
 Expected: 输出每个 core 抽取到多少 entries。
 
-- [ ] **Step 3: 验证**
+* [ ] **Step 3: 验证**
 
 ```bash
 ls -la /workspace/knowledge-base/
@@ -1879,30 +1896,30 @@ ls -la /workspace/knowledge-base/
 
 Expected: 至少有 paper/paper-global.yml.json 等条目。
 
-- [ ] **Step 4: Commit**
+* [ ] **Step 4: Commit**
 
 ```bash
 cd /workspace && git add tools/core-fetcher/rag.py knowledge-base/
 git commit -m "feat(core-fetcher): rag.py — build initial knowledge-base from project server-cores .md docs"
 ```
 
----
+***
 
 ## 自审
 
 **1. Spec coverage:**
 
-| Spec 章节 | 对应 Task |
-|---|---|
-| 3 (RAG 知识库) | Task 10 |
-| 4 (核心清单 YAML) | Task 3 |
-| 5 (fetch.py) | Task 4 |
-| 6 (run.py) | Task 2 (JDK) + Task 5 |
-| 7 (src.py 源码辅助) | **Phase 3 补** — 跳过（当前 repo 没 git clone 源码的必要，先靠运行时配置够了） |
-| 8 (diff.py) | Task 6 |
-| 9 (Registry 扩展 + 拆分) | Task 9 (规划) |
-| 9 (translate.py) | Task 7 (脚手架) |
-| 11 (Phase 顺序) | 按 Task 编号执行 |
+| Spec 章节              | 对应 Task                                                 |
+| -------------------- | ------------------------------------------------------- |
+| 3 (RAG 知识库)          | Task 10                                                 |
+| 4 (核心清单 YAML)        | Task 3                                                  |
+| 5 (fetch.py)         | Task 4                                                  |
+| 6 (run.py)           | Task 2 (JDK) + Task 5                                   |
+| 7 (src.py 源码辅助)      | **Phase 3 补** — 跳过（当前 repo 没 git clone 源码的必要，先靠运行时配置够了） |
+| 8 (diff.py)          | Task 6                                                  |
+| 9 (Registry 扩展 + 拆分) | Task 9 (规划)                                             |
+| 9 (translate.py)     | Task 7 (脚手架)                                            |
+| 11 (Phase 顺序)        | 按 Task 编号执行                                             |
 
 **2. Placeholder scan:** 计划里没有 TODO/TBD/XXX。Task 7 明确说是脚手架版本。Task 9 明确标注为规划。
 
@@ -1910,13 +1927,17 @@ git commit -m "feat(core-fetcher): rag.py — build initial knowledge-base from 
 
 **4. 缺失项:** spec 里提到的 src.py（源码辅助层）和 MineBBS/Wiki 爬取没有覆盖。这是有意的 YAGNI 简化——当前项目已有 .md 文档作为高质量知识库，MineBBS 爬取容易被反爬，源码 clone 也需要额外带宽。Phase 3 批量跑的时候再补。
 
----
+***
 
 ## 执行顺序
 
 按 Task 编号：**1 → 2 → 3 → 10 → 4 → 5 → 6 → 7 → 8**
 
-- Task 1–2 是基础设施，必须最先
-- Task 3 (YAML) 之后，Task 10 (RAG KB) 其实可以和 Task 4/5 并行（不互相依赖），但为了顺序干净放一起
-- Task 4–8 是 fetch → run → diff → translate → verify 串行流水线
-- Task 9（Registry C# 改动）推迟到 Phase 4，在有真实翻译结果后执行
+* Task 1–2 是基础设施，必须最先
+
+* Task 3 (YAML) 之后，Task 10 (RAG KB) 其实可以和 Task 4/5 并行（不互相依赖），但为了顺序干净放一起
+
+* Task 4–8 是 fetch → run → diff → translate → verify 串行流水线
+
+* Task 9（Registry C# 改动）推迟到 Phase 4，在有真实翻译结果后执行
+
