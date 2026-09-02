@@ -282,7 +282,7 @@ export function MarketPage(): JSX.Element {
                         </div>
                       )}
                       <div style={{ fontSize: 10, color: 'var(--md-body-lighter)', marginTop: 2 }}>
-                        ⬇ {project.downloads?.toLocaleString() ?? 0}下载 · ⭐ {project.likes ?? 0}
+                        ⬇ {project.downloads?.toLocaleString() ?? 0} · 🔼 {project.followers?.toLocaleString() ?? 0}关注
                       </div>
                     </div>
                   </div>
@@ -339,7 +339,7 @@ export function MarketPage(): JSX.Element {
                   <option value="">-- 请选择版本 --</option>
                   {versions.map((v) => (
                     <option key={v.id} value={v.id}>
-                      v{v.versionNumber} {v.releaseDate ? `(${new Date(v.releaseDate).toLocaleDateString()})` : ''}
+                      v{v.versionNumber} {v.releasedAt ? `(${new Date(v.releasedAt).toLocaleDateString()})` : ''}
                     </option>
                   ))}
                 </select>

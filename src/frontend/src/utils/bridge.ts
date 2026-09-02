@@ -970,16 +970,35 @@ export function getSchedulerHistory(maxRecords: number = 50): Promise<ExecutionR
 // ═════════════════════════════════════════════════════════════════════
 // 插件市场 API
 // ═════════════════════════════════════════════════════════════════════
+// 插件市场 Bridge API
+// 注意: 后端 handler 已改为直接 return 数组/对象，
+// bridge.invoke 的 resolve(data.payload) 直接就是数据本身。
+// ═════════════════════════════════════════════════════════════════════
 
-export function searchMarket(query: string, limit: number = 20): Promise<MarketProject[]> {
-  return bridge.invoke<MarketProject[]>('market.search', { query, limit })
+export function searchMarket(
+  query: string,
+  limit: number = 20,
+  options?: { source?: string; serverType?: string; gameVersion?: string }
+): Promise<MarketProject[]> {
+  const payload: Record<string, unknown> = { query, limit }
+  if (options?.source) payload.source = options.source
+  if (options?.serverType) payload.serverType = options.serverType
+  if (options?.gameVersion) payload.gameVersion = options.gameVersion
+  return bridge.invoke<MarketProject[]>('market.search', payload)
 }
 
-export function getMarketVersions(projectId: string): Promise<MarketVersion[]> {
-  return bridge.invoke<MarketVersion[]>('market.versions', projectId)
+export function getMarketVersions(
+  projectId: string,
+  source?: string
+): Promise<MarketVersion[]> {
+  const payload = source ? { projectId, source } : projectId
+  return bridge.invoke<MarketVersion[]>('market.versions', payload)
 }
 
-export function installPlugin(version: MarketVersion, serverPath: string): Promise<InstallResult> {
+export function installPlugin(
+  version: MarketVersion,
+  serverPath: string
+): Promise<InstallResult> {
   return bridge.invoke<InstallResult>('market.install', { version, serverPath })
 }
 

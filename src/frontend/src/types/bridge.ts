@@ -748,22 +748,33 @@ export interface MarketSearchRequest {
 
 export interface MarketProject {
   id: string
+  slug?: string
   name: string
   description?: string
+  author?: string
   iconUrl?: string
-  projectType?: string
   downloads?: number
-  likes?: number
-  versions?: MarketVersion[]
+  followers?: number
+  source?: string            // "Modrinth" | "Hangar" | "Spiget"
+  supportedLoaders?: string[]
+  gameVersions?: string[]
+  categories?: string[]
+  updatedAt?: string
 }
 
 export interface MarketVersion {
   id: string
   projectId: string
   versionNumber: string
+  name: string
   changelog?: string
-  releaseDate?: string
-  files?: MarketFileInfo[]
+  releasedAt?: string        // ISO 8601 date string
+  isPreRelease?: boolean
+  gameVersions?: string[]
+  loaders?: string[]
+  downloadUrl?: string
+  sha1Hash?: string
+  fileSize?: number
 }
 
 export interface MarketFileInfo {
