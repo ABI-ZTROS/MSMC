@@ -1,0 +1,586 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "vanilla"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/01-vanilla.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "server-port",
+      "chinese_entries": [
+        {
+          "term": "服务器端口",
+          "context": "服务器监听的 IPv4 TCP 端口。⚠️ 若设为 -1 则使用默认值 25565。端口冲突时换用其他端口（如 25566）。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "query.port",
+      "chinese_entries": [
+        {
+          "term": "Query 端口",
+          "context": "GameSpy Query 协议（用于服务器列表网站查询在线人数）监听端口。仅在 enable-query=true 时生效。可设为与 server-port 不同的端口。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-query",
+      "chinese_entries": [
+        {
+          "term": "启用 Query",
+          "context": "是否开启 GameSpy Query 协议，允许第三方网站查询服务器信息（在线人数、版本、插件等）。公网服建议关闭，避免泄露信息。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-rcon",
+      "chinese_entries": [
+        {
+          "term": "启用 RCON",
+          "context": "是否启用远程控制台协议（RCON），允许通过 TCP 远程执行命令。启用**必须**设置 rcon.password！",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "rcon.port",
+      "chinese_entries": [
+        {
+          "term": "RCON 端口",
+          "context": "RCON 监听的 TCP 端口。请勿与 server-port 冲突。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "rcon.password",
+      "chinese_entries": [
+        {
+          "term": "RCON 密码",
+          "context": "RCON 远程控制密码。启用 RCON 时**必须**设置强密码，否则任何人都可远程控制服务器。修改需重启。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server-ip",
+      "chinese_entries": [
+        {
+          "term": "服务器绑定 IP",
+          "context": "服务器绑定的本机 IP。留空则监听所有网卡（0.0.0.0）。单机多服时填对应网卡 IP。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-compression-threshold",
+      "chinese_entries": [
+        {
+          "term": "网络压缩阈值",
+          "context": "数据包大于此字节数才压缩发送。256 表示 ≤256 字节的包不压缩。-1 完全禁用压缩（带宽紧张禁用可省 CPU 但占用网速）。0 压缩所有包。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "use-native-transport",
+      "chinese_entries": [
+        {
+          "term": "使用原生网络传输",
+          "context": "Linux 上是否启用 epoll 原生网络（性能更高）。Windows / macOS 自动回退。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "prevent-proxy-connections",
+      "chinese_entries": [
+        {
+          "term": "阻止代理连接",
+          "context": "若为 true，服务器会向 Mojang 询问玩家 IP 是否经过代理 / VPN，是则拒绝。可能误伤合法玩家，慎用。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "online-mode",
+      "chinese_entries": [
+        {
+          "term": "在线（正版）验证",
+          "context": "**关键安全项**！true 启用 Mojang 正版验证，玩家必须用正版账号登录，UUID 由 Mojang 提供。false 关闭验证（俗称「离线模式」），玩家可用任意用户名登录，UUID 由用户名哈希生成，存在身份冒充风险。⚠️ 前置 BungeeCord/Velocity 时**必须**设为 false，由代理层做验证。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "prevent-proxies",
+      "chinese_entries": [
+        {
+          "term": "阻止代理",
+          "context": "旧名 prevent-proxy-connections 的别名（1.20+），是否阻止玩家使用代理 / VPN。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-players",
+      "chinese_entries": [
+        {
+          "term": "最大玩家数",
+          "context": "服务器同时允许的最大在线玩家数。0 视为「无上限」（不推荐）。值越大对性能与内存影响越大。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "white-list",
+      "chinese_entries": [
+        {
+          "term": "启用白名单",
+          "context": "是否启用白名单，启用后仅 whitelist.json 中的玩家可加入。可由 /whitelist on/off 热切换。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enforce-whitelist",
+      "chinese_entries": [
+        {
+          "term": "强制白名单",
+          "context": "若为 true，服务器在运行期间定期检查白名单，被移出白名单的在线玩家会被立即踢出。false 则仅在新玩家加入时检查。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enforce-secure-profile",
+      "chinese_entries": [
+        {
+          "term": "强制安全档案",
+          "context": "1.19+：是否要求玩家使用 Mojang 签名的聊天档案。true 时未签名玩家无法加入（防聊天伪造）。离线模式自动忽略。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "log-ips",
+      "chinese_entries": [
+        {
+          "term": "记录玩家 IP",
+          "context": "1.20.6+：是否在玩家加入时将其 IP 写入日志。关闭可满足 GDPR 等隐私合规要求。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-idle-timeout",
+      "chinese_entries": [
+        {
+          "term": "玩家挂机踢出",
+          "context": "玩家挂机多少分钟后被踢出。0 = 永不踢出。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "op-permission-level",
+      "chinese_entries": [
+        {
+          "term": "OP 默认权限等级",
+          "context": "新增 OP（/op 命令）默认赋予的权限等级。0 无权限；1 可绕过 spawn 保护；2 可用命令方块 / 编辑器；3 可用 /ban、/whitelist；4 拥有所有权限（含 /stop）。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "function-permission-level",
+      "chinese_entries": [
+        {
+          "term": "函数权限等级",
+          "context": "数据包中函数（/function）执行时的权限等级。建议保持 2，过高可能导致数据包函数执行危险命令。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-name",
+      "chinese_entries": [
+        {
+          "term": "世界名称",
+          "context": "主世界存档文件夹名。⚠️ **修改不会重命名旧文件夹**，会创建新世界。改名前请手动重命名文件夹。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-seed",
+      "chinese_entries": [
+        {
+          "term": "世界种子",
+          "context": "世界生成种子。留空则随机生成。相同种子生成相同地形。可填数字或字符串（字符串会被哈希为数字）。**仅影响新生成的区块**，已有区块不变。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-type",
+      "chinese_entries": [
+        {
+          "term": "世界类型",
+          "context": "地形类型。normal = 标准地形；flat = 超平坦；large_biomes = 大生物群系；amplified = 极限高度（耗资源）；single_biome = 单一群系（需配合 generator-settings）。⚠️ 1.19+ 必须加 minecraft\\: 命名空间前缀。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "generator-settings",
+      "chinese_entries": [
+        {
+          "term": "生成器参数",
+          "context": "自定义世界生成参数（JSON 格式）。超平坦用 {\"layers\":[{\"block\":\"stone\",\"height\":1}],\"biome\":\"plains\"}。详细格式见 Minecraft Wiki。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "generate-structures",
+      "chinese_entries": [
+        {
+          "term": "生成结构",
+          "context": "是否生成村庄、神殿、废弃矿井等结构。关闭后仍会生成传送门废墟。**仅影响新生成的区块**。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-world-size",
+      "chinese_entries": [
+        {
+          "term": "最大世界半径",
+          "context": "世界边界半径（方块）。默认值接近原版最大值。缩小可限制玩家活动范围。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-protection",
+      "chinese_entries": [
+        {
+          "term": "出生保护半径",
+          "context": "出生点周围多少方块半径内仅 OP 可破坏（半径 16 = 33×33 区域）。0 完全禁用出生保护。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-nether",
+      "chinese_entries": [
+        {
+          "term": "允许进入下界",
+          "context": "是否生成并允许进入下界。关闭后下界不生成，传送门不工作。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-end",
+      "chinese_entries": [
+        {
+          "term": "允许进入末地",
+          "context": "是否生成并允许进入末地。Vanilla 1.21+ 通过此键控制（旧版仅 Bukkit 控制）。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "hardcore",
+      "chinese_entries": [
+        {
+          "term": "极限模式",
+          "context": "极限模式：玩家死亡后**永久封禁**（踢出 + 加入封禁）。难度自动锁定为 hard。⚠️ 已有玩家不受影响。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-tnt-radius",
+      "chinese_entries": [
+        {
+          "term": "TNT 爆炸上限",
+          "context": "1.21.5+：单次 TNT 链式爆炸的最大影响半径（方块）。100 是原版上限。降低可防止 TNT 大炮卡服。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gamemode",
+      "chinese_entries": [
+        {
+          "term": "默认游戏模式",
+          "context": "新玩家加入时的默认游戏模式。survival = 生存；creative = 创造；adventure = 冒险；spectator = 旁观（仅旁观，无碰撞）。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "force-gamemode",
+      "chinese_entries": [
+        {
+          "term": "强制游戏模式",
+          "context": "true 时玩家进服始终被强制设置为 gamemode 指定的模式，忽略其上次退出时的模式。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "difficulty",
+      "chinese_entries": [
+        {
+          "term": "难度",
+          "context": "世界难度。peaceful = 和平（不刷怪，回血快）；easy = 简单（饥饿不致死）；normal = 普通（标准）；hard = 困难（饥饿致死，僵尸破门）。极限模式自动锁定为 hard。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "pvp",
+      "chinese_entries": [
+        {
+          "term": "允许 PvP",
+          "context": "是否允许玩家间互相伤害。关闭后玩家无法直接攻击其他玩家（间接伤害如岩浆仍有效）。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-flight",
+      "chinese_entries": [
+        {
+          "term": "允许飞行",
+          "context": "是否允许玩家在生存模式下飞行。⚠️ 不是「开启飞行」，而是「反飞行作弊是否豁免创造/旁观模式之外的情况」。生存模式插件飞行需设为 true，否则会被踢出。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-cheats",
+      "chinese_entries": [
+        {
+          "term": "允许作弊",
+          "context": "是否允许使用 /gamemode、/give、/tp 等作弊命令（非 OP 也可用）。生产环境**必须** false。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-animals",
+      "chinese_entries": [
+        {
+          "term": "生成动物",
+          "context": "是否生成被动动物（牛、羊等）。关闭后已存在动物保留，不再新生。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-npcs",
+      "chinese_entries": [
+        {
+          "term": "生成 NPC",
+          "context": "是否生成村民等 NPC。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-monsters",
+      "chinese_entries": [
+        {
+          "term": "生成怪物",
+          "context": "是否生成敌对怪物。关闭后已存在怪物保留，不再新生。和平难度下自动禁用。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "view-distance",
+      "chinese_entries": [
+        {
+          "term": "视野距离",
+          "context": "玩家可见的区块半径。10 = 21×21 区块。值越大带宽和内存占用越高，公网服建议 8–12。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "simulation-distance",
+      "chinese_entries": [
+        {
+          "term": "模拟距离",
+          "context": "玩家周围多少区块半径内会被 tick（实体 AI、作物生长、红石）。值越大 CPU 占用越高。通常 ≥ view-distance。0 等于 view-distance。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-broadcast-range-percentage",
+      "chinese_entries": [
+        {
+          "term": "实体广播范围百分比",
+          "context": "实体（怪物、掉落物等）对玩家的可见距离百分比。100 = 原版默认（基于实体类型）。降低可减少网络包但玩家会看到实体「突然出现」。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "resource-pack",
+      "chinese_entries": [
+        {
+          "term": "资源包 URL",
+          "context": "服务器向客户端推送的资源包下载 URL（须为直链）。留空则不发送。⚠️ 必须 HTTPS 且公网可访问。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "resource-pack-sha1",
+      "chinese_entries": [
+        {
+          "term": "资源包 SHA-1",
+          "context": "资源包文件的 SHA-1 哈希值。强烈建议填写，可让客户端校验完整性，避免下载损坏或被篡改。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "resource-pack-prompt",
+      "chinese_entries": [
+        {
+          "term": "资源包提示文本",
+          "context": "1.17+：玩家首次被推送资源包时显示的提示文本（JSON 文本格式）。仅在 require-resource-pack=false 时显示。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "require-resource-pack",
+      "chinese_entries": [
+        {
+          "term": "强制资源包",
+          "context": "true 时玩家**必须**接受资源包才能进服，拒绝会被踢出。⚠️ 资源包 URL 必须可用，否则玩家无法进服。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-chained-neighbor-updates",
+      "chinese_entries": [
+        {
+          "term": "链式邻居更新上限",
+          "context": "1.19.3+：单次方块变更引发的链式邻居更新最大深度。超过即停止传播。降低可防止红石回路卡服。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "motd",
+      "chinese_entries": [
+        {
+          "term": "服务器 MOTD",
+          "context": "服务器在客户端列表中显示的简介文本。支持 § 颜色码与 \\n 换行（最多两行，每行 60 字符）。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-status",
+      "chinese_entries": [
+        {
+          "term": "启用状态响应",
+          "context": "是否响应客户端的服务器列表 ping 请求。关闭后客户端列表显示「无法连接」，但仍可直连。可隐藏服务器存在性。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-jmx-monitoring",
+      "chinese_entries": [
+        {
+          "term": "启用 JMX 监控",
+          "context": "是否启用 JMX（Java Management Extensions）监控，允许通过 JConsole / VisualVM 远程查看服务器指标。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "snooper-enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 Snooper 数据上报",
+          "context": "是否向 Mojang 上报匿名统计数据（硬件、版本、插件等）。1.15 后默认 false，1.19+ 已移除（保留键仅兼容旧配置）。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sync-chunk-writes",
+      "chinese_entries": [
+        {
+          "term": "同步区块写入",
+          "context": "是否同步写入区块到磁盘。true 数据安全但写入稍慢；false 异步写入更快但崩溃时可能丢数据。NVMe SSD 可设 false。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "use-native-transport",
+      "chinese_entries": [
+        {
+          "term": "原生网络（Linux）",
+          "context": "Linux 上启用 epoll 原生网络 IO，性能更高。非 Linux 自动忽略。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "rate-limit",
+      "chinese_entries": [
+        {
+          "term": "数据包速率限制",
+          "context": "单个玩家每秒最大数据包数。0 = 不限制。降低可防部分 DDoS，但过低影响正常游玩。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-tick-time",
+      "chinese_entries": [
+        {
+          "term": "单 tick 最大时长",
+          "context": "单个 tick 超过此毫秒数时服务器判定为「卡死」并触发 watchdog 崩溃报告。-1/0 禁用 watchdog。崩溃时会输出线程转储。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    },
+    {
+      "key_path": "text-filtering",
+      "chinese_entries": [
+        {
+          "term": "启用文本过滤",
+          "context": "1.19+：是否启用 Mojang 文本过滤服务（需正版验证）。中国大陆服务器一般关闭。",
+          "source": "docs/server-cores/01-vanilla.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

@@ -1,0 +1,336 @@
+{
+  "config_file": "kaiiju.yml",
+  "cores": [
+    "kaiiju"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/11-kaiiju.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "region-format.linear.flush-frequency",
+      "chinese_entries": [
+        {
+          "term": "线性文件刷新频率",
+          "context": "多久将内存中的线性 Region 数据刷新到磁盘一次（秒）。值越小越频繁、崩服丢数据越少但 IO 越多；值越大越省 IO 但丢数据风险越高。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "region-format.linear.flush-max-threads",
+      "chinese_entries": [
+        {
+          "term": "刷新最大线程数",
+          "context": "刷新线性 Region 文件时使用的最大线程数。1 = 单线程刷新（安全）；增大可加快刷新但增加磁盘 IO 争用。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.send-null-entity-packets",
+      "chinese_entries": [
+        {
+          "term": "发送空实体移动包",
+          "context": "是否发送空移动实体数据包。设为 false 可减少网络流量，除非有插件依赖此行为，否则建议 false。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.alternate-keepalive",
+      "chinese_entries": [
+        {
+          "term": "备用心跳机制",
+          "context": "沿用 Purpur 的备用心跳：每秒发送一个 keepalive 包，仅当 30 秒内无任何响应才踢出玩家。可避免因偶发丢包导致的误踢（玩家不会因为丢一个心跳包就被踢）。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.kick-player-on-bad-packet",
+      "chinese_entries": [
+        {
+          "term": "收到坏包踢出玩家",
+          "context": "收到损坏 / 非法数据包时是否踢出玩家。设为 false 不踢（实验性，可能被恶意客户端利用）。无政府服可考虑 false，正常服保持 true。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimization.disable-vanish-api",
+      "chinese_entries": [
+        {
+          "term": "禁用隐身 API",
+          "context": "禁用 Bukkit 的 Player#hidePlayer / showPlayer 隐身 API。无隐身需求的服务器可设 true 以节省性能。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimization.disable-player-stats",
+      "chinese_entries": [
+        {
+          "term": "禁用玩家统计",
+          "context": "禁用玩家统计信息（如走了多少格、挖了多少方块）的记录与持久化。无政府 / 战斗服通常不需要统计，可设 true 提速。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimization.disable-arm-swing-event",
+      "chinese_entries": [
+        {
+          "term": "禁用手臂挥动事件",
+          "context": "不调用 PlayerArmSwingEvent。若没有插件监听此事件（绝大多数服都没有），可设 true 减少事件开销。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimization.async-path-processing.enable",
+      "chinese_entries": [
+        {
+          "term": "启用异步寻路",
+          "context": "是否启用异步寻路处理。⚠️ **修改必须重启**，热重载无效。开启后实体寻路移至异步线程池，可显著降低主线程负载。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimization.async-path-processing.max-threads",
+      "chinese_entries": [
+        {
+          "term": "异步寻路最大线程数",
+          "context": "寻路线程池最大线程数。**0** = 自动（max(核心数/4, 1)）；**负数 -n** = max(核心数 − n, 1)；**正数** = 固定值。允许线程池在突发负载时临时扩张到该上限。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimization.async-path-processing.keepalive",
+      "chinese_entries": [
+        {
+          "term": "空闲线程存活时间",
+          "context": "当线程数超过核心池大小时，多余空闲线程的存活秒数。短存活时间可快速回收多余线程，长存活时间可应对频繁突发。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimization.async-path-processing.queue-capacity",
+      "chinese_entries": [
+        {
+          "term": "任务队列容量",
+          "context": "寻路任务等待队列的最大长度。队列满后才会创建新线程（直到 max-threads）。大队列可吸收突发任务而不创建过多线程，但会增加延迟。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay.server-mod-name",
+      "chinese_entries": [
+        {
+          "term": "服务端名称",
+          "context": "发送给客户端的服务端品牌名（F3 界面显示的 \"Mod\" 字段）。可用于品牌定制或隐藏真实核心类型。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay.shared-random-for-players",
+      "chinese_entries": [
+        {
+          "term": "玩家共享随机源",
+          "context": "玩家共用同一个随机数生成器，而非每个玩家独立 RNG。**这是原版 RNG 操纵（RNG manipulation）的关键**：开启时所有玩家共享 RNG，可被用于预测 / 操纵随机事件（如掉落、生物生成）。无政府服保持 true 以允许 RNG 控制。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "unsupported.disable-ensure-tick-thread-checks",
+      "chinese_entries": [
+        {
+          "term": "禁用线程检查",
+          "context": "禁用 Folia 的「确保在正确 tick 线程」安全检查。**绝对不要开启**，会导致数据竞争与崩溃。仅用于调试。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "unsupported.global-event-synchronization",
+      "chinese_entries": [
+        {
+          "term": "全局事件同步",
+          "context": "启用全局事件同步锁。会显著降低多线程性能，仅用于排查事件竞态问题。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.region-format.format",
+      "chinese_entries": [
+        {
+          "term": "区域文件格式",
+          "context": "世界在磁盘上使用的 Region 文件格式。ANVIL = Minecraft 原生 .mca 格式（兼容性最好）；LINEAR = Xymb 线性格式（主世界/下界省 ~50% 磁盘，末地省 ~95%）。切换必须转换数据，否则世界会丢失。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.region-format.linear.compression-level",
+      "chinese_entries": [
+        {
+          "term": "Linear 压缩级别",
+          "context": "Linear 格式使用的 ZSTD 压缩级别。推荐 1 / 3 / 6。级别越高磁盘越省但 CPU 越高。实测：级别 1 总占用 7.88GB，级别 6 仅 6.59GB（节省约 16%）。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.region-format.linear.crash-on-broken-symlink",
+      "chinese_entries": [
+        {
+          "term": "符号链接损坏时崩溃",
+          "context": "当 Region 文件的符号链接损坏时是否让服务器崩溃。true（推荐）= 崩溃以暴露问题；false = 静默跳过。通过 NFS 访问 Region 文件时建议 true。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.optimization.shulker-box-drop-contents-when-destroyed",
+      "chinese_entries": [
+        {
+          "term": "潜影盒被毁掉落内容",
+          "context": "潜影盒被熔岩 / 仙人掌等摧毁时，是否掉落其内部物品。true = 原版行为；false = 内容物一并销毁。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.optimization.optimize-hoppers",
+      "chinese_entries": [
+        {
+          "term": "漏斗优化",
+          "context": "启用 Paper 的漏斗优化。false 可还原 100% 原版漏斗行为，但会破坏大量生电红石机器。生电服可考虑 false。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.optimization.tick-when-empty",
+      "chinese_entries": [
+        {
+          "term": "空世界仍 tick",
+          "context": "世界无玩家时是否仍进行 tick（实体、红石等）。false = 无玩家时世界冻结，省 CPU 但红石机器会停。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.optimization.enable-entity-throttling",
+      "chinese_entries": [
+        {
+          "term": "实体节流",
+          "context": "启用实体数量节流。开启后超限的实体会被限制 / 移除。具体限制在 kaiiju-entity-limits.yml 中配置。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.optimization.disable-achievements",
+      "chinese_entries": [
+        {
+          "term": "禁用成就",
+          "context": "禁用成就 / 进度系统的触发与记录。无政府服可设 true 提速。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.optimization.disable-creatures-spawn-events",
+      "chinese_entries": [
+        {
+          "term": "禁用生物生成事件",
+          "context": "不触发 CreatureSpawnEvent。无插件监听此事件时可设 true 减少事件开销，但反作弊 / 限制类插件会失效。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.optimization.disable-dolphin-swim-to-treasure",
+      "chinese_entries": [
+        {
+          "term": "禁用海豚寻宝",
+          "context": "禁用海豚引导玩家寻找沉船 / 海底废墟的行为。可减少海豚寻路计算开销。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.gameplay.fix-void-trading",
+      "chinese_entries": [
+        {
+          "term": "修复虚空交易",
+          "context": "是否修复虚空交易漏洞。true（默认）= 修复；false = 允许虚空交易。若关闭，建议安装 [Kaiivoid](https://github.com/KaiijuMC/Kaiivoid) 插件替代。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.gameplay.break-redstone-on-top-of-trap-doors-early",
+      "chinese_entries": [
+        {
+          "term": "提前破坏活板门上红石",
+          "context": "始终提前破坏活板门上的红石。false 会允许「门切片（portal slicing）」与活板门卡服机器。生电服可设 false 还原漏洞。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.gameplay.fix-tripwire-state-inconsistency",
+      "chinese_entries": [
+        {
+          "term": "修复绊线状态不一致",
+          "context": "修复绊线状态不一致。false 会启用**线复制漏洞**，并允许末地黑曜石平台抑制。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.gameplay.safe-teleportation",
+      "chinese_entries": [
+        {
+          "term": "安全传送",
+          "context": "true = 末地传送门只传送活着的实体（修复刷沙）；false = 允许末地传送门传送已移除的实体（**刷沙前置**）。要开启刷沙必须设为 false。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.gameplay.sand-duplication",
+      "chinese_entries": [
+        {
+          "term": "沙子复制",
+          "context": "允许沙子复制漏洞。⚠️ **前置条件**：必须同时将 safe-teleportation 设为 false 才能生效。无政府刷沙服开启。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.gameplay.teleport-async-on-high-velocity",
+      "chinese_entries": [
+        {
+          "term": "高速时异步传送",
+          "context": "玩家高速移动（高速度）时使用异步传送。实验性，可能改善高速场景下的传送稳定性。",
+          "source": "docs/server-cores/11-kaiiju.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

@@ -1,0 +1,46 @@
+{
+  "config_file": "mohist-config/world.yml",
+  "cores": [
+    "mohist"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/27-mohist.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "world-settings.default.keep_spawn_loaded",
+      "chinese_entries": [
+        {
+          "term": "出生点常驻内存",
+          "context": "是否将世界出生点区块常驻内存（不卸载）。建议开启以避免新玩家进入时卡顿。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.max_entity_cramming",
+      "chinese_entries": [
+        {
+          "term": "实体挤压上限",
+          "context": "单格内实体数量上限，超过即触发挤压伤害（原版 24）。模组刷怪塔可能需要调高。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.max_entity_ticks",
+      "chinese_entries": [
+        {
+          "term": "单 tick 实体上限",
+          "context": "单次 tick 最多处理的实体数量。-1 不限制。模组较多的服务器可设置上限以防止实体爆炸卡服。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

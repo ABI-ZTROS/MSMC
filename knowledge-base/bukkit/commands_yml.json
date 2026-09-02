@@ -1,0 +1,76 @@
+{
+  "config_file": "commands.yml",
+  "cores": [
+    "bukkit"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/02-bukkit.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "command-block-overrides",
+      "chinese_entries": [
+        {
+          "term": "命令方块覆盖",
+          "context": "命令方块执行命令时使用的别名映射。键为原命令，值为别名命令。一般留空。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases",
+      "chinese_entries": [
+        {
+          "term": "命令别名",
+          "context": "全局命令别名映射。键为别名命令名，值可以是字符串（单个目标命令）或 map（含 i/k/p 等 flags）。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases.<别名>",
+      "chinese_entries": [
+        {
+          "term": "单个别名",
+          "context": "将 <别名> 重定向到目标命令。字符串形式：gamemode: \"minecraft:gamemode $1-\"（$1- 转发所有参数）。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases.<别名>.i",
+      "chinese_entries": [
+        {
+          "term": "忽略大小写",
+          "context": "别名匹配时是否忽略大小写。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases.<别名>.k",
+      "chinese_entries": [
+        {
+          "term": "保留原命令",
+          "context": "true 时除执行别名命令外，仍保留原命令可用。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases.<别名>.p",
+      "chinese_entries": [
+        {
+          "term": "参数转发模板",
+          "context": "参数转发模板。$1 = 第一个参数；$1- = 第一个及之后所有参数；$@ = 所有参数。例：p: \"minecraft:gamemode creative $1\"。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

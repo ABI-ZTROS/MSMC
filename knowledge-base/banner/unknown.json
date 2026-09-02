@@ -1,0 +1,166 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "banner"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/31-banner.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "banner.lang",
+      "chinese_entries": [
+        {
+          "term": "控制台语言",
+          "context": "Banner 启动日志与控制台提示所使用的语言。仅影响 Banner 自身日志，不影响 Minecraft 原版日志。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.check_update",
+      "chinese_entries": [
+        {
+          "term": "检查 Banner 更新",
+          "context": "启动时是否联网检查 Banner 新版本。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.metrics",
+      "chinese_entries": [
+        {
+          "term": "启用 bStats 统计上报",
+          "context": "是否启用 bStats 匿名数据上报。建议保持开启帮助开发者了解使用情况。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.show_logo",
+      "chinese_entries": [
+        {
+          "term": "启动时显示 Banner Logo",
+          "context": "控制台启动时是否打印 Banner ASCII Logo。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.bukkit-version",
+      "chinese_entries": [
+        {
+          "term": "Bukkit API 版本",
+          "context": "Banner 内部使用的 Bukkit API 版本号，由 Banner 自动写入，请勿手动修改。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.bukkit-version-override",
+      "chinese_entries": [
+        {
+          "term": "强制覆盖 Bukkit 版本",
+          "context": "强制覆盖对插件声明的 Bukkit 版本号。仅在插件因版本检查拒绝加载时使用。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.disable_plugins_blacklist",
+      "chinese_entries": [
+        {
+          "term": "禁用插件黑名单检查",
+          "context": "Banner 维护了一份已知与混合端不兼容的插件黑名单。设为 true 跳过该检查（不推荐，可能导致崩溃）。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.disable_mods_blacklist",
+      "chinese_entries": [
+        {
+          "term": "禁用模组黑名单检查",
+          "context": "同上，跳过 Banner 维护的已知不兼容 Fabric 模组黑名单。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.support_non_paper_plugins",
+      "chinese_entries": [
+        {
+          "term": "允许非 Paper 系插件",
+          "context": "是否允许加载仅声明支持 Spigot/CraftBukkit 的插件。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.async-tick",
+      "chinese_entries": [
+        {
+          "term": "异步 tick 模式",
+          "context": "实验性：是否启用异步 tick 模式。⚠️ 与部分 Fabric 模组（如 Lithium）可能冲突，**强烈不建议开启**。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.disable-watchdog",
+      "chinese_entries": [
+        {
+          "term": "禁用看门狗",
+          "context": "是否禁用 watchdog 主线程监控。⚠️ 不推荐，模组卡死将无报警。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.entity-activation-range",
+      "chinese_entries": [
+        {
+          "term": "实体激活范围优化",
+          "context": "是否启用实体激活范围优化（远离玩家的实体降低 tick 频率）。与 Lithium 类似模组可能重复优化，建议二选一。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.use-Spark-and-Sync-Timer",
+      "chinese_entries": [
+        {
+          "term": "启用 Spark 计时器",
+          "context": "是否启用 Banner 内置的同步计时器（用于性能分析）。Spark 插件依赖此功能。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.event-transformation",
+      "chinese_entries": [
+        {
+          "term": "事件类型转换",
+          "context": "是否启用 Fabric ↔ Bukkit 事件类型自动转换。关闭后大量 Bukkit 插件将无法响应模组事件。**务必保持 true**。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    },
+    {
+      "key_path": "banner.capture-compound",
+      "chinese_entries": [
+        {
+          "term": "捕获 NBT 复合事件",
+          "context": "是否捕获模组方块的 NBT 复合数据用于 Bukkit 事件。开启可让 ChestShop 等插件识别模组方块。",
+          "source": "docs/server-cores/31-banner.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

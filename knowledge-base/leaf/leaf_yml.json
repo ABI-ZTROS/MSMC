@@ -1,0 +1,576 @@
+{
+  "config_file": "leaf.yml",
+  "cores": [
+    "leaf"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/09-leaf.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "async.async-pathfinding.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用异步路径查找",
+          "context": "是否将实体寻路计算转移到异步线程池。开启后实体寻路不再阻塞主线程。⚠️ 仅在启动时读取，热重载不生效。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.async-pathfinding.max-threads",
+      "chinese_entries": [
+        {
+          "term": "路径查找最大线程数",
+          "context": "异步路径查找线程池的最大线程数。0 表示自动按 CPU 核心数 / 4 计算。8 核 CPU 推荐设 4。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.async-pathfinding.keepalive",
+      "chinese_entries": [
+        {
+          "term": "线程空闲保活时间",
+          "context": "线程池中空闲线程的存活时间。超过此时间无任务的线程将被回收。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.async-pathfinding.queue-size",
+      "chinese_entries": [
+        {
+          "term": "任务队列大小",
+          "context": "等待执行的任务队列容量。队列满后将触发拒绝策略。0 自动按线程数 × 256 计算。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.async-pathfinding.reject-policy",
+      "chinese_entries": [
+        {
+          "term": "队列满拒绝策略",
+          "context": "队列满时的处理策略。FLUSH_ALL：清空队列并在主线程执行所有任务（适合 CPU ≥ 12 核的高配服务器）；CALLER_RUNS：仅在新任务提交时在主线程执行（适合低配或队列较小的服务器）。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.async-entity-tracker.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用多线程实体追踪",
+          "context": "是否将实体追踪转移到异步线程池。⚠️ 仅在启动时读取。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.async-entity-tracker.max-threads",
+      "chinese_entries": [
+        {
+          "term": "实体追踪最大线程数",
+          "context": "实体追踪线程池的最大线程数。8 核 CPU 推荐设 3。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.async-entity-tracker.compat-mode",
+      "chinese_entries": [
+        {
+          "term": "兼容模式",
+          "context": "是否启用 NPC 插件兼容模式。若使用 Citizens 等基于实体的 NPC 插件建议开启（性能略降）；若使用基于数据包的 NPC 插件可关闭以获得更好性能。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.async-entity-tracker.queue-size",
+      "chinese_entries": [
+        {
+          "term": "任务队列大小",
+          "context": "实体追踪任务队列容量。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.async-mob-spawning.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用异步生物生成",
+          "context": "是否将生物生成所需计算转移到异步线程（仅计算，不真正生成实体）。前置条件：必须在 Paper 中开启 per-player-mob-spawns。⚠️ 仅在启动时读取。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.async-player-data-save.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用异步玩家数据保存",
+          "context": "是否将玩家数据（.dat 文件）的保存操作转移到异步线程，避免主线程 I/O 阻塞。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.faster-random-generator.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用快速随机数生成器",
+          "context": "是否用更快的随机数生成算法替代原版 java.util.Random。可提升 15-25% 涉及随机的性能。⚠️ 修改后世界生成可能略有差异。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.faster-random-generator.random-generator",
+      "chinese_entries": [
+        {
+          "term": "随机数算法",
+          "context": "使用的随机数算法。推荐 XOROSHIRO128_PLUS_PLUS（速度与质量平衡佳）。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.faster-random-generator.enable-for-worldgen",
+      "chinese_entries": [
+        {
+          "term": "用于世界生成",
+          "context": "是否将快速随机数生成器用于世界生成。**强烈建议保持 false**，否则会影响地形生成一致性，导致已有世界出现接缝。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.faster-random-generator.warn-for-slime-chunk",
+      "chinese_entries": [
+        {
+          "term": "史莱姆区块警告",
+          "context": "启用快速随机数生成器后，是否在控制台警告史莱姆区块判定可能变化。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.faster-random-generator.use-legacy-for-slime-chunk",
+      "chinese_entries": [
+        {
+          "term": "史莱姆区块使用旧算法",
+          "context": "是否对史莱姆区块判定继续使用原版随机算法，保证区块分布与原版一致。建议开启。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance.dab.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 DEAR 实体大脑优化",
+          "context": "是否启用动态大脑激活。开启后远离玩家的实体会降低 AI tick 频率。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance.dab.start-distance",
+      "chinese_entries": [
+        {
+          "term": "DEAR 生效起始距离",
+          "context": "实体距玩家多远时开始受 DEAR 影响。距离小于此值的实体保持原版全速 tick。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance.dab.max-tick-freq",
+      "chinese_entries": [
+        {
+          "term": "最远实体最大 tick 间隔",
+          "context": "距离最远的实体多久 tick 一次 AI。值越大越省 CPU，但远处实体行为越迟钝。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance.dab.activation-dist-mod",
+      "chinese_entries": [
+        {
+          "term": "距离对频率的影响系数",
+          "context": "距离对 tick 频率的影响强度。计算公式：频率 = (到玩家距离^2) / (2^本值)。想让远处实体 tick 更少（更省 CPU）用 7；想让远处实体 tick 更多（更接近原版）用 9。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance.dab.dont-enable-if-in-water",
+      "chinese_entries": [
+        {
+          "term": "水中实体不受 DEAR 影响",
+          "context": "是否让水中的实体始终保持全速 tick。开启后水中生物（如鱼、鱿鱼）的 AI 不会被降频。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance.dab.blacklisted-entities",
+      "chinese_entries": [
+        {
+          "term": "DEAR 忽略的实体列表",
+          "context": "不受 DEAR 影响、始终保持全速 AI 的实体列表（如 minecraft:villager）。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.entity.activation-range.animals",
+      "chinese_entries": [
+        {
+          "term": "动物激活范围",
+          "context": "距玩家多少方块内的动物会 tick。超出范围的动物会被冻结。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.entity.activation-range.monsters",
+      "chinese_entries": [
+        {
+          "term": "怪物激活范围",
+          "context": "距玩家多少方块内的怪物会 tick。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.entity.activation-range.raiders",
+      "chinese_entries": [
+        {
+          "term": "袭击者激活范围",
+          "context": "距玩家多少方块内的袭击者（掠夺者、唤魔者等）会 tick。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.entity.activation-range.misc",
+      "chinese_entries": [
+        {
+          "term": "杂项实体激活范围",
+          "context": "距玩家多少方块内的杂项实体（掉落物、经验球、箭矢等）会 tick。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.entity.activation-range.water",
+      "chinese_entries": [
+        {
+          "term": "水生实体激活范围",
+          "context": "距玩家多少方块内的水生实体（鱼、鱿鱼、海豚等）会 tick。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.entity.activation-range.villagers",
+      "chinese_entries": [
+        {
+          "term": "村民激活范围",
+          "context": "距玩家多少方块内的村民会 tick。村民 AI 较重，建议保持适中。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.entity.activation-range.flying-monsters",
+      "chinese_entries": [
+        {
+          "term": "飞行怪物激活范围",
+          "context": "距玩家多少方块内的飞行怪物（恶魂、幻翼等）会 tick。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.spawning.per-player-mob-spawns",
+      "chinese_entries": [
+        {
+          "term": "按玩家单独计算生物生成",
+          "context": "是否按玩家单独计算生物生成上限，而非全局共享。可避免单个玩家刷怪场耗尽全服生成配额。**异步生物生成前置条件**。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.spawning.spawn-limits.monsters",
+      "chinese_entries": [
+        {
+          "term": "怪物生成上限",
+          "context": "每个玩家周围可生成的怪物数量上限。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.spawning.spawn-limits.animals",
+      "chinese_entries": [
+        {
+          "term": "动物生成上限",
+          "context": "每个玩家周围可生成的动物数量上限。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.spawning.spawn-limits.water-animals",
+      "chinese_entries": [
+        {
+          "term": "水生动物生成上限",
+          "context": "每个玩家周围可生成的水生动物数量上限。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.spawning.spawn-limits.water-ambient",
+      "chinese_entries": [
+        {
+          "term": "水环境生物生成上限",
+          "context": "每个玩家周围可生成的水环境生物（如热带鱼）数量上限。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.spawning.spawn-limits.ambient",
+      "chinese_entries": [
+        {
+          "term": "环境生物生成上限",
+          "context": "每个玩家周围可生成的环境生物（蝙蝠）数量上限。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.compression-threshold",
+      "chinese_entries": [
+        {
+          "term": "网络压缩阈值",
+          "context": "数据包大小超过此值时才进行压缩。0 = 全部压缩；-1 = 禁用压缩。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.compression-level",
+      "chinese_entries": [
+        {
+          "term": "压缩级别",
+          "context": "网络压缩的级别。0 = 不压缩（最快）；9 = 最大压缩（最慢）。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.protocol-support.jade-protocol",
+      "chinese_entries": [
+        {
+          "term": "Jade 协议支持",
+          "context": "是否启用 Jade（看向方块/实体时显示其信息的客户端 Mod）的服务器端协议支持。开启后玩家无需 Jade 服务端插件即可看到信息。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.protocol-support.appleskin-protocol",
+      "chinese_entries": [
+        {
+          "term": "AppleSkin 协议支持",
+          "context": "是否启用 AppleSkin（显示饥饿值、饱和度、消耗度的客户端 Mod）的服务器端协议支持。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.protocol-support.appleskin-protocol-sync-tick-interval",
+      "chinese_entries": [
+        {
+          "term": "AppleSkin 同步间隔",
+          "context": "AppleSkin 协议同步数据的频率。值越小越实时但网络开销越大。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.protocol-support.xaero-map-protocol",
+      "chinese_entries": [
+        {
+          "term": "Xaero 地图协议支持",
+          "context": "是否启用 Xaero's Minimap / World Map 客户端 Mod 的服务器端协议支持，向其发送世界边界等数据。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.protocol-support.syncmatica-protocol",
+      "chinese_entries": [
+        {
+          "term": "Syncmatica 协议支持",
+          "context": "是否启用 Syncmatica（允许客户端在服务器世界共享 schematica 模式的 LiteLoader Mod）协议支持。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.protocol-support.syncmatica-quota-limit",
+      "chinese_entries": [
+        {
+          "term": "Syncmatica 配额上限",
+          "context": "Syncmatica 协议单个玩家可共享的数据量上限。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay.player.max-use-item-distance",
+      "chinese_entries": [
+        {
+          "term": "使用物品最大距离",
+          "context": "玩家使用物品（如吃东西、扔药水）时允许的最大距离。无政府服务器常调高以支持远距离使用。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.rebrand.server-mod-name",
+      "chinese_entries": [
+        {
+          "term": "服务器 Mod 名称",
+          "context": "玩家按 F3 看到的服务器 Mod 名称。原版显示 vanilla，可改成你的服务器品牌。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.rebrand.server-gui-name",
+      "chinese_entries": [
+        {
+          "term": "服务器 GUI 标题",
+          "context": "服务器控制台窗口标题（仅在不使用 nogui 启动时生效）。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.secure-seed.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用安全种子",
+          "context": "是否启用 1024 位安全种子。开启后所有矿物与结构生成使用加密种子，无法被分析。⚠️ **启用后无法关闭**，否则世界生成会不一致。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.sentry.dsn",
+      "chinese_entries": [
+        {
+          "term": "Sentry DSN 地址",
+          "context": "Sentry 项目的 Data Source Name。留空则禁用 Sentry 上报。可在 sentry.io 免费注册获取。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.sentry.log-level",
+      "chinese_entries": [
+        {
+          "term": "上报日志级别",
+          "context": "上报到 Sentry 的最低日志级别。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.sentry.only-log-thrown",
+      "chinese_entries": [
+        {
+          "term": "仅上报抛出异常",
+          "context": "是否仅上报实际抛出的异常，过滤掉纯日志记录。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.cache.cache-player-profile-result",
+      "chinese_entries": [
+        {
+          "term": "缓存玩家档案",
+          "context": "是否缓存玩家档案（皮肤、UUID 等）查询结果，减少 Mojang API 调用。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.cache.cache-player-profile-result-timeout",
+      "chinese_entries": [
+        {
+          "term": "档案缓存时长",
+          "context": "玩家档案缓存的有效时长。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.including-5s-in-get-tps",
+      "chinese_entries": [
+        {
+          "term": "TPS 包含最近 5 秒数据",
+          "context": "计算 TPS 时是否包含最近 5 秒的数据，提供更平滑的性能视图。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "opt.skip-map-item-data-updates",
+      "chinese_entries": [
+        {
+          "term": "跳过地图物品数据更新",
+          "context": "是否跳过不必要的地图物品数据更新，减少网络包发送。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "opt.reduce-useless-packets",
+      "chinese_entries": [
+        {
+          "term": "减少无用数据包",
+          "context": "是否合并或跳过部分无用数据包，降低网络开销。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "opt.throttle-hopper-when-full",
+      "chinese_entries": [
+        {
+          "term": "满漏斗节流",
+          "context": "当漏斗容器已满时是否限制其检查频率，减少 CPU 占用。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-09-02T17:48:18Z",
+  "cores": {
+    "akarin": {
+      "new_keys": 93,
+      "existing": 28,
+      "removed": 0,
+      "drifted": 0
+    },
+    "glowstone": {
+      "new_keys": 159,
+      "existing": 0,
+      "removed": 0,
+      "drifted": 0
+    },
+    "leaves": {
+      "new_keys": 215,
+      "existing": 56,
+      "removed": 0,
+      "drifted": 0
+    }
+  },
+  "totals": {
+    "new": 467,
+    "existing": 84,
+    "removed": 0,
+    "drifted": 0
+  }
+}

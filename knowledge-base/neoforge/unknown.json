@@ -1,0 +1,136 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "neoforge"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/19-neoforge.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "server.removeErroringBlockEntities",
+      "chinese_entries": [
+        {
+          "term": "删除报错方块实体",
+          "context": "设为 true 时，当某个**方块实体**（BlockEntity，即俗称的 TileEntity，如箱子/熔炉/模组机器）在其更新方法中抛出异常时，NeoForge 会**直接删除该方块实体**，而不是关闭服务器并打印崩溃日志。**⚠️ 危险选项**：可能导致机器内的物品丢失、方块状态错乱。仅在排查「Ticking Block Entity」崩溃时作为应急手段临时开启，处理完务必改回 false！NeoForge 官方明确声明对此造成的损失不负责。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.removeErroringEntities",
+      "chinese_entries": [
+        {
+          "term": "删除报错实体",
+          "context": "设为 true 时，当某个**实体**（Entity，如僵尸、掉落物、矿车等，**不包括**方块实体）在其 tick 方法中抛出异常时，NeoForge 会**直接删除该实体**，而不是关闭服务器并打印崩溃日志。**⚠️ 危险选项**：可能导致玩家丢失骑乘的坐骑、农场中的关键生物等。仅在排查「Ticking Entity」崩溃时作为应急手段临时开启，处理完务必改回 false！",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.fullBoundingBoxLadders",
+      "chinese_entries": [
+        {
+          "term": "完整碰撞盒爬梯检测",
+          "context": "设为 true 时，检测实体是否在爬梯子时会检查**整个实体的碰撞盒**所覆盖的方块，而不仅限于实体当前所在的那个方块。会带来**明显的机制差异**（例如更高的爬梯判定范围），因此默认保持原版行为。仅在你确知某些模组需要此特性时才开启。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.permissionHandler",
+      "chinese_entries": [
+        {
+          "term": "权限处理器",
+          "context": "服务器使用的权限处理器 ID。默认为 neoforge:default_handler（NeoForge 内置的默认权限处理器）。仅当服务器中安装了提供自定义权限系统的模组时才需要修改。普通开服玩家保持默认即可。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.advertiseDedicatedServerToLan",
+      "chinese_entries": [
+        {
+          "term": "向局域网广播服务器",
+          "context": "设为 true 时，专用服务端会向**本地局域网**广播自身存在，使同局域网下的客户端能在「多人游戏」界面自动看到这台服务器。公网部署时无实际意义；本地测试时不希望他人自动看到可关闭。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logUntranslatedItemTagWarnings",
+      "chinese_entries": [
+        {
+          "term": "未翻译物品标签警告模式",
+          "context": "主要面向开发者：在内置服务器（单人游戏）运行时，记录那些缺少翻译键（tag.item.<命名空间>.<路径>）的模组物品标签。SILENCED（静默，默认）= 不记录 / DEV_SHORT / DEV_LONG = 在开发环境中以短/长格式记录 / ENABLED = 任何环境都记录。普通开服者保持 SILENCED。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logLegacyTagWarnings",
+      "chinese_entries": [
+        {
+          "term": "旧命名空间标签警告模式",
+          "context": "主要面向开发者：在内置服务器运行时，记录那些仍在使用旧的 forge: 命名空间的模组标签。DEV_SHORT（默认）= 仅在开发环境中以短格式记录 / SILENCED = 不记录 / DEV_LONG = 长格式 / ENABLED = 任何环境都记录。普通开服者可改为 SILENCED 减少日志噪音。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "attributeAdvancedTooltipDebugInfo",
+      "chinese_entries": [
+        {
+          "term": "属性高级工具提示调试",
+          "context": "设为 true 时，开启「高级工具提示」（按 F3+H）后会在物品上额外显示其属性的调试信息。开服端一般不显示 tooltip，此项对服务端运行无影响，保持默认即可。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "experimentalForgeLightPipelineEnabled",
+      "chinese_entries": [
+        {
+          "term": "实验性光照管线",
+          "context": "启用 NeoForge 实验性方块渲染管线，修复自定义模型的光照问题。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "showLoadWarnings",
+      "chinese_entries": [
+        {
+          "term": "显示加载警告",
+          "context": "加载时是否弹出警告窗口。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logUntranslatedConfigurationWarnings",
+      "chinese_entries": [
+        {
+          "term": "未翻译配置警告",
+          "context": "开发环境记录未翻译的配置值，开发者选项。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "reducedDepthStencilFormat",
+      "chinese_entries": [
+        {
+          "term": "简化深度模板格式",
+          "context": "模组启用模板测试时，深度缓冲位数。true=24+8 位（省显存，可能引入伪影），false=32+8 位。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

@@ -1,0 +1,26 @@
+{
+  "config_file": "fabric-server-launcher.properties",
+  "cores": [
+    "fabric"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/20-fabric.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "serverJar",
+      "chinese_entries": [
+        {
+          "term": "原版服务端 JAR 路径",
+          "context": "指向**原版 Minecraft 服务端 JAR 文件**的路径。Fabric 启动器会加载这个 JAR，并在其启动前注入模组加载逻辑。默认值 server.jar 表示与启动器同目录下的 server.jar。**何时需要修改**：1）若你把原版 JAR 重命名为 vanilla.jar（如某些主机面板要求启动入口必须叫 server.jar），则需把此值改为 vanilla.jar，再把 fabric-server-launch.jar 重命名为 server.jar；2）若原版 JAR 在其他目录，可填写相对路径（相对启动器 JAR 所在目录）或绝对路径。**⚠️ 路径错误会导致启动失败**，提示找不到主类或找不到 JAR。",
+          "source": "docs/server-cores/20-fabric.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

@@ -1,0 +1,66 @@
+{
+  "config_file": "permissions.yml",
+  "cores": [
+    "bukkit"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/02-bukkit.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "default",
+      "chinese_entries": [
+        {
+          "term": "内置默认组",
+          "context": "Bukkit 内置的默认权限组名。可直接在下方列出权限节点。⚠️ 不建议修改 default 组，应自定义新组。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "<自定义组名>",
+      "chinese_entries": [
+        {
+          "term": "自定义权限组",
+          "context": "自定义权限组。组名任意（如 vip、admin），值为包含 default 与 children 的 map。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "<组名>.default",
+      "chinese_entries": [
+        {
+          "term": "组默认权限",
+          "context": "此组的默认赋权策略。true 所有人都有；false 所有人都没有；op 仅 OP 有；not-op 仅非 OP 有。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "<组名>.children",
+      "chinese_entries": [
+        {
+          "term": "子权限列表",
+          "context": "此组包含的子权限节点（键为权限名，值为 true/false 表示是否赋予）。可嵌套其他权限组。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "<组名>.description",
+      "chinese_entries": [
+        {
+          "term": "组描述",
+          "context": "权限组的文字描述，便于管理员理解用途。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

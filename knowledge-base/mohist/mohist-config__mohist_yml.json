@@ -1,0 +1,406 @@
+{
+  "config_file": "mohist-config/mohist.yml",
+  "cores": [
+    "mohist"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/27-mohist.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "mohist.lang",
+      "chinese_entries": [
+        {
+          "term": "控制台语言",
+          "context": "Mohist 启动日志与控制台提示所使用的语言。注意：仅影响 Mohist 自身日志，不影响 Minecraft 原版日志。修改后需重启。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.check_update",
+      "chinese_entries": [
+        {
+          "term": "检查 Mohist 更新",
+          "context": "启动时是否联网检查 Mohist 新版本。公网服务器可开启；离线服可关闭以避免启动卡顿。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.check_update_bukkit",
+      "chinese_entries": [
+        {
+          "term": "检查 Bukkit/Spigot 兼容性",
+          "context": "启动时是否联网检查当前 Mohist 与最新 Bukkit/Spigot API 的兼容性。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.check_libraries_update",
+      "chinese_entries": [
+        {
+          "term": "检查依赖库更新",
+          "context": "启动时是否检查并自动下载缺失的依赖库文件。首次启动务必开启。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.metrics",
+      "chinese_entries": [
+        {
+          "term": "启用 bStats 统计上报",
+          "context": "是否启用 bStats 匿名数据上报，帮助开发者了解使用情况。无隐私敏感信息，建议保持开启。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.show_logo",
+      "chinese_entries": [
+        {
+          "term": "启动时显示 Mohist Logo",
+          "context": "控制台启动时是否打印 Mohist ASCII Logo。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.console_name",
+      "chinese_entries": [
+        {
+          "term": "控制台名称",
+          "context": "控制台作为虚拟发送者执行命令时的显示名称。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.only_english",
+      "chinese_entries": [
+        {
+          "term": "强制仅英文日志",
+          "context": "是否强制所有日志输出为英文（即使 lang 设置为其他语言）。便于向 GitHub 提交 Issue。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.bukkit_version",
+      "chinese_entries": [
+        {
+          "term": "Bukkit API 版本",
+          "context": "Mohist 内部使用的 Bukkit API 版本号，通常由 Mohist 自动写入，请勿手动修改。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.support_non_paper_plugins",
+      "chinese_entries": [
+        {
+          "term": "允许非 Paper 系插件",
+          "context": "是否允许加载仅声明支持 Spigot/CraftBukkit 的插件。关闭后只允许加载声明支持 Paper 的插件。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.disable_plugins_blacklist",
+      "chinese_entries": [
+        {
+          "term": "禁用插件黑名单检查",
+          "context": "Mohist 维护了一份已知与混合端不兼容的插件黑名单。设为 true 跳过该检查（不推荐，可能导致崩溃）。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.disable_mods_blacklist",
+      "chinese_entries": [
+        {
+          "term": "禁用模组黑名单检查",
+          "context": "同上，跳过 Mohist 维护的已知不兼容 Forge 模组黑名单。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.use_blacklist_extensions",
+      "chinese_entries": [
+        {
+          "term": "启用黑名单扩展",
+          "context": "是否启用更严格的扩展黑名单（包含更多边缘案例）。开启可能阻止更多模组/插件加载。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.plugins_hot_reload",
+      "chinese_entries": [
+        {
+          "term": "插件热重载",
+          "context": "是否启用插件热重载功能（如 /plugin reload）。实验性功能，部分插件热重载可能引发内存泄漏。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.disable_warn",
+      "chinese_entries": [
+        {
+          "term": "禁用兼容性警告",
+          "context": "是否在启动日志中禁用 Mohist 对某些不兼容插件/模组的警告信息。生产环境为减少日志噪音可考虑开启。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.max_entities",
+      "chinese_entries": [
+        {
+          "term": "实体数量上限",
+          "context": "单一世界内允许的最大实体数量。超出则阻止新实体生成。-1 表示不限制。注意：与 Forge 模组的实体（如机器内的物品）可能冲突。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.entity_tick",
+      "chinese_entries": [
+        {
+          "term": "实体 tick 优化",
+          "context": "实体 tick 优化级别。值越大越省 CPU 但实体 AI 越迟钝。1 = 原版。⚠️ 影响模组怪物 AI，建议保持默认。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.entity_tick_skip",
+      "chinese_entries": [
+        {
+          "term": "跳过远实体 tick",
+          "context": "是否跳过远离玩家实体的 tick 计算。开启可提升性能，但可能破坏部分模组刷怪塔/农场。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.async_pathfinding",
+      "chinese_entries": [
+        {
+          "term": "异步寻路",
+          "context": "将生物寻路计算转移到异步线程。⚠️ 部分模组（如自定义 AI 模组）可能与异步寻路冲突，开启前请测试。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.async_mob_spawning",
+      "chinese_entries": [
+        {
+          "term": "异步生物生成",
+          "context": "将生物生成计算转移到异步线程。⚠️ 与 Forge 模组的事件监听可能冲突，模组较多的服务器请谨慎开启。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.enable_real_ticking",
+      "chinese_entries": [
+        {
+          "term": "真实 tick 远实体",
+          "context": "是否对远离玩家的实体也保持「真实 tick」（原版行为）。关闭可省性能，但部分模组的机器/农场可能失效。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.runtime_optimizations",
+      "chinese_entries": [
+        {
+          "term": "启用运行时优化",
+          "context": "是否启用 Mohist 运行时性能优化补丁。包含若干异步处理与缓存优化。⚠️ 与高性能需求模组可能冲突。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.tps_real_time",
+      "chinese_entries": [
+        {
+          "term": "真实 TPS 显示",
+          "context": "/tps 命令显示真实 TPS（包含所有线程负载）还是仅主线程 TPS。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.use_Spark_and_Sync_Timer",
+      "chinese_entries": [
+        {
+          "term": "启用 Spark 计时器",
+          "context": "是否启用 Mohist 内置的同步计时器（用于性能分析）。Spark 插件依赖此功能。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.unload_worlds",
+      "chinese_entries": [
+        {
+          "term": "允许卸载世界",
+          "context": "是否允许在无玩家时卸载非主世界（如下界、末地）以节省内存。多世界服建议开启。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.disable_chunk_unload",
+      "chinese_entries": [
+        {
+          "term": "禁用区块卸载",
+          "context": "是否禁用区块自动卸载（所有加载过的区块常驻内存）。开启可减少卡顿但极大增加内存占用。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.chunk_unload_delay",
+      "chinese_entries": [
+        {
+          "term": "区块卸载延迟",
+          "context": "玩家离开后多久才卸载对应区块。值越大越省 CPU 但内存占用越高。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.max-tick-time",
+      "chinese_entries": [
+        {
+          "term": "单 tick 最大耗时",
+          "context": "单个 tick 超过此时间则触发 watchdog 崩服报告。-1 禁用 watchdog（不推荐，模组卡死将无报警）。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.fire_MC_ExplosionEvent",
+      "chinese_entries": [
+        {
+          "term": "转发爆炸事件",
+          "context": "是否将 Forge 的爆炸事件转发到 Bukkit 的 EntityExplodeEvent / BlockExplodeEvent。关闭可省 CPU，但 WorldGuard 等保护插件将无法拦截模组爆炸。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.fire_MC_BlockBreakEvent",
+      "chinese_entries": [
+        {
+          "term": "转发破坏方块事件",
+          "context": "是否将 Forge 的方块破坏事件转发到 Bukkit 的 BlockBreakEvent。关闭后保护插件将无法拦截模组方块破坏。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.fire_MC_BlockPlaceEvent",
+      "chinese_entries": [
+        {
+          "term": "转发放置方块事件",
+          "context": "是否将 Forge 的方块放置事件转发到 Bukkit 的 BlockPlaceEvent。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.implement_entity_collision_event",
+      "chinese_entries": [
+        {
+          "term": "实体碰撞事件",
+          "context": "是否实现 Bukkit 的实体碰撞事件（EntityInteractEvent 等）。关闭可提升性能，但部分反作弊/物理插件会失效。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.implement_entity_damage_event",
+      "chinese_entries": [
+        {
+          "term": "实体伤害事件",
+          "context": "是否为 Forge 模组的实体伤害触发 Bukkit 的 EntityDamageEvent。关闭后 RPG/伤害修改类插件将无法作用于模组伤害。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.hide_online_players",
+      "chinese_entries": [
+        {
+          "term": "隐藏在线玩家列表",
+          "context": "是否对其他服务器隐藏本服在线玩家列表（用于跨服防止 Tab 自动补全）。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.disable_op_permissions",
+      "chinese_entries": [
+        {
+          "term": "禁用 OP 权限",
+          "context": "是否禁用原版 OP 权限系统，强制所有权限通过 LuckPerms 等插件管理。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.no respawn_screen",
+      "chinese_entries": [
+        {
+          "term": "禁用重生界面",
+          "context": "玩家死亡时直接重生（不显示「你死了」界面），适合小游戏服。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.log_mods_deaths",
+      "chinese_entries": [
+        {
+          "term": "记录模组实体死亡",
+          "context": "是否在日志中记录所有 Forge 模组实体的死亡事件（用于排查刷怪问题）。开启会产生大量日志。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.watchdog",
+      "chinese_entries": [
+        {
+          "term": "启用看门狗",
+          "context": "是否启用 watchdog 线程监控主线程卡顿。生产环境强烈建议开启。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mohist.use_java_Hoe",
+      "chinese_entries": [
+        {
+          "term": "启用 Java 优化",
+          "context": "实验性：启用 Java 内部优化（如向量化运算）。需要 JDK 17+ 支持。⚠️ 实验功能，可能不稳定。",
+          "source": "docs/server-cores/27-mohist.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

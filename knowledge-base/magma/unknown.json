@@ -1,0 +1,316 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "magma"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/30-magma.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "magma.check-update",
+      "chinese_entries": [
+        {
+          "term": "检查 Magma 更新",
+          "context": "启动时是否联网检查 Magma 新版本。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.bukkit-version",
+      "chinese_entries": [
+        {
+          "term": "Bukkit API 版本",
+          "context": "Magma 内部使用的 Bukkit API 版本号，由 Magma 自动写入，请勿手动修改。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.disable-logger",
+      "chinese_entries": [
+        {
+          "term": "禁用部分日志",
+          "context": "是否禁用 Magma 自身的部分调试日志（如启动日志）。减少日志噪音。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.disable-sentry",
+      "chinese_entries": [
+        {
+          "term": "禁用 Sentry 错误上报",
+          "context": "是否禁用 Sentry 错误自动上报。Magma 默认会上报崩溃信息到 Sentry 帮助开发。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.remove-blank-line",
+      "chinese_entries": [
+        {
+          "term": "移除日志空行",
+          "context": "是否移除日志中的多余空行，让日志更紧凑。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.remove-errormods",
+      "chinese_entries": [
+        {
+          "term": "移除报错模组日志",
+          "context": "是否在启动失败时移除报错模组的详细日志（仅显示摘要）。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.use-multi-thread-entity-tick",
+      "chinese_entries": [
+        {
+          "term": "多线程实体 tick",
+          "context": "实验性：是否使用多线程处理实体 tick。⚠️ 与绝大多数 Forge 模组冲突，**强烈不建议开启**。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.max-entity-ticks-per-tick",
+      "chinese_entries": [
+        {
+          "term": "单 tick 实体上限",
+          "context": "单次 tick 最多处理的实体数量。-1 不限制。模组较多的服务器可设上限防止实体爆炸卡服。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.entity-tick-limit",
+      "chinese_entries": [
+        {
+          "term": "实体 tick 限制",
+          "context": "类似 max-entity-ticks-per-tick，限制实体 tick 总数。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.enable-real-ticking-entities",
+      "chinese_entries": [
+        {
+          "term": "真实 tick 实体",
+          "context": "是否对所有实体保持真实 tick（原版行为）。关闭可省性能，但部分模组机器/农场可能失效。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.tick-skip",
+      "chinese_entries": [
+        {
+          "term": "跳过远实体 tick",
+          "context": "是否跳过远离玩家实体的 tick。开启可省 CPU 但破坏部分模组刷怪塔。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.entity-activation-range",
+      "chinese_entries": [
+        {
+          "term": "实体激活范围总开关",
+          "context": "是否启用实体激活范围机制（远离玩家的实体降低 tick 频率）。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.enable-asynchronous-chunk",
+      "chinese_entries": [
+        {
+          "term": "异步区块加载",
+          "context": "是否启用异步区块加载/生成。开启可显著减少主线程卡顿，提升玩家飞行/传送流畅度。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.async-pathfinding",
+      "chinese_entries": [
+        {
+          "term": "异步寻路",
+          "context": "将生物寻路计算转移到异步线程。⚠️ 部分模组可能与异步寻路冲突。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.async-mob-spawning",
+      "chinese_entries": [
+        {
+          "term": "异步生物生成",
+          "context": "将生物生成计算转移到异步线程。⚠️ 与 Forge 模组的事件监听可能冲突。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.use-async-thread",
+      "chinese_entries": [
+        {
+          "term": "启用异步线程",
+          "context": "是否启用 Magma 的异步工作线程（用于区块、寻路等）。建议保持 true。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.print-chunk",
+      "chinese_entries": [
+        {
+          "term": "打印区块加载信息",
+          "context": "是否在日志中打印区块加载/卸载的详细信息。排查区块问题时开启。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.target-tps",
+      "chinese_entries": [
+        {
+          "term": "目标 TPS",
+          "context": "服务器目标 TPS。一般保持 20（原版）。降低可省 CPU 但游戏变卡。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.max-tick-time",
+      "chinese_entries": [
+        {
+          "term": "单 tick 最大耗时",
+          "context": "单个 tick 超过此时间触发 watchdog。-1 禁用看门狗（不推荐）。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.disable-watchdog",
+      "chinese_entries": [
+        {
+          "term": "禁用看门狗",
+          "context": "是否禁用 watchdog 主线程监控。⚠️ 不推荐，模组卡死将无报警。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.disable-watcher",
+      "chinese_entries": [
+        {
+          "term": "禁用监视器",
+          "context": "是否禁用文件监视器（监视 mods/、plugins/ 等目录变化）。关闭后无法热检测文件变更。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.optimized-crafting",
+      "chinese_entries": [
+        {
+          "term": "优化合成",
+          "context": "是否启用合成台合成优化（缓存合成结果）。可提升合成性能。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.fast-rain",
+      "chinese_entries": [
+        {
+          "term": "快速降雨",
+          "context": "是否优化天气变化（降雨/降雪）的处理逻辑，减少天气切换时的卡顿。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.use-spark",
+      "chinese_entries": [
+        {
+          "term": "启用 Spark 集成",
+          "context": "是否启用与 Spark 性能分析插件的集成。建议保持 true。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.allow-fluid-flow",
+      "chinese_entries": [
+        {
+          "term": "允许流体流动事件",
+          "context": "是否允许 Forge 模组的流体流动触发 Bukkit 事件。关闭可省 CPU，但部分物理/红石插件会失效。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.disable-super-vanilla-fallable-block",
+      "chinese_entries": [
+        {
+          "term": "禁用原版下落方块优化",
+          "context": "是否禁用 Magma 对原版下落方块（沙子、砂砾）的优化。模组下落方块异常时可尝试开启。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.fix-tile-entity",
+      "chinese_entries": [
+        {
+          "term": "修复方块实体",
+          "context": "修复部分 Forge 模组方块实体（TileEntity）与 Bukkit 事件的兼容性。建议保持 true。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.disable-flush",
+      "chinese_entries": [
+        {
+          "term": "禁用批量刷新",
+          "context": "是否禁用网络数据包批量刷新。开启可能减少延迟但增加带宽。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.disable-book-ban",
+      "chinese_entries": [
+        {
+          "term": "禁用书本封禁",
+          "context": "是否启用书本封禁保护（防止玩家通过恶意 NBT 书本导致客户端/服务器崩溃）。建议保持 true。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    },
+    {
+      "key_path": "magma.enable-bungee",
+      "chinese_entries": [
+        {
+          "term": "启用 BungeeCord 支持",
+          "context": "是否启用 BungeeCord/Velocity 跨服代理支持。使用代理服时必须开启，并设置 bungeecord 相关项。",
+          "source": "docs/server-cores/30-magma.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

@@ -1,0 +1,56 @@
+{
+  "config_file": "config/neoforge-client.toml",
+  "cores": [
+    "neoforge"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/19-neoforge.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "experimentalForgeLightPipelineEnabled",
+      "chinese_entries": [
+        {
+          "term": "实验性光照管线",
+          "context": "启用 NeoForge 实验性方块渲染管线，修复自定义模型的光照问题。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "showLoadWarnings",
+      "chinese_entries": [
+        {
+          "term": "显示加载警告",
+          "context": "加载时是否弹出警告窗口。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logUntranslatedConfigurationWarnings",
+      "chinese_entries": [
+        {
+          "term": "未翻译配置警告",
+          "context": "开发环境记录未翻译的配置值，开发者选项。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "reducedDepthStencilFormat",
+      "chinese_entries": [
+        {
+          "term": "简化深度模板格式",
+          "context": "模组启用模板测试时，深度缓冲位数。true=24+8 位（省显存，可能引入伪影），false=32+8 位。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

@@ -1,0 +1,366 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "luminol"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/10-luminol.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "[misc.server_mod_name] name",
+      "chinese_entries": [
+        {
+          "term": "服务器 Mod 名称",
+          "context": "玩家按 F3 看到的服务器 Mod 名称。设为 vanilla 可伪装成原版服务器（用于绕过部分客户端 Mod 的服务端检测）。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.server_mod_name] vanilla_spoof",
+      "chinese_entries": [
+        {
+          "term": "原版伪装",
+          "context": "是否将服务器在网络协议中伪装成原版 vanilla。开启后部分客户端反作弊 Mod 会将服务器视为原版。⚠️ 可能与部分依赖服务端品牌识别的插件冲突。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.chat] chat_check",
+      "chinese_entries": [
+        {
+          "term": "聊天签名校验",
+          "context": "是否校验玩家聊天消息的签名。关闭后服务器不再验证消息签名真伪，可改善离线模式或第三方客户端的聊天兼容性。⚠️ 关闭后无法检测伪造消息。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.chat] only_aura_real_player",
+      "chinese_entries": [
+        {
+          "term": "仅光环真实玩家",
+          "context": "是否只对真实玩家应用光环效果。可用于过滤假人产生的光环。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.tpsbar] enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 Tpsbar",
+          "context": "是否默认为所有玩家启用 Tpsbar。玩家可用 /tpsbar 命令切换个人状态。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.tpsbar] color",
+      "chinese_entries": [
+        {
+          "term": "Boss 条颜色",
+          "context": "Tpsbar Boss 条的基础颜色。部分实现会根据 TPS 高低自动切换颜色，此值作为默认 / 最佳状态颜色。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.tpsbar] style",
+      "chinese_entries": [
+        {
+          "term": "Boss 条样式",
+          "context": "Boss 条的进度条样式。NOTCHED_20 表示分成 20 段（对应 20 TPS）。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.tpsbar] progress",
+      "chinese_entries": [
+        {
+          "term": "进度来源",
+          "context": "Boss 条进度依据的指标。TPS：按每秒 tick 数（0-20 映射到 0-100%）；MSPT：按每 tick 毫秒数（0-50ms 映射到 100%-0%）。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.tpsbar] text",
+      "chinese_entries": [
+        {
+          "term": "显示文本模板",
+          "context": "Boss 条上显示的文本模板，支持占位符（如 %tps%、%mspt%、%ping%）。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.tpsbar] ping_color_list",
+      "chinese_entries": [
+        {
+          "term": "延迟颜色梯度",
+          "context": "根据玩家延迟（ping）显示不同颜色的阈值列表。常见格式：[{\"color\":\"GREEN\",\"threshold\":100},{\"color\":\"YELLOW\",\"threshold\":200},{\"color\":\"RED\",\"threshold\":300}]，表示 ping < 100ms 绿色、< 200ms 黄色、≥ 300ms 红色。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.tpsbar] tps_color_list",
+      "chinese_entries": [
+        {
+          "term": "TPS 颜色梯度",
+          "context": "根据服务器 TPS 显示不同颜色的阈值列表。常见格式：[{\"color\":\"GREEN\",\"threshold\":19.0},{\"color\":\"YELLOW\",\"threshold\":15.0},{\"color\":\"RED\",\"threshold\":0}]。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.tpsbar] mspt_color_list",
+      "chinese_entries": [
+        {
+          "term": "MSPT 颜色梯度",
+          "context": "根据服务器 MSPT（每 tick 毫秒数）显示不同颜色的阈值列表。常见格式：[{\"color\":\"GREEN\",\"threshold\":40},{\"color\":\"YELLOW\",\"threshold\":50},{\"color\":\"RED\",\"threshold\":100}]。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[fixes.allow_void_trade] enabled",
+      "chinese_entries": [
+        {
+          "term": "允许虚空交易",
+          "context": "是否允许玩家在虚空（y < 0 或维度外）与村民交易。原版默认禁止，开启后可恢复早期版本的虚空交易行为。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[fixes.sand_duplication] enabled",
+      "chinese_entries": [
+        {
+          "term": "允许刷沙",
+          "context": "是否恢复原版的沙子 / 沙砾 duplication bug（沙子落入末地传送门时复制）。生电玩家常用。⚠️ 会破坏服务器经济平衡，谨慎开启。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[fixes.gravel_duplication] enabled",
+      "chinese_entries": [
+        {
+          "term": "允许刷沙砾",
+          "context": "同上，针对沙砾的 duplication bug。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[fixes.ender_dragon_escape_fix] enabled",
+      "chinese_entries": [
+        {
+          "term": "末影龙逃逸修复",
+          "context": "是否修复末影龙飞出末地主岛边界的 bug。开启后末影龙将被限制在末地中心区域活动。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[fixes.entity_collision] enabled",
+      "chinese_entries": [
+        {
+          "term": "实体挤压修复",
+          "context": "是否修复多个实体挤压进入同一方块导致的崩溃 / 推动异常。开启后实体的挤压行为更接近原版。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[fixes.tnt_duplication] enabled",
+      "chinese_entries": [
+        {
+          "term": "允许 TNT 复制",
+          "context": "是否恢复原版 TNT duplication bug（TNT 在传送门 / 活塞推动时复制）。生电玩家常用。⚠️ 易被滥用，谨慎开启。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[performance.region_tick] optimize_tick_occupancy",
+      "chinese_entries": [
+        {
+          "term": "优化 Tick 占用率",
+          "context": "是否优化区域 tick 任务的线程分配，让空闲线程接管更多区域任务。开启后可提升多核 CPU 利用率。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[performance.region_tick] max_tick_time",
+      "chinese_entries": [
+        {
+          "term": "单区域最大 tick 时长",
+          "context": "单个区域单次 tick 允许的最大耗时。超出此值的区域将被记录警告。50ms 对应 20 TPS 上限。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[performance.chunk_load] async_chunk_load",
+      "chinese_entries": [
+        {
+          "term": "异步区块加载",
+          "context": "是否启用异步区块加载（Folia 默认已异步，此项为额外的优化开关）。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[performance.chunk_load] max_chunk_load_per_tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 最大加载区块数",
+          "context": "每个游戏 tick 内最多加载多少个区块，避免瞬间加载大量区块导致卡顿。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[regions] use_linear_region",
+      "chinese_entries": [
+        {
+          "term": "使用线性区域文件",
+          "context": "是否启用线性区域文件格式（.linear）。开启后新创建的区块将以线性格式存储。⚠️ 已有 MCA 文件需通过工具转换，或保持关闭以兼容。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[regions] linear_region_compression",
+      "chinese_entries": [
+        {
+          "term": "线性区域压缩算法",
+          "context": "线性区域文件使用的压缩算法。ZSTD（推荐）：压缩率高、解压快；GZIP：兼容性好；NONE：不压缩（最大文件，最快读写）。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[regions] linear_region_buffer_size",
+      "chinese_entries": [
+        {
+          "term": "线性区域缓冲区大小",
+          "context": "线性区域文件读写缓冲区大小。较大的缓冲区可减少 IO 次数但占用更多内存。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[regions] mca_region_auto_convert",
+      "chinese_entries": [
+        {
+          "term": "自动转换 MCA 区域",
+          "context": "是否在加载时自动将旧的 MCA 区域文件转换为线性格式。开启后服务器启动可能较慢。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[commands] luminol_reload_permission",
+      "chinese_entries": [
+        {
+          "term": "/luminol reload 权限",
+          "context": "执行 /luminol reload 命令所需的权限节点。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[commands] tpsbar_permission",
+      "chinese_entries": [
+        {
+          "term": "/tpsbar 权限",
+          "context": "执行 /tpsbar 命令所需的权限节点。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[commands] region_permission",
+      "chinese_entries": [
+        {
+          "term": "区域信息命令权限",
+          "context": "执行区域相关查询命令所需的权限节点。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.region_messages] show_region_info_on_join",
+      "chinese_entries": [
+        {
+          "term": "进服显示区域信息",
+          "context": "玩家进入服务器时是否在聊天框显示其当前所在区域的信息（区域 ID、tick 频率等）。适合调试。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.security] disable_book_exploit",
+      "chinese_entries": [
+        {
+          "term": "禁用书本漏洞",
+          "context": "是否禁用书本复制 / 注入漏洞。建议保持开启。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.security] max_book_pages",
+      "chinese_entries": [
+        {
+          "term": "书本最大页数",
+          "context": "单本书允许的最大页数，防止恶意玩家发送超大书本导致卡顿。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.security] max_book_chars",
+      "chinese_entries": [
+        {
+          "term": "书本最大字符数",
+          "context": "单本书允许的最大字符总数。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.debug] enable_region_debug",
+      "chinese_entries": [
+        {
+          "term": "启用区域调试",
+          "context": "是否输出区域 tick / 调度的详细调试日志。仅排查问题时开启，正常使用请关闭。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    },
+    {
+      "key_path": "[misc.debug] enable_thread_debug",
+      "chinese_entries": [
+        {
+          "term": "启用线程调试",
+          "context": "是否输出线程池调度的详细调试日志。",
+          "source": "docs/server-cores/10-luminol.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

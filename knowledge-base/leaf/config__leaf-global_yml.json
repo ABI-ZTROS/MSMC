@@ -1,0 +1,66 @@
+{
+  "config_file": "config/leaf-global.yml",
+  "cores": [
+    "leaf"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/09-leaf.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "async.async-pathfinding.enabled",
+      "chinese_entries": [
+        {
+          "term": "全局异步路径查找",
+          "context": "同 leaf.yml 中对应项，但作用于所有世界。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "async.async-entity-tracker.enabled",
+      "chinese_entries": [
+        {
+          "term": "全局多线程实体追踪",
+          "context": "同 leaf.yml 中对应项，但作用于所有世界。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance.dab.enabled",
+      "chinese_entries": [
+        {
+          "term": "全局 DEAR 优化",
+          "context": "同 leaf.yml 中对应项，但作用于所有世界。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.sentry.dsn",
+      "chinese_entries": [
+        {
+          "term": "全局 Sentry DSN",
+          "context": "同 leaf.yml 中对应项，全局生效。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.including-5s-in-get-tps",
+      "chinese_entries": [
+        {
+          "term": "全局 TPS 包含 5 秒数据",
+          "context": "同 leaf.yml 中对应项，全局生效。",
+          "source": "docs/server-cores/09-leaf.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

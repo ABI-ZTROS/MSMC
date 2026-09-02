@@ -1,0 +1,46 @@
+{
+  "config_file": "config/neoforge-common.toml",
+  "cores": [
+    "neoforge"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/19-neoforge.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "logUntranslatedItemTagWarnings",
+      "chinese_entries": [
+        {
+          "term": "未翻译物品标签警告模式",
+          "context": "主要面向开发者：在内置服务器（单人游戏）运行时，记录那些缺少翻译键（tag.item.<命名空间>.<路径>）的模组物品标签。SILENCED（静默，默认）= 不记录 / DEV_SHORT / DEV_LONG = 在开发环境中以短/长格式记录 / ENABLED = 任何环境都记录。普通开服者保持 SILENCED。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logLegacyTagWarnings",
+      "chinese_entries": [
+        {
+          "term": "旧命名空间标签警告模式",
+          "context": "主要面向开发者：在内置服务器运行时，记录那些仍在使用旧的 forge: 命名空间的模组标签。DEV_SHORT（默认）= 仅在开发环境中以短格式记录 / SILENCED = 不记录 / DEV_LONG = 长格式 / ENABLED = 任何环境都记录。普通开服者可改为 SILENCED 减少日志噪音。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "attributeAdvancedTooltipDebugInfo",
+      "chinese_entries": [
+        {
+          "term": "属性高级工具提示调试",
+          "context": "设为 true 时，开启「高级工具提示」（按 F3+H）后会在物品上额外显示其属性的调试信息。开服端一般不显示 tooltip，此项对服务端运行无影响，保持默认即可。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

@@ -149,14 +149,37 @@ cores:
     github: GlowstoneMC/Glowstone
     java-min: '8'
     download:
-      kind: maven-central
-      group: net.glowstone
-      artifact: glowstone-server
+      kind: github-releases
+      asset-regex: glowstone\.jar
     launch:
-      ready-match: Done \(.*s\)!
+      ready-match: Ready for connections\.
       eula: true
       config-files:
-      - path: config/glowstone/glowstone.yml
+      - path: config/glowstone.yml
+        type: yaml
+      - path: config/worlds.yml
+        type: yaml
+      - path: config/commands.yml
+        type: yaml
+      - path: config/permissions.yml
+        type: yaml
+      - path: config/help.yml
+        type: yaml
+  akarin:
+    display: Akarin
+    type: spigot-fork
+    github: Akarin-project/Akarin
+    java-min: '8'
+    download:
+      kind: github-releases
+      asset-regex: akarin-[0-9].*\.jar
+    launch:
+      ready-match: Done \(.*s\)! For help, type
+      eula: true
+      config-files:
+      - path: akarin.yml
+        type: yaml
+      - path: spigot.yml
         type: yaml
   forge:
     display: Forge

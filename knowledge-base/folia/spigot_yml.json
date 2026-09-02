@@ -1,0 +1,26 @@
+{
+  "config_file": "spigot.yml",
+  "cores": [
+    "folia"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/05-folia.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "settings.netty-threads",
+      "chinese_entries": [
+        {
+          "term": "Netty IO 线程数",
+          "context": "处理玩家网络数据包的 Netty 线程数。Folia 官方建议**每 200–300 名玩家约 4 个**。500 人服可设 8。需计入 80% 总预算。",
+          "source": "docs/server-cores/05-folia.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

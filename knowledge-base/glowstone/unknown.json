@@ -1,0 +1,716 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "glowstone"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/36-glowstone.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "server.name",
+      "chinese_entries": [
+        {
+          "term": "服务器名称",
+          "context": "仅用于日志与部分插件识别，不影响客户端显示",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.port",
+      "chinese_entries": [
+        {
+          "term": "服务器端口",
+          "context": "客户端连接端口，0 表示随机端口",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.ip",
+      "chinese_entries": [
+        {
+          "term": "监听 IP",
+          "context": "留空监听所有网卡；填入具体 IP 仅监听该网卡",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.max-players",
+      "chinese_entries": [
+        {
+          "term": "最大玩家数",
+          "context": "同时在线上限，超出的玩家进入排队或被踢",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.motd",
+      "chinese_entries": [
+        {
+          "term": "服务器描述",
+          "context": "客户端服务器列表显示的文字，支持 § 颜色码",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.online-mode",
+      "chinese_entries": [
+        {
+          "term": "正版验证",
+          "context": "true=只允许正版玩家；false=允许离线/盗版账号，注意皮肤与 UUID 会变",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.white-list",
+      "chinese_entries": [
+        {
+          "term": "启用白名单",
+          "context": "开启后只有 whitelist.json 中的玩家可进入",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.log-file",
+      "chinese_entries": [
+        {
+          "term": "日志文件路径",
+          "context": "主日志输出文件",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.snooper-enabled",
+      "chinese_entries": [
+        {
+          "term": "启用信息收集",
+          "context": "上报匿名数据到 Mojang，强烈建议保持 false",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.prevent-proxy",
+      "chinese_entries": [
+        {
+          "term": "拒绝代理连接",
+          "context": "启用后逐个反向解析玩家 IP 防止代理，可能误伤，建议关闭",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.network-compression-threshold",
+      "chinese_entries": [
+        {
+          "term": "网络压缩阈值",
+          "context": "数据包字节数大于该值才压缩；-1=禁用压缩；0=全部压缩",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.resource-pack",
+      "chinese_entries": [
+        {
+          "term": "资源包 URL",
+          "context": "玩家进服时强制推送的资源包下载地址",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.resource-pack-hash",
+      "chinese_entries": [
+        {
+          "term": "资源包哈希",
+          "context": "资源包 SHA-1 哈希，用于校验完整性",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.resource-pack-prompt",
+      "chinese_entries": [
+        {
+          "term": "资源包提示文本",
+          "context": "推送资源包时弹窗显示的提示文字",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.require-resource-pack",
+      "chinese_entries": [
+        {
+          "term": "强制资源包",
+          "context": "true=拒绝加载资源包的玩家会被踢出",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "console.history",
+      "chinese_entries": [
+        {
+          "term": "启用命令历史",
+          "context": "控制台支持上下方向键翻阅历史命令",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "console.prompts",
+      "chinese_entries": [
+        {
+          "term": "显示提示符",
+          "context": "是否显示 > 提示符",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "console.colors",
+      "chinese_entries": [
+        {
+          "term": "控制台彩色输出",
+          "context": "日志按级别上色，Windows 旧 cmd 可能显示乱码",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "console.date-format",
+      "chinese_entries": [
+        {
+          "term": "日期格式",
+          "context": "日志时间戳格式，遵循 Java SimpleDateFormat 语法",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.gamemode",
+      "chinese_entries": [
+        {
+          "term": "默认游戏模式",
+          "context": "新玩家首次进入的模式",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.difficulty",
+      "chinese_entries": [
+        {
+          "term": "难度",
+          "context": "PEACEFUL=和平；HARD=困难，影响刷怪与饥饿",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.hardcore",
+      "chinese_entries": [
+        {
+          "term": "极限模式",
+          "context": "死亡后封禁该玩家，难度自动锁定 HARD",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.pvp",
+      "chinese_entries": [
+        {
+          "term": "允许玩家 PvP",
+          "context": "是否允许玩家间互相伤害",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.max-build-height",
+      "chinese_entries": [
+        {
+          "term": "最大建筑高度",
+          "context": "玩家可放置方块的最大 Y 坐标",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.allow-flight",
+      "chinese_entries": [
+        {
+          "term": "允许飞行",
+          "context": "非创造模式是否允许飞行（防作弊检测）",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.allow-nether",
+      "chinese_entries": [
+        {
+          "term": "启用下界",
+          "context": "是否生成/加载下界维度",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.allow-end",
+      "chinese_entries": [
+        {
+          "term": "启用末地",
+          "context": "是否生成/加载末地维度",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.announce-achievements",
+      "chinese_entries": [
+        {
+          "term": "公告成就",
+          "context": "玩家获得成就时是否全服广播",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.force-gamemode",
+      "chinese_entries": [
+        {
+          "term": "强制游戏模式",
+          "context": "玩家每次进入都重置为默认模式，覆盖其上次模式",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.spawn-protection",
+      "chinese_entries": [
+        {
+          "term": "出生点保护半径",
+          "context": "出生点周围多少格内非 OP 无法破坏，0=关闭保护",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "game.villager-trading",
+      "chinese_entries": [
+        {
+          "term": "允许村民交易",
+          "context": "玩家是否可与村民交易",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "creatures.spawn-monsters",
+      "chinese_entries": [
+        {
+          "term": "生成怪物",
+          "context": "是否生成敌对怪物",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "creatures.spawn-animals",
+      "chinese_entries": [
+        {
+          "term": "生成动物",
+          "context": "是否生成被动动物",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "creatures.spawn-npcs",
+      "chinese_entries": [
+        {
+          "term": "生成 NPC",
+          "context": "是否生成村民等 NPC",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "creatures.monster-limit",
+      "chinese_entries": [
+        {
+          "term": "怪物上限",
+          "context": "单个世界怪物实体数量上限",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "creatures.animal-limit",
+      "chinese_entries": [
+        {
+          "term": "动物上限",
+          "context": "单个世界被动动物数量上限",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "creatures.water-animal-limit",
+      "chinese_entries": [
+        {
+          "term": "水生动物上限",
+          "context": "单个世界水生动物数量上限",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "creatures.ambient-limit",
+      "chinese_entries": [
+        {
+          "term": "环境生物上限",
+          "context": "蝙蝠等环境生物上限",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "creatures.ticks-per-monster-spawn",
+      "chinese_entries": [
+        {
+          "term": "怪物生成间隔",
+          "context": "每多少 tick 尝试一次怪物生成（20 tick=1 秒）",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "creatures.ticks-per-animal-spawn",
+      "chinese_entries": [
+        {
+          "term": "动物生成间隔",
+          "context": "每多少 tick 尝试一次动物生成",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "folders.settings",
+      "chinese_entries": [
+        {
+          "term": "配置目录",
+          "context": "所有 YAML 配置所在目录",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "folders.plugins",
+      "chinese_entries": [
+        {
+          "term": "插件目录",
+          "context": "Bukkit 插件 jar 放置目录",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "folders.worlds",
+      "chinese_entries": [
+        {
+          "term": "世界目录",
+          "context": "世界存档数据目录",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "folders.cache",
+      "chinese_entries": [
+        {
+          "term": "缓存目录",
+          "context": "运行时缓存（如皮肤）目录",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "folders.updates",
+      "chinese_entries": [
+        {
+          "term": "更新目录",
+          "context": "插件热更新目录，放入新 jar 重启后替换",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "files.whitelist",
+      "chinese_entries": [
+        {
+          "term": "白名单文件",
+          "context": "白名单文件名",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "files.permissions",
+      "chinese_entries": [
+        {
+          "term": "权限文件",
+          "context": "默认权限配置文件名",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "files.commands",
+      "chinese_entries": [
+        {
+          "term": "命令文件",
+          "context": "命令别名配置文件名",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "files.operators",
+      "chinese_entries": [
+        {
+          "term": "OP 文件",
+          "context": "管理员列表文件名",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "files.help",
+      "chinese_entries": [
+        {
+          "term": "帮助文件",
+          "context": "帮助主题配置文件名",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "advanced.connection-throttle",
+      "chinese_entries": [
+        {
+          "term": "连接节流",
+          "context": "同一玩家两次连接的最小间隔（毫秒），防刷屏",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "advanced.idle-timeout",
+      "chinese_entries": [
+        {
+          "term": "空闲超时",
+          "context": "玩家无操作多少分钟后踢出，0=禁用",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "advanced.warn-on-overload",
+      "chinese_entries": [
+        {
+          "term": "过载警告",
+          "context": "服务器 tick 超时时是否在控制台输出警告",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "advanced.exact-login-location",
+      "chinese_entries": [
+        {
+          "term": "精确登录位置",
+          "context": "玩家上线时是否精确还原离线时位置",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "advanced.plugin-profiling",
+      "chinese_entries": [
+        {
+          "term": "插件性能分析",
+          "context": "启用 /timings 命令分析插件性能",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "advanced.use-alternative-logger",
+      "chinese_entries": [
+        {
+          "term": "备用日志器",
+          "context": "使用 JUL 替代默认日志框架，调试用",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "advanced.poor-man-listener",
+      "chinese_entries": [
+        {
+          "term": "简易事件监听",
+          "context": "兼容旧版插件的低性能事件分发，谨慎开启",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "extras.tps-display",
+      "chinese_entries": [
+        {
+          "term": "显示 TPS",
+          "context": "在控制台定时输出当前 TPS",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "extras.kick-on-illegal-behavior",
+      "chinese_entries": [
+        {
+          "term": "非法行为踢出",
+          "context": "检测到客户端非法数据包时直接踢出",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "extras.auto-save-on-player-quit",
+      "chinese_entries": [
+        {
+          "term": "退出自动保存",
+          "context": "玩家退出时立即保存其数据",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "extras.deploy-on-restart",
+      "chinese_entries": [
+        {
+          "term": "重启自动部署",
+          "context": "重启时自动从 update 目录部署新插件",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.name",
+      "chinese_entries": [
+        {
+          "term": "主世界名称",
+          "context": "主世界存档文件夹名",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.seed",
+      "chinese_entries": [
+        {
+          "term": "世界种子",
+          "context": "留空随机生成；填入固定种子可复现世界",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.type",
+      "chinese_entries": [
+        {
+          "term": "世界类型",
+          "context": "地形生成器类型",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.generator-settings",
+      "chinese_entries": [
+        {
+          "term": "生成器参数",
+          "context": "自定义生成参数，例如超平坦层结构 JSON",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.generate-structures",
+      "chinese_entries": [
+        {
+          "term": "生成结构",
+          "context": "是否生成村庄、神殿等结构",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.view-distance",
+      "chinese_entries": [
+        {
+          "term": "视野距离",
+          "context": "玩家周围加载区块半径，每 +1 增加约 15% 带宽消耗",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.keep-spawn-loaded",
+      "chinese_entries": [
+        {
+          "term": "保持出生加载",
+          "context": "出生点区块常驻内存",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "libraries.check-library-updates",
+      "chinese_entries": [
+        {
+          "term": "检查库更新",
+          "context": "启动时检查依赖库是否有新版本",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    },
+    {
+      "key_path": "libraries.use-library-repo",
+      "chinese_entries": [
+        {
+          "term": "使用库仓库",
+          "context": "从远程仓库下载缺失依赖，关闭则需手动放置 jar",
+          "source": "docs/server-cores/36-glowstone.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

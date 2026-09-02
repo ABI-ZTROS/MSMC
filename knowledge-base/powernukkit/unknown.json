@@ -1,0 +1,1626 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "powernukkit"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/35-powernukkit.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "settings.ip",
+      "chinese_entries": [
+        {
+          "term": "服务器监听 IP",
+          "context": "服务器绑定的 IPv4 地址。0.0.0.0 表示监听所有网卡；多网卡环境下可指定具体 IP。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.port",
+      "chinese_entries": [
+        {
+          "term": "服务器端口（UDP）",
+          "context": "服务器监听的 UDP 端口。⚠️ 基岩版使用 UDP，路由器端口转发必须选 UDP 协议。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.maxplayers",
+      "chinese_entries": [
+        {
+          "term": "最大玩家数",
+          "context": "服务器同时允许的最大玩家数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.defaultlevel",
+      "chinese_entries": [
+        {
+          "term": "默认世界名",
+          "context": "玩家首次进服默认进入的世界名称。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.allowlist",
+      "chinese_entries": [
+        {
+          "term": "启用白名单",
+          "context": "是否启用白名单，启用后仅 allowlist.json 中的玩家可加入。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.allowlist.message",
+      "chinese_entries": [
+        {
+          "term": "白名单拒绝消息",
+          "context": "玩家被白名单拒绝时显示的提示文本。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.motd",
+      "chinese_entries": [
+        {
+          "term": "服务器 MOTD",
+          "context": "服务器在客户端服务器列表中显示的名称。可使用 § 颜色码。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.sub-motd",
+      "chinese_entries": [
+        {
+          "term": "子 MOTD",
+          "context": "服务器副标题，部分客户端在 MOTD 下方显示。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.language",
+      "chinese_entries": [
+        {
+          "term": "服务器语言",
+          "context": "控制台与提示消息使用的语言代码（如 eng 英语、chs 简中、cht 繁中、jpn 日语、rus 俄语等）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.forcetranslate",
+      "chinese_entries": [
+        {
+          "term": "强制使用服务器语言",
+          "context": "true 时所有字符串按服务器语言翻译后发送给客户端；false 时让客户端自行处理本地化。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.safespawn",
+      "chinese_entries": [
+        {
+          "term": "安全出生",
+          "context": "是否在玩家首次进服时寻找安全位置出生（防止卡在方块中）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.autosave",
+      "chinese_entries": [
+        {
+          "term": "自动保存",
+          "context": "是否启用自动保存（间隔由 autosaveDelay 控制）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.autosaveDelay",
+      "chinese_entries": [
+        {
+          "term": "自动保存间隔",
+          "context": "自动保存的间隔（20 tick = 1 秒，6000 = 5 分钟）。0 禁用自动保存（不推荐）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.saveunknownblock",
+      "chinese_entries": [
+        {
+          "term": "保存未知方块",
+          "context": "是否在 NBT 中保存 PNX 无法识别的方块（用于行为包扩展兼容）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.xboxauth",
+      "chinese_entries": [
+        {
+          "term": "Xbox Live 验证",
+          "context": "是否要求所有玩家通过 Xbox Live 认证。公网服务器强烈建议开启。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-settings.saveplayerdata",
+      "chinese_entries": [
+        {
+          "term": "保存玩家数据",
+          "context": "true 时玩家数据保存为 players/<UUID>.dat。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-settings.skinchangecooldown",
+      "chinese_entries": [
+        {
+          "term": "皮肤更换冷却",
+          "context": "玩家两次更换皮肤之间的冷却时间。0 = 无冷却。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-settings.forceskintrusted",
+      "chinese_entries": [
+        {
+          "term": "强制可信皮肤",
+          "context": "true 时仅使用可信（Xbox Live）的皮肤。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-settings.checkmovement",
+      "chinese_entries": [
+        {
+          "term": "校验玩家移动",
+          "context": "是否启用服务器端玩家移动校验（反作弊）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-settings.rotationupdatethreshold",
+      "chinese_entries": [
+        {
+          "term": "旋转更新阈值",
+          "context": "玩家旋转角度变化超过此值才发送更新，降低网络包频率。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-settings.movementdistancethreshold",
+      "chinese_entries": [
+        {
+          "term": "移动距离阈值",
+          "context": "玩家位移超过此值才发送位置更新。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-settings.spawnRadius",
+      "chinese_entries": [
+        {
+          "term": "出生保护半径",
+          "context": "出生点周围此半径内的方块受到保护，非 OP 玩家无法破坏。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enablecommandblocks",
+      "chinese_entries": [
+        {
+          "term": "启用命令方块",
+          "context": "是否允许使用命令方块。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.allowbeta",
+      "chinese_entries": [
+        {
+          "term": "允许 Beta 客户端",
+          "context": "是否允许 Beta 版本客户端连接。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableredstone",
+      "chinese_entries": [
+        {
+          "term": "启用红石",
+          "context": "是否启用红石系统。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.tickRedstone",
+      "chinese_entries": [
+        {
+          "term": "红石每 tick 处理",
+          "context": "是否每 tick 都处理红石信号。关闭后红石仍工作但更新频率降低。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.viewDistance",
+      "chinese_entries": [
+        {
+          "term": "视野距离",
+          "context": "玩家可见的区块半径。值越大带宽和内存占用越高。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.achivements",
+      "chinese_entries": [
+        {
+          "term": "启用成就",
+          "context": "是否启用成就/进度系统。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.announceAchievements",
+      "chinese_entries": [
+        {
+          "term": "广播成就",
+          "context": "玩家解锁成就时是否在聊天栏广播。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.spawnProtection",
+      "chinese_entries": [
+        {
+          "term": "出生保护半径",
+          "context": "出生点保护半径（方块），非 OP 玩家无法在此范围内破坏。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.gamemode",
+      "chinese_entries": [
+        {
+          "term": "默认游戏模式",
+          "context": "新玩家默认游戏模式。0=生存 / 1=创造 / 2=冒险。⚠️ 基岩版无 spectator！",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.forceGamemode",
+      "chinese_entries": [
+        {
+          "term": "强制游戏模式",
+          "context": "true 时玩家进服始终被强制设置为 gamemode 指定的模式。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.hardcore",
+      "chinese_entries": [
+        {
+          "term": "极限模式",
+          "context": "是否启用极限模式（玩家死亡后封禁）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.pvp",
+      "chinese_entries": [
+        {
+          "term": "启用 PvP",
+          "context": "是否允许玩家间伤害。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.difficulty",
+      "chinese_entries": [
+        {
+          "term": "难度",
+          "context": "世界难度。0=和平 / 1=简单 / 2=普通 / 3=困难。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.allowNether",
+      "chinese_entries": [
+        {
+          "term": "启用下界",
+          "context": "是否加载下界维度。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.allowEnd",
+      "chinese_entries": [
+        {
+          "term": "启用末地",
+          "context": "是否加载末地维度。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.forceResources",
+      "chinese_entries": [
+        {
+          "term": "强制资源包",
+          "context": "true 时玩家必须接受服务器资源包才能进服。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.allowClientPacks",
+      "chinese_entries": [
+        {
+          "term": "允许客户端资源包",
+          "context": "是否允许玩家使用客户端自带资源包。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.allowVibrantVisuals",
+      "chinese_entries": [
+        {
+          "term": "允许 Vibrant Visuals",
+          "context": "是否允许客户端使用「鲜明视觉」图形选项。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.experiments",
+      "chinese_entries": [
+        {
+          "term": "实验特性",
+          "context": "启用的实验性特性 ID 列表（如自定义方块、实验性玩法等）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.cacheStructures",
+      "chinese_entries": [
+        {
+          "term": "缓存结构",
+          "context": "是否缓存世界生成结构以加速加载（占用内存）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableEdu",
+      "chinese_entries": [
+        {
+          "term": "教育版特性",
+          "context": "是否启用 Minecraft 教育版特性（化学、NPC 等）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.muteEmoteAnnouncements",
+      "chinese_entries": [
+        {
+          "term": "静默表情广播",
+          "context": "是否屏蔽玩家使用表情时的聊天栏广播。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enablemobai",
+      "chinese_entries": [
+        {
+          "term": "启用生物 AI",
+          "context": "是否启用实体 AI（寻路、行为）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableRecipes",
+      "chinese_entries": [
+        {
+          "term": "启用配方",
+          "context": "是否启用合成配方解锁。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableCreativeInventory",
+      "chinese_entries": [
+        {
+          "term": "启用创造物品栏",
+          "context": "是否启用创造模式物品栏。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableDaylightCycle",
+      "chinese_entries": [
+        {
+          "term": "启用日夜循环",
+          "context": "是否启用日夜循环。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableWeather",
+      "chinese_entries": [
+        {
+          "term": "启用天气",
+          "context": "是否启用天气变化（雨、雷暴）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableEntitySpawning",
+      "chinese_entries": [
+        {
+          "term": "启用实体生成",
+          "context": "是否允许自然生成实体（怪物、动物）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableBlockRandomTicking",
+      "chinese_entries": [
+        {
+          "term": "启用方块随机 tick",
+          "context": "是否启用方块随机 tick（作物生长、草地蔓延等）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableLiquidFlow",
+      "chinese_entries": [
+        {
+          "term": "启用液体流动",
+          "context": "是否启用液体（水、熔岩）流动。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableItemDrops",
+      "chinese_entries": [
+        {
+          "term": "启用物品掉落",
+          "context": "是否启用方块破坏后的物品掉落。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableXpOrbs",
+      "chinese_entries": [
+        {
+          "term": "启用经验球",
+          "context": "是否启用经验球实体。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableExplosionBlockDamage",
+      "chinese_entries": [
+        {
+          "term": "启用爆炸破坏",
+          "context": "爆炸是否对方块造成破坏。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableBlockGravity",
+      "chinese_entries": [
+        {
+          "term": "启用方块重力",
+          "context": "是否启用受重力影响的方块（沙子、砂砾）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-settings.enableHunger",
+      "chinese_entries": [
+        {
+          "term": "启用饥饿值",
+          "context": "是否启用玩家饥饿值系统。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc-settings.shutdownmessage",
+      "chinese_entries": [
+        {
+          "term": "关服提示消息",
+          "context": "服务器关闭时踢出玩家显示的提示文本。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc-settings.installspark",
+      "chinese_entries": [
+        {
+          "term": "安装 Spark",
+          "context": "是否自动下载并加载 Spark 性能分析插件。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc-settings.bypassapicheck",
+      "chinese_entries": [
+        {
+          "term": "跳过 API 版本检查",
+          "context": "true 时跳过插件对 PNX API 版本的兼容性检查（不推荐生产环境使用）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc-settings.overrideserverauthblockbreaking",
+      "chinese_entries": [
+        {
+          "term": "覆盖服务器权威破坏",
+          "context": "true 时覆盖基岩版 server-authoritative-block-breaking 字段，强制启用服务器权威校验。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc-settings.enablemetrics",
+      "chinese_entries": [
+        {
+          "term": "启用统计上报",
+          "context": "是否向 PNX bStats 上报匿名统计数据。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.levelthread",
+      "chinese_entries": [
+        {
+          "term": "每世界独立线程",
+          "context": "true 时每个世界使用独立线程运行（PNX 多线程模型）。开启可提升多世界性能但可能引发同步问题。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.autotickrate",
+      "chinese_entries": [
+        {
+          "term": "自动调节 tick 频率",
+          "context": "服务器卡顿时自动降低 tick 频率以维持稳定。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.autotickratelimit",
+      "chinese_entries": [
+        {
+          "term": "自动降频上限",
+          "context": "自动降频的最大倍率，避免 tick 速率被降到不可接受的程度。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.basetickrate",
+      "chinese_entries": [
+        {
+          "term": "基础 tick 频率",
+          "context": "基础 tick 倍率。1 = 20 TPS（原版）；2 = 10 TPS（半速）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.alwaystickplayers",
+      "chinese_entries": [
+        {
+          "term": "每 tick 都处理玩家",
+          "context": "true 时无论其他设置如何，每个 tick 都处理玩家逻辑。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.loadalllevels",
+      "chinese_entries": [
+        {
+          "term": "加载所有世界",
+          "context": "启动时是否加载所有已注册的世界。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.chunkunloaddelay",
+      "chinese_entries": [
+        {
+          "term": "区块卸载延迟",
+          "context": "区块无人引用后多久才卸载（毫秒）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.entityspawncap",
+      "chinese_entries": [
+        {
+          "term": "实体生成上限",
+          "context": "单个世界实体数量上限。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.fieldofview",
+      "chinese_entries": [
+        {
+          "term": "视场角",
+          "context": "服务器发送给客户端的视场角（FOV）值。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.levelworkerthreads",
+      "chinese_entries": [
+        {
+          "term": "世界工作线程数",
+          "context": "每个世界的工作线程数。-1 表示自动根据 CPU 核心数决定。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-settings.spawnlimit",
+      "chinese_entries": [
+        {
+          "term": "区块生成上限",
+          "context": "每 tick 最多生成多少个区块。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-settings.perticksend",
+      "chinese_entries": [
+        {
+          "term": "每 tick 发送区块数",
+          "context": "每个 tick 向单个玩家发送多少个区块。值越大玩家加载地形越快但带宽占用越高。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-settings.spawnthreshold",
+      "chinese_entries": [
+        {
+          "term": "出生前发送区块数",
+          "context": "玩家进服前至少需要发送多少个区块才能让其出生。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-settings.chunksperticks",
+      "chinese_entries": [
+        {
+          "term": "每 tick 处理区块数",
+          "context": "每 tick 处理多少个区块的 tick（实体、红石、作物）。-1 表示自动。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-settings.tickRadius",
+      "chinese_entries": [
+        {
+          "term": "区块 tick 半径",
+          "context": "玩家周围多少区块半径内会被 tick。值越大 CPU 占用越高。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-settings.lightupdates",
+      "chinese_entries": [
+        {
+          "term": "启用光照更新",
+          "context": "是否启用光照计算与更新。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-settings.clearticklist",
+      "chinese_entries": [
+        {
+          "term": "清空 tick 列表",
+          "context": "是否在每次 tick 后清空待处理列表。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-settings.generationqueuesize",
+      "chinese_entries": [
+        {
+          "term": "生成队列上限",
+          "context": "等待生成的区块队列最大长度。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-settings.saveGenerated",
+      "chinese_entries": [
+        {
+          "term": "保存生成的区块",
+          "context": "是否将新生成的区块立即保存到磁盘。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-settings.convertBDSChunks",
+      "chinese_entries": [
+        {
+          "term": "转换 BDS 区块",
+          "context": "是否将官方 BDS 服务器生成的区块格式转换为 PNX 格式。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-settings.disableblockticking",
+      "chinese_entries": [
+        {
+          "term": "禁用方块 tick 列表",
+          "context": "不进行随机 tick 的方块 ID 列表（如 minecraft:grass）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.queryplugins",
+      "chinese_entries": [
+        {
+          "term": "Query 暴露插件列表",
+          "context": "是否允许通过 GameSpy Query 协议列出已加载插件。公网服务器建议关闭。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.compressionlevel",
+      "chinese_entries": [
+        {
+          "term": "Zlib 压缩级别",
+          "context": "数据包 Zlib 压缩级别。值越大 CPU 占用越高、带宽越省。基岩版推荐 4–6。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.zlibprovider",
+      "chinese_entries": [
+        {
+          "term": "Zlib 实现提供者",
+          "context": "Zlib 压缩库的提供者。0=Java / 1=Native / 2=JNI / 3=Netty / 4=System。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.snappy",
+      "chinese_entries": [
+        {
+          "term": "启用 Snappy 压缩",
+          "context": "实验性：使用 Google Snappy 算法替代 Zlib。压缩比低但速度极快。⚠️ 实验功能。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.compressionbuffersize",
+      "chinese_entries": [
+        {
+          "term": "压缩缓冲区大小",
+          "context": "Zlib 压缩缓冲区大小（默认 1 MB）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.maxdecompresssize",
+      "chinese_entries": [
+        {
+          "term": "最大解压大小",
+          "context": "单个数据包最大解压大小（默认 256 MB），防止恶意超大包攻击。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.packetlimit",
+      "chinese_entries": [
+        {
+          "term": "数据包大小上限",
+          "context": "单个数据包最大字节数。超过此值的包会被拒绝。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.query",
+      "chinese_entries": [
+        {
+          "term": "启用 Query",
+          "context": "是否启用 GameSpy Query 协议（用于服务器列表服务）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.encryption",
+      "chinese_entries": [
+        {
+          "term": "启用网络加密",
+          "context": "是否启用基岩版网络加密（基于 ECDH 握手）。强烈建议保持 true。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.logintime",
+      "chinese_entries": [
+        {
+          "term": "检查登录时间",
+          "context": "是否校验玩家登录用时（防止登录洪水攻击）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.autoflush",
+      "chinese_entries": [
+        {
+          "term": "自动刷新发送缓冲",
+          "context": "是否自动刷新网络发送缓冲。关闭可省 CPU 但增加延迟。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.flushinterval",
+      "chinese_entries": [
+        {
+          "term": "刷新间隔",
+          "context": "自动刷新发送缓冲的间隔。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.maxqueuedbytes",
+      "chinese_entries": [
+        {
+          "term": "最大排队字节数",
+          "context": "单个玩家发送队列最大字节数（默认 64 MB），防止慢速客户端拖垮服务器。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.cookiemode",
+      "chinese_entries": [
+        {
+          "term": "Cookie 模式",
+          "context": "处理基岩版 1.21+ Cookie 的模式。ACTIVE=接受并响应 / IGNORE=忽略。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.rate-limit.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用速率限制",
+          "context": "是否启用网络包速率限制（防洪水攻击）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.rate-limit.maxinboundpersecond",
+      "chinese_entries": [
+        {
+          "term": "每秒入站包上限",
+          "context": "单个玩家每秒可发送的最大数据包数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.rate-limit.maxpacketspertick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 包上限",
+          "context": "单个玩家每 tick 可发送的最大数据包数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.rate-limit.maxcommandsperplayer",
+      "chinese_entries": [
+        {
+          "term": "每秒命令上限",
+          "context": "单个玩家每秒可执行的命令数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.rate-limit.maxchatperplayer",
+      "chinese_entries": [
+        {
+          "term": "每秒聊天上限",
+          "context": "单个玩家每秒可发送的聊天消息数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.rate-limit.maxformresponsesperplayer",
+      "chinese_entries": [
+        {
+          "term": "每秒表单响应上限",
+          "context": "单个玩家每秒可发送的表单（UI）响应数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.rate-limit.maxmovementperplayer",
+      "chinese_entries": [
+        {
+          "term": "每秒移动包上限",
+          "context": "单个玩家每秒可发送的移动数据包数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.botnet.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用僵尸网络检测",
+          "context": "是否启用基于行为分析的僵尸网络检测。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.botnet.suspiciousthreshold",
+      "chinese_entries": [
+        {
+          "term": "可疑阈值",
+          "context": "IP 行为评分超过此值视为可疑。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.botnet.minsuspiciousips",
+      "chinese_entries": [
+        {
+          "term": "最小可疑 IP 数",
+          "context": "触发自动封禁所需的最小可疑 IP 数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.botnet.autoblock",
+      "chinese_entries": [
+        {
+          "term": "自动封禁",
+          "context": "是否在检测到僵尸网络时自动封禁可疑 IP。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.botnet.autoblockdurationseconds",
+      "chinese_entries": [
+        {
+          "term": "自动封禁时长",
+          "context": "自动封禁的持续时长。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-settings.botnet.minscore",
+      "chinese_entries": [
+        {
+          "term": "最小评分",
+          "context": "单个 IP 触发评分的最小行为次数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "debug-settings.deprecatedverbose",
+      "chinese_entries": [
+        {
+          "term": "弃用 API 警告",
+          "context": "插件使用已弃用 API 时是否在控制台打印警告。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "debug-settings.level",
+      "chinese_entries": [
+        {
+          "term": "调试日志级别",
+          "context": "控制台日志详细程度。INFO=正常 / DEBUG=调试 / TRACE=追踪（极大量日志）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "debug-settings.command",
+      "chinese_entries": [
+        {
+          "term": "启用调试命令",
+          "context": "是否启用 /debug 调试命令。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "debug-settings.packet.mode",
+      "chinese_entries": [
+        {
+          "term": "数据包调试模式",
+          "context": "false=忽略数据包日志 / true=记录 packetList 中指定的数据包。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "debug-settings.packetList",
+      "chinese_entries": [
+        {
+          "term": "数据包白名单",
+          "context": "启用 packet.mode 时要记录的数据包 ID 列表。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "debug-settings.disableencodinglimits",
+      "chinese_entries": [
+        {
+          "term": "禁用编码限制",
+          "context": "是否禁用 NBT 编码长度限制（仅调试用，会带来安全风险）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.asyncworkers",
+      "chinese_entries": [
+        {
+          "term": "异步工作线程数",
+          "context": "AsyncTask 的工作线程数。auto 自动检测 CPU 核心数（至少 4）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.basetps",
+      "chinese_entries": [
+        {
+          "term": "基础 TPS",
+          "context": "服务器目标 TPS（每秒 tick 数）。原版为 20。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.registrycache.enable",
+      "chinese_entries": [
+        {
+          "term": "启用注册表缓存",
+          "context": "是否在启动时将方块/物品注册表缓存到磁盘以加速下次启动。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.registrycache.path",
+      "chinese_entries": [
+        {
+          "term": "缓存文件路径",
+          "context": "注册表缓存文件路径。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.forcegcpercentage",
+      "chinese_entries": [
+        {
+          "term": "强制 GC 阈值",
+          "context": "内存使用率达到此比例时强制触发 GC（1.0 = 100%，禁用强制 GC）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.freeze-array.enable",
+      "chinese_entries": [
+        {
+          "term": "启用冻结数组",
+          "context": "是否启用冻结数组优化。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.freeze-array.slots",
+      "chinese_entries": [
+        {
+          "term": "插槽数",
+          "context": "冻结数组缓存插槽数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.freeze-array.defaultTemperature",
+      "chinese_entries": [
+        {
+          "term": "默认温度",
+          "context": "冻结数组「温度」参数（用于 LRU 淘汰）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.freeze-array.freezingPoint",
+      "chinese_entries": [
+        {
+          "term": "冰点",
+          "context": "数组「冻结」的温度阈值。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.freeze-array.boilingPoint",
+      "chinese_entries": [
+        {
+          "term": "沸点",
+          "context": "数组「沸腾」（频繁使用）的温度阈值。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.freeze-array.absoluteZero",
+      "chinese_entries": [
+        {
+          "term": "绝对零度",
+          "context": "数组温度下限。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.freeze-array.melting",
+      "chinese_entries": [
+        {
+          "term": "融化速率",
+          "context": "数组温度上升（融化）的速率。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.freeze-array.singleOperation",
+      "chinese_entries": [
+        {
+          "term": "单次操作",
+          "context": "单次访问增加的温度。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "performance-settings.freeze-array.batchOperation",
+      "chinese_entries": [
+        {
+          "term": "批量操作",
+          "context": "批量访问增加的温度。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "motd",
+      "chinese_entries": [
+        {
+          "term": "服务器 MOTD",
+          "context": "服务器在客户端列表中显示的名称（与 powernukkit.yml 中的 motd 同步）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sub-motd",
+      "chinese_entries": [
+        {
+          "term": "子 MOTD",
+          "context": "服务器副标题。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server-port",
+      "chinese_entries": [
+        {
+          "term": "IPv4 端口（UDP）",
+          "context": "服务器监听的 IPv4 UDP 端口。⚠️ 必须开放 UDP！",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server-ip",
+      "chinese_entries": [
+        {
+          "term": "服务器 IP",
+          "context": "服务器绑定的 IPv4 地址。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "view-distance",
+      "chinese_entries": [
+        {
+          "term": "视野距离",
+          "context": "玩家可见的区块半径。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "white-list",
+      "chinese_entries": [
+        {
+          "term": "启用白名单",
+          "context": "是否启用白名单。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "achievements",
+      "chinese_entries": [
+        {
+          "term": "启用成就",
+          "context": "是否启用成就系统。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "announce-player-achievements",
+      "chinese_entries": [
+        {
+          "term": "广播成就",
+          "context": "玩家解锁成就时是否在聊天栏广播。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-protection",
+      "chinese_entries": [
+        {
+          "term": "出生保护半径",
+          "context": "出生点保护半径（方块）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-players",
+      "chinese_entries": [
+        {
+          "term": "最大玩家数",
+          "context": "服务器同时允许的最大玩家数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-flight",
+      "chinese_entries": [
+        {
+          "term": "允许飞行",
+          "context": "是否允许玩家在生存模式飞行（用于反作弊豁免）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-animals",
+      "chinese_entries": [
+        {
+          "term": "生成动物",
+          "context": "是否自然生成动物。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-mobs",
+      "chinese_entries": [
+        {
+          "term": "生成怪物",
+          "context": "是否自然生成怪物。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gamemode",
+      "chinese_entries": [
+        {
+          "term": "默认游戏模式",
+          "context": "新玩家默认游戏模式。0=生存 / 1=创造 / 2=冒险。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "force-gamemode",
+      "chinese_entries": [
+        {
+          "term": "强制游戏模式",
+          "context": "玩家进服是否被强制设置为 gamemode 模式。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "hardcore",
+      "chinese_entries": [
+        {
+          "term": "极限模式",
+          "context": "是否启用极限模式。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "pvp",
+      "chinese_entries": [
+        {
+          "term": "启用 PvP",
+          "context": "是否允许玩家间伤害。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "difficulty",
+      "chinese_entries": [
+        {
+          "term": "难度",
+          "context": "世界难度。0=和平 / 1=简单 / 2=普通 / 3=困难。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-name",
+      "chinese_entries": [
+        {
+          "term": "世界名称",
+          "context": "主世界文件夹名称。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-seed",
+      "chinese_entries": [
+        {
+          "term": "世界种子",
+          "context": "世界生成种子。相同种子生成相同地形。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-nether",
+      "chinese_entries": [
+        {
+          "term": "启用下界",
+          "context": "是否加载下界维度。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-the_end",
+      "chinese_entries": [
+        {
+          "term": "启用末地",
+          "context": "是否加载末地维度。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-query",
+      "chinese_entries": [
+        {
+          "term": "启用 Query",
+          "context": "是否启用 GameSpy Query 协议。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-rcon",
+      "chinese_entries": [
+        {
+          "term": "启用 RCON",
+          "context": "是否启用远程控制台协议（RCON）。启用务必设置强密码！",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "rcon.password",
+      "chinese_entries": [
+        {
+          "term": "RCON 密码",
+          "context": "RCON 远程管理密码。启用 RCON 时必须设置。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-save",
+      "chinese_entries": [
+        {
+          "term": "自动保存",
+          "context": "是否启用自动保存。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "force-resources",
+      "chinese_entries": [
+        {
+          "term": "强制资源包",
+          "context": "玩家必须接受服务器资源包才能进服。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "force-resources-allow-client-packs",
+      "chinese_entries": [
+        {
+          "term": "允许客户端资源包",
+          "context": "是否允许玩家使用客户端自带资源包。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "xbox-auth",
+      "chinese_entries": [
+        {
+          "term": "Xbox Live 验证",
+          "context": "是否要求玩家通过 Xbox Live 认证。⚠️ 与 Java 版 online-mode 含义不同！",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "check-login-time",
+      "chinese_entries": [
+        {
+          "term": "检查登录时间",
+          "context": "是否校验玩家登录用时。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-encryption",
+      "chinese_entries": [
+        {
+          "term": "网络加密",
+          "context": "是否启用基岩版网络加密（ECDH 握手）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

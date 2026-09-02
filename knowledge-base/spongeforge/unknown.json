@@ -1,0 +1,456 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "spongeforge"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/33-spongeforge.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "general.inject-permission-into-forged-commands",
+      "chinese_entries": [
+        {
+          "term": "注入权限到 Forge 命令",
+          "context": "是否把 Sponge 权限注入 Forge 模组注册的命令，使权限插件可管控模组命令",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.use-mod-message-channel",
+      "chinese_entries": [
+        {
+          "term": "使用模组消息通道",
+          "context": "启用 Forge 模组消息通道以兼容 Forge 客户端模组",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.use-mod-detected-permission-for-command",
+      "chinese_entries": [
+        {
+          "term": "模组命令权限检测",
+          "context": "检测模组命令所需权限等级（4=OP，0=所有人）",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.allow-sync-chunk-writes",
+      "chinese_entries": [
+        {
+          "term": "允许同步区块写入",
+          "context": "Forge 模组可能强制同步写入，开启以兼容部分老模组",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.deobfuscate-stacktraces",
+      "chinese_entries": [
+        {
+          "term": "反混淆堆栈",
+          "context": "异常堆栈输出时把混淆名还原为可读名，便于排查 Forge 模组问题",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge.load-early",
+      "chinese_entries": [
+        {
+          "term": "早期加载",
+          "context": "让 SpongeForge 在 Forge 模组加载之前初始化，解决 Mixin 顺序问题，**强烈建议保持 true**",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge.optimize-mod-tileentity-tracking",
+      "chinese_entries": [
+        {
+          "term": "优化模组方块实体追踪",
+          "context": "优化 Forge 模组方块实体的因果追踪性能",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge.use-forge-event-for-block-modification",
+      "chinese_entries": [
+        {
+          "term": "使用 Forge 事件处理方块修改",
+          "context": "用 Forge 的 NeighborNotify 事件而非 Sponge 事件处理方块变更通知，提升模组兼容性",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge.use-forge-player-interaction",
+      "chinese_entries": [
+        {
+          "term": "使用 Forge 玩家交互",
+          "context": "用 Forge 玩家交互事件桥接 Sponge 事件",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge.convert-mod-item-attributes",
+      "chinese_entries": [
+        {
+          "term": "转换模组物品属性",
+          "context": "把 Forge 物品 NBT 属性转换为 Sponge Data API",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge.bridge-event-bus",
+      "chinese_entries": [
+        {
+          "term": "桥接事件总线",
+          "context": "Forge EventBus 与 Sponge EventManager 双向转发事件",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge.convert-forge-data",
+      "chinese_entries": [
+        {
+          "term": "转换 Forge 数据",
+          "context": "Forge NBT 数据与 Sponge DataContainer 互转",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge-mod-compatibility.auto-populate",
+      "chinese_entries": [
+        {
+          "term": "自动填充模组兼容项",
+          "context": "自动为加载到的模组生成兼容性配置项",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge-mod-compatibility.<modid>.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用模组兼容",
+          "context": "是否对该模组启用 Sponge 桥接处理，关闭可能提升性能但失去事件",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge-mod-compatibility.<modid>.mixins",
+      "chinese_entries": [
+        {
+          "term": "模组 Mixin",
+          "context": "该模组需要的特殊 Mixin 配置",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge-mod-compatibility.<modid>.force-restore",
+      "chinese_entries": [
+        {
+          "term": "强制还原",
+          "context": "模组崩溃后是否强制还原状态（高风险，调试用）",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mixin.force-mixin-early",
+      "chinese_entries": [
+        {
+          "term": "强制 Mixin 早期加载",
+          "context": "让 Sponge 的 Mixin 优先于其他 Coremod，解决\"old mixins\"警告",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mixin.ignore-mod-mixins",
+      "chinese_entries": [
+        {
+          "term": "忽略模组 Mixin",
+          "context": "指定要忽略的模组 Mixin 配置 JSON，避免冲突",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mixin.debug",
+      "chinese_entries": [
+        {
+          "term": "Mixin 调试",
+          "context": "输出 Mixin 注入详细日志",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "mixin.env.refmap",
+      "chinese_entries": [
+        {
+          "term": "引用映射",
+          "context": "启用 Mixin refmap，影响混淆名映射",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge-permissions.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 Forge 权限桥接",
+          "context": "把 Forge 注册的权限转给 Sponge 权限系统，让权限插件可管理",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge-permissions.default-level",
+      "chinese_entries": [
+        {
+          "term": "默认权限等级",
+          "context": "模组未声明权限时的默认等级（4=OP 专属，0=所有人）",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge-permissions.strict-mode",
+      "chinese_entries": [
+        {
+          "term": "严格模式",
+          "context": "严格模式下未声明权限的模组命令一律禁止",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge-events.fire-cancelable",
+      "chinese_entries": [
+        {
+          "term": "触发可取消事件",
+          "context": "把 Forge 事件转成可取消的 Sponge 事件",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge-events.async-events",
+      "chinese_entries": [
+        {
+          "term": "异步事件",
+          "context": "指定哪些 Forge 事件允许异步分发，谨慎使用",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "forge-events.coalesce",
+      "chinese_entries": [
+        {
+          "term": "事件合并",
+          "context": "合并连续相同事件以减少分发次数",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "phase-tracking.track-forge-block-creation",
+      "chinese_entries": [
+        {
+          "term": "追踪 Forge 方块创建",
+          "context": "追踪 Forge 模组创建方块的因果链，开启略增开销",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "phase-tracking.track-forge-entity-creation",
+      "chinese_entries": [
+        {
+          "term": "追踪 Forge 实体创建",
+          "context": "追踪 Forge 模组创建实体的因果链",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "phase-tracking.verbose-forge-phases",
+      "chinese_entries": [
+        {
+          "term": "详细 Forge 阶段日志",
+          "context": "输出 Forge 阶段切换详细日志，调试用",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.use-forge-lighting-fallback",
+      "chinese_entries": [
+        {
+          "term": "使用 Forge 光照回退",
+          "context": "与 Phosphor 等光照模组冲突时回退到 Forge 光照",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.skip-mod-tick-on-overload",
+      "chinese_entries": [
+        {
+          "term": "过载时跳过模组 tick",
+          "context": "TPS 低时跳过非关键模组的 tick，谨慎启用",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.cache-forge-capabilities",
+      "chinese_entries": [
+        {
+          "term": "缓存 Forge 能力",
+          "context": "缓存 Forge Capability 查询结果，提升模组交互性能",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.batch-forge-block-updates",
+      "chinese_entries": [
+        {
+          "term": "批量 Forge 方块更新",
+          "context": "批量处理 Forge 模组的方块更新通知",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity.convert-forge-entity-data",
+      "chinese_entries": [
+        {
+          "term": "转换 Forge 实体数据",
+          "context": "把 Forge 模组实体 NBT 转为 Sponge Data API",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity.use-forge-spawn-rules",
+      "chinese_entries": [
+        {
+          "term": "使用 Forge 生成规则",
+          "context": "尊重 Forge 模组的 canSpawn 规则，关闭可能让某些模组怪物刷不出来",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity.max-mod-entity-per-chunk",
+      "chinese_entries": [
+        {
+          "term": "单区块模组实体上限",
+          "context": "每区块 Forge 模组实体上限，0=禁用上限",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.register-forge-commands",
+      "chinese_entries": [
+        {
+          "term": "注册 Forge 命令",
+          "context": "把 Forge 模组的命令注册到 Sponge 命令系统",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.tab-complete-forge-commands",
+      "chinese_entries": [
+        {
+          "term": "Forge 命令 Tab 补全",
+          "context": "启用 Forge 模组命令的 Tab 自动补全",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.legacy-forge-command-prefix",
+      "chinese_entries": [
+        {
+          "term": "旧版 Forge 命令前缀",
+          "context": "兼容旧版用 /forge: 前缀调用模组命令",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "bungeecord.forward-forge-mods",
+      "chinese_entries": [
+        {
+          "term": "转发 Forge 模组列表",
+          "context": "通过 BungeeCord 转发 Forge 客户端模组列表，跨服模组必需",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "bungeecord.verify-forge-mods",
+      "chinese_entries": [
+        {
+          "term": "验证 Forge 模组",
+          "context": "跨服时验证客户端 Forge 模组列表，防作弊",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logging.log-forge-event-mismatch",
+      "chinese_entries": [
+        {
+          "term": "记录 Forge 事件不匹配",
+          "context": "Forge 与 Sponge 事件桥接失败时输出警告",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logging.log-mixin-failures",
+      "chinese_entries": [
+        {
+          "term": "记录 Mixin 失败",
+          "context": "Mixin 注入失败时输出详细错误",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logging.log-forge-permission-misses",
+      "chinese_entries": [
+        {
+          "term": "记录 Forge 权限缺失",
+          "context": "模组权限未声明时输出警告",
+          "source": "docs/server-cores/33-spongeforge.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

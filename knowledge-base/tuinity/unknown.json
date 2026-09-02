@@ -1,0 +1,126 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "tuinity"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/16-tuinity.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "config-version",
+      "chinese_entries": [
+        {
+          "term": "配置版本号",
+          "context": "内部使用，**不要手动修改**。Tuinity 用它做配置自动升级与兼容性判断。",
+          "source": "docs/server-cores/16-tuinity.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.chunks.chunk-gc",
+      "chinese_entries": [
+        {
+          "term": "区块垃圾回收间隔",
+          "context": "多久回收一次无人观察的区块（tick）。600 = 30 秒。调小可更快释放内存；调大减少 IO 但内存占用高",
+          "source": "docs/server-cores/16-tuinity.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.chunks.delay-chunk-unloads-by",
+      "chinese_entries": [
+        {
+          "term": "延迟区块卸载",
+          "context": "玩家离开后多久才真正卸载区块（tick）。正值=延迟卸载，玩家短时间往返不重复加载；0=立即卸载",
+          "source": "docs/server-cores/16-tuinity.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.chunks.entity-activation-range-strict-mode",
+      "chinese_entries": [
+        {
+          "term": "实体激活严格模式",
+          "context": "是否严格按 Spigot 的实体激活范围判定。true=原版行为；false=使用 Tuinity 优化后的更宽松判定，可省 CPU",
+          "source": "docs/server-cores/16-tuinity.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.tick-rates.mob-spawner",
+      "chinese_entries": [
+        {
+          "term": "刷怪笼 tick 频率",
+          "context": "刷怪笼每多少 tick 触发一次生成判定。1=原版；2=减半（适合大量刷怪笼的服，可大幅省 CPU）",
+          "source": "docs/server-cores/16-tuinity.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.tick-rates.sensors.behavior",
+      "chinese_entries": [
+        {
+          "term": "行为传感器 tick 频率",
+          "context": "村民 / 生物 AI 行为传感器（如最近村民、最近玩家）的 tick 频率。调大可降低村民密集场景的 CPU",
+          "source": "docs/server-cores/16-tuinity.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.tick-rates.grass-tick",
+      "chinese_entries": [
+        {
+          "term": "草生长 tick 频率",
+          "context": "草方块蔓延生长的 tick 频率。调大可省 CPU 但草生长变慢，影响自动农场产量",
+          "source": "docs/server-cores/16-tuinity.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.fixes.fix-item-merge",
+      "chinese_entries": [
+        {
+          "term": "修复物品合并",
+          "context": "是否修复多个相同物品无法合并的漏洞。true=修复（推荐）；false=原版行为，可能导致掉落物丢失或重复",
+          "source": "docs/server-cores/16-tuinity.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.fixes.prevent-moving-into-unloaded-chunks",
+      "chinese_entries": [
+        {
+          "term": "防止进入未加载区块",
+          "context": "是否阻止玩家通过卡墙 / 加速进入未加载区块。true=阻止（防止穿墙与崩溃）；false=原版行为",
+          "source": "docs/server-cores/16-tuinity.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.misc.use-optimized-light",
+      "chinese_entries": [
+        {
+          "term": "使用优化光照",
+          "context": "是否使用 Tuinity 优化的光照计算引擎。true=光照计算更快、内存更省；false=原版光照（仅排查光照 bug 时关）",
+          "source": "docs/server-cores/16-tuinity.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.misc.redstone-implementation",
+      "chinese_entries": [
+        {
+          "term": "红石实现",
+          "context": "红石更新算法选择。VANILLA=原版（生电兼容）；ALTERNATE=Tuinity 替代实现（更快但可能与生电机器冲突）",
+          "source": "docs/server-cores/16-tuinity.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

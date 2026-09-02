@@ -1,0 +1,626 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "bukkit"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/02-bukkit.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "settings.allow-end",
+      "chinese_entries": [
+        {
+          "term": "允许进入末地",
+          "context": "是否允许玩家进入末地。关闭后末地传送门不工作。⚠️ 与 server.properties 的 allow-end 是两套独立机制（Vanilla 用 properties，Bukkit 用 bukkit.yml），Spigot/Paper 建议用此键。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.shutdown-message",
+      "chinese_entries": [
+        {
+          "term": "关服提示消息",
+          "context": "服务器关闭时踢出玩家显示的提示文本。支持 § 颜色码。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.deprecated-verbose",
+      "chinese_entries": [
+        {
+          "term": "弃用 API 警告",
+          "context": "插件使用已弃用的 Bukkit API 时是否在控制台打印警告。开发环境建议 true，生产环境 false 减少日志噪音。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.default-plugin-language",
+      "chinese_entries": [
+        {
+          "term": "默认插件语言",
+          "context": "插件未指定语言时使用的默认语言。影响部分支持多语言的插件。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.use-map-converting",
+      "chinese_entries": [
+        {
+          "term": "自动转换旧地图",
+          "context": "启动时自动将旧版本地图转换为新版本格式。关闭后旧地图可能无法加载。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.query-plugins",
+      "chinese_entries": [
+        {
+          "term": "Query 暴露插件列表",
+          "context": "通过 GameSpy Query 协议列出已加载插件。公网服建议 false，避免泄露插件信息。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.unknown-command",
+      "chinese_entries": [
+        {
+          "term": "未知命令提示",
+          "context": "玩家执行未注册命令时显示的提示。设为空字符串则不显示。支持 § 颜色码。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.permissions",
+      "chinese_entries": [
+        {
+          "term": "默认权限提示",
+          "context": "玩家无权限执行命令时显示的提示。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.timeout-time",
+      "chinese_entries": [
+        {
+          "term": "卡死超时阈值",
+          "context": "主线程连续无响应多少秒后判定为「卡死」并强制重启。0 禁用 watchdog。生产环境建议保持 60。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.restart-on-crash",
+      "chinese_entries": [
+        {
+          "term": "崩溃自动重启",
+          "context": "服务器崩溃时是否自动执行 restart-script。⚠️ Vanilla 不支持此键，仅 CraftBukkit/Spigot/Paper 有。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.restart-script",
+      "chinese_entries": [
+        {
+          "term": "重启脚本路径",
+          "context": "崩溃自动重启时执行的脚本路径。Linux 用 ./start.sh，Windows 用 start.bat。脚本需有可执行权限。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.monsters",
+      "chinese_entries": [
+        {
+          "term": "怪物生成上限",
+          "context": "每个玩家周围可生成的敌对怪物数量上限。降低可缓解怪物密集时的卡顿，但夜晚怪物变少。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.animals",
+      "chinese_entries": [
+        {
+          "term": "动物生成上限",
+          "context": "每个玩家周围可生成的被动动物数量上限。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.water-animals",
+      "chinese_entries": [
+        {
+          "term": "水生动物生成上限",
+          "context": "每个玩家周围可生成的水生动物（鱿鱼、海豚等）数量上限。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.water-ambient",
+      "chinese_entries": [
+        {
+          "term": "水生环境生物上限",
+          "context": "每个玩家周围可生成的水生环境生物（热带鱼等）数量上限。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.ambient",
+      "chinese_entries": [
+        {
+          "term": "环境生物生成上限",
+          "context": "每个玩家周围可生成的环境生物（蝙蝠）数量上限。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-gc.period-in-ticks",
+      "chinese_entries": [
+        {
+          "term": "区块 GC 间隔",
+          "context": "多少 tick 执行一次区块 GC。600 = 30 秒。0 禁用主动 GC（不推荐）。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-gc.load-threshold",
+      "chinese_entries": [
+        {
+          "term": "区块 GC 触发阈值",
+          "context": "加载多少个新区块后触发一次区块 GC。0 仅按 period-in-ticks 周期触发。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.animal-spawns",
+      "chinese_entries": [
+        {
+          "term": "动物生成间隔",
+          "context": "多少 tick 尝试一次动物生成。400 = 20 秒。-1 禁用动物生成。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.monster-spawns",
+      "chinese_entries": [
+        {
+          "term": "怪物生成间隔",
+          "context": "多少 tick 尝试一次怪物生成。1 = 每 tick 尝试（原版默认）。调大可减少怪物数量并提升性能。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.water-ambient-spawns",
+      "chinese_entries": [
+        {
+          "term": "水生环境生物生成间隔",
+          "context": "多少 tick 尝试一次水生环境生物生成。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.autosave",
+      "chinese_entries": [
+        {
+          "term": "自动保存间隔",
+          "context": "多少 tick 自动保存一次世界与玩家数据。6000 = 5 分钟。0 禁用自动保存（不推荐，崩服会丢进度）。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-updater.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用自动更新检查",
+          "context": "启动时是否检查 CraftBukkit 新版本。⚠️ 仅 CraftBukkit 有效，Spigot/Paper 使用各自的更新机制。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-updater.on-broken",
+      "chinese_entries": [
+        {
+          "term": "检测到破坏性更新时",
+          "context": "检测到当前版本已知有严重 bug 时的通知方式。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-updater.on-update",
+      "chinese_entries": [
+        {
+          "term": "检测到新版本时",
+          "context": "检测到新版本可用时的通知方式。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-updater.prefer-beta",
+      "chinese_entries": [
+        {
+          "term": "偏好测试版",
+          "context": "是否优先检查 beta / dev 版本。生产环境保持 false。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-updater.host",
+      "chinese_entries": [
+        {
+          "term": "更新服务器地址",
+          "context": "检查更新的服务器地址。一般无需修改。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases.<别名>",
+      "chinese_entries": [
+        {
+          "term": "命令别名",
+          "context": "将 <别名> 重定向到指定命令。值可以是字符串（单个命令）或列表（按顺序执行多命令）。例：aliases.gamemode: \"minecraft:gamemode\"。⚠️ 1.13+ 推荐用 commands.yml 替代。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "default",
+      "chinese_entries": [
+        {
+          "term": "内置默认组",
+          "context": "Bukkit 内置的默认权限组名。可直接在下方列出权限节点。⚠️ 不建议修改 default 组，应自定义新组。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "<自定义组名>",
+      "chinese_entries": [
+        {
+          "term": "自定义权限组",
+          "context": "自定义权限组。组名任意（如 vip、admin），值为包含 default 与 children 的 map。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "<组名>.default",
+      "chinese_entries": [
+        {
+          "term": "组默认权限",
+          "context": "此组的默认赋权策略。true 所有人都有；false 所有人都没有；op 仅 OP 有；not-op 仅非 OP 有。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "<组名>.children",
+      "chinese_entries": [
+        {
+          "term": "子权限列表",
+          "context": "此组包含的子权限节点（键为权限名，值为 true/false 表示是否赋予）。可嵌套其他权限组。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "<组名>.description",
+      "chinese_entries": [
+        {
+          "term": "组描述",
+          "context": "权限组的文字描述，便于管理员理解用途。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "command-block-overrides",
+      "chinese_entries": [
+        {
+          "term": "命令方块覆盖",
+          "context": "命令方块执行命令时使用的别名映射。键为原命令，值为别名命令。一般留空。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases",
+      "chinese_entries": [
+        {
+          "term": "命令别名",
+          "context": "全局命令别名映射。键为别名命令名，值可以是字符串（单个目标命令）或 map（含 i/k/p 等 flags）。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases.<别名>",
+      "chinese_entries": [
+        {
+          "term": "单个别名",
+          "context": "将 <别名> 重定向到目标命令。字符串形式：gamemode: \"minecraft:gamemode $1-\"（$1- 转发所有参数）。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases.<别名>.i",
+      "chinese_entries": [
+        {
+          "term": "忽略大小写",
+          "context": "别名匹配时是否忽略大小写。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases.<别名>.k",
+      "chinese_entries": [
+        {
+          "term": "保留原命令",
+          "context": "true 时除执行别名命令外，仍保留原命令可用。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases.<别名>.p",
+      "chinese_entries": [
+        {
+          "term": "参数转发模板",
+          "context": "参数转发模板。$1 = 第一个参数；$1- = 第一个及之后所有参数；$@ = 所有参数。例：p: \"minecraft:gamemode creative $1\"。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general",
+      "chinese_entries": [
+        {
+          "term": "通用设置",
+          "context": "帮助页通用设置节。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.default-topic-format",
+      "chinese_entries": [
+        {
+          "term": "默认主题格式",
+          "context": "默认帮助主题的输出格式模板。可用占位符 <description>、<usage>、<aliases>、<permission>。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.command-prefix",
+      "chinese_entries": [
+        {
+          "term": "命令前缀",
+          "context": "帮助页中命令的前缀字符。一般保持 /。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.console-command-prefix",
+      "chinese_entries": [
+        {
+          "term": "控制台命令前缀",
+          "context": "控制台中命令的前缀。留空则与 command-prefix 相同。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.search-index-listed",
+      "chinese_entries": [
+        {
+          "term": "索引列出搜索结果",
+          "context": "/help <关键词> 搜索时是否列出索引。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.max-help-page-size",
+      "chinese_entries": [
+        {
+          "term": "每页最大帮助数",
+          "context": "/help 每页显示多少条命令。值越大单页内容越多。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.list-of-headers",
+      "chinese_entries": [
+        {
+          "term": "帮助页标题列表",
+          "context": "各类帮助页的标题文本列表，按顺序对应：索引页、搜索页、主题页、主题列表页、上一页、下一页。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.default-topic-permission",
+      "chinese_entries": [
+        {
+          "term": "默认主题权限",
+          "context": "查看默认帮助主题所需的权限节点。留空则所有人可见。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.topics-on-first-page",
+      "chinese_entries": [
+        {
+          "term": "首页显示主题列表",
+          "context": "/help 第一页是否显示主题列表。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments",
+      "chinese_entries": [
+        {
+          "term": "命令修改",
+          "context": "对已注册命令的描述进行补充修改。键为命令名，值为包含 description/usage/permission/aliases 的 map。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments.<命令>.short-description",
+      "chinese_entries": [
+        {
+          "term": "命令短描述",
+          "context": "覆盖命令在帮助列表中的短描述。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments.<命令>.full-description",
+      "chinese_entries": [
+        {
+          "term": "命令完整描述",
+          "context": "覆盖命令的完整描述。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments.<命令>.usage",
+      "chinese_entries": [
+        {
+          "term": "命令用法",
+          "context": "覆盖命令的用法说明。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments.<命令>.permission",
+      "chinese_entries": [
+        {
+          "term": "命令权限",
+          "context": "覆盖命令所需权限节点。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments.<命令>.aliases",
+      "chinese_entries": [
+        {
+          "term": "命令别名",
+          "context": "覆盖命令的别名列表。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "topics",
+      "chinese_entries": [
+        {
+          "term": "自定义主题",
+          "context": "自定义帮助主题。键为 /<主题名>，值为包含 shortDescription/fullDescription/permission 的 map。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "topics.<主题名>.short-description",
+      "chinese_entries": [
+        {
+          "term": "主题短描述",
+          "context": "自定义主题的短描述。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "topics.<主题名>.full-description",
+      "chinese_entries": [
+        {
+          "term": "主题完整描述",
+          "context": "自定义主题的完整描述（支持多行，用 \\n 分隔）。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "topics.<主题名>.permission",
+      "chinese_entries": [
+        {
+          "term": "主题查看权限",
+          "context": "查看此主题所需的权限节点。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "index",
+      "chinese_entries": [
+        {
+          "term": "索引页内容",
+          "context": "/help 索引页的额外说明内容。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "index.<名称>.short-description",
+      "chinese_entries": [
+        {
+          "term": "索引项短描述",
+          "context": "索引页中某个分类项的短描述。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "index.<名称>.full-description",
+      "chinese_entries": [
+        {
+          "term": "索引项完整描述",
+          "context": "索引页中某个分类项的完整描述。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

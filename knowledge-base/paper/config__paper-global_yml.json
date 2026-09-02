@@ -1,0 +1,596 @@
+{
+  "config_file": "config/paper-global.yml",
+  "cores": [
+    "paper"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/04-paper.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "chunk-loading.basic-maximizer-chunk-limit",
+      "chinese_entries": [
+        {
+          "term": "基础加载器区块上限",
+          "context": "单个玩家每 tick 最多生成 / 加载多少区块。降低可缓解玩家快速移动（鞘翅）时的卡顿。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-loading.player-max-chunk-load-rate",
+      "chinese_entries": [
+        {
+          "term": "玩家区块加载速率",
+          "context": "单个玩家每秒最多加载多少区块。-1 无限制。降低可保护 CPU。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-loading.player-max-chunk-generate-rate",
+      "chinese_entries": [
+        {
+          "term": "玩家区块生成速率",
+          "context": "单个玩家每秒最多生成多少区块。-1 无限制。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-loading.global-max-chunk-load-rate",
+      "chinese_entries": [
+        {
+          "term": "全局区块加载速率",
+          "context": "全服每秒最多加载多少区块。-1 无限制。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-loading.global-max-chunk-generate-rate",
+      "chinese_entries": [
+        {
+          "term": "全局区块生成速率",
+          "context": "全服每秒最多生成多少区块。-1 无限制。降低可保护 CPU。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-system.io-threads",
+      "chinese_entries": [
+        {
+          "term": "区块 IO 线程数",
+          "context": "负责从磁盘读写区块文件的线程数。-1 自动（基于 CPU 核心数）。大型服可手动设为 2–4。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-system.worker-threads",
+      "chinese_entries": [
+        {
+          "term": "区块工作线程数",
+          "context": "负责区块生成 / 装饰计算的线程数。-1 自动。未预生成时需大幅增加。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-system.gen.parallelism",
+      "chinese_entries": [
+        {
+          "term": "生成并行度",
+          "context": "区块生成任务的并行度。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "collisions.enable-player-collisions",
+      "chinese_entries": [
+        {
+          "term": "启用玩家碰撞",
+          "context": "是否启用玩家间的物理碰撞。关闭后玩家可互相穿过。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "collisions.send-player-pos-when-teleporting",
+      "chinese_entries": [
+        {
+          "term": "传送时发送位置",
+          "context": "玩家传送时是否立即同步位置，避免位置不同步。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "collisions.send-player-pos-when-colliding-with",
+      "chinese_entries": [
+        {
+          "term": "碰撞时发送位置",
+          "context": "玩家发生碰撞时是否发送位置同步。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.time-command-affects-all-worlds",
+      "chinese_entries": [
+        {
+          "term": "time 命令影响所有世界",
+          "context": "/time 命令是否影响所有世界。false 仅影响当前世界。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.fix-target-selector-tag-completion",
+      "chinese_entries": [
+        {
+          "term": "修复选择器补全",
+          "context": "修复目标选择器中标签补全的 bug。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "console.enable-brigadier-highlighting",
+      "chinese_entries": [
+        {
+          "term": "启用 Brigadier 高亮",
+          "context": "控制台是否启用 Brigadier 命令高亮显示。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "console.enable-brigadier-completions",
+      "chinese_entries": [
+        {
+          "term": "启用 Brigadier 补全",
+          "context": "控制台是否启用 Brigadier 命令 Tab 补全。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "console.has-all-permissions",
+      "chinese_entries": [
+        {
+          "term": "拥有所有权限",
+          "context": "控制台是否拥有所有权限（绕过权限检查）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "item-validation.book-size.page-max",
+      "chinese_entries": [
+        {
+          "term": "书本单页最大字节",
+          "context": "成书单页最大字节数。降低可防止恶意长 NBT 卡服。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "item-validation.book-size.total-multiplier",
+      "chinese_entries": [
+        {
+          "term": "书本总大小倍率",
+          "context": "成书总大小 = 页数 × 此倍率。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "item-validation.display-name",
+      "chinese_entries": [
+        {
+          "term": "物品显示名最大字节",
+          "context": "物品自定义显示名最大字节数。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "item-validation.resolve-selectors-in-books",
+      "chinese_entries": [
+        {
+          "term": "解析书中选择器",
+          "context": "是否在成书中解析目标选择器。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logging.log-ping-packet-length-mismatch",
+      "chinese_entries": [
+        {
+          "term": "记录 ping 包长度不匹配",
+          "context": "是否记录 ping 包长度不匹配事件（异常客户端）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logging.deobfuscate-stacktraces",
+      "chinese_entries": [
+        {
+          "term": "反混淆堆栈",
+          "context": "是否将堆栈跟踪中的混淆方法名反混淆为可读名。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.chat-threads.core-size",
+      "chinese_entries": [
+        {
+          "term": "聊天线程核心数",
+          "context": "处理玩家聊天的核心线程数。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.chat-threads.max-size",
+      "chinese_entries": [
+        {
+          "term": "聊天线程最大数",
+          "context": "处理玩家聊天的最大线程数。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.server-activity.timeunit",
+      "chinese_entries": [
+        {
+          "term": "服务器活跃统计单位",
+          "context": "服务器活跃统计的时间单位。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.server-activity.timeout",
+      "chinese_entries": [
+        {
+          "term": "服务器活跃超时",
+          "context": "服务器活跃统计超时值。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.max-joins-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 加入上限",
+          "context": "每 tick 允许多少玩家加入服务器。降低可防止登录冲击。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.player-auto-save-rate",
+      "chinese_entries": [
+        {
+          "term": "玩家自动保存频率",
+          "context": "玩家数据自动保存频率（每多少玩家 / tick）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.max-player-auto-save-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 最多保存玩家数",
+          "context": "每 tick 最多保存多少玩家的数据，避免一次性保存卡顿。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.fix-wrong-rotations",
+      "chinese_entries": [
+        {
+          "term": "修复错误旋转",
+          "context": "修复某些实体的旋转 bug。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "packet-limiter.kick-message",
+      "chinese_entries": [
+        {
+          "term": "踢出消息",
+          "context": "玩家被限流踢出时显示的消息。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "packet-limiter.packet-limit.settings",
+      "chinese_entries": [
+        {
+          "term": "限流设置",
+          "context": "各数据包的限流规则。键为数据包名，值为 action/interval/max-packet-rate。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "packet-limiter.packet-limit.overrides",
+      "chinese_entries": [
+        {
+          "term": "限流覆盖",
+          "context": "对特定数据包的限流覆盖规则。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "packet-limiter.kick-message",
+      "chinese_entries": [
+        {
+          "term": "限流踢出消息",
+          "context": "玩家触发限流被踢时显示的提示。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-auto-save.rate",
+      "chinese_entries": [
+        {
+          "term": "自动保存频率",
+          "context": "玩家数据自动保存的间隔 tick。-1 自动（基于 ticks-per.autosave）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-auto-save.max-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 保存上限",
+          "context": "每 tick 最多保存多少玩家的数据，避免一次性卡顿。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.bungee-cord.online-mode",
+      "chinese_entries": [
+        {
+          "term": "BungeeCord 在线模式",
+          "context": "BungeeCord 是否已做 Mojang 正版验证。设为 true 时 Paper 信任 BungeeCord 转发的正版身份。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.velocity.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 Velocity 转发",
+          "context": "是否启用 Velocity 现代转发。启用后 server.properties 的 online-mode 应设为 false。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.velocity.online-mode",
+      "chinese_entries": [
+        {
+          "term": "Velocity 在线模式",
+          "context": "Velocity 是否已做 Mojang 正版验证。设为 true 时 Paper 信任 Velocity 转发的正版身份。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.velocity.secret",
+      "chinese_entries": [
+        {
+          "term": "Velocity 共享密钥",
+          "context": "与 Velocity forwarding.secret 一致的密钥。**生产环境必须设置强密钥**，留空则任何人都可伪造玩家身份。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.proxy-protocol",
+      "chinese_entries": [
+        {
+          "term": "启用 Proxy Protocol",
+          "context": "是否启用 HAProxy Proxy Protocol v2。仅在使用 HAProxy 等 TCP 代理时启用。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spam-limiter.tab-spam-increment",
+      "chinese_entries": [
+        {
+          "term": "Tab 补全刷屏增量",
+          "context": "玩家每次 Tab 补全增加的刷屏分值。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spam-limiter.tab-spam-limit",
+      "chinese_entries": [
+        {
+          "term": "Tab 补全刷屏上限",
+          "context": "玩家 Tab 补全刷屏分值上限，超过即禁止补全。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spam-limiter.recipe-spam-increment",
+      "chinese_entries": [
+        {
+          "term": "配方刷屏增量",
+          "context": "玩家每次打开配方书增加的刷屏分值。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spam-limiter.recipe-spam-limit",
+      "chinese_entries": [
+        {
+          "term": "配方刷屏上限",
+          "context": "玩家配方刷屏分值上限。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spam-limiter.ignored-packets",
+      "chinese_entries": [
+        {
+          "term": "忽略数据包列表",
+          "context": "不计入刷屏检测的数据包列表。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 Timings",
+          "context": "是否启用 Timings 性能分析。⚠️ Paper 1.21+ 已弃用，推荐用 Spark。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.verbose",
+      "chinese_entries": [
+        {
+          "term": "详细 Timings",
+          "context": "是否记录详细的 Timings 数据。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.url",
+      "chinese_entries": [
+        {
+          "term": "Timings 上传地址",
+          "context": "/timings paste 上传报告的地址。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.history-interval",
+      "chinese_entries": [
+        {
+          "term": "历史记录间隔",
+          "context": "Timings 历史记录的间隔时长。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.history-length",
+      "chinese_entries": [
+        {
+          "term": "历史记录长度",
+          "context": "Timings 历史记录的总时长。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.hidden-config-entries",
+      "chinese_entries": [
+        {
+          "term": "隐藏配置项",
+          "context": "上传报告时隐藏的配置项列表（防止泄露敏感信息）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.server-name",
+      "chinese_entries": [
+        {
+          "term": "服务器名称",
+          "context": "Timings 报告中显示的服务器名称。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.server-name-privacy",
+      "chinese_entries": [
+        {
+          "term": "隐藏服务器名",
+          "context": "上传报告时是否隐藏服务器名。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "unsupported-settings.allow-headless-pistons",
+      "chinese_entries": [
+        {
+          "term": "允许无头活塞",
+          "context": "允许利用 bug 创建无头活塞（用于某些红石机器）。⚠️ 破坏 Vanilla 行为。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "unsupported-settings.allow-permanent-block-break-exploits",
+      "chinese_entries": [
+        {
+          "term": "允许永久破坏 bug",
+          "context": "允许利用 bug 破坏「不可破坏」方块（如基岩、末地传送门）。⚠️ 严重破坏游戏。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "unsupported-settings.allow-piston-duplication",
+      "chinese_entries": [
+        {
+          "term": "允许活塞复制",
+          "context": "允许利用活塞 bug 复制物品（如 TNT 复制机、地毯复制）。⚠️ Vanilla 视为作弊。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "unsupported-settings.perform-username-validation",
+      "chinese_entries": [
+        {
+          "term": "用户名验证",
+          "context": "是否对用户名进行严格验证。关闭可让非标准用户名进入（不推荐）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

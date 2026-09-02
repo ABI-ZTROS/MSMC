@@ -1,0 +1,346 @@
+{
+  "config_file": "server.properties",
+  "cores": [
+    "nukkit"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/34-nukkit.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "server-name",
+      "chinese_entries": [
+        {
+          "term": "服务器名称（MOTD）",
+          "context": "服务器在客户端服务器列表中显示的名称。基岩版对 § 颜色码支持有限，建议使用纯文本或简单颜色。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server-port",
+      "chinese_entries": [
+        {
+          "term": "IPv4 端口（UDP）",
+          "context": "服务器监听的 **IPv4 UDP** 端口。⚠️ **必须开放 UDP 协议**，不是 TCP！路由器端口转发也需选 UDP。1024 以下端口通常需要管理员权限。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server-portv6",
+      "chinese_entries": [
+        {
+          "term": "IPv6 端口（UDP）",
+          "context": "服务器监听的 **IPv6 UDP** 端口。不需要 IPv6 时可设为 0 禁用。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-lan-visibility",
+      "chinese_entries": [
+        {
+          "term": "局域网可见性",
+          "context": "true 时监听并响应局域网服务器发现请求。同一台机器跑多个 Nukkit 时建议关闭以避免端口冲突。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-players",
+      "chinese_entries": [
+        {
+          "term": "最大玩家数",
+          "context": "服务器同时允许的最大玩家数。**值越高对性能影响越大**，小型服建议 20，大型服按硬件配置调整。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "online-mode",
+      "chinese_entries": [
+        {
+          "term": "Xbox Live 验证",
+          "context": "**基岩版的关键差异**：true 时所有玩家必须通过 Xbox Live 认证。公网服务器**强烈建议开启**，关闭会导致玩家可伪装身份。注意：远程（非 LAN）连接无论此设置如何，**始终需要 Xbox Live 认证**。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "white-list",
+      "chinese_entries": [
+        {
+          "term": "启用白名单",
+          "context": "true 时仅 allowlist.json 中的玩家可加入。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "default-player-permission-level",
+      "chinese_entries": [
+        {
+          "term": "新玩家权限等级",
+          "context": "首次加入的玩家默认权限等级。visitor=访客（仅参观，不能交互），member=成员（正常游玩），operator=管理员（OP 权限）。**生产环境务必用 member**，否则新玩家可能有 OP 权限！",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gamemode",
+      "chinese_entries": [
+        {
+          "term": "默认游戏模式",
+          "context": "新玩家加入时的默认游戏模式。⚠️ **基岩版无 spectator 选项**！survival=生存，creative=创造，adventure=冒险。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "force-gamemode",
+      "chinese_entries": [
+        {
+          "term": "强制游戏模式",
+          "context": "true 时玩家进服始终被强制设置为 gamemode 指定的模式，忽略其上次退出时的模式。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "difficulty",
+      "chinese_entries": [
+        {
+          "term": "难度",
+          "context": "世界难度。peaceful=和平（不刷怪），easy=简单，normal=普通，hard=困难（僵尸破门等）。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-cheats",
+      "chinese_entries": [
+        {
+          "term": "允许作弊",
+          "context": "true 时允许使用 /gamemode、/give 等作弊命令。生存服建议 false，创造/测试服可设 true。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "texturepack-required",
+      "chinese_entries": [
+        {
+          "term": "强制资源包",
+          "context": "true 时玩家必须接受服务器资源包才能进服。拒绝资源包的玩家会被踢出。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-name",
+      "chinese_entries": [
+        {
+          "term": "世界名称",
+          "context": "世界文件夹的名称。每个世界在 worlds/ 下有独立文件夹。改名为新世界，原世界保留但不再加载。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-seed",
+      "chinese_entries": [
+        {
+          "term": "世界种子",
+          "context": "世界生成种子。留空则随机生成。相同种子生成相同地形。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-type",
+      "chinese_entries": [
+        {
+          "term": "世界类型",
+          "context": "地形类型。DEFAULT=标准地形，FLAT=超平坦，LEGACY=旧版地形。⚠️ **与 Java 版选项不同**（无 amplified、largeBiomes）。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "view-distance",
+      "chinese_entries": [
+        {
+          "term": "视野距离",
+          "context": "玩家可见的区块半径。⚠️ **基岩版默认 32，比 Java 版的 10 大很多**！值越大带宽和内存占用越高，公网服建议 10-16。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "tick-distance",
+      "chinese_entries": [
+        {
+          "term": "tick 距离",
+          "context": "玩家周围多少区块半径内会被服务器 tick（处理实体、红石等）。**基岩版独有字段**，Java 版无此项。值越大 CPU 占用越高。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "generate-structures",
+      "chinese_entries": [
+        {
+          "term": "生成结构",
+          "context": "是否生成村庄、神殿、废弃矿井等结构。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server-authoritative-movement",
+      "chinese_entries": [
+        {
+          "term": "服务器权威移动",
+          "context": "**基岩版反作弊关键字段**！server-auth = 服务器校验玩家移动，发现异常回滚；server-auth-with-rewind = 同上但允许客户端预测；client-auth = 客户端权威（不推荐，易被作弊）。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server-authoritative-block-breaking",
+      "chinese_entries": [
+        {
+          "term": "服务器权威破坏方块",
+          "context": "true 时服务器校验玩家破坏方块的合法性（如是否在范围内、是否用了正确工具）。**防加速挖矿作弊**。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-movement-action-direction-threshold",
+      "chinese_entries": [
+        {
+          "term": "移动方向阈值",
+          "context": "玩家移动方向与视线方向的偏差阈值，超过此值视为可疑移动。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-movement-distance-threshold",
+      "chinese_entries": [
+        {
+          "term": "移动距离阈值",
+          "context": "单 tick 内玩家移动距离超过此值视为可疑（可能在使用加速/飞行作弊）。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-movement-duration-threshold-in-ms",
+      "chinese_entries": [
+        {
+          "term": "异常持续时间阈值",
+          "context": "玩家移动异常持续多久才视为作弊并触发回滚。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "correct-player-movement",
+      "chinese_entries": [
+        {
+          "term": "纠正玩家移动",
+          "context": "true 时服务器主动纠正玩家可疑的移动（强制回滚到合法位置）。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-threads",
+      "chinese_entries": [
+        {
+          "term": "最大线程数",
+          "context": "服务器最大使用的线程数。0 = 自动检测使用尽可能多的线程。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-idle-timeout",
+      "chinese_entries": [
+        {
+          "term": "玩家挂机踢出",
+          "context": "玩家挂机多少分钟后被踢出。0 = 永不踢出。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "content-log-file-enabled",
+      "chinese_entries": [
+        {
+          "term": "内容日志写文件",
+          "context": "true 时将内容错误（如资源包解析失败）写入日志文件，便于排查问题。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "compression-threshold",
+      "chinese_entries": [
+        {
+          "term": "压缩阈值",
+          "context": "网络数据包压缩的最小原始载荷大小。**值越大 CPU 越省但带宽越费**。基岩版默认 1（几乎全压缩）。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "compression-algorithm",
+      "chinese_entries": [
+        {
+          "term": "压缩算法",
+          "context": "网络压缩算法。zlib = 标准压缩（兼容性好），snappy = Google Snappy（速度更快但压缩比低）。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-rcon",
+      "chinese_entries": [
+        {
+          "term": "启用 RCON",
+          "context": "是否启用远程控制台协议（RCON）。允许通过 TCP 发送命令到服务器。**启用务必设置强密码**！",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "rcon.password",
+      "chinese_entries": [
+        {
+          "term": "RCON 密码",
+          "context": "RCON 远程管理密码。**启用 RCON 时必须设置**，否则任何人都能远程控制服务器。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "rcon.port",
+      "chinese_entries": [
+        {
+          "term": "RCON 端口",
+          "context": "RCON 监听的 TCP 端口。⚠️ 注意不要与 server-port（UDP）冲突。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

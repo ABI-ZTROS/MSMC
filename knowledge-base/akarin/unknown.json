@@ -1,0 +1,106 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "akarin"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/17-akarin.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "config-version",
+      "chinese_entries": [
+        {
+          "term": "配置版本号",
+          "context": "内部使用，**不要手动修改**。Akarin 用它做配置自动升级与兼容性判断。",
+          "source": "docs/server-cores/17-akarin.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.brand-name",
+      "chinese_entries": [
+        {
+          "term": "服务端品牌名",
+          "context": "发送给客户端的服务端品牌名（F3 界面 \"Mod\" 字段）。可用 § 颜色码，可隐藏真实核心类型",
+          "source": "docs/server-cores/17-akarin.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.enable-multi-thread",
+      "chinese_entries": [
+        {
+          "term": "启用多线程物理",
+          "context": "Akarin 招牌开关。true=启用物理多线程，把区块 ticking 分摊到多核；false=退化为单线程 Paper。⚠️ 关闭后 Akarin 与普通 Paper 无差异，建议保持 true",
+          "source": "docs/server-cores/17-akarin.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.threads",
+      "chinese_entries": [
+        {
+          "term": "物理线程数",
+          "context": "物理多线程使用的线程数。0=自动（按 CPU 核心数估算）；正值=固定值。建议 ≤ 物理核心数，避免线程切换开销",
+          "source": "docs/server-cores/17-akarin.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.physics.async-block-physics",
+      "chinese_entries": [
+        {
+          "term": "异步方块物理",
+          "context": "是否异步处理方块物理（沙子掉落、水流等）。true=移出主线程，可省 TPS；false=原版同步。⚠️ 异步可能与某些依赖物理事件的插件冲突",
+          "source": "docs/server-cores/17-akarin.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.physics.async-entity-physics",
+      "chinese_entries": [
+        {
+          "term": "异步实体物理",
+          "context": "是否异步处理实体物理（实体移动、碰撞等）。true=多线程处理大量实体；false=原版同步。⚠️ 异步实体可能影响反作弊判定",
+          "source": "docs/server-cores/17-akarin.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.physics.max-async-tasks",
+      "chinese_entries": [
+        {
+          "term": "最大异步任务数",
+          "context": "异步物理任务队列的最大长度。值越大吞吐越高但延迟上升；值小延迟低但可能堆积任务。建议 2-8",
+          "source": "docs/server-cores/17-akarin.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.optimizations.disable-piston-physics",
+      "chinese_entries": [
+        {
+          "term": "禁用活塞物理",
+          "context": "是否禁用活塞推拉方块时的物理计算。true=活塞推方块不再触发物理（极省 CPU 但破坏红石机器）；false=原版行为",
+          "source": "docs/server-cores/17-akarin.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.optimizations.fast-leaf-decay",
+      "chinese_entries": [
+        {
+          "term": "快速叶子衰减",
+          "context": "是否使用更快的叶子衰减算法。true=省 CPU 但可能与原版叶子农场产量略有差异；false=原版精确计算",
+          "source": "docs/server-cores/17-akarin.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

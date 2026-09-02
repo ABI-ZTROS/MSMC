@@ -1,0 +1,106 @@
+{
+  "config_file": "waterfall.yml",
+  "cores": [
+    "waterfall"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/24-waterfall.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "config-version",
+      "chinese_entries": [
+        {
+          "term": "配置版本号",
+          "context": "内部使用，**不要手动修改**。Waterfall 用它做配置自动升级与兼容性判断。",
+          "source": "docs/server-cores/24-waterfall.md"
+        }
+      ]
+    },
+    {
+      "key_path": "log_initial_handler_logs",
+      "chinese_entries": [
+        {
+          "term": "初始连接日志",
+          "context": "是否记录玩家建立连接时的初始 Netty Handler 日志。true=记录（便于排查握手问题）；false=关闭以减少日志噪音",
+          "source": "docs/server-cores/24-waterfall.md"
+        }
+      ]
+    },
+    {
+      "key_path": "log_pings",
+      "chinese_entries": [
+        {
+          "term": "Ping 请求日志",
+          "context": "是否记录客户端对代理的 ping 请求（即服务器列表刷新触发的 ping）。关闭可大幅减少日志量",
+          "source": "docs/server-cores/24-waterfall.md"
+        }
+      ]
+    },
+    {
+      "key_path": "force_empty_motd",
+      "chinese_entries": [
+        {
+          "term": "强制空 MOTD",
+          "context": "true=忽略 config.yml 中 listeners.motd，服务器列表始终显示空 MOTD。适合子服列表不希望被外部探测的场景",
+          "source": "docs/server-cores/24-waterfall.md"
+        }
+      ]
+    },
+    {
+      "key_path": "force_empty_player_sample",
+      "chinese_entries": [
+        {
+          "term": "强制空玩家样本",
+          "context": "true=服务器列表不再显示在线玩家头像与名字。可隐藏玩家身份，避免被外挂工具批量探测",
+          "source": "docs/server-cores/24-waterfall.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sample_count",
+      "chinese_entries": [
+        {
+          "term": "玩家样本数量",
+          "context": "服务器列表显示的在线玩家头像 / 名字数量。调小可减少数据包大小；0=不显示任何玩家",
+          "source": "docs/server-cores/24-waterfall.md"
+        }
+      ]
+    },
+    {
+      "key_path": "disable_tab_list_rewrite",
+      "chinese_entries": [
+        {
+          "term": "禁用 Tab 重写",
+          "context": "是否禁用代理对 Tab 列表的强制重写。true=把 Tab 列表交还给后端子服控制（适合 GLOBAL 模式异常的服）；false=由代理统一管理",
+          "source": "docs/server-cores/24-waterfall.md"
+        }
+      ]
+    },
+    {
+      "key_path": "use_netty_dns_resolver",
+      "chinese_entries": [
+        {
+          "term": "使用 Netty DNS 解析器",
+          "context": "是否使用 Netty 自带的异步 DNS 解析器（而非 JDK 同步解析）。true=解析更快、不阻塞主线程；false=退回 JDK 解析，便于排查 DNS 问题",
+          "source": "docs/server-cores/24-waterfall.md"
+        }
+      ]
+    },
+    {
+      "key_path": "throttling.tabcomplete",
+      "chinese_entries": [
+        {
+          "term": "Tab 补全限流",
+          "context": "同一玩家两次 Tab 补全请求之间的最小间隔（毫秒）。防止恶意客户端通过疯狂 Tab 补全窃取命令列表或刷 CPU",
+          "source": "docs/server-cores/24-waterfall.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

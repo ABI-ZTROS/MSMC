@@ -1,0 +1,66 @@
+{
+  "config_file": "config/neoforge-server.toml",
+  "cores": [
+    "neoforge"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/19-neoforge.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "server.removeErroringBlockEntities",
+      "chinese_entries": [
+        {
+          "term": "删除报错方块实体",
+          "context": "设为 true 时，当某个**方块实体**（BlockEntity，即俗称的 TileEntity，如箱子/熔炉/模组机器）在其更新方法中抛出异常时，NeoForge 会**直接删除该方块实体**，而不是关闭服务器并打印崩溃日志。**⚠️ 危险选项**：可能导致机器内的物品丢失、方块状态错乱。仅在排查「Ticking Block Entity」崩溃时作为应急手段临时开启，处理完务必改回 false！NeoForge 官方明确声明对此造成的损失不负责。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.removeErroringEntities",
+      "chinese_entries": [
+        {
+          "term": "删除报错实体",
+          "context": "设为 true 时，当某个**实体**（Entity，如僵尸、掉落物、矿车等，**不包括**方块实体）在其 tick 方法中抛出异常时，NeoForge 会**直接删除该实体**，而不是关闭服务器并打印崩溃日志。**⚠️ 危险选项**：可能导致玩家丢失骑乘的坐骑、农场中的关键生物等。仅在排查「Ticking Entity」崩溃时作为应急手段临时开启，处理完务必改回 false！",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.fullBoundingBoxLadders",
+      "chinese_entries": [
+        {
+          "term": "完整碰撞盒爬梯检测",
+          "context": "设为 true 时，检测实体是否在爬梯子时会检查**整个实体的碰撞盒**所覆盖的方块，而不仅限于实体当前所在的那个方块。会带来**明显的机制差异**（例如更高的爬梯判定范围），因此默认保持原版行为。仅在你确知某些模组需要此特性时才开启。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.permissionHandler",
+      "chinese_entries": [
+        {
+          "term": "权限处理器",
+          "context": "服务器使用的权限处理器 ID。默认为 neoforge:default_handler（NeoForge 内置的默认权限处理器）。仅当服务器中安装了提供自定义权限系统的模组时才需要修改。普通开服玩家保持默认即可。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server.advertiseDedicatedServerToLan",
+      "chinese_entries": [
+        {
+          "term": "向局域网广播服务器",
+          "context": "设为 true 时，专用服务端会向**本地局域网**广播自身存在，使同局域网下的客户端能在「多人游戏」界面自动看到这台服务器。公网部署时无实际意义；本地测试时不希望他人自动看到可关闭。",
+          "source": "docs/server-cores/19-neoforge.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

@@ -1,0 +1,46 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "uspigot"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/13-uspigot.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "settings.brand-name",
+      "chinese_entries": [
+        {
+          "term": "服务端品牌名",
+          "context": "发送给客户端的服务端品牌名（F3 界面 \"Mod\" 字段）。⚠️ 推断项，实际默认值以核心启动后生成的配置为准。可用 § 颜色码定制。建议改为通用名以隐藏核心类型。",
+          "source": "docs/server-cores/13-uspigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.commands.enable-version-command",
+      "chinese_entries": [
+        {
+          "term": "启用 /version 命令",
+          "context": "是否允许玩家使用 /version（/ver）查看服务端版本。⚠️ 推断项。公网服建议关闭以防信息泄露。",
+          "source": "docs/server-cores/13-uspigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.commands.enable-plugins-command",
+      "chinese_entries": [
+        {
+          "term": "启用 /plugins 命令",
+          "context": "是否允许玩家使用 /plugins（/pl）查看插件列表。⚠️ 推断项。公网服建议关闭以防泄露插件信息。",
+          "source": "docs/server-cores/13-uspigot.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

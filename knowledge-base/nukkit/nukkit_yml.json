@@ -1,0 +1,336 @@
+{
+  "config_file": "nukkit.yml",
+  "cores": [
+    "nukkit"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/34-nukkit.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "settings.language",
+      "chinese_entries": [
+        {
+          "term": "服务器语言",
+          "context": "服务器控制台与提示消息使用的语言。eng=英语，chs=简体中文，cht=繁体中文，jpn=日语 等。修改后需重启。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.force-language",
+      "chinese_entries": [
+        {
+          "term": "强制使用服务器语言",
+          "context": "true 时所有字符串按服务器语言翻译后发送给客户端；false 时让客户端设备自行处理本地化（推荐）。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.shutdown-message",
+      "chinese_entries": [
+        {
+          "term": "关服提示消息",
+          "context": "服务器关闭时踢出玩家显示的提示文本。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.query-plugins",
+      "chinese_entries": [
+        {
+          "term": "Query 暴露插件列表",
+          "context": "true 时允许通过 GameSpy Query 协议列出已加载插件。出于安全考虑，公网服务器建议关闭。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.deprecated-verbose",
+      "chinese_entries": [
+        {
+          "term": "弃用 API 警告",
+          "context": "插件使用已弃用的 API 方法时是否在控制台打印警告。开发环境建议开启，生产环境可关闭以减少日志噪音。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.async-workers",
+      "chinese_entries": [
+        {
+          "term": "异步工作线程数",
+          "context": "AsyncTask 的工作线程数。auto 自动检测 CPU 核心数（至少 4）。手动设置时建议不超过 CPU 核心数。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.batch-threshold",
+      "chinese_entries": [
+        {
+          "term": "批处理字节阈值",
+          "context": "数据包累积到此字节数才进行批处理压缩。0 = 压缩所有包；-1 = 完全禁用压缩。降低此值减少延迟但增加 CPU 负担；提高此值节省带宽但增加延迟。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.compression-level",
+      "chinese_entries": [
+        {
+          "term": "Zlib 压缩级别",
+          "context": "批处理包的 Zlib 压缩级别。**值越大 CPU 占用越高、带宽越省**。1=最快压缩比最低，9=最慢压缩比最高。基岩版推荐 5-7。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.compression-use-snappy",
+      "chinese_entries": [
+        {
+          "term": "启用 Snappy 压缩",
+          "context": "实验性：使用 Google Snappy 算法替代 Zlib。压缩比低但速度极快，CPU 紧张的服务器可尝试。⚠️ 实验功能，可能不兼容旧客户端。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.encryption",
+      "chinese_entries": [
+        {
+          "term": "启用网络加密",
+          "context": "是否启用基岩版网络加密（基于 ECDH 握手）。**强烈建议保持 true**，关闭后所有数据明文传输，存在严重安全风险。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "debug.level",
+      "chinese_entries": [
+        {
+          "term": "调试日志级别",
+          "context": "控制台调试信息详细程度。1 = 仅正常日志；2 = 显示调试信息；3 = 显示所有数据包详情（极大量日志，仅排查问题时使用）。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.default-format",
+      "chinese_entries": [
+        {
+          "term": "默认世界存储格式",
+          "context": "新建世界使用的存储格式。基岩版原生为 leveldb，mcbeta 为旧版兼容，anvil 为 Java 版格式（实验性，不推荐）。**强烈建议保持 leveldb**。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.auto-tick-rate",
+      "chinese_entries": [
+        {
+          "term": "自动调节 tick 频率",
+          "context": "服务器卡顿时自动降低 tick 频率以维持稳定。开启后服务器会动态调整以维持 20 TPS。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.auto-tick-rate-limit",
+      "chinese_entries": [
+        {
+          "term": "自动降频上限",
+          "context": "自动降频的最大倍率，避免服务器 tick 速率被降到不可接受的程度。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.base-tick-rate",
+      "chinese_entries": [
+        {
+          "term": "基础 tick 频率",
+          "context": "基础 tick 倍率。1 = 20 TPS（原版）；2 = 10 TPS（半速）；3 = 约 6.7 TPS。**调大可省 CPU 但游戏变卡**。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-settings.always-tick-players",
+      "chinese_entries": [
+        {
+          "term": "每 tick 都处理玩家",
+          "context": "true 时无论其他设置如何，每个 tick 都处理玩家逻辑。一般保持 false。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-sending.per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 发送区块数",
+          "context": "每个 tick（1/20 秒）向单个玩家发送多少个区块。**值越大玩家加载地形越快，但带宽和 CPU 占用越高**。低配服务器建议保持 4，高配可调到 8-16。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-sending.spawn-threshold",
+      "chinese_entries": [
+        {
+          "term": "出生前发送区块数",
+          "context": "玩家进服前至少需要发送多少个区块才能让其出生。值过低会导致玩家「悬空」或掉入未加载地形；过高会增加登录等待时间。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-sending.cache-chunks",
+      "chinese_entries": [
+        {
+          "term": "缓存区块序列化数据",
+          "context": "true 时在内存中保存区块的序列化副本，加快向多个玩家发送同一区块的速度。**适合玩家密集的静态世界**（如大厅服），动态生存服建议关闭以省内存。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-ticking.per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 处理区块上限",
+          "context": "每 tick 最多处理多少个区块（实体的 AI、红石、作物生长等）。**降低此值可缓解实体密集时的卡顿**，但作物生长和红石会变慢。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-ticking.tick-radius",
+      "chinese_entries": [
+        {
+          "term": "区块 tick 半径",
+          "context": "玩家周围多少区块半径内会被 tick。3 = 3 个区块半径（即 7×7 范围）。值越大玩家附近活动越流畅，但 CPU 占用越高。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-ticking.clear-tick-list",
+      "chinese_entries": [
+        {
+          "term": "清空 tick 列表",
+          "context": "是否在每次 tick 后清空待处理列表。开启可防止列表累积但可能影响连续的红石/作物逻辑。一般保持 false。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-generation.queue-size",
+      "chinese_entries": [
+        {
+          "term": "生成队列上限",
+          "context": "等待生成的区块队列最大长度。队列满时新请求会被丢弃。玩家快速移动（如鞘翅飞行）时可适当调大。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-generation.population-queue-size",
+      "chinese_entries": [
+        {
+          "term": "装饰队列上限",
+          "context": "等待「装饰」（放置花草、矿物、结构等）的区块队列最大长度。值过小会导致地形装饰滞后。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "leveldb.use-native",
+      "chinese_entries": [
+        {
+          "term": "使用原生 LevelDB",
+          "context": "true 时使用 C++ 原生 LevelDB 实现以获得更高性能。需服务器安装对应 native 库，否则回退到 Java 实现。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "leveldb.cache-size-mb",
+      "chinese_entries": [
+        {
+          "term": "LevelDB 缓存大小",
+          "context": "LevelDB 内存缓存大小。**值越大读取越快但占用内存越多**。大型世界建议 128-256 MB。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.autosave",
+      "chinese_entries": [
+        {
+          "term": "自动保存间隔",
+          "context": "服务器自动保存世界与玩家数据的间隔。6000 = 每 5 分钟保存一次。0 = 禁用自动保存（**不推荐**，崩服会丢失进度）。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player.save-player-data",
+      "chinese_entries": [
+        {
+          "term": "保存玩家数据",
+          "context": "true 时玩家数据保存为 players/<玩家名>.dat。false 时不保存，便于插件完全接管玩家数据。一般保持 true。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player.skin-change-cooldown",
+      "chinese_entries": [
+        {
+          "term": "皮肤更换冷却",
+          "context": "玩家两次更换皮肤之间的冷却时间。0 = 无冷却。防止玩家通过频繁换皮肤刷屏或攻击服务器。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player.attack-stop-sprint",
+      "chinese_entries": [
+        {
+          "term": "攻击停止冲刺",
+          "context": "true 时玩家攻击实体后会停止冲刺（原版行为）。false 时攻击不会打断冲刺（类似 1.8 PVP 手感）。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "worlds.world.generator",
+      "chinese_entries": [
+        {
+          "term": "主世界生成器",
+          "context": "主世界（world）使用的地形生成器。normal = 标准地形，flat = 超平坦，nether = 下界地形。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "worlds.nether.generator",
+      "chinese_entries": [
+        {
+          "term": "下界生成器",
+          "context": "下界世界（nether）的生成器。默认 nether。",
+          "source": "docs/server-cores/34-nukkit.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

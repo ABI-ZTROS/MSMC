@@ -1,0 +1,196 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "pufferfish"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/07-pufferfish.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "info.version",
+      "chinese_entries": [
+        {
+          "term": "配置版本号",
+          "context": "Pufferfish 配置文件的内部版本号，由程序自动维护，请勿手动修改。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-books",
+      "chinese_entries": [
+        {
+          "term": "允许写入书本",
+          "context": "是否允许玩家在成书上继续写入内容。容易成为复制漏洞（duping）目标的服务器可考虑关闭。可对单个玩家用权限节点 pufferfish.usebooks 覆盖此设置。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "tps-catchup",
+      "chinese_entries": [
+        {
+          "term": "卡顿后补帧追赶",
+          "context": "开启后，服务器在经历一次卡顿后会加速运行以维持 20 TPS（Spigot/Paper 的默认行为）。副作用：卡顿后生物可能短暂「瞬移」或快速移动。若你不希望出现这种追赶行为可关闭。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-suffocation-optimization",
+      "chinese_entries": [
+        {
+          "term": "窒息检测优化",
+          "context": "通过有选择地跳过窒息检测来优化性能，跳过方式在玩家视角下几乎察觉不到与原版的差异。绝大多数服务器建议保持开启；若追求 100% 原版行为可关闭。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-async-mob-spawning",
+      "chinese_entries": [
+        {
+          "term": "异步生物生成",
+          "context": "将生物生成所需的昂贵计算（并非真正生成生物，那样不安全）转移到异步线程。实体较多的服务器可提升约 15% 性能。**前置条件**：必须同时在 Paper 中开启 per-player-mob-spawns。⚠️ 此项仅在服务器启动时读取，热重载不会改变其值，修改后必须重启。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "inactive-goal-selector-throttle",
+      "chinese_entries": [
+        {
+          "term": "节流非激活实体 AI",
+          "context": "在实体处于「非激活（inactive）tick」时节流其 AI 目标选择器（goal selector）。可带来百分之几的性能提升，但对游戏玩法有轻微影响。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "projectile.max-loads-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 弹射物加载区块上限",
+          "context": "控制每个游戏 tick 内，所有弹射物合计允许同步加载多少个区块。降低此值可缓解弹射物密集时（如投射物农场、TNT 大炮）的卡顿，但可能导致弹射物飞行途中「穿模」或行为异常。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "projectile.max-loads-per-projectile",
+      "chinese_entries": [
+        {
+          "term": "单个弹射物加载区块上限",
+          "context": "控制单个弹射物在其整个生命周期内最多能加载多少个区块，超过即被自动移除。推荐值 8。可有效防止恶意玩家用大量投射物拖垮服务器。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "dab.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 DEAR 实体大脑优化",
+          "context": "是否启用动态大脑激活。开启后远离玩家的实体会降低 AI tick 频率。（旧键名 activation-range.enabled）",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "dab.start-distance",
+      "chinese_entries": [
+        {
+          "term": "DEAR 生效起始距离",
+          "context": "实体距玩家多远时开始受 DEAR 影响。距离小于此值的实体保持原版全速 tick。（旧键名 activation-range.start-distance）",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "dab.max-tick-freq",
+      "chinese_entries": [
+        {
+          "term": "最远实体最大 tick 间隔",
+          "context": "距离最远的实体多久 tick 一次 AI（寻路器与行为）。值越大，远处实体 AI 越省 CPU，但行为越迟钝。20 表示最远实体每秒 tick 一次。（旧键名 activation-range.max-tick-freq）",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "dab.activation-dist-mod",
+      "chinese_entries": [
+        {
+          "term": "距离对频率的影响系数",
+          "context": "距离对 tick 频率的影响强度。计算公式：频率 = (到玩家距离^2) / (2^本值)。想让远处实体 tick 更少（更省 CPU）用 7；想让远处实体 tick 更多（更接近原版）用 9。（旧键名 activation-range.activation-dist-mod）",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "dab.blacklisted-entities",
+      "chinese_entries": [
+        {
+          "term": "DEAR 忽略的实体列表",
+          "context": "不受 DEAR 影响、始终保持全速 AI 的实体列表（填实体类型 ID，如 minecraft:villager、minecraft:iron_golem）。适合需要保持敏锐 AI 的关键实体。（旧键名 activation-range.blacklisted-entities）",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-end-crystal-respawn",
+      "chinese_entries": [
+        {
+          "term": "允许末影水晶复活末影龙",
+          "context": "是否允许末影水晶复活末影龙。在预期会发生末影水晶战斗（PvP）的末地服务器上，关闭此项可避免玩家每次放置末影水晶时服务器执行昂贵的复活搜索，从而减少卡顿。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "flare.url",
+      "chinese_entries": [
+        {
+          "term": "Flare 分析服务地址",
+          "context": "生成性能分析报告时所使用的在线服务地址。一般无需修改，除非你部署了自托管的 Flare 服务。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "web-services.token",
+      "chinese_entries": [
+        {
+          "term": "Pufferfish/Airplane 在线服务令牌",
+          "context": "连接 Pufferfish/Airplane 在线工具（如 Flare 远程分析）所需的访问令牌。留空则禁用。填写有效令牌后，服务器启动时会初始化 Flare 并注册 /flare 命令。修改后需重启以重新初始化。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sentry-dsn",
+      "chinese_entries": [
+        {
+          "term": "Sentry 错误上报 DSN",
+          "context": "Sentry 数据源名称（DSN），用于将服务器错误以详尽堆栈形式上报到 Sentry。留空则禁用。可从 https://sentry.io/ 获取。也可通过环境变量 SENTRY_DSN 设置（环境变量优先级高于本配置）。填写后服务器启动时初始化 Sentry，修改需重启。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.disable-method-profiler",
+      "chinese_entries": [
+        {
+          "term": "禁用方法性能分析器",
+          "context": "是否禁用 Minecraft 原生的方法级性能分析器（method profiler）。该分析器在生产环境几乎无用且会带来额外开销，默认关闭以节省性能。仅在需要排查原版内部性能问题时才开启。",
+          "source": "docs/server-cores/07-pufferfish.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

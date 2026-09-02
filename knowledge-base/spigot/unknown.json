@@ -1,0 +1,1006 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "spigot"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/03-spigot.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "settings.bungeecord",
+      "chinese_entries": [
+        {
+          "term": "启用 BungeeCord 支持",
+          "context": "是否前置 BungeeCord 代理。⚠️ 启用后 server.properties 的 online-mode 必须设为 false，由 BungeeCord 做正版验证。否则玩家可绕过验证伪造身份。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.timeout-time",
+      "chinese_entries": [
+        {
+          "term": "卡死超时阈值",
+          "context": "主线程连续无响应多少秒后判定为「卡死」并触发 watchdog。0 禁用 watchdog（不推荐）。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.restart-on-crash",
+      "chinese_entries": [
+        {
+          "term": "崩溃自动重启",
+          "context": "服务器崩溃时是否自动执行 restart-script。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.restart-script",
+      "chinese_entries": [
+        {
+          "term": "重启脚本路径",
+          "context": "崩溃自动重启时执行的脚本路径。Linux 用 ./start.sh，Windows 用 start.bat。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.sample-count",
+      "chinese_entries": [
+        {
+          "term": "状态采样人数",
+          "context": "服务器列表 ping 时显示的「在线玩家预览」人数。0 不显示预览。降低可减少网络包。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.player-shuffle",
+      "chinese_entries": [
+        {
+          "term": "玩家洗牌",
+          "context": "是否在每 tick 随机打乱玩家处理顺序。可避免某些玩家始终先被处理的优势，但略增 CPU 开销。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.moved-wrongly-threshold",
+      "chinese_entries": [
+        {
+          "term": "移动错误阈值",
+          "context": "玩家移动距离与服务器预期差距超过此值时判定为「移动错误」并回滚。值越小越严格。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.moved-too-quickly-multiplier",
+      "chinese_entries": [
+        {
+          "term": "移动过快倍率",
+          "context": "玩家单 tick 移动距离超过此倍率的「预期距离」时判定为「移动过快」并回滚。降低可更严格防飞行。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.netty-threads",
+      "chinese_entries": [
+        {
+          "term": "Netty IO 线程数",
+          "context": "处理玩家网络数据包的 Netty 线程数。大型服可调到 8–16。一般保持默认。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.log-villager-deaths",
+      "chinese_entries": [
+        {
+          "term": "记录村民死亡",
+          "context": "是否在日志中记录村民死亡事件。村民农场较多的服务器可关闭以减少日志。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.log-named-deaths",
+      "chinese_entries": [
+        {
+          "term": "记录命名实体死亡",
+          "context": "是否在日志中记录用命名牌命名过的实体死亡事件。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.save-user-cache",
+      "chinese_entries": [
+        {
+          "term": "保存用户缓存",
+          "context": "是否将 usercache.json 写入磁盘。关闭后仅内存缓存，重启丢失玩家信息。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.user-cache-size",
+      "chinese_entries": [
+        {
+          "term": "用户缓存大小",
+          "context": "usercache.json 缓存的最大玩家数。超过时淘汰最旧记录。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.plugin-profiling",
+      "chinese_entries": [
+        {
+          "term": "插件性能分析",
+          "context": "是否启用 /timings 命令记录插件性能数据。开启有少量开销，仅在排查性能时启用。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.connection-throttle",
+      "chinese_entries": [
+        {
+          "term": "连接节流",
+          "context": "同一玩家两次连接之间的最小间隔。0 无限制。降低可让玩家快速重连，但易被刷连接攻击。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.internal-ping",
+      "chinese_entries": [
+        {
+          "term": "内部 ping 响应",
+          "context": "是否响应服务器内部的 ping 请求。一般保持 false。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.hidden-method",
+      "chinese_entries": [
+        {
+          "term": "隐藏方法",
+          "context": "隐藏特定的方法调用，调试用。一般留空。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.attributes",
+      "chinese_entries": [
+        {
+          "term": "自定义属性",
+          "context": "自定义实体属性上限。键为属性名，值为 max/min。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.attribute.maxHealth.max",
+      "chinese_entries": [
+        {
+          "term": "最大生命值上限",
+          "context": "实体最大生命值属性的上限。降低可防止插件设置变态血量。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.attribute.maxHealth.min",
+      "chinese_entries": [
+        {
+          "term": "最大生命值下限",
+          "context": "实体最大生命值属性的下限。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.attribute.attackDamage.max",
+      "chinese_entries": [
+        {
+          "term": "攻击伤害上限",
+          "context": "实体攻击伤害属性的上限。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.attribute.attackDamage.min",
+      "chinese_entries": [
+        {
+          "term": "攻击伤害下限",
+          "context": "实体攻击伤害属性的下限。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.attribute.movementSpeed.max",
+      "chinese_entries": [
+        {
+          "term": "移动速度上限",
+          "context": "实体移动速度属性的上限。降低可防止插件设置变态速度。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.attribute.movementSpeed.min",
+      "chinese_entries": [
+        {
+          "term": "移动速度下限",
+          "context": "实体移动速度属性的下限。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.replace-commands",
+      "chinese_entries": [
+        {
+          "term": "命令替换列表",
+          "context": "用 Spigot 实现替换 Vanilla 命令的列表。替换后命令由 Spigot 处理，支持插件 Hook。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.spam-exclusions",
+      "chinese_entries": [
+        {
+          "term": "命令刷屏排除",
+          "context": "不计入命令刷屏检测的命令列表。如 [] 或 [say, me]。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.log",
+      "chinese_entries": [
+        {
+          "term": "记录命令日志",
+          "context": "是否在日志中记录玩家执行的命令。关闭可减少日志量，但失去审计能力。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.silent-commandblock-console",
+      "chinese_entries": [
+        {
+          "term": "静默命令方块日志",
+          "context": "是否禁止命令方块执行命令时在控制台输出日志。开启可大幅减少日志噪音。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.silent-commandblock-console",
+      "chinese_entries": [
+        {
+          "term": "静默命令方块输出",
+          "context": "命令方块执行命令时是否在控制台静默。⚠️ 开启后命令方块日志完全不输出。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "messages.whitelist",
+      "chinese_entries": [
+        {
+          "term": "白名单提示",
+          "context": "非白名单玩家加入时显示的提示。支持 § 颜色码。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "messages.unknown-command",
+      "chinese_entries": [
+        {
+          "term": "未知命令提示",
+          "context": "覆盖 bukkit.yml 的未知命令提示。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "messages.server-full",
+      "chinese_entries": [
+        {
+          "term": "服务器满员提示",
+          "context": "服务器满员时新玩家加入显示的提示。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "messages.outdated-client",
+      "chinese_entries": [
+        {
+          "term": "客户端版本过低提示",
+          "context": "客户端版本过低时显示。{0} = 服务器版本号。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "messages.outdated-server",
+      "chinese_entries": [
+        {
+          "term": "服务器版本过低提示",
+          "context": "客户端版本过高时显示。{0} = 服务器版本号。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "messages.restart",
+      "chinese_entries": [
+        {
+          "term": "重启提示",
+          "context": "服务器重启时踢出玩家显示的提示。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "stats.disable-saving",
+      "chinese_entries": [
+        {
+          "term": "禁用统计保存",
+          "context": "是否禁用玩家自定义统计（成就、距离等）的保存。⚠️ 关闭后玩家统计不持久化。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "stats.forced-stats",
+      "chinese_entries": [
+        {
+          "term": "强制统计值",
+          "context": "强制设置的统计数据值。键为统计名，值为数值。如 stats.forced-stats.minecraft.custom:minecraft.jump: 100。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "advancements.disable-saving",
+      "chinese_entries": [
+        {
+          "term": "禁用成就保存",
+          "context": "是否禁用玩家成就进度保存。⚠️ 关闭后玩家成就不持久化。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "advancements.disabled",
+      "chinese_entries": [
+        {
+          "term": "禁用成就列表",
+          "context": "禁用的成就命名空间列表。如 [minecraft:story/minecraft, minecraft:end/dragon_egg]。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.spawn-radius",
+      "chinese_entries": [
+        {
+          "term": "出生保护半径",
+          "context": "出生点周围多少方块半径内仅 OP 可破坏。⚠️ 与 server.properties 的 spawn-protection 二选一，Spigot 用此键覆盖。0 禁用。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.view-distance",
+      "chinese_entries": [
+        {
+          "term": "视野距离",
+          "context": "每个世界的视野距离。-1 继承 server.properties。覆盖可让末地视距更小。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.simulation-distance",
+      "chinese_entries": [
+        {
+          "term": "模拟距离",
+          "context": "每个世界的模拟距离。-1 继承 server.properties。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.verbose",
+      "chinese_entries": [
+        {
+          "term": "详细日志",
+          "context": "是否在启动时打印世界配置详情。生产环境可关闭。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.animals",
+      "chinese_entries": [
+        {
+          "term": "动物激活范围",
+          "context": "玩家距动物多少方块内时动物 AI 才 tick。值越小越省 CPU，但动物反应迟钝。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.monsters",
+      "chinese_entries": [
+        {
+          "term": "怪物激活范围",
+          "context": "玩家距怪物多少方块内时怪物 AI 才 tick。值越小越省 CPU，但怪物不会主动攻击远处玩家。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.raiders",
+      "chinese_entries": [
+        {
+          "term": "袭击者激活范围",
+          "context": "玩家距袭击者（掠夺者等）多少方块内时其 AI 才 tick。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.misc",
+      "chinese_entries": [
+        {
+          "term": "其他实体激活范围",
+          "context": "玩家距其他实体（掉落物、矿车等）多少方块内时其 AI 才 tick。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.water",
+      "chinese_entries": [
+        {
+          "term": "水生生物激活范围",
+          "context": "玩家距水生生物多少方块内时其 AI 才 tick。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.tick-inactive-villagers",
+      "chinese_entries": [
+        {
+          "term": "休眠村民仍 tick",
+          "context": "true 时村民即使在激活范围外仍 tick（保证农场工作）。false 严格按范围休眠，更省 CPU 但村民农场不工作。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.wake-up-inactive.animals-max-per-tick",
+      "chinese_entries": [
+        {
+          "term": "唤醒动物上限",
+          "context": "每 tick 最多唤醒多少个休眠动物。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.wake-up-inactive.animals-every",
+      "chinese_entries": [
+        {
+          "term": "唤醒动物间隔",
+          "context": "多少 tick 尝试一次唤醒休眠动物。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.wake-up-inactive.monsters-max-per-tick",
+      "chinese_entries": [
+        {
+          "term": "唤醒怪物上限",
+          "context": "每 tick 最多唤醒多少个休眠怪物。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.wake-up-inactive.monsters-every",
+      "chinese_entries": [
+        {
+          "term": "唤醒怪物间隔",
+          "context": "多少 tick 尝试一次唤醒休眠怪物。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-tracking-range.players",
+      "chinese_entries": [
+        {
+          "term": "玩家追踪范围",
+          "context": "其他玩家可见你的距离。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-tracking-range.animals",
+      "chinese_entries": [
+        {
+          "term": "动物追踪范围",
+          "context": "动物对玩家的可见距离。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-tracking-range.monsters",
+      "chinese_entries": [
+        {
+          "term": "怪物追踪范围",
+          "context": "怪物对玩家的可见距离。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-tracking-range.misc",
+      "chinese_entries": [
+        {
+          "term": "其他实体追踪范围",
+          "context": "其他实体（掉落物、矿车、经验球等）的可见距离。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-tracking-range.other",
+      "chinese_entries": [
+        {
+          "term": "其他实体追踪范围",
+          "context": "其他类型实体（如展示框）的可见距离。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-tracking-range.display",
+      "chinese_entries": [
+        {
+          "term": "展示实体追踪范围",
+          "context": "1.19.4+ 展示实体（物品展示、文字展示、方块展示）的可见距离。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.ticks-per-spawns.animal-spawns",
+      "chinese_entries": [
+        {
+          "term": "动物生成间隔",
+          "context": "多少 tick 尝试一次动物生成。-1 继承 bukkit.yml。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.ticks-per-spawns.monster-spawns",
+      "chinese_entries": [
+        {
+          "term": "怪物生成间隔",
+          "context": "多少 tick 尝试一次怪物生成。-1 继承 bukkit.yml。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.chunk-gc-period-in-ticks",
+      "chinese_entries": [
+        {
+          "term": "区块 GC 间隔",
+          "context": "多少 tick 执行一次区块 GC。⚠️ Paper 已废弃此机制。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.flying-monsters",
+      "chinese_entries": [
+        {
+          "term": "飞行怪物激活范围",
+          "context": "飞行怪物（恶魂、幻翼等）的激活范围。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.random-light-updates",
+      "chinese_entries": [
+        {
+          "term": "随机光照更新",
+          "context": "是否启用随机光照更新。⚠️ 已弃用，保持 false。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.mob-spawn-range",
+      "chinese_entries": [
+        {
+          "term": "生物生成范围",
+          "context": "玩家周围多少区块半径内尝试生成生物。降低可减少怪物生成密度。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.hopper-transfer",
+      "chinese_entries": [
+        {
+          "term": "漏斗传输间隔",
+          "context": "漏斗传输物品的间隔 tick。8 = 每 0.4 秒传输一次。调大可省 CPU 但漏斗变慢。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.hopper-check",
+      "chinese_entries": [
+        {
+          "term": "漏斗检测间隔",
+          "context": "漏斗检测上方物品的间隔 tick。调大可省 CPU 但漏斗响应慢。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.hopper-amount",
+      "chinese_entries": [
+        {
+          "term": "漏斗每次传输数",
+          "context": "漏斗每次传输多少个物品。调大可让漏斗更快（同时改变 Vanilla 平衡）。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.max-entity-collisions",
+      "chinese_entries": [
+        {
+          "term": "实体碰撞上限",
+          "context": "单个实体最多同时与多少个实体发生碰撞。0 禁用碰撞。降低可缓解实体密集卡顿（如鸡农场）。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.max-tick-time.entity",
+      "chinese_entries": [
+        {
+          "term": "实体 tick 上限",
+          "context": "每 tick 实体处理最大耗时。超过即放弃剩余实体 tick。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.max-tick-time.tile",
+      "chinese_entries": [
+        {
+          "term": "方块实体 tick 上限",
+          "context": "每 tick 方块实体处理最大耗时。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.dragon-death-sound-radius",
+      "chinese_entries": [
+        {
+          "term": "末影龙死亡声音半径",
+          "context": "末影龙死亡声音可听范围。0 = 全服可听。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.seed-village",
+      "chinese_entries": [
+        {
+          "term": "村庄种子",
+          "context": "村庄生成种子。修改可让村庄重新分布（仅影响新生成区块）。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.seed-desert",
+      "chinese_entries": [
+        {
+          "term": "沙漠神殿种子",
+          "context": "沙漠神殿生成种子。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.seed-monument",
+      "chinese_entries": [
+        {
+          "term": "海底神殿种子",
+          "context": "海底神殿生成种子。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.seed-slime",
+      "chinese_entries": [
+        {
+          "term": "史莱姆种子",
+          "context": "史莱姆区块生成种子。修改可改变史莱姆区块分布。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.seed-stronghold",
+      "chinese_entries": [
+        {
+          "term": "末地要塞种子",
+          "context": "末地要塞生成种子。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.seed-outpost",
+      "chinese_entries": [
+        {
+          "term": "掠夺者前哨站种子",
+          "context": "掠夺者前哨站生成种子。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.seed-endcity",
+      "chinese_entries": [
+        {
+          "term": "末地城种子",
+          "context": "末地城生成种子。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.seed-nether",
+      "chinese_entries": [
+        {
+          "term": "下界结构种子",
+          "context": "下界堡垒等结构生成种子。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.seed-mansion",
+      "chinese_entries": [
+        {
+          "term": "林地府邸种子",
+          "context": "林地府邸生成种子。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.seed-fossil",
+      "chinese_entries": [
+        {
+          "term": "化石种子",
+          "context": "化石生成种子。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.seed-portal",
+      "chinese_entries": [
+        {
+          "term": "传送门种子",
+          "context": "传送门生成种子。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.hanging-tick-frequency",
+      "chinese_entries": [
+        {
+          "term": "悬挂实体 tick 频率",
+          "context": "画、展示框等悬挂实体的 tick 频率。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.zombie-aggressive-towards-villager",
+      "chinese_entries": [
+        {
+          "term": "僵尸主动攻击村民",
+          "context": "僵尸是否主动攻击村民。关闭可降低村民死亡（但失去 Vanilla 玩法）。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default nerf-spawner-mobs",
+      "chinese_entries": [
+        {
+          "term": "弱化刷怪笼怪物",
+          "context": "刷怪笼生成的怪物是否被弱化（无 AI、不攻击、不移动）。开启可大幅省 CPU，但破坏刷怪塔。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.enable-zombie-pigmen-portal-spawns",
+      "chinese_entries": [
+        {
+          "term": "传送门生成僵尸猪灵",
+          "context": "下界传送门是否生成僵尸猪灵。关闭可防止刷怪塔与意外刷怪。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.item-merge-radius",
+      "chinese_entries": [
+        {
+          "term": "物品合并半径",
+          "context": "掉落物合并的距离。调大可减少实体数（省 CPU），但农场掉落物合并可能影响收集。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.exp-merge-radius",
+      "chinese_entries": [
+        {
+          "term": "经验球合并半径",
+          "context": "经验球合并的距离。调大可减少实体数。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.max-growth-height",
+      "chinese_entries": [
+        {
+          "term": "最大生长高度",
+          "context": "仙人掌、甘蔗的最大生长高度（方块）。超过即停止生长。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.growth-modifier",
+      "chinese_entries": [
+        {
+          "term": "作物生长修正",
+          "context": "各种作物的生长速度修正百分比。100 = Vanilla 速度；200 = 两倍速；50 = 半速。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.hopper-can-load-chunks",
+      "chinese_entries": [
+        {
+          "term": "漏斗可加载区块",
+          "context": "漏斗上方无方块时是否触发区块加载。关闭可防止漏斗农场卡服。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.arrow-despawn-rate",
+      "chinese_entries": [
+        {
+          "term": "箭矢消失速率",
+          "context": "箭矢多少 tick 后消失。1200 = 60 秒。降低可减少箭矢积累。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.trident-despawn-rate",
+      "chinese_entries": [
+        {
+          "term": "三叉戟消失速率",
+          "context": "三叉戟多少 tick 后消失。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entity-activation-range.water-animals",
+      "chinese_entries": [
+        {
+          "term": "水生动物激活范围",
+          "context": "水生动物（鱿鱼等）的激活范围。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.merge-radius.item",
+      "chinese_entries": [
+        {
+          "term": "物品合并半径",
+          "context": "同 item-merge-radius。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.merge-radius.exp",
+      "chinese_entries": [
+        {
+          "term": "经验合并半径",
+          "context": "同 exp-merge-radius。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "players.disable-saving",
+      "chinese_entries": [
+        {
+          "term": "禁用玩家数据保存",
+          "context": "是否禁用玩家数据（背包、坐标、生命）保存。⚠️ 关闭后玩家进度不持久化。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    },
+    {
+      "key_path": "players.disable-advancement-saving",
+      "chinese_entries": [
+        {
+          "term": "禁用成就保存",
+          "context": "是否禁用玩家成就进度保存。",
+          "source": "docs/server-cores/03-spigot.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

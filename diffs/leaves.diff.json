@@ -1,0 +1,2467 @@
+{
+  "core": "leaves",
+  "generated_at": "2026-09-02T17:48:18Z",
+  "configs": {
+    "leaves.yml": {
+      "versions_scanned": [
+        "1.21.11-157-a8bb272"
+      ],
+      "total_keys": 177,
+      "keys": [
+        {
+          "path": "config-version",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "6",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.fix.collision-behavior",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "PAPER",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.fix.stacked-container-destroyed-drop",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.fix.vanilla-display-name",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.fix.vanilla-hopper",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.fix.vanilla-portal-handle",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.async-keepalive.enable",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.async-keepalive.timeout-seconds",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "20",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.auto-update.allow-experimental",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.auto-update.download-source",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "application",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.auto-update.enable",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.auto-update.time",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "[\"14:00\", \"2:00\"]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.bstats-privacy-mode",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.disable-method-profiler",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.dont-respond-ping-before-start-fully",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.extra-yggdrasil-service.enable",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.extra-yggdrasil-service.login-protect",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.extra-yggdrasil-service.urls",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "[\"https://url.with.authlib-injector-yggdrasil\"]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.force-minecraft-command",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.leaves-packet-event",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.no-chat-sign",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.server-lang",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "en_us",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.misc.server-mod-name",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "Leaves",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.avoid-anvil-too-expensive",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.bedrock-break-list",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.bow-infinity-fix",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.container-passthrough",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.creative-no-clip",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.despawn-enderman-with-block",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.disable-check-out-of-order-command",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.disable-distance-check-for-use-item",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.disable-packet-limit",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.disable-vault-blacklist",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.elytra-aeronautics.message",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.elytra-aeronautics.message-end",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "Flight exit cruise mode",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.elytra-aeronautics.message-start",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "Flight enter cruise mode",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.elytra-aeronautics.no-chunk-height",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "500.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.elytra-aeronautics.no-chunk-load",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.elytra-aeronautics.no-chunk-speed",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "-1.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.exp-orb-absorb-mode",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "VANILLA",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.cache-skin",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.enable",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.in-game.always-send-data",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.in-game.enable-locator-bar",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.in-game.simulation-distance",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "-1",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.in-game.skip-sleep-check",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.in-game.spawn-phantom",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.in-game.tick-type",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "NETWORK",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.limit",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "10",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.manual-save-and-load",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.modify-config",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.open-fakeplayer-inventory",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.prefix",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.regen-amount",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "0.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.resident-fakeplayer",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.suffix",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.unable-fakeplayer-names",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "[\"player-name\"]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fakeplayer.use-action",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fix-stuck-zombified-piglin-anger-target",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.fix-update-suppression-crash",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.flatten-triangular-distribution",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.follow-tick-sequence-merge",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.force-void-trade",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.hopper-counter.enable",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.hopper-counter.unlimited-speed",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.lava-riptide",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.mc-technical-survival-mode",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.allow-anvil-destroy-item-entities",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.allow-entity-portal-with-passenger",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.allow-inf-nan-motion-values",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.block-updater.cce-update-suppression",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.block-updater.instant-block-updater-reintroduced",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.block-updater.old-block-remove-behaviour",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.block-updater.redstone-ignore-upwards-update",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.block-updater.sound-update-suppression",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.copper-bulb-1gt-delay",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.crafter-1gt-delay",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.disable-LivingEntity-ai-step-alive-check",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.disable-gateway-portal-entity-ticking",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.disable-item-damage-check",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.ender-dragon-part-can-use-end-portal",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.keep-leash-connect-when-use-firework",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.old-hopper-suck-in-behavior",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.old-minecart-motion-behavior",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.old-projectile-explosion-behavior",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.old-raid-behavior",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.old-throwable-projectile-tick-order",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.old-zombie-piglin-drop",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.old-zombie-reinforcement",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.rng-fishing",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.shears-in-dispenser-can-zero-amount",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.spawn-invulnerable-time",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.tnt-wet-explosion-no-item-damage",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.tripwire-and-hook-behavior.string-tripwire-hook-duplicate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.tripwire-and-hook-behavior.tripwire-behavior",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "VANILLA_21",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.villager-infinite-discounts",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.void-trade",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.minecraft-old.zero-tick-plants",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.movable-budding-amethyst",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.no-block-update-command",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.no-feather-falling-trample",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.no-tnt-place-update",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.player-operation-limiter",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.redstone-shears-wrench",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.renewable-coral",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "FALSE",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.renewable-deepslate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.renewable-elytra",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "-1.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.renewable-sponges",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.return-nether-portal-fix",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.shared-villager-discounts",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.shave-snow-layers",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.shulker-box.same-nbt-stackable",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.shulker-box.stackable-shulker-boxes",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.snowball-and-egg-can-knockback-player",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.spectator-dont-get-advancement",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.spider-jockeys-drop-gapples",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "-1.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.stick-change-armorstand-arm-status",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.modify.use-vanilla-random",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.cache-climb-check",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.cache-ignite-odds",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.check-frozen-ticks-before-landing-block",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.dont-send-useless-entity-packets",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.enable-suffocation-optimization",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.equipment-tracking",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.faster-chunk-serialization",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.inactive-goal-selector-disable",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.optimize-noise-generation",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.optimize-sun-burn-tick",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.optimized-CubePointRange",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.optimized-dragon-respawn",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.reduce-chuck-load-and-lookup",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.reduce-entity-allocations",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.remove.damage-lambda",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.remove.tick-guard-lambda",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.skip-cloning-advancement-criteria",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.skip-entity-move-if-movement-is-zero",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.skip-negligible-planar-movement-multiplication",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.skip-secondary-POI-sensor-if-absent",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.sleeping-block-entity",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.performance.store-mob-counts-in-array",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.alternative-block-placement",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "NONE",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.appleskin.protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.appleskin.sync-tick-interval",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "20",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.bbor-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.bladeren.mspt-sync-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.bladeren.mspt-sync-tick-interval",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "20",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.bladeren.protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.chat-image-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.jade-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.leaves-carpet-support",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.pca.pca-sync-player-entity",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "OPS",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.pca.pca-sync-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.rei-server-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.servux.entity-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.servux.hud-enabled-loggers",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "[\"TPS\", \"MOB_CAPS\"]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.servux.hud-logger-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.servux.hud-metadata-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.servux.hud-metadata-protocol-share-seed",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.servux.hud-update-interval",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "1",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.servux.litematics.enable",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.servux.litematics.max-nbt-size",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "2097152",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.servux.structure-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.strict-mode",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.syncmatica.enable",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.syncmatica.quota",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.syncmatica.quota-limit",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "40000000",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.xaero-map-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.protocol.xaero-map-server-id",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "857681981",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.region.format",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "ANVIL",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.region.linear.compression-level",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "1",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.region.linear.flush-delay-ms",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.region.linear.flush-max-threads",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "6",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.region.linear.max-flush-per-run",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "256",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.region.linear.region-unload-check-interval-ms",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "30000",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.region.linear.region-unload-idle-ms",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "600000",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.region.linear.use-virtual-thread",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.region.linear.version",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "V2",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        }
+      ]
+    },
+    "paper-global.yml": {
+      "versions_scanned": [
+        "1.21.11-157-a8bb272"
+      ],
+      "total_keys": 94,
+      "keys": [
+        {
+          "path": "_version",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "31",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "anticheat.obfuscation.items.all-models.also-obfuscate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "[]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "anticheat.obfuscation.items.all-models.dont-obfuscate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "[\"minecraft:lodestone_tracker\"]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "anticheat.obfuscation.items.all-models.sanitize-count",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "anticheat.obfuscation.items.enable-item-obfuscation",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "anticheat.obfuscation.items.model-overrides.minecraft:elytra.also-obfuscate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "[]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "anticheat.obfuscation.items.model-overrides.minecraft:elytra.dont-obfuscate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "[\"minecraft:damage\"]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "anticheat.obfuscation.items.model-overrides.minecraft:elytra.sanitize-count",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "block-updates.disable-chorus-plant-updates",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "block-updates.disable-mushroom-block-updates",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "block-updates.disable-noteblock-updates",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "block-updates.disable-tripwire-updates",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "chunk-loading-advanced.auto-config-send-distance",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "chunk-loading-advanced.player-max-concurrent-chunk-generates",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "0",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "chunk-loading-advanced.player-max-concurrent-chunk-loads",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "0",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "chunk-loading-basic.player-max-chunk-generate-rate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "-1.0",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "chunk-loading-basic.player-max-chunk-load-rate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "100.0",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "chunk-loading-basic.player-max-chunk-send-rate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "75.0",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "chunk-system.io-threads",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "-1",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "chunk-system.worker-threads",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "-1",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "collisions.enable-player-collisions",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "collisions.send-full-pos-for-hard-colliding-entities",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "commands.ride-command-allow-player-as-vehicle",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "commands.suggest-player-names-when-null-tab-completions",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "commands.time-command-affects-all-worlds",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "console.enable-brigadier-completions",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "console.enable-brigadier-highlighting",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "console.has-all-permissions",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "item-validation.book-size.page-max",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "2560",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "item-validation.book-size.total-multiplier",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "0.98",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "item-validation.book.author",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "8192",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "item-validation.book.page",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "16384",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "item-validation.book.title",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "8192",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "item-validation.display-name",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "8192",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "item-validation.lore-line",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "8192",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "item-validation.resolve-selectors-in-books",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "logging.deobfuscate-stacktraces",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.kick.authentication-servers-down",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "<lang:multiplayer.disconnect.authservers_down>",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.kick.connection-throttle",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "Connection throttled! Please wait before reconnecting.",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.kick.flying-player",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "<lang:multiplayer.disconnect.flying>",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.kick.flying-vehicle",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "<lang:multiplayer.disconnect.flying>",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.no-permission",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "<red>I'm sorry, but you do not have permission to perform this command. Please contact the server administrators if you believe that this is in error.",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.use-display-name-in-quit-message",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "misc.chat-threads.chat-executor-core-size",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "-1",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.chat-threads.chat-executor-max-size",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "-1",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.client-interaction-leniency-distance",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "default",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.compression-level",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "default",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.enable-nether",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "misc.fix-far-end-terrain-generation",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "misc.load-permissions-yml-before-plugins",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.max-joins-per-tick",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "5",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.prevent-negative-villager-demand",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.region-file-cache-size",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "256",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.send-full-pos-for-item-entities",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.strict-advancement-dimension-check",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.use-alternative-luck-formula",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.use-dimension-type-for-custom-spawners",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "misc.xp-orb-groups-per-area",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "default",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "packet-limiter.all-packets.action",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "KICK",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "packet-limiter.all-packets.interval",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "7.0",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "packet-limiter.all-packets.max-packet-rate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "500.0",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "packet-limiter.kick-message",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "<red><lang:disconnect.exceeded_packet_rate>",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "packet-limiter.overrides.minecraft:place_recipe.action",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "DROP",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "packet-limiter.overrides.minecraft:place_recipe.interval",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "4.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "packet-limiter.overrides.minecraft:place_recipe.max-packet-rate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "5.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "player-auto-save.max-per-tick",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "-1",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "player-auto-save.rate",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "-1",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "proxies.bungee-cord.online-mode",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "proxies.proxy-protocol",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "proxies.velocity.enabled",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "proxies.velocity.online-mode",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "proxies.velocity.secret",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "scoreboards.save-empty-scoreboard-teams",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "scoreboards.track-plugin-scoreboards",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "spam-limiter.incoming-packet-threshold",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "300",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "spam-limiter.recipe-spam-increment",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "1",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "spam-limiter.recipe-spam-limit",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "20",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "spam-limiter.tab-spam-increment",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "1",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "spam-limiter.tab-spam-limit",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "500",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "spark.enable-immediately",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "spark.enabled",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "unsupported-settings.allow-headless-pistons",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "unsupported-settings.allow-permanent-block-break-exploits",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "unsupported-settings.allow-piston-duplication",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "unsupported-settings.allow-unsafe-end-portal-teleportation",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "unsupported-settings.compression-format",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "ZLIB",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "unsupported-settings.oversized-item-component-sanitizer.dont-sanitize",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "[]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "unsupported-settings.perform-username-validation",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "unsupported-settings.skip-tripwire-hook-placement-validation",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "unsupported-settings.skip-vanilla-damage-tick-when-shield-blocked",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "unsupported-settings.update-equipment-on-player-actions",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "update-checker.enabled",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "watchdog.early-warning-delay",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "10000",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "watchdog.early-warning-every",
+          "introduced_in": "1.21.11-157-a8bb272",
+          "removed_in": null,
+          "default_latest": "5000",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        }
+      ]
+    }
+  },
+  "summary": {
+    "new_keys": 215,
+    "existing": 56,
+    "removed": 0,
+    "drifted": 0
+  }
+}

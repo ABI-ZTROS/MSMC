@@ -1,0 +1,23 @@
+[
+  {
+    "core": "leaves",
+    "version": "1.21.11-157-a8bb272",
+    "category": "run-fail",
+    "detail": "timeout (90s)\nPicked up JAVA_TOOL_OPTIONS: -Djava.awt.headless=true\n[16:24:50 INFO]: [Leavesclip] Downloading mojang_1.21.11.jar\n[16:27:07 ERROR]: [Leavesclip] Failed to download mojang_1.21.11.jar",
+    "timestamp": "2026-09-02T16:27:07Z"
+  },
+  {
+    "core": "leaves",
+    "version": "1.21.11-157-a8bb272",
+    "category": "run-fail",
+    "detail": "timeout (90s)\nPicked up JAVA_TOOL_OPTIONS: -Djava.awt.headless=true\n[16:31:41 INFO]: [Leavesclip] Downloading mojang_1.21.11.jar\n[16:33:56 ERROR]: [Leavesclip] Failed to download mojang_1.21.11.jar",
+    "timestamp": "2026-09-02T16:33:56Z"
+  },
+  {
+    "core": "akarin",
+    "version": "1.12.2-R0.4.4",
+    "category": "run-fail",
+    "detail": "collected 1 config files  | early-exit code=1\n\tat java.base/java.lang.Class.forName(Class.java:398)\n\tat net.minecraft.launchwrap",
+    "timestamp": "2026-09-02T16:56:50Z"
+  }
+]

@@ -1,0 +1,156 @@
+{
+  "config_file": "catserver.yml",
+  "cores": [
+    "catserver"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/29-catserver.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "world.keepSpawnInMemory",
+      "chinese_entries": [
+        {
+          "term": "出生点常驻内存",
+          "context": "是否始终将出生点区域区块加载到内存中。开启可避免新玩家进入时卡顿，但占用内存。小型服建议 true，内存紧张的大型服可考虑 false。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.forceSaveOnWatchdog",
+      "chinese_entries": [
+        {
+          "term": "看门狗触发时强制保存",
+          "context": "当服务器因 watchdog 超时崩溃时是否强制保存世界数据。强烈建议 true 防止数据丢失。注意：可能延长崩溃恢复时间。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.worldGenMaxTickTime",
+      "chinese_entries": [
+        {
+          "term": "世界生成最大 tick 时间",
+          "context": "单次 tick 内世界生成的最大耗时。降低此值可减少世界生成卡顿，但会延长生成完成时间。玩家频繁飞行（鞘翅）时建议调高。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fakePlayer.permissions",
+      "chinese_entries": [
+        {
+          "term": "假人默认权限列表",
+          "context": "为服务器假人添加的默认权限节点列表。配合 Essentials 等插件实现假人自动建造、交互等功能。每行一个权限节点。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fakePlayer.eventPass",
+      "chinese_entries": [
+        {
+          "term": "假人事件传递",
+          "context": "是否让假人触发玩家事件（如方块破坏、实体交互）。设为 false 减少服务器负载（推荐）；设为 true 可实现更真实的假人行为（部分插件可能误判为真人玩家）。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "plugin.patcher.enableDynmapCompatible",
+      "chinese_entries": [
+        {
+          "term": "Dynmap 兼容补丁",
+          "context": "修复 Dynmap 地图插件与 Forge 模组的兼容性问题。使用 Dynmap 生成 3D 地图时必须开启。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "plugin.patcher.enableWorldEditCompatible",
+      "chinese_entries": [
+        {
+          "term": "WorldEdit 兼容补丁",
+          "context": "解决 WorldEdit 与部分 Forge 模组的方块操作冲突（如模组自定义方块无法被编辑）。建议始终开启，除非确认不使用 WorldEdit。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "plugin.patcher.enableEssentialsNewVersionCompatible",
+      "chinese_entries": [
+        {
+          "term": "Essentials 新版兼容补丁",
+          "context": "支持 EssentialsX 等新版本 Essentials 插件，修复指令冲突、权限管理等兼容性问题。使用 EssentialsX 时必须开启。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimization.async-chunk-loading",
+      "chinese_entries": [
+        {
+          "term": "异步区块加载",
+          "context": "是否启用异步区块加载。开启可减少主线程阻塞，提升玩家飞行/传送时的流畅度。⚠️ 与部分老式模组可能冲突。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimization.reduce-lag",
+      "chinese_entries": [
+        {
+          "term": "启用防卡顿优化",
+          "context": "启用 CatServer 的综合防卡顿优化（实体激活范围、AI 节流等）。建议保持 true。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimization.fast-operations",
+      "chinese_entries": [
+        {
+          "term": "快速操作优化",
+          "context": "启用快速方块/实体操作优化。可提升约 10% TPS。⚠️ 与依赖精确事件触发的红石插件可能冲突。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "villager.atFix",
+      "chinese_entries": [
+        {
+          "term": "村民 AI 修复",
+          "context": "修复部分 Forge 模组导致的村民 AI 异常（村民不工作/卡住）。建议保持 true。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "versionCheck",
+      "chinese_entries": [
+        {
+          "term": "版本检查",
+          "context": "启动时自动检查 CatServer 更新。建议 true 以及时获取安全更新。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    },
+    {
+      "key_path": "disableAsyncCatchWarn",
+      "chinese_entries": [
+        {
+          "term": "禁用异步捕获警告",
+          "context": "是否禁用插件异步操作警告。插件调试时可设 true，生产环境建议 false 以便发现插件异步调用主线程 API 的问题。",
+          "source": "docs/server-cores/29-catserver.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

@@ -1,0 +1,116 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "folia"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/05-folia.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "threaded-regions.threads",
+      "chinese_entries": [
+        {
+          "term": "区域 tick 线程数",
+          "context": "区域 tick 循环所使用的线程池大小。**-1（自动）**：根据可用 CPU 自动计算（max(可用核心数 − 预留, 1)）。**手动设置**：建议设为「物理核心数 − Netty IO 线程 − 区块 IO 线程 − 区块工作线程 − GC 并发线程」后的剩余值，且总分配不超过 80%。例如 32 核 / 500 人服可设约 10。修改后必须重启。",
+          "source": "docs/server-cores/05-folia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "threaded-regions.grid-exponent",
+      "chinese_entries": [
+        {
+          "term": "区域网格指数",
+          "context": "控制区域划分的网格粒度。计算公式：每个网格单元的边长 = 2^gridExponent 个区块。默认 4 = 16 区块边长（16×16 区块 = 256 区块为一个网格单元）。值越大，区域越大、合并越激进、线程并行度越低；值越小，区域越细碎、并行度越高但跨区域交互开销越大。**非高级用户请勿修改**，错误值会显著降低性能。",
+          "source": "docs/server-cores/05-folia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "threaded-regions.scheduler",
+      "chinese_entries": [
+        {
+          "term": "区域调度算法",
+          "context": "区域 tick 任务的调度策略。EDF = Earliest Deadline First（最早截止期优先），按区域 tick 截止时间排序优先调度最紧迫的区域。目前仅 EDF 一种已实现值。修改需重启。",
+          "source": "docs/server-cores/05-folia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-system.io-threads",
+      "chinese_entries": [
+        {
+          "term": "区块 IO 线程数",
+          "context": "负责从磁盘读写区块文件的线程数。Folia 官方建议**每 200–300 名玩家约 3 个**。预生成世界后可适当下调。",
+          "source": "docs/server-cores/05-folia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-system.worker-threads",
+      "chinese_entries": [
+        {
+          "term": "区块工作线程数",
+          "context": "负责区块生成 / 装饰计算的线程数。Folia 官方建议**预生成后每 200–300 名玩家约 2 个**；未预生成时需大幅增加（曾测试 16 线程仍偏慢）。",
+          "source": "docs/server-cores/05-folia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.region-file-cache-size",
+      "chinese_entries": [
+        {
+          "term": "区域文件缓存大小",
+          "context": "缓存的 Region 文件（.mca）句柄数。大型世界 / 大量玩家分散时调大（如 512）可减少磁盘 IO，但占用更多内存。",
+          "source": "docs/server-cores/05-folia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.velocity.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 Velocity 转发",
+          "context": "是否启用 Velocity 现代转发（modern forwarding）。启用后玩家信息（IP、UUID、皮肤）由 Velocity 转发，Folia 侧 server.properties 的 online-mode 应设为 false。",
+          "source": "docs/server-cores/05-folia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.velocity.secret",
+      "chinese_entries": [
+        {
+          "term": "Velocity 共享密钥",
+          "context": "与 Velocity forwarding.secret 一致的密钥，用于验证代理身份。**生产环境必须设置强密钥**，留空则任何人都可伪造玩家身份。",
+          "source": "docs/server-cores/05-folia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.velocity.online-mode",
+      "chinese_entries": [
+        {
+          "term": "在线模式（Velocity 侧）",
+          "context": "表示 Velocity 是否已做 Mojang 正版验证。设为 true 时 Folia 信任 Velocity 转发的正版身份。",
+          "source": "docs/server-cores/05-folia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.netty-threads",
+      "chinese_entries": [
+        {
+          "term": "Netty IO 线程数",
+          "context": "处理玩家网络数据包的 Netty 线程数。Folia 官方建议**每 200–300 名玩家约 4 个**。500 人服可设 8。需计入 80% 总预算。",
+          "source": "docs/server-cores/05-folia.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

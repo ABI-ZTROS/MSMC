@@ -1,0 +1,1117 @@
+{
+  "core": "akarin",
+  "generated_at": "2026-09-02T17:48:18Z",
+  "configs": {
+    "akarin.yml": {
+      "versions_scanned": [
+        "1.12.2-R0.4.4"
+      ],
+      "total_keys": 33,
+      "keys": [
+        {
+          "path": "alternative.allow-spawner-modify",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "alternative.disable-end-portal-create",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "alternative.force-difficulty-on-hardcore",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "alternative.gc-before-stuck-restart",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "alternative.legacy-versioning-compat",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "alternative.modified-server-brand-name",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "alternative.version-update-interval",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "3600s",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "bootstrap.extra-local-address",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "[]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "config-version",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "1",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "core.always-silent-async-timing",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.chunk-save-threads",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "2",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.enable-panda-redstone-wire",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.enable-real-time-ticking",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.keep-alive-response-timeout",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "30s",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.optimize-chunk-unloading",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.parallel-mode",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "1",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.players-per-chunk-io-thread",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "50",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.primary-thread-priority",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "7",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.send-light-only-chunk-sections",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.thread-safe.async-catcher.throw-on-caught",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.tick-rate.keep-alive-packet-send-interval",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "15s",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.tick-rate.players-info-update-interval",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "30s",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "core.tick-rate.world-time-update-interval",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "1s",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.connect.player-join-server",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "§e%s joined the game",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.connect.renamed-player-join-server",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "§e%s (formerly known as %s) joined the game",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.disconnect.ban-expires",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "\nYour ban will be removed on ",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.disconnect.ban-player-ip",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "Your IP address is banned from this server! %s %s",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.disconnect.ban-player-name",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "You are banned from this server! %s %s",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.disconnect.ban-reason",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "\nReason: ",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.disconnect.kick-player",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "Kicked by an operator.",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.disconnect.kick-player-duplicate-login",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "You logged in from another location",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.disconnect.kick-player-timeout-keep-alive",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "Timed out",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.disconnect.player-quit-server",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "§e%s left the game",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        }
+      ]
+    },
+    "spigot.yml": {
+      "versions_scanned": [
+        "1.12.2-R0.4.4"
+      ],
+      "total_keys": 88,
+      "keys": [
+        {
+          "path": "advancements.disable-saving",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "advancements.disabled",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "[\"minecraft:story/disabled\"]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "commands.log",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "commands.replace-commands",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "[\"setblock\", \"summon\", \"testforblock\", \"tellraw\"]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "commands.silent-commandblock-console",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "commands.spam-exclusions",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "[\"/skill\"]",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "commands.tab-complete",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "0",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "config-version",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "11",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.outdated-client",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "Outdated client! Please use {0}",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.outdated-server",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "Outdated server! I'm still on {0}",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.restart",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "Server is restarting",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.server-full",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "The server is full!",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.unknown-command",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "Unknown command. Type \"/help\" for help.",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "messages.whitelist",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "You are not whitelisted on this server!",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.attribute.attackDamage.max",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "2048.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.attribute.maxHealth.max",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "2048.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.attribute.movementSpeed.max",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "2048.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.bungeecord",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "settings.debug",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "settings.filter-creative-items",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.int-cache-limit",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "1024",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.item-dirty-ticks",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "20",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.late-bind",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.moved-too-quickly-multiplier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "10.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.moved-wrongly-threshold",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "0.0625",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.netty-threads",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "4",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "settings.player-shuffle",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "0",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "settings.restart-on-crash",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "settings.restart-script",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "./start.sh",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "settings.sample-count",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "12",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "settings.save-user-cache-on-stop-only",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "settings.timeout-time",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "60",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "settings.user-cache-size",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "1000",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "stats.disable-saving",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.arrow-despawn-rate",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "1200",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.dragon-death-sound-radius",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "0",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.enable-zombie-pigmen-portal-spawns",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.entity-activation-range.animals",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "32",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.entity-activation-range.misc",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "16",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.entity-activation-range.monsters",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "32",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.entity-activation-range.tick-inactive-villagers",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.entity-activation-range.water",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "16",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.entity-tracking-range.animals",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "48",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.entity-tracking-range.misc",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "32",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.entity-tracking-range.monsters",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "48",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.entity-tracking-range.other",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "64",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.entity-tracking-range.players",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "48",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.growth.cactus-modifier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.growth.cane-modifier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.growth.cocoa-modifier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.growth.melon-modifier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.growth.mushroom-modifier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.growth.netherwart-modifier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.growth.pumpkin-modifier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.growth.sapling-modifier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.growth.vine-modifier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.growth.wheat-modifier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.hanging-tick-frequency",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.hopper-amount",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "1",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.hunger.combat-exhaustion",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "0.1",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.hunger.jump-sprint-exhaustion",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "0.2",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.hunger.jump-walk-exhaustion",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "0.05",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.hunger.other-multiplier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "0.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.hunger.regen-exhaustion",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "6.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.hunger.sprint-multiplier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "0.1",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.hunger.swim-multiplier",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "0.01",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.item-despawn-rate",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "6000",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.max-entity-collisions",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "8",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.max-tick-time.entity",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "50",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.max-tick-time.tile",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "50",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.max-tnt-per-tick",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "100",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.merge-radius.exp",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "3.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.merge-radius.item",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "2.5",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.mob-spawn-range",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "4",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.nerf-spawner-mobs",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.random-light-updates",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "False",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.save-structure-info",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.seed-feature",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "14357617",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.seed-monument",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "10387313",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.seed-slime",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "987234911",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.seed-village",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "10387312",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.squid-spawn-range.min",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "45.0",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.ticks-per.hopper-check",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "1",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.ticks-per.hopper-transfer",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "8",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.verbose",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "new_key",
+          "needs_translation": true
+        },
+        {
+          "path": "world-settings.default.view-distance",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "10",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.wither-spawn-sound-radius",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "0",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        },
+        {
+          "path": "world-settings.default.zombie-aggressive-towards-villager",
+          "introduced_in": "1.12.2-R0.4.4",
+          "removed_in": null,
+          "default_latest": "True",
+          "default_changes": [],
+          "state": "existing",
+          "needs_translation": false
+        }
+      ]
+    }
+  },
+  "summary": {
+    "new_keys": 93,
+    "existing": 28,
+    "removed": 0,
+    "drifted": 0
+  }
+}

@@ -1,0 +1,296 @@
+{
+  "config_file": "bukkit.yml",
+  "cores": [
+    "bukkit"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/02-bukkit.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "settings.allow-end",
+      "chinese_entries": [
+        {
+          "term": "允许进入末地",
+          "context": "是否允许玩家进入末地。关闭后末地传送门不工作。⚠️ 与 server.properties 的 allow-end 是两套独立机制（Vanilla 用 properties，Bukkit 用 bukkit.yml），Spigot/Paper 建议用此键。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.shutdown-message",
+      "chinese_entries": [
+        {
+          "term": "关服提示消息",
+          "context": "服务器关闭时踢出玩家显示的提示文本。支持 § 颜色码。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.deprecated-verbose",
+      "chinese_entries": [
+        {
+          "term": "弃用 API 警告",
+          "context": "插件使用已弃用的 Bukkit API 时是否在控制台打印警告。开发环境建议 true，生产环境 false 减少日志噪音。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.default-plugin-language",
+      "chinese_entries": [
+        {
+          "term": "默认插件语言",
+          "context": "插件未指定语言时使用的默认语言。影响部分支持多语言的插件。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.use-map-converting",
+      "chinese_entries": [
+        {
+          "term": "自动转换旧地图",
+          "context": "启动时自动将旧版本地图转换为新版本格式。关闭后旧地图可能无法加载。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.query-plugins",
+      "chinese_entries": [
+        {
+          "term": "Query 暴露插件列表",
+          "context": "通过 GameSpy Query 协议列出已加载插件。公网服建议 false，避免泄露插件信息。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.unknown-command",
+      "chinese_entries": [
+        {
+          "term": "未知命令提示",
+          "context": "玩家执行未注册命令时显示的提示。设为空字符串则不显示。支持 § 颜色码。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.permissions",
+      "chinese_entries": [
+        {
+          "term": "默认权限提示",
+          "context": "玩家无权限执行命令时显示的提示。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.timeout-time",
+      "chinese_entries": [
+        {
+          "term": "卡死超时阈值",
+          "context": "主线程连续无响应多少秒后判定为「卡死」并强制重启。0 禁用 watchdog。生产环境建议保持 60。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.restart-on-crash",
+      "chinese_entries": [
+        {
+          "term": "崩溃自动重启",
+          "context": "服务器崩溃时是否自动执行 restart-script。⚠️ Vanilla 不支持此键，仅 CraftBukkit/Spigot/Paper 有。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.restart-script",
+      "chinese_entries": [
+        {
+          "term": "重启脚本路径",
+          "context": "崩溃自动重启时执行的脚本路径。Linux 用 ./start.sh，Windows 用 start.bat。脚本需有可执行权限。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.monsters",
+      "chinese_entries": [
+        {
+          "term": "怪物生成上限",
+          "context": "每个玩家周围可生成的敌对怪物数量上限。降低可缓解怪物密集时的卡顿，但夜晚怪物变少。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.animals",
+      "chinese_entries": [
+        {
+          "term": "动物生成上限",
+          "context": "每个玩家周围可生成的被动动物数量上限。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.water-animals",
+      "chinese_entries": [
+        {
+          "term": "水生动物生成上限",
+          "context": "每个玩家周围可生成的水生动物（鱿鱼、海豚等）数量上限。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.water-ambient",
+      "chinese_entries": [
+        {
+          "term": "水生环境生物上限",
+          "context": "每个玩家周围可生成的水生环境生物（热带鱼等）数量上限。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.ambient",
+      "chinese_entries": [
+        {
+          "term": "环境生物生成上限",
+          "context": "每个玩家周围可生成的环境生物（蝙蝠）数量上限。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-gc.period-in-ticks",
+      "chinese_entries": [
+        {
+          "term": "区块 GC 间隔",
+          "context": "多少 tick 执行一次区块 GC。600 = 30 秒。0 禁用主动 GC（不推荐）。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-gc.load-threshold",
+      "chinese_entries": [
+        {
+          "term": "区块 GC 触发阈值",
+          "context": "加载多少个新区块后触发一次区块 GC。0 仅按 period-in-ticks 周期触发。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.animal-spawns",
+      "chinese_entries": [
+        {
+          "term": "动物生成间隔",
+          "context": "多少 tick 尝试一次动物生成。400 = 20 秒。-1 禁用动物生成。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.monster-spawns",
+      "chinese_entries": [
+        {
+          "term": "怪物生成间隔",
+          "context": "多少 tick 尝试一次怪物生成。1 = 每 tick 尝试（原版默认）。调大可减少怪物数量并提升性能。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.water-ambient-spawns",
+      "chinese_entries": [
+        {
+          "term": "水生环境生物生成间隔",
+          "context": "多少 tick 尝试一次水生环境生物生成。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.autosave",
+      "chinese_entries": [
+        {
+          "term": "自动保存间隔",
+          "context": "多少 tick 自动保存一次世界与玩家数据。6000 = 5 分钟。0 禁用自动保存（不推荐，崩服会丢进度）。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-updater.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用自动更新检查",
+          "context": "启动时是否检查 CraftBukkit 新版本。⚠️ 仅 CraftBukkit 有效，Spigot/Paper 使用各自的更新机制。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-updater.on-broken",
+      "chinese_entries": [
+        {
+          "term": "检测到破坏性更新时",
+          "context": "检测到当前版本已知有严重 bug 时的通知方式。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-updater.on-update",
+      "chinese_entries": [
+        {
+          "term": "检测到新版本时",
+          "context": "检测到新版本可用时的通知方式。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-updater.prefer-beta",
+      "chinese_entries": [
+        {
+          "term": "偏好测试版",
+          "context": "是否优先检查 beta / dev 版本。生产环境保持 false。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-updater.host",
+      "chinese_entries": [
+        {
+          "term": "更新服务器地址",
+          "context": "检查更新的服务器地址。一般无需修改。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "aliases.<别名>",
+      "chinese_entries": [
+        {
+          "term": "命令别名",
+          "context": "将 <别名> 重定向到指定命令。值可以是字符串（单个命令）或列表（按顺序执行多命令）。例：aliases.gamemode: \"minecraft:gamemode\"。⚠️ 1.13+ 推荐用 commands.yml 替代。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

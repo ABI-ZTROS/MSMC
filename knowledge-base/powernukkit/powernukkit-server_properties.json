@@ -1,0 +1,326 @@
+{
+  "config_file": "powernukkit-server.properties",
+  "cores": [
+    "powernukkit"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/35-powernukkit.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "motd",
+      "chinese_entries": [
+        {
+          "term": "服务器 MOTD",
+          "context": "服务器在客户端列表中显示的名称（与 powernukkit.yml 中的 motd 同步）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sub-motd",
+      "chinese_entries": [
+        {
+          "term": "子 MOTD",
+          "context": "服务器副标题。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server-port",
+      "chinese_entries": [
+        {
+          "term": "IPv4 端口（UDP）",
+          "context": "服务器监听的 IPv4 UDP 端口。⚠️ 必须开放 UDP！",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "server-ip",
+      "chinese_entries": [
+        {
+          "term": "服务器 IP",
+          "context": "服务器绑定的 IPv4 地址。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "view-distance",
+      "chinese_entries": [
+        {
+          "term": "视野距离",
+          "context": "玩家可见的区块半径。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "white-list",
+      "chinese_entries": [
+        {
+          "term": "启用白名单",
+          "context": "是否启用白名单。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "achievements",
+      "chinese_entries": [
+        {
+          "term": "启用成就",
+          "context": "是否启用成就系统。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "announce-player-achievements",
+      "chinese_entries": [
+        {
+          "term": "广播成就",
+          "context": "玩家解锁成就时是否在聊天栏广播。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-protection",
+      "chinese_entries": [
+        {
+          "term": "出生保护半径",
+          "context": "出生点保护半径（方块）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-players",
+      "chinese_entries": [
+        {
+          "term": "最大玩家数",
+          "context": "服务器同时允许的最大玩家数。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-flight",
+      "chinese_entries": [
+        {
+          "term": "允许飞行",
+          "context": "是否允许玩家在生存模式飞行（用于反作弊豁免）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-animals",
+      "chinese_entries": [
+        {
+          "term": "生成动物",
+          "context": "是否自然生成动物。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-mobs",
+      "chinese_entries": [
+        {
+          "term": "生成怪物",
+          "context": "是否自然生成怪物。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gamemode",
+      "chinese_entries": [
+        {
+          "term": "默认游戏模式",
+          "context": "新玩家默认游戏模式。0=生存 / 1=创造 / 2=冒险。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "force-gamemode",
+      "chinese_entries": [
+        {
+          "term": "强制游戏模式",
+          "context": "玩家进服是否被强制设置为 gamemode 模式。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "hardcore",
+      "chinese_entries": [
+        {
+          "term": "极限模式",
+          "context": "是否启用极限模式。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "pvp",
+      "chinese_entries": [
+        {
+          "term": "启用 PvP",
+          "context": "是否允许玩家间伤害。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "difficulty",
+      "chinese_entries": [
+        {
+          "term": "难度",
+          "context": "世界难度。0=和平 / 1=简单 / 2=普通 / 3=困难。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-name",
+      "chinese_entries": [
+        {
+          "term": "世界名称",
+          "context": "主世界文件夹名称。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "level-seed",
+      "chinese_entries": [
+        {
+          "term": "世界种子",
+          "context": "世界生成种子。相同种子生成相同地形。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-nether",
+      "chinese_entries": [
+        {
+          "term": "启用下界",
+          "context": "是否加载下界维度。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "allow-the_end",
+      "chinese_entries": [
+        {
+          "term": "启用末地",
+          "context": "是否加载末地维度。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-query",
+      "chinese_entries": [
+        {
+          "term": "启用 Query",
+          "context": "是否启用 GameSpy Query 协议。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "enable-rcon",
+      "chinese_entries": [
+        {
+          "term": "启用 RCON",
+          "context": "是否启用远程控制台协议（RCON）。启用务必设置强密码！",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "rcon.password",
+      "chinese_entries": [
+        {
+          "term": "RCON 密码",
+          "context": "RCON 远程管理密码。启用 RCON 时必须设置。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "auto-save",
+      "chinese_entries": [
+        {
+          "term": "自动保存",
+          "context": "是否启用自动保存。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "force-resources",
+      "chinese_entries": [
+        {
+          "term": "强制资源包",
+          "context": "玩家必须接受服务器资源包才能进服。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "force-resources-allow-client-packs",
+      "chinese_entries": [
+        {
+          "term": "允许客户端资源包",
+          "context": "是否允许玩家使用客户端自带资源包。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "xbox-auth",
+      "chinese_entries": [
+        {
+          "term": "Xbox Live 验证",
+          "context": "是否要求玩家通过 Xbox Live 认证。⚠️ 与 Java 版 online-mode 含义不同！",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "check-login-time",
+      "chinese_entries": [
+        {
+          "term": "检查登录时间",
+          "context": "是否校验玩家登录用时。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network-encryption",
+      "chinese_entries": [
+        {
+          "term": "网络加密",
+          "context": "是否启用基岩版网络加密（ECDH 握手）。",
+          "source": "docs/server-cores/35-powernukkit.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

@@ -1,0 +1,126 @@
+{
+  "config_file": "hexacord.yml",
+  "cores": [
+    "hexacord"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/26-hexacord.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "config-version",
+      "chinese_entries": [
+        {
+          "term": "配置版本号",
+          "context": "内部使用，**不要手动修改**。HexaCord 用它做配置自动升级与兼容性判断。",
+          "source": "docs/server-cores/26-hexacord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "bedrock.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用基岩版",
+          "context": "总开关。true=在 listen-port 上额外监听 UDP 基岩版流量；false=只接受 Java 版连接。开启后必须重启",
+          "source": "docs/server-cores/26-hexacord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "bedrock.listen-port",
+      "chinese_entries": [
+        {
+          "term": "基岩版监听端口",
+          "context": "基岩版客户端连接的 UDP 端口。⚠️ 必须与 config.yml 中 Java 版 host 端口不同，且防火墙需放行 UDP",
+          "source": "docs/server-cores/26-hexacord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "bedrock.max-players",
+      "chinese_entries": [
+        {
+          "term": "基岩版玩家上限",
+          "context": "同时允许的基岩版连接数上限。0=不限制；正数=达上限后拒绝新连接。建议略小于后端实际承载",
+          "source": "docs/server-cores/26-hexacord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "bedrock.broadcast-port",
+      "chinese_entries": [
+        {
+          "term": "广播端口",
+          "context": "基岩版 LAN 广播与 MOTD 查询使用的端口，通常与 listen-port 一致。仅在内网穿透 / 多代理时需调整",
+          "source": "docs/server-cores/26-hexacord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "bedrock.motd",
+      "chinese_entries": [
+        {
+          "term": "基岩版 MOTD",
+          "context": "基岩版客户端在服务器列表中看到的 MOTD 文本。支持 § 颜色码与两行显示（用 \\n 分隔）",
+          "source": "docs/server-cores/26-hexacord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "protocol.allow-old-clients",
+      "chinese_entries": [
+        {
+          "term": "允许旧版客户端",
+          "context": "是否允许低于后端子服版本的 Java 客户端通过协议转换进入。true=开启跨版本；false=严格匹配版本",
+          "source": "docs/server-cores/26-hexacord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "protocol.min-version",
+      "chinese_entries": [
+        {
+          "term": "最低客户端版本",
+          "context": "允许进入代理的最低 Java 客户端版本。低于此版本会被直接踢出。调高可减少协议转换开销",
+          "source": "docs/server-cores/26-hexacord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "protocol.max-version",
+      "chinese_entries": [
+        {
+          "term": "最高客户端版本",
+          "context": "允许进入代理的最高 Java 客户端版本。高于此版本的客户端会被踢出。用于在 MC 新版本发布后等待适配",
+          "source": "docs/server-cores/26-hexacord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.packet-compression-level",
+      "chinese_entries": [
+        {
+          "term": "数据包压缩级别",
+          "context": "Netty Zlib 压缩级别。0=不压缩（最快、最费带宽）；9=最高压缩（最省带宽、最费 CPU）。推荐 6 平衡",
+          "source": "docs/server-cores/26-hexacord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "network.use-direct-memory",
+      "chinese_entries": [
+        {
+          "term": "使用堆外内存",
+          "context": "是否使用 Netty 堆外内存（Direct Buffer）。true=减少 GC 压力，提升吞吐；false=堆内存，便于调试内存泄漏",
+          "source": "docs/server-cores/26-hexacord.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

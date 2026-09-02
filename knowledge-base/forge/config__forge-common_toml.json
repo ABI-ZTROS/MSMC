@@ -1,0 +1,26 @@
+{
+  "config_file": "config/forge-common.toml",
+  "cores": [
+    "forge"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/18-forge.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "general.logLegacyTagWarnings",
+      "chinese_entries": [
+        {
+          "term": "旧标签迁移助手模式",
+          "context": "帮助模组开发者查找使用旧命名空间（如 forge: 前缀）的模组标签，并提示其对应的新约定标签的可选值。OFF（关闭，默认）= 不提示 / ONLY_IN_DEV_ENV（仅开发环境）= 仅在开发环境中提示 / ALWAYS（始终）= 在任何环境（包括生产服务器）下都提示。普通开服者保持 OFF 即可。**注意**：此键名虽为 logLegacyTagWarnings，但对应的 Java 变量名是 migrationHelperMode，属于历史命名遗留。",
+          "source": "docs/server-cores/18-forge.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

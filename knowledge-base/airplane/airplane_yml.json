@@ -1,0 +1,116 @@
+{
+  "config_file": "airplane.yml",
+  "cores": [
+    "airplane"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/15-airplane.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "config-version",
+      "chinese_entries": [
+        {
+          "term": "配置版本号",
+          "context": "内部使用，**不要手动修改**。Airplane 用它做配置自动升级与兼容性判断。",
+          "source": "docs/server-cores/15-airplane.md"
+        }
+      ]
+    },
+    {
+      "key_path": "airplane.brand-name",
+      "chinese_entries": [
+        {
+          "term": "服务端品牌名",
+          "context": "发送给客户端的服务端品牌名（F3 界面 \"Mod\" 字段）。可用 § 颜色码，可隐藏真实核心类型",
+          "source": "docs/server-cores/15-airplane.md"
+        }
+      ]
+    },
+    {
+      "key_path": "airplane.allow-unsafe-commands",
+      "chinese_entries": [
+        {
+          "term": "允许不安全命令",
+          "context": "是否允许执行可能引发性能问题或不安全的内置调试命令。true=允许（仅适合开发 / 测试服）；false=禁用（生产服保持）",
+          "source": "docs/server-cores/15-airplane.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.chunks.chunk-load-cooldown",
+      "chinese_entries": [
+        {
+          "term": "区块加载冷却",
+          "context": "玩家触发区块加载后再次允许加载的间隔（tick）。0=无冷却；正值=降低区块加载频率，可缓解突发加载导致的卡顿",
+          "source": "docs/server-cores/15-airplane.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.chunks.autosave-period",
+      "chinese_entries": [
+        {
+          "term": "自动保存周期",
+          "context": "自动保存世界数据的间隔（tick）。6000 = 5 分钟。调大省 IO 但崩服丢数据更多；调小反之",
+          "source": "docs/server-cores/15-airplane.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.chunks.max-chunk-sends-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 最大区块发送数",
+          "context": "每 tick 向玩家发送的最大区块包数。0=不限制；正值=限速，可避免进服时网络尖峰",
+          "source": "docs/server-cores/15-airplane.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entities.spawn-packet-queue",
+      "chinese_entries": [
+        {
+          "term": "生成包排队",
+          "context": "是否把实体生成数据包排队发送。true=平滑网络峰值，避免一次性发送大量实体导致客户端卡顿；false=原版行为",
+          "source": "docs/server-cores/15-airplane.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entities.dab.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 DAB 实体激活",
+          "context": "是否启用 Airplane 改进的「动态实体激活」（DAB）。true=远离玩家的实体降低 tick 频率以省 CPU；false=原版固定激活范围",
+          "source": "docs/server-cores/15-airplane.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.fixes.fix-coordinate-exploit",
+      "chinese_entries": [
+        {
+          "term": "修复坐标泄露漏洞",
+          "context": "是否修复通过传送包反推远处坐标的漏洞。true=修复（推荐）；false=允许玩家通过特定客户端作弊获取远距离方块位置",
+          "source": "docs/server-cores/15-airplane.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.fixes.prevent-double-pistons",
+      "chinese_entries": [
+        {
+          "term": "防止双活塞卡服",
+          "context": "是否防止双活塞同时激活导致的卡服机器。true=防止（推荐）；false=原版行为，可能被用于恶意卡服",
+          "source": "docs/server-cores/15-airplane.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

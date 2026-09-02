@@ -1,0 +1,2026 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "paper"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/04-paper.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "chunk-loading.basic-maximizer-chunk-limit",
+      "chinese_entries": [
+        {
+          "term": "基础加载器区块上限",
+          "context": "单个玩家每 tick 最多生成 / 加载多少区块。降低可缓解玩家快速移动（鞘翅）时的卡顿。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-loading.player-max-chunk-load-rate",
+      "chinese_entries": [
+        {
+          "term": "玩家区块加载速率",
+          "context": "单个玩家每秒最多加载多少区块。-1 无限制。降低可保护 CPU。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-loading.player-max-chunk-generate-rate",
+      "chinese_entries": [
+        {
+          "term": "玩家区块生成速率",
+          "context": "单个玩家每秒最多生成多少区块。-1 无限制。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-loading.global-max-chunk-load-rate",
+      "chinese_entries": [
+        {
+          "term": "全局区块加载速率",
+          "context": "全服每秒最多加载多少区块。-1 无限制。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-loading.global-max-chunk-generate-rate",
+      "chinese_entries": [
+        {
+          "term": "全局区块生成速率",
+          "context": "全服每秒最多生成多少区块。-1 无限制。降低可保护 CPU。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-system.io-threads",
+      "chinese_entries": [
+        {
+          "term": "区块 IO 线程数",
+          "context": "负责从磁盘读写区块文件的线程数。-1 自动（基于 CPU 核心数）。大型服可手动设为 2–4。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-system.worker-threads",
+      "chinese_entries": [
+        {
+          "term": "区块工作线程数",
+          "context": "负责区块生成 / 装饰计算的线程数。-1 自动。未预生成时需大幅增加。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunk-system.gen.parallelism",
+      "chinese_entries": [
+        {
+          "term": "生成并行度",
+          "context": "区块生成任务的并行度。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "collisions.enable-player-collisions",
+      "chinese_entries": [
+        {
+          "term": "启用玩家碰撞",
+          "context": "是否启用玩家间的物理碰撞。关闭后玩家可互相穿过。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "collisions.send-player-pos-when-teleporting",
+      "chinese_entries": [
+        {
+          "term": "传送时发送位置",
+          "context": "玩家传送时是否立即同步位置，避免位置不同步。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "collisions.send-player-pos-when-colliding-with",
+      "chinese_entries": [
+        {
+          "term": "碰撞时发送位置",
+          "context": "玩家发生碰撞时是否发送位置同步。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.time-command-affects-all-worlds",
+      "chinese_entries": [
+        {
+          "term": "time 命令影响所有世界",
+          "context": "/time 命令是否影响所有世界。false 仅影响当前世界。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.fix-target-selector-tag-completion",
+      "chinese_entries": [
+        {
+          "term": "修复选择器补全",
+          "context": "修复目标选择器中标签补全的 bug。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "console.enable-brigadier-highlighting",
+      "chinese_entries": [
+        {
+          "term": "启用 Brigadier 高亮",
+          "context": "控制台是否启用 Brigadier 命令高亮显示。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "console.enable-brigadier-completions",
+      "chinese_entries": [
+        {
+          "term": "启用 Brigadier 补全",
+          "context": "控制台是否启用 Brigadier 命令 Tab 补全。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "console.has-all-permissions",
+      "chinese_entries": [
+        {
+          "term": "拥有所有权限",
+          "context": "控制台是否拥有所有权限（绕过权限检查）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "item-validation.book-size.page-max",
+      "chinese_entries": [
+        {
+          "term": "书本单页最大字节",
+          "context": "成书单页最大字节数。降低可防止恶意长 NBT 卡服。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "item-validation.book-size.total-multiplier",
+      "chinese_entries": [
+        {
+          "term": "书本总大小倍率",
+          "context": "成书总大小 = 页数 × 此倍率。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "item-validation.display-name",
+      "chinese_entries": [
+        {
+          "term": "物品显示名最大字节",
+          "context": "物品自定义显示名最大字节数。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "item-validation.resolve-selectors-in-books",
+      "chinese_entries": [
+        {
+          "term": "解析书中选择器",
+          "context": "是否在成书中解析目标选择器。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logging.log-ping-packet-length-mismatch",
+      "chinese_entries": [
+        {
+          "term": "记录 ping 包长度不匹配",
+          "context": "是否记录 ping 包长度不匹配事件（异常客户端）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logging.deobfuscate-stacktraces",
+      "chinese_entries": [
+        {
+          "term": "反混淆堆栈",
+          "context": "是否将堆栈跟踪中的混淆方法名反混淆为可读名。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.chat-threads.core-size",
+      "chinese_entries": [
+        {
+          "term": "聊天线程核心数",
+          "context": "处理玩家聊天的核心线程数。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.chat-threads.max-size",
+      "chinese_entries": [
+        {
+          "term": "聊天线程最大数",
+          "context": "处理玩家聊天的最大线程数。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.server-activity.timeunit",
+      "chinese_entries": [
+        {
+          "term": "服务器活跃统计单位",
+          "context": "服务器活跃统计的时间单位。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.server-activity.timeout",
+      "chinese_entries": [
+        {
+          "term": "服务器活跃超时",
+          "context": "服务器活跃统计超时值。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.max-joins-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 加入上限",
+          "context": "每 tick 允许多少玩家加入服务器。降低可防止登录冲击。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.player-auto-save-rate",
+      "chinese_entries": [
+        {
+          "term": "玩家自动保存频率",
+          "context": "玩家数据自动保存频率（每多少玩家 / tick）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.max-player-auto-save-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 最多保存玩家数",
+          "context": "每 tick 最多保存多少玩家的数据，避免一次性保存卡顿。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "misc.fix-wrong-rotations",
+      "chinese_entries": [
+        {
+          "term": "修复错误旋转",
+          "context": "修复某些实体的旋转 bug。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "packet-limiter.kick-message",
+      "chinese_entries": [
+        {
+          "term": "踢出消息",
+          "context": "玩家被限流踢出时显示的消息。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "packet-limiter.packet-limit.settings",
+      "chinese_entries": [
+        {
+          "term": "限流设置",
+          "context": "各数据包的限流规则。键为数据包名，值为 action/interval/max-packet-rate。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "packet-limiter.packet-limit.overrides",
+      "chinese_entries": [
+        {
+          "term": "限流覆盖",
+          "context": "对特定数据包的限流覆盖规则。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "packet-limiter.kick-message",
+      "chinese_entries": [
+        {
+          "term": "限流踢出消息",
+          "context": "玩家触发限流被踢时显示的提示。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-auto-save.rate",
+      "chinese_entries": [
+        {
+          "term": "自动保存频率",
+          "context": "玩家数据自动保存的间隔 tick。-1 自动（基于 ticks-per.autosave）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "player-auto-save.max-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 保存上限",
+          "context": "每 tick 最多保存多少玩家的数据，避免一次性卡顿。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.bungee-cord.online-mode",
+      "chinese_entries": [
+        {
+          "term": "BungeeCord 在线模式",
+          "context": "BungeeCord 是否已做 Mojang 正版验证。设为 true 时 Paper 信任 BungeeCord 转发的正版身份。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.velocity.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 Velocity 转发",
+          "context": "是否启用 Velocity 现代转发。启用后 server.properties 的 online-mode 应设为 false。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.velocity.online-mode",
+      "chinese_entries": [
+        {
+          "term": "Velocity 在线模式",
+          "context": "Velocity 是否已做 Mojang 正版验证。设为 true 时 Paper 信任 Velocity 转发的正版身份。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.velocity.secret",
+      "chinese_entries": [
+        {
+          "term": "Velocity 共享密钥",
+          "context": "与 Velocity forwarding.secret 一致的密钥。**生产环境必须设置强密钥**，留空则任何人都可伪造玩家身份。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "proxies.proxy-protocol",
+      "chinese_entries": [
+        {
+          "term": "启用 Proxy Protocol",
+          "context": "是否启用 HAProxy Proxy Protocol v2。仅在使用 HAProxy 等 TCP 代理时启用。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spam-limiter.tab-spam-increment",
+      "chinese_entries": [
+        {
+          "term": "Tab 补全刷屏增量",
+          "context": "玩家每次 Tab 补全增加的刷屏分值。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spam-limiter.tab-spam-limit",
+      "chinese_entries": [
+        {
+          "term": "Tab 补全刷屏上限",
+          "context": "玩家 Tab 补全刷屏分值上限，超过即禁止补全。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spam-limiter.recipe-spam-increment",
+      "chinese_entries": [
+        {
+          "term": "配方刷屏增量",
+          "context": "玩家每次打开配方书增加的刷屏分值。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spam-limiter.recipe-spam-limit",
+      "chinese_entries": [
+        {
+          "term": "配方刷屏上限",
+          "context": "玩家配方刷屏分值上限。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spam-limiter.ignored-packets",
+      "chinese_entries": [
+        {
+          "term": "忽略数据包列表",
+          "context": "不计入刷屏检测的数据包列表。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 Timings",
+          "context": "是否启用 Timings 性能分析。⚠️ Paper 1.21+ 已弃用，推荐用 Spark。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.verbose",
+      "chinese_entries": [
+        {
+          "term": "详细 Timings",
+          "context": "是否记录详细的 Timings 数据。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.url",
+      "chinese_entries": [
+        {
+          "term": "Timings 上传地址",
+          "context": "/timings paste 上传报告的地址。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.history-interval",
+      "chinese_entries": [
+        {
+          "term": "历史记录间隔",
+          "context": "Timings 历史记录的间隔时长。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.history-length",
+      "chinese_entries": [
+        {
+          "term": "历史记录长度",
+          "context": "Timings 历史记录的总时长。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.hidden-config-entries",
+      "chinese_entries": [
+        {
+          "term": "隐藏配置项",
+          "context": "上传报告时隐藏的配置项列表（防止泄露敏感信息）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.server-name",
+      "chinese_entries": [
+        {
+          "term": "服务器名称",
+          "context": "Timings 报告中显示的服务器名称。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.server-name-privacy",
+      "chinese_entries": [
+        {
+          "term": "隐藏服务器名",
+          "context": "上传报告时是否隐藏服务器名。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "unsupported-settings.allow-headless-pistons",
+      "chinese_entries": [
+        {
+          "term": "允许无头活塞",
+          "context": "允许利用 bug 创建无头活塞（用于某些红石机器）。⚠️ 破坏 Vanilla 行为。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "unsupported-settings.allow-permanent-block-break-exploits",
+      "chinese_entries": [
+        {
+          "term": "允许永久破坏 bug",
+          "context": "允许利用 bug 破坏「不可破坏」方块（如基岩、末地传送门）。⚠️ 严重破坏游戏。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "unsupported-settings.allow-piston-duplication",
+      "chinese_entries": [
+        {
+          "term": "允许活塞复制",
+          "context": "允许利用活塞 bug 复制物品（如 TNT 复制机、地毯复制）。⚠️ Vanilla 视为作弊。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "unsupported-settings.perform-username-validation",
+      "chinese_entries": [
+        {
+          "term": "用户名验证",
+          "context": "是否对用户名进行严格验证。关闭可让非标准用户名进入（不推荐）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.auto-save-interval",
+      "chinese_entries": [
+        {
+          "term": "自动保存间隔",
+          "context": "世界自动保存的间隔（t = tick）。覆盖 bukkit.yml 的 ticks-per.autosave。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.delay-chunk-unloads-by",
+      "chinese_entries": [
+        {
+          "term": "延迟区块卸载",
+          "context": "玩家离开后多久才卸载其加载的区块。增大可减少玩家来回移动时的重复加载。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.ignore-spectators",
+      "chinese_entries": [
+        {
+          "term": "忽略旁观者",
+          "context": "旁观者是否触发实体激活。true 时旁观者不激活实体。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.fixed-chunk-inhabited-time",
+      "chinese_entries": [
+        {
+          "term": "固定区块居住时间",
+          "context": "强制设置区块的「居住时间」（影响怪物生成难度）。-1 不修改。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.max-auto-save-chunks-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 自动保存上限",
+          "context": "每 tick 最多自动保存多少区块，避免一次性保存卡顿。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.prevent-moving-into-unloaded-chunks",
+      "chinese_entries": [
+        {
+          "term": "阻止进入未加载区块",
+          "context": "是否阻止玩家移动进入未加载区块（避免掉入虚空）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "collisions.max-entity-collisions",
+      "chinese_entries": [
+        {
+          "term": "实体碰撞上限",
+          "context": "单个实体最多同时与多少实体碰撞。覆盖 spigot.yml 同名键。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "collisions.enable-player-collisions",
+      "chinese_entries": [
+        {
+          "term": "启用玩家碰撞",
+          "context": "是否启用玩家间物理碰撞。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "collisions.allow-player-cramming-damage",
+      "chinese_entries": [
+        {
+          "term": "允许挤压伤害",
+          "context": "是否启用玩家挤压伤害（实体堆叠过多时受伤）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.mark-experimental-as-different",
+      "chinese_entries": [
+        {
+          "term": "标记实验实体",
+          "context": "是否将实验性实体标记为不同（用于统计）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.sniffer-paced-hatching",
+      "chinese_entries": [
+        {
+          "term": "嗅探兽缓慢孵化",
+          "context": "嗅探兽蛋是否缓慢孵化。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.behavior.pufferfish-height-limit",
+      "chinese_entries": [
+        {
+          "term": "河豚高度上限",
+          "context": "河豚膨胀的高度差上限。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.spawning.counted-all-chunks-for-spawn",
+      "chinese_entries": [
+        {
+          "term": "计算所有区块生成",
+          "context": "是否计算所有区块用于生物生成（而非仅玩家周围）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.spawning.immediate-despawn-impatience-factor",
+      "chinese_entries": [
+        {
+          "term": "立即消失不耐心因子",
+          "context": "怪物在远离玩家时立即消失的不耐心因子。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.spawning.despawn-ranges",
+      "chinese_entries": [
+        {
+          "term": "消失范围",
+          "context": "各类生物的消失距离范围（近 / 远，单位方块）。超出远距离立即消失，介于近远之间概率消失。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.spawning.per-player-mob-spawns",
+      "chinese_entries": [
+        {
+          "term": "每玩家生物生成",
+          "context": "是否启用每玩家生物生成上限（替代全服上限）。**Paper 性能核心**，更精确控制生物分布。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.spawning.scan-for-named-mobs",
+      "chinese_entries": [
+        {
+          "term": "扫描命名生物",
+          "context": "是否扫描命名生物（命名过的生物不消失）。关闭可省 CPU 但命名生物可能消失。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.spawning.despawn-tick-rates",
+      "chinese_entries": [
+        {
+          "term": "消失 tick 频率",
+          "context": "各类生物消失检查的 tick 频率。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.armor-stands.do-collision-entity-lookups",
+      "chinese_entries": [
+        {
+          "term": "盔甲架碰撞查找",
+          "context": "盔甲架是否进行实体碰撞查找。关闭可省 CPU。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.armor-stands.tick",
+      "chinese_entries": [
+        {
+          "term": "盔甲架 tick",
+          "context": "盔甲架是否 tick。关闭可大幅省 CPU，但盔甲架不动画。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.armor-stands.disable-when-hidden",
+      "chinese_entries": [
+        {
+          "term": "隐藏时禁用",
+          "context": "盔甲架被 Invisible 标记时是否禁用 tick。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.spawning.all-chunks-are-slime-chunks",
+      "chinese_entries": [
+        {
+          "term": "所有区块都是史莱姆区块",
+          "context": "是否所有区块都视为史莱姆区块。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.mark-experimental-as-different",
+      "chinese_entries": [
+        {
+          "term": "标记实验实体",
+          "context": "实验性实体是否标记为不同。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.armor-stands.tick",
+      "chinese_entries": [
+        {
+          "term": "盔甲架 tick",
+          "context": "盔甲架是否 tick。关闭可省 CPU。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.behavior.baby-zombie-movement-modifier",
+      "chinese_entries": [
+        {
+          "term": "小僵尸移动修正",
+          "context": "小僵尸移动速度修正倍率。0.5 = +50% 速度。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.behavior.spider-world-wrap",
+      "chinese_entries": [
+        {
+          "term": "蜘蛛世界环绕",
+          "context": "修复蜘蛛世界环绕 bug。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.behavior.disable-zombie-aggression-toward-villager",
+      "chinese_entries": [
+        {
+          "term": "禁用僵尸攻击村民",
+          "context": "是否禁用僵尸主动攻击村民。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.spawning.filtered-entity-spawning-tick-rates",
+      "chinese_entries": [
+        {
+          "term": "实体生成 tick 频率",
+          "context": "特定实体的生成 tick 频率。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.spawning.bypass-spawn-ranges",
+      "chinese_entries": [
+        {
+          "term": "绕过生成范围",
+          "context": "不受生成范围限制的实体列表。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.cleanup.cluttered-slider-max",
+      "chinese_entries": [
+        {
+          "term": "杂乱滑块最大",
+          "context": "实体清理杂乱滑块最大值。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.cluttered-category-size",
+      "chinese_entries": [
+        {
+          "term": "杂乱分类大小",
+          "context": "实体清理杂乱分类大小。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "environment.disable-thunder",
+      "chinese_entries": [
+        {
+          "term": "禁用雷暴",
+          "context": "是否禁用雷暴天气。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "environment.disable-ice-and-snow",
+      "chinese_entries": [
+        {
+          "term": "禁用冰雪",
+          "context": "是否禁用冰雪生成。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "environment.disable-vehicle-phantom-phantom",
+      "chinese_entries": [
+        {
+          "term": "禁用载具幻影",
+          "context": "是否禁用载具移动产生的幻影。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "environment.fixed-time",
+      "chinese_entries": [
+        {
+          "term": "固定时间",
+          "context": "固定世界时间。空 = 不固定。6000 = 中午。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "environment.void-teleport-height",
+      "chinese_entries": [
+        {
+          "term": "虚空传送高度",
+          "context": "玩家落到此 Y 坐标时传送到出生点。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "environment.historical-tracking-enabled",
+      "chinese_entries": [
+        {
+          "term": "启用历史追踪",
+          "context": "是否启用历史追踪。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.disable-unloaded-chunk-entities",
+      "chinese_entries": [
+        {
+          "term": "禁用未加载区块实体",
+          "context": "修复未加载区块实体 bug。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.disable-void-teleporting",
+      "chinese_entries": [
+        {
+          "term": "禁用虚空传送",
+          "context": "是否禁用虚空传送。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.disable-void-teleporting",
+      "chinese_entries": [
+        {
+          "term": "禁用虚空传送",
+          "context": "关闭后玩家掉入虚空不会被传送回出生点。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.falling-block-teleport-vehicles",
+      "chinese_entries": [
+        {
+          "term": "下落方块传送载具",
+          "context": "修复下落方块传送载具的 bug。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.fix-curing-zombie-villager-exploit",
+      "chinese_entries": [
+        {
+          "term": "修复治愈村民漏洞",
+          "context": "修复治愈僵尸村民时反复刷价格的漏洞。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.parked-tick-list-entities",
+      "chinese_entries": [
+        {
+          "term": "停靠 tick 列表实体",
+          "context": "修复停靠 tick 列表实体 bug。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.split-overstacked-loot",
+      "chinese_entries": [
+        {
+          "term": "拆分超叠战利品",
+          "context": "是否将超叠战利品拆分为多个物品。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.pearl-exploit",
+      "chinese_entries": [
+        {
+          "term": "末影珍珠漏洞修复",
+          "context": "修复末影珍珠跨世界复制漏洞。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.tnt-entity-merging-not-bouncing",
+      "chinese_entries": [
+        {
+          "term": "TNT 实体合并不反弹",
+          "context": "修复 TNT 实体合并时不反弹的 bug。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.disable-relative-teleport-velocity-exploit",
+      "chinese_entries": [
+        {
+          "term": "禁用相对传送速度漏洞",
+          "context": "修复相对传送时的速度漏洞。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.fix-curing-zombie-villager-exploit",
+      "chinese_entries": [
+        {
+          "term": "修复治愈村民漏洞",
+          "context": "修复治愈僵尸村民刷价格漏洞。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.chorus-fruit-teleport-rideable-entities",
+      "chinese_entries": [
+        {
+          "term": "紫颂果传送可骑乘",
+          "context": "紫颂果是否能传送骑乘中的实体。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.chorus-fruit-teleport-riders",
+      "chinese_entries": [
+        {
+          "term": "紫颂果传送骑手",
+          "context": "紫颂果是否能传送骑手。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.disable-chest-cat-detection",
+      "chinese_entries": [
+        {
+          "term": "禁用箱子猫检测",
+          "context": "是否禁用打开箱子时检测猫坐其上（可防止刷怪塔）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.disable-player-crits",
+      "chinese_entries": [
+        {
+          "term": "禁用玩家暴击",
+          "context": "是否禁用玩家的暴击伤害。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.disable-sprint-interruption-on-attack",
+      "chinese_entries": [
+        {
+          "term": "禁用攻击打断冲刺",
+          "context": "是否禁用攻击时打断冲刺（1.8 PVP 手感）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.disable-relative-velocity-on-teleport",
+      "chinese_entries": [
+        {
+          "term": "传送时禁用相对速度",
+          "context": "玩家传送时是否禁用相对速度（防止甩出）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.ink-block-black-list",
+      "chinese_entries": [
+        {
+          "term": "墨囊方块黑名单",
+          "context": "墨囊不能染色的方块列表。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.mobs-disable-block-follow-range-rewrites",
+      "chinese_entries": [
+        {
+          "term": "禁用方块跟随范围重写",
+          "context": "是否禁用生物方块跟随范围重写。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.obbstruction-pickup",
+      "chinese_entries": [
+        {
+          "term": "障碍拾取",
+          "context": "是否启用障碍拾取。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.player-collisions",
+      "chinese_entries": [
+        {
+          "term": "玩家碰撞",
+          "context": "是否启用玩家间碰撞。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.player-cramming-damage",
+      "chinese_entries": [
+        {
+          "term": "玩家挤压伤害",
+          "context": "是否启用玩家挤压伤害。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.shield-blocking-delay",
+      "chinese_entries": [
+        {
+          "term": "盾牌格挡延迟",
+          "context": "玩家举起盾牌到实际格挡的延迟（毫秒）。降低可让 PvP 更灵敏。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.spawner-recover-air",
+      "chinese_entries": [
+        {
+          "term": "刷怪笼恢复空气",
+          "context": "刷怪笼生成的实体是否恢复空气。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.tick-rates.block-update",
+      "chinese_entries": [
+        {
+          "term": "方块更新频率",
+          "context": "方块更新的 tick 频率。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.tick-rates.mob-spawner",
+      "chinese_entries": [
+        {
+          "term": "刷怪笼 tick 频率",
+          "context": "刷怪笼的 tick 频率。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.tnt-entity-merging-not-bouncing",
+      "chinese_entries": [
+        {
+          "term": "TNT 实体合并不反弹",
+          "context": "TNT 实体合并时不反弹。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.water-bottle-empty-on-drink",
+      "chinese_entries": [
+        {
+          "term": "水瓶饮尽清空",
+          "context": "玩家饮用水瓶后是否变为空瓶。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.piston-block-bounding-box",
+      "chinese_entries": [
+        {
+          "term": "活塞方块边界",
+          "context": "是否启用活塞方块边界修复。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "gameplay-mechanics.arrow movement",
+      "chinese_entries": [
+        {
+          "term": "箭矢移动修正",
+          "context": "是否启用箭矢移动修正。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.monsters",
+      "chinese_entries": [
+        {
+          "term": "怪物上限",
+          "context": "每玩家怪物生成上限。覆盖 bukkit.yml。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.animals",
+      "chinese_entries": [
+        {
+          "term": "动物上限",
+          "context": "每玩家动物生成上限。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.water-animals",
+      "chinese_entries": [
+        {
+          "term": "水生动物上限",
+          "context": "每玩家水生动物上限。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.water-ambient",
+      "chinese_entries": [
+        {
+          "term": "水生环境生物上限",
+          "context": "每玩家水生环境生物上限。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.ambient",
+      "chinese_entries": [
+        {
+          "term": "环境生物上限",
+          "context": "每玩家环境生物（蝙蝠）上限。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.axolotls",
+      "chinese_entries": [
+        {
+          "term": "美西螈上限",
+          "context": "每玩家美西螈上限。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "spawn-limits.underground-water-creature",
+      "chinese_entries": [
+        {
+          "term": "地下水生生物上限",
+          "context": "每玩家地下水生生物（发光鱿鱼）上限。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.monster-spawn",
+      "chinese_entries": [
+        {
+          "term": "怪物生成间隔",
+          "context": "多少 tick 尝试一次怪物生成。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.animal-spawn",
+      "chinese_entries": [
+        {
+          "term": "动物生成间隔",
+          "context": "多少 tick 尝试一次动物生成。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.water-ambient-spawn",
+      "chinese_entries": [
+        {
+          "term": "水生环境生物生成间隔",
+          "context": "多少 tick 尝试一次水生环境生物生成。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.water-animal-spawn",
+      "chinese_entries": [
+        {
+          "term": "水生动物生成间隔",
+          "context": "多少 tick 尝试一次水生动物生成。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.axolotl-spawn",
+      "chinese_entries": [
+        {
+          "term": "美西螈生成间隔",
+          "context": "多少 tick 尝试一次美西螈生成。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.ambient-spawn",
+      "chinese_entries": [
+        {
+          "term": "环境生物生成间隔",
+          "context": "多少 tick 尝试一次环境生物生成。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ticks-per.underground-water-spawn",
+      "chinese_entries": [
+        {
+          "term": "地下水生生物生成间隔",
+          "context": "多少 tick 尝试一次地下水生生物生成。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "hopper.cooldown-when-full",
+      "chinese_entries": [
+        {
+          "term": "满时冷却",
+          "context": "漏斗满时是否进入冷却（不再尝试传输），可省 CPU。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "hopper.disable-move-event",
+      "chinese_entries": [
+        {
+          "term": "禁用移动事件",
+          "context": "⚠️ 启用后漏斗不再触发 InventoryMoveItemEvent，大幅省 CPU 但插件无法监听漏斗传输。**仅在确认无插件依赖此事件时启用**。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "hopper.ignore-occluding-blocks",
+      "chinese_entries": [
+        {
+          "term": "忽略遮挡方块",
+          "context": "漏斗是否忽略上方遮挡方块的检测。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "fixes.fix-cannons",
+      "chinese_entries": [
+        {
+          "term": "修复大炮",
+          "context": "修复 TNT 大炮的 bug。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-growth-height.cactus",
+      "chinese_entries": [
+        {
+          "term": "仙人掌最大高度",
+          "context": "仙人掌最大生长高度（方块）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-growth-height.reeds",
+      "chinese_entries": [
+        {
+          "term": "甘蔗最大高度",
+          "context": "甘蔗最大生长高度（方块）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-growth-height.bamboo",
+      "chinese_entries": [
+        {
+          "term": "竹子最大高度",
+          "context": "竹子最大生长高度（方块）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-growth-height.bamboo.max",
+      "chinese_entries": [
+        {
+          "term": "竹子最大高度",
+          "context": "竹子最大生长高度上限。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "max-growth-height.bamboo.min",
+      "chinese_entries": [
+        {
+          "term": "竹子最小高度",
+          "context": "竹子最小生长高度下限。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.armor-stands.disable-tick",
+      "chinese_entries": [
+        {
+          "term": "禁用盔甲架 tick",
+          "context": "是否完全禁用盔甲架 tick，省 CPU 但盔甲架无动画。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.cactus-modifier",
+      "chinese_entries": [
+        {
+          "term": "仙人掌生长修正",
+          "context": "仙人掌生长速度修正百分比。100 = Vanilla。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.cane-modifier",
+      "chinese_entries": [
+        {
+          "term": "甘蔗生长修正",
+          "context": "甘蔗生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.melon-modifier",
+      "chinese_entries": [
+        {
+          "term": "西瓜生长修正",
+          "context": "西瓜生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.pumpkin-modifier",
+      "chinese_entries": [
+        {
+          "term": "南瓜生长修正",
+          "context": "南瓜生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.sapling-modifier",
+      "chinese_entries": [
+        {
+          "term": "树苗生长修正",
+          "context": "树苗生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.wheat-modifier",
+      "chinese_entries": [
+        {
+          "term": "小麦生长修正",
+          "context": "小麦生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.netherwart-modifier",
+      "chinese_entries": [
+        {
+          "term": "地狱疣生长修正",
+          "context": "地狱疣生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.vine-modifier",
+      "chinese_entries": [
+        {
+          "term": "藤蔓生长修正",
+          "context": "藤蔓生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.cocoa-modifier",
+      "chinese_entries": [
+        {
+          "term": "可可豆生长修正",
+          "context": "可可豆生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.bamboo-modifier",
+      "chinese_entries": [
+        {
+          "term": "竹子生长修正",
+          "context": "竹子生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.sweetberry-modifier",
+      "chinese_entries": [
+        {
+          "term": "甜浆果生长修正",
+          "context": "甜浆果生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.kelp-modifier",
+      "chinese_entries": [
+        {
+          "term": "海带生长修正",
+          "context": "海带生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.twistingvines-modifier",
+      "chinese_entries": [
+        {
+          "term": "缠怨藤生长修正",
+          "context": "缠怨藤生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.weepingvines-modifier",
+      "chinese_entries": [
+        {
+          "term": "垂泪藤生长修正",
+          "context": "垂泪藤生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.cavevines-modifier",
+      "chinese_entries": [
+        {
+          "term": "洞穴藤生长修正",
+          "context": "洞穴藤生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.glowberry-modifier",
+      "chinese_entries": [
+        {
+          "term": "发光浆果生长修正",
+          "context": "发光浆果生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.rooted-grass-modifier",
+      "chinese_entries": [
+        {
+          "term": "根系草生长修正",
+          "context": "根系草生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.mangrove-propagule-modifier",
+      "chinese_entries": [
+        {
+          "term": "红树胎生苗生长修正",
+          "context": "红树胎生苗生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.torchflower-modifier",
+      "chinese_entries": [
+        {
+          "term": "火把花生长修正",
+          "context": "火把花生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.crop-fruit-plant-modifier",
+      "chinese_entries": [
+        {
+          "term": "作物果实修正",
+          "context": "作物果实生长修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "growth.pitcher-plant-modifier",
+      "chinese_entries": [
+        {
+          "term": "瓶子草生长修正",
+          "context": "瓶子草生长速度修正百分比。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "maps.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用地图",
+          "context": "是否启用地图绘制。关闭后地图不更新。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "maps.item-frame",
+      "chinese_entries": [
+        {
+          "term": "物品展示框地图",
+          "context": "物品展示框中的地图是否更新。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "maps.auto-update",
+      "chinese_entries": [
+        {
+          "term": "自动更新",
+          "context": "地图是否自动更新。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "behavior.baby-zombie-movement-modifier",
+      "chinese_entries": [
+        {
+          "term": "小僵尸移动修正",
+          "context": "小僵尸移动速度修正倍率。0.5 = +50% 速度。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.behavior.zombies-target-turtle-eggs",
+      "chinese_entries": [
+        {
+          "term": "僵尸目标海龟蛋",
+          "context": "僵尸是否主动踩踏海龟蛋。关闭可省 CPU。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.behavior.polar-bears-target-players-on-attack",
+      "chinese_entries": [
+        {
+          "term": "北极熊攻击玩家",
+          "context": "北极熊被攻击后是否反击玩家。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.tracking.range.animals",
+      "chinese_entries": [
+        {
+          "term": "动物追踪范围",
+          "context": "动物对玩家的可见距离。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.tracking.range.display",
+      "chinese_entries": [
+        {
+          "term": "展示实体追踪范围",
+          "context": "展示实体的可见距离。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.tracking.range.misc",
+      "chinese_entries": [
+        {
+          "term": "其他实体追踪范围",
+          "context": "其他实体的可见距离。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.tracking.range.monsters",
+      "chinese_entries": [
+        {
+          "term": "怪物追踪范围",
+          "context": "怪物的可见距离。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.tracking.range.other",
+      "chinese_entries": [
+        {
+          "term": "其他实体追踪范围",
+          "context": "其他实体的可见距离。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.tracking.range.players",
+      "chinese_entries": [
+        {
+          "term": "玩家追踪范围",
+          "context": "其他玩家可见你的距离。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entities.tracking.range.tick-frequency",
+      "chinese_entries": [
+        {
+          "term": "tick 频率",
+          "context": "实体追踪的 tick 频率。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.animals",
+      "chinese_entries": [
+        {
+          "term": "动物激活范围",
+          "context": "玩家距动物多少方块内时动物 AI 才 tick。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.monsters",
+      "chinese_entries": [
+        {
+          "term": "怪物激活范围",
+          "context": "玩家距怪物多少方块内时怪物 AI 才 tick。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.raiders",
+      "chinese_entries": [
+        {
+          "term": "袭击者激活范围",
+          "context": "袭击者的激活范围。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.misc",
+      "chinese_entries": [
+        {
+          "term": "其他实体激活范围",
+          "context": "其他实体的激活范围。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.water",
+      "chinese_entries": [
+        {
+          "term": "水生生物激活范围",
+          "context": "水生生物的激活范围。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.flying-monsters",
+      "chinese_entries": [
+        {
+          "term": "飞行怪物激活范围",
+          "context": "飞行怪物（恶魂、幻翼）的激活范围。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.villagers",
+      "chinese_entries": [
+        {
+          "term": "村民激活范围",
+          "context": "村民的激活范围。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.villagers-work-immune-after",
+      "chinese_entries": [
+        {
+          "term": "村民工作免疫后",
+          "context": "村民在多少 tick 后工作免疫。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.villagers-work-immune-for",
+      "chinese_entries": [
+        {
+          "term": "村民工作免疫持续",
+          "context": "村民工作免疫持续多少 tick。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.villagers-active-for-panic",
+      "chinese_entries": [
+        {
+          "term": "村民恐慌激活",
+          "context": "村民恐慌时是否激活。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.entity-activation-range.tick-inactive-villagers",
+      "chinese_entries": [
+        {
+          "term": "休眠村民仍 tick",
+          "context": "休眠村民是否仍 tick（保证农场工作）。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.delay-chunk-unloads-by",
+      "chinese_entries": [
+        {
+          "term": "延迟卸载",
+          "context": "玩家离开后多久卸载其加载的区块。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.fix-curing-zombie-villager-exploit",
+      "chinese_entries": [
+        {
+          "term": "修复治愈村民漏洞",
+          "context": "修复治愈村民刷价格漏洞。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.max-chunk-sends-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 区块发送上限",
+          "context": "每 tick 给单玩家发送多少区块。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "chunks.max-chunk-gens-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 区块生成上限",
+          "context": "每 tick 为单玩家生成多少区块。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "tick-rates.sensor.villager-secondary-poi",
+      "chinese_entries": [
+        {
+          "term": "村民次级 POI 传感器",
+          "context": "村民次级兴趣点传感器 tick 频率。调大可省 CPU。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "tick-rates.behavior.villager-baby-make-love",
+      "chinese_entries": [
+        {
+          "term": "小村民相爱行为",
+          "context": "小村民相爱行为 tick 频率。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    },
+    {
+      "key_path": "tick-rates.behavior.villager-acquire-poi",
+      "chinese_entries": [
+        {
+          "term": "村民获取 POI 行为",
+          "context": "村民获取兴趣点行为 tick 频率。",
+          "source": "docs/server-cores/04-paper.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

@@ -1,0 +1,1076 @@
+{
+  "config_file": "unknown",
+  "cores": [
+    "sponge"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/32-sponge.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "sponge.target-server-ip",
+      "chinese_entries": [
+        {
+          "term": "目标服务器 IP",
+          "context": "仅 SpongeForge/SpongeVanilla 嵌入式部署时使用",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sponge.target-server-port",
+      "chinese_entries": [
+        {
+          "term": "目标服务器端口",
+          "context": "嵌入式部署端口",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sponge.plugins-dir",
+      "chinese_entries": [
+        {
+          "term": "插件目录",
+          "context": "Sponge 插件搜索目录，可自定义",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sponge.enable-plugins",
+      "chinese_entries": [
+        {
+          "term": "启用插件加载",
+          "context": "false=不加载任何 Sponge 插件",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sponge.file-watch-enabled",
+      "chinese_entries": [
+        {
+          "term": "文件监视",
+          "context": "监视配置文件变化以支持热重载",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "modules.block-capturing-control",
+      "chinese_entries": [
+        {
+          "term": "方块捕获控制",
+          "context": "是否启用方块变更追踪（事务），插件 BlockEvent 依赖此",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "modules.bungeecord",
+      "chinese_entries": [
+        {
+          "term": "BungeeCord 兼容",
+          "context": "启用 IP 转发以兼容 BungeeCord/Velocity 代理",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "modules.entity-activation-range",
+      "chinese_entries": [
+        {
+          "term": "实体活动范围优化",
+          "context": "启用按距离降频实体 tick 的优化",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "modules.entity-collisions",
+      "chinese_entries": [
+        {
+          "term": "实体碰撞优化",
+          "context": "启用碰撞频率限制",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "modules.exploits",
+      "chinese_entries": [
+        {
+          "term": "漏洞修复",
+          "context": "修复若干原版漏洞（如附魔/书与笔）",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "modules.game-fixes",
+      "chinese_entries": [
+        {
+          "term": "游戏修复",
+          "context": "一些非紧急的游戏性 bug 修复，默认关闭以保原版行为",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "modules.optimizations",
+      "chinese_entries": [
+        {
+          "term": "性能优化",
+          "context": "总开关，关闭后下属所有优化失效",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "modules.realtime",
+      "chinese_entries": [
+        {
+          "term": "实时时钟",
+          "context": "用现实时间替代 tick，改善低 TPS 下玩家体验，不提升性能",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "modules.tileentity-activation",
+      "chinese_entries": [
+        {
+          "term": "方块实体活动范围",
+          "context": "按距离降频方块实体 tick，谨慎启用可能破坏模组功能",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "modules.timings",
+      "chinese_entries": [
+        {
+          "term": "性能计时",
+          "context": "启用 /sponge timings 性能分析",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "modules.tracking",
+      "chinese_entries": [
+        {
+          "term": "来源追踪",
+          "context": "追踪方块/实体变更的因果来源，权限审计依赖此",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.async-lighting.enabled",
+      "chinese_entries": [
+        {
+          "term": "异步光照计算",
+          "context": "异步线程计算光照，显著降低主线程负担",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.async-lighting.num-threads",
+      "chinese_entries": [
+        {
+          "term": "光照线程数",
+          "context": "异步光照专用线程数，CPU 核心数较佳",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.cache-tameable-owners",
+      "chinese_entries": [
+        {
+          "term": "缓存可驯服主",
+          "context": "缓存驯化动物主人 UUID，避免频繁 DataWatcher 查询",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.drops-pre-merge",
+      "chinese_entries": [
+        {
+          "term": "掉落物预合并",
+          "context": "生成掉落物前先尝试合并，减少实体数量",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.panda-redstone",
+      "chinese_entries": [
+        {
+          "term": "Panda 红石算法",
+          "context": "替代红石更新算法，减少方块更新次数，可能引入差异",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.chunk-loading",
+      "chinese_entries": [
+        {
+          "term": "区块加载优化",
+          "context": "优化区块加载与排队",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.eject-from-entity",
+      "chinese_entries": [
+        {
+          "term": "实体弹出优化",
+          "context": "优化矿车/船等载具的弹出逻辑",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.structured-unused-entries",
+      "chinese_entries": [
+        {
+          "term": "清理未用条目",
+          "context": "清理内部未使用的结构条目",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.use-partial-block-updates",
+      "chinese_entries": [
+        {
+          "term": "部分方块更新",
+          "context": "仅更新变化部分方块而非整体",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "optimizations.vertex-operation-lighting",
+      "chinese_entries": [
+        {
+          "term": "顶点光照优化",
+          "context": "实验性顶点级光照优化",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "block-entity-activation.auto-populate",
+      "chinese_entries": [
+        {
+          "term": "自动填充",
+          "context": "自动把新发现的方块实体加入配置，建议调优后关闭",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "block-entity-activation.default-block-range",
+      "chinese_entries": [
+        {
+          "term": "默认方块范围",
+          "context": "玩家在此范围内方块实体才 tick",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "block-entity-activation.default-tick-rate",
+      "chinese_entries": [
+        {
+          "term": "默认 tick 频率",
+          "context": "每多少 tick 给方块实体 1 次 tick，值越大越省 CPU",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "block-entity-activation.mods",
+      "chinese_entries": [
+        {
+          "term": "模组覆盖",
+          "context": "按模组 ID 自定义每个方块实体的范围与频率",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-activation-range.auto-populate",
+      "chinese_entries": [
+        {
+          "term": "自动填充",
+          "context": "自动把新发现的实体加入配置",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-activation-range.defaults.ambient",
+      "chinese_entries": [
+        {
+          "term": "环境生物范围",
+          "context": "蝙蝠等环境生物激活距离，0=禁用",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-activation-range.defaults.aquatic",
+      "chinese_entries": [
+        {
+          "term": "水生生物范围",
+          "context": "鱿鱼等水生生物激活距离",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-activation-range.defaults.creature",
+      "chinese_entries": [
+        {
+          "term": "被动动物范围",
+          "context": "牛、羊等被动动物激活距离",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-activation-range.defaults.misc",
+      "chinese_entries": [
+        {
+          "term": "杂项实体范围",
+          "context": "掉落物、经验球等杂项实体激活距离",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-activation-range.defaults.monster",
+      "chinese_entries": [
+        {
+          "term": "怪物范围",
+          "context": "僵尸、骷髅等怪物激活距离",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-activation-range.mods",
+      "chinese_entries": [
+        {
+          "term": "模组覆盖",
+          "context": "按模组 ID 自定义每类实体的激活距离",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-collision.auto-populate",
+      "chinese_entries": [
+        {
+          "term": "自动填充",
+          "context": "自动把新发现的实体加入碰撞配置",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-collision.defaults.ambient",
+      "chinese_entries": [
+        {
+          "term": "环境生物碰撞上限",
+          "context": "单点同时碰撞的环境生物上限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-collision.defaults.aquatic",
+      "chinese_entries": [
+        {
+          "term": "水生生物碰撞上限",
+          "context": "水生生物碰撞上限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-collision.defaults.creature",
+      "chinese_entries": [
+        {
+          "term": "被动动物碰撞上限",
+          "context": "被动动物碰撞上限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-collision.defaults.misc",
+      "chinese_entries": [
+        {
+          "term": "杂项实体碰撞上限",
+          "context": "杂项实体碰撞上限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-collision.defaults.monster",
+      "chinese_entries": [
+        {
+          "term": "怪物碰撞上限",
+          "context": "怪物碰撞上限，调小可减少密集卡顿",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity-collision.mods",
+      "chinese_entries": [
+        {
+          "term": "模组覆盖",
+          "context": "按模组 ID 自定义碰撞上限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity.creature-spawn-limit",
+      "chinese_entries": [
+        {
+          "term": "怪物生成上限",
+          "context": "0=沿用原版；正值覆盖原版上限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity.human-player-list-allow-bypass-on-max-players",
+      "chinese_entries": [
+        {
+          "term": "玩家列表绕过",
+          "context": "BungeeCord 转发时绕过原版 60 上限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity.max-bounding-box-size",
+      "chinese_entries": [
+        {
+          "term": "最大包围盒尺寸",
+          "context": "实体最大碰撞箱尺寸，过大实体被裁剪，防崩",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity.max-entity-velocity",
+      "chinese_entries": [
+        {
+          "term": "最大实体速度",
+          "context": "实体最大速度上限，防止作弊者用速度卡服",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity.player-block-reach",
+      "chinese_entries": [
+        {
+          "term": "玩家方块触达距离",
+          "context": "玩家可破坏/交互方块的最远距离",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "entity.player-entity-reach",
+      "chinese_entries": [
+        {
+          "term": "玩家实体触达距离",
+          "context": "玩家可攻击/交互实体的最远距离",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "movement-checks.auto-orientation",
+      "chinese_entries": [
+        {
+          "term": "自动朝向检查",
+          "context": "检测玩家朝向突变（如反作弊）",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "movement-checks.invalid-rotation",
+      "chinese_entries": [
+        {
+          "term": "非法旋转检查",
+          "context": "检查旋转角度是否超出合法范围",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "movement-checks.moved-wrongly",
+      "chinese_entries": [
+        {
+          "term": "异常移动检查",
+          "context": "检查玩家移动距离是否异常",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "movement-checks.moved-too-quickly",
+      "chinese_entries": [
+        {
+          "term": "快速移动检查",
+          "context": "检查玩家移动速度是否过快",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "movement-checks.speed-hack",
+      "chinese_entries": [
+        {
+          "term": "速度作弊检查",
+          "context": "检测加速挂",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.multi-world-commands",
+      "chinese_entries": [
+        {
+          "term": "多世界命令",
+          "context": "是否按世界隔离命令权限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.command-aliases",
+      "chinese_entries": [
+        {
+          "term": "命令别名",
+          "context": "自定义命令别名映射",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.notifications.command",
+      "chinese_entries": [
+        {
+          "term": "命令通知命令名",
+          "context": "/sponge 主命令名",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "commands.show-name",
+      "chinese_entries": [
+        {
+          "term": "显示命令名",
+          "context": "帮助列表中是否显示命令名",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.auto-save-interval",
+      "chinese_entries": [
+        {
+          "term": "世界自动保存间隔",
+          "context": "每多少 tick 保存所有区块，0=禁用，20 tick=1 秒",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.auto-player-save-interval",
+      "chinese_entries": [
+        {
+          "term": "玩家数据保存间隔",
+          "context": "每多少 tick 保存全局玩家数据，0=禁用",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.game-disable-updates",
+      "chinese_entries": [
+        {
+          "term": "禁用游戏更新",
+          "context": "调试用，禁用游戏内部更新",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.gen-modifiers",
+      "chinese_entries": [
+        {
+          "term": "生成器修饰符",
+          "context": "自定义世界生成修饰符列表",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world.load-on-startup",
+      "chinese_entries": [
+        {
+          "term": "启动时加载",
+          "context": "服务端启动时是否预加载所有世界",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "bungeecord.ip-forwarding",
+      "chinese_entries": [
+        {
+          "term": "IP 转发",
+          "context": "启用 BungeeCord/Velocity IP 转发，必须与代理端一致",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "bungeecord.online-mode",
+      "chinese_entries": [
+        {
+          "term": "在线模式",
+          "context": "代理模式下是否做正版验证",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ip-forwarding.set-and-verify-ip",
+      "chinese_entries": [
+        {
+          "term": "设置并验证 IP",
+          "context": "严格验证转发请求中的真实 IP 与协议",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "ip-forwarding.forward-player-info",
+      "chinese_entries": [
+        {
+          "term": "转发玩家信息",
+          "context": "转发玩家 UUID/属性到子服",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "permissions.load-on-startup",
+      "chinese_entries": [
+        {
+          "term": "启动加载权限",
+          "context": "启动时加载权限服务",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "permissions.use-default-permissions",
+      "chinese_entries": [
+        {
+          "term": "使用默认权限",
+          "context": "是否使用 Sponge 内置默认权限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "permissions.default-admin-level",
+      "chinese_entries": [
+        {
+          "term": "默认管理员等级",
+          "context": "默认权限等级（4=OP）",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sql.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 SQL",
+          "context": "启用 SQL 数据源",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sql.driver",
+      "chinese_entries": [
+        {
+          "term": "数据库驱动",
+          "context": "JDBC 驱动类全名",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sql.url",
+      "chinese_entries": [
+        {
+          "term": "数据库 URL",
+          "context": "JDBC 连接 URL",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sql.user",
+      "chinese_entries": [
+        {
+          "term": "数据库用户名",
+          "context": "数据库账号",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sql.password",
+      "chinese_entries": [
+        {
+          "term": "数据库密码",
+          "context": "数据库密码，建议用环境变量替代",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "sql.table-prefix",
+      "chinese_entries": [
+        {
+          "term": "表前缀",
+          "context": "数据表名前缀",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "scheduler.parallel-limit",
+      "chinese_entries": [
+        {
+          "term": "并发任务上限",
+          "context": "异步任务并发上限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "scheduler.max-thread-size",
+      "chinese_entries": [
+        {
+          "term": "最大线程数",
+          "context": "调度线程池最大线程数",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logging.log-block-break",
+      "chinese_entries": [
+        {
+          "term": "记录方块破坏",
+          "context": "控制台输出方块破坏事件",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logging.log-block-place",
+      "chinese_entries": [
+        {
+          "term": "记录方块放置",
+          "context": "控制台输出方块放置事件",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logging.log-stacktraces",
+      "chinese_entries": [
+        {
+          "term": "记录堆栈",
+          "context": "输出异常堆栈用于调试",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "logging.debug",
+      "chinese_entries": [
+        {
+          "term": "调试日志",
+          "context": "启用指定调试分类（如 [\"chunk-load\"]）",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "exploits.book-large-size",
+      "chinese_entries": [
+        {
+          "term": "书本大小限制",
+          "context": "限制书本内容大小，防崩服",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "exploits.item-signature",
+      "chinese_entries": [
+        {
+          "term": "物品签名检查",
+          "context": "检查物品 NBT 签名是否合法",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "exploits.sign-command",
+      "chinese_entries": [
+        {
+          "term": "告示牌命令限制",
+          "context": "限制告示牌可执行的命令",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "exploits.sign-long-lines",
+      "chinese_entries": [
+        {
+          "term": "告示牌长行限制",
+          "context": "限制告示牌每行字符数",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.disable-warnings",
+      "chinese_entries": [
+        {
+          "term": "禁用警告",
+          "context": "关闭控制台部分警告",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.hide-online-players",
+      "chinese_entries": [
+        {
+          "term": "隐藏在线玩家",
+          "context": "不向客户端发送完整玩家列表",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.disable-flush-saving",
+      "chinese_entries": [
+        {
+          "term": "禁用刷盘保存",
+          "context": "关闭定时全量刷盘，仅增量保存",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.death-message-style",
+      "chinese_entries": [
+        {
+          "term": "死亡消息风格",
+          "context": "死亡消息显示风格",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "debug.thread-contention-monitoring",
+      "chinese_entries": [
+        {
+          "term": "线程竞争监视",
+          "context": "启用线程竞争检测",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "debug.reload-internal",
+      "chinese_entries": [
+        {
+          "term": "内部重载",
+          "context": "允许 /sponge reload 重载内部状态",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "debug.synchronize-chunk-writes",
+      "chinese_entries": [
+        {
+          "term": "同步区块写入",
+          "context": "区块写入是否同步",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "phase-tracking.verbose-logging",
+      "chinese_entries": [
+        {
+          "term": "详细追踪日志",
+          "context": "输出详细阶段追踪信息",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "phase-tracking.capture-block",
+      "chinese_entries": [
+        {
+          "term": "捕获方块",
+          "context": "方块捕获配置",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "phase-tracking.capture-entity",
+      "chinese_entries": [
+        {
+          "term": "捕获实体",
+          "context": "实体捕获配置",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "phase-tracking.capture-sponge",
+      "chinese_entries": [
+        {
+          "term": "捕获 Sponge",
+          "context": "Sponge 内部事件捕获",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用 timings",
+          "context": "启用 /sponge timings",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.verbose",
+      "chinese_entries": [
+        {
+          "term": "详细模式",
+          "context": "输出更详细的计时数据",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.cost-ignored",
+      "chinese_entries": [
+        {
+          "term": "忽略成本",
+          "context": "忽略微小成本计时",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.history-interval",
+      "chinese_entries": [
+        {
+          "term": "历史间隔",
+          "context": "多少秒采样一次历史",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "timings.history-length",
+      "chinese_entries": [
+        {
+          "term": "历史长度",
+          "context": "历史总时长（秒）",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "cause-tracker.max-block-processed-per-tick",
+      "chinese_entries": [
+        {
+          "term": "每 tick 最大处理方块",
+          "context": "每 tick 处理的方块事件上限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "cause-tracker.max-block-processed-per-event",
+      "chinese_entries": [
+        {
+          "term": "每事件最大方块",
+          "context": "单个事件处理方块上限",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    },
+    {
+      "key_path": "cause-tracker.report-modified-blocks",
+      "chinese_entries": [
+        {
+          "term": "报告修改方块",
+          "context": "输出修改方块报告",
+          "source": "docs/server-cores/32-sponge.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:24:43Z"
+}

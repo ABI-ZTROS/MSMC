@@ -1,0 +1,136 @@
+{
+  "config_file": "flamecord.yml",
+  "cores": [
+    "flamecord"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/25-flamecord.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "config-version",
+      "chinese_entries": [
+        {
+          "term": "配置版本号",
+          "context": "内部使用，**不要手动修改**。FlameCord 用它做配置自动升级与兼容性判断。",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "antibot.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用反机器人",
+          "context": "总开关。true=启用 FlameCord 内置 AntiBot；false=完全关闭，退化为普通 BungeeCord。被攻击时务必 true",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "antibot.check-accounts",
+      "chinese_entries": [
+        {
+          "term": "检查账户爆破",
+          "context": "是否启用账户频率检测。true=限制单 IP 在窗口内尝试登录不同账号的次数，可防撞库；false=不检测",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "antibot.max-accounts-per-ip",
+      "chinese_entries": [
+        {
+          "term": "单 IP 最大账号数",
+          "context": "同一 IP 在窗口时间内最多尝试登录多少个不同账号。超过此值会被视为机器人并踢出 / 封禁",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "antibot.accounts-per-second",
+      "chinese_entries": [
+        {
+          "term": "账号请求频率",
+          "context": "单 IP 每秒最多尝试登录的账号次数。值越小越严格，但可能误杀家庭网络共享 IP 的玩家",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "antibot.max-connections-per-ip",
+      "chinese_entries": [
+        {
+          "term": "单 IP 最大连接数",
+          "context": "同一 IP 同时允许的未完成握手连接数。超过此值的连接会被直接丢弃，防止 TCP 连接洪水",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "antibot.connections-per-second",
+      "chinese_entries": [
+        {
+          "term": "连接请求频率",
+          "context": "单 IP 每秒最多发起新连接的次数。建议与正常玩家进入频率匹配，过低会误杀玩家",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "firewall.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用防火墙",
+          "context": "总开关。true=启用 Netty 层流量限速；false=关闭，所有连接直通代理主线程",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "firewall.max-rate",
+      "chinese_entries": [
+        {
+          "term": "最大速率",
+          "context": "单 IP 每秒允许通过的最大数据包数。超过此速率的包会被丢弃，可有效缓解坏包攻击（BadPacket）",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "firewall.timeout",
+      "chinese_entries": [
+        {
+          "term": "超时时间",
+          "context": "单连接无数据传输的超时时间。超过此值无响应的连接会被关闭，可释放僵尸连接占用",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "reconnect-handler.enabled",
+      "chinese_entries": [
+        {
+          "term": "启用防重连",
+          "context": "总开关。true=被踢出后短时间内禁止重连；false=允许立即重连，会被机器人利用绕过 AntiBot",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    },
+    {
+      "key_path": "reconnect-handler.time",
+      "chinese_entries": [
+        {
+          "term": "重连冷却时间",
+          "context": "被踢出 / 封禁后再次允许连接的间隔（秒）。值越大越安全，但正常玩家被误杀后等待越久",
+          "source": "docs/server-cores/25-flamecord.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

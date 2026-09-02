@@ -1,0 +1,236 @@
+{
+  "config_file": "help.yml",
+  "cores": [
+    "bukkit"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/02-bukkit.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "general",
+      "chinese_entries": [
+        {
+          "term": "通用设置",
+          "context": "帮助页通用设置节。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.default-topic-format",
+      "chinese_entries": [
+        {
+          "term": "默认主题格式",
+          "context": "默认帮助主题的输出格式模板。可用占位符 <description>、<usage>、<aliases>、<permission>。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.command-prefix",
+      "chinese_entries": [
+        {
+          "term": "命令前缀",
+          "context": "帮助页中命令的前缀字符。一般保持 /。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.console-command-prefix",
+      "chinese_entries": [
+        {
+          "term": "控制台命令前缀",
+          "context": "控制台中命令的前缀。留空则与 command-prefix 相同。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.search-index-listed",
+      "chinese_entries": [
+        {
+          "term": "索引列出搜索结果",
+          "context": "/help <关键词> 搜索时是否列出索引。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.max-help-page-size",
+      "chinese_entries": [
+        {
+          "term": "每页最大帮助数",
+          "context": "/help 每页显示多少条命令。值越大单页内容越多。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.list-of-headers",
+      "chinese_entries": [
+        {
+          "term": "帮助页标题列表",
+          "context": "各类帮助页的标题文本列表，按顺序对应：索引页、搜索页、主题页、主题列表页、上一页、下一页。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.default-topic-permission",
+      "chinese_entries": [
+        {
+          "term": "默认主题权限",
+          "context": "查看默认帮助主题所需的权限节点。留空则所有人可见。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.topics-on-first-page",
+      "chinese_entries": [
+        {
+          "term": "首页显示主题列表",
+          "context": "/help 第一页是否显示主题列表。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments",
+      "chinese_entries": [
+        {
+          "term": "命令修改",
+          "context": "对已注册命令的描述进行补充修改。键为命令名，值为包含 description/usage/permission/aliases 的 map。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments.<命令>.short-description",
+      "chinese_entries": [
+        {
+          "term": "命令短描述",
+          "context": "覆盖命令在帮助列表中的短描述。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments.<命令>.full-description",
+      "chinese_entries": [
+        {
+          "term": "命令完整描述",
+          "context": "覆盖命令的完整描述。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments.<命令>.usage",
+      "chinese_entries": [
+        {
+          "term": "命令用法",
+          "context": "覆盖命令的用法说明。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments.<命令>.permission",
+      "chinese_entries": [
+        {
+          "term": "命令权限",
+          "context": "覆盖命令所需权限节点。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "general.amendments.<命令>.aliases",
+      "chinese_entries": [
+        {
+          "term": "命令别名",
+          "context": "覆盖命令的别名列表。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "topics",
+      "chinese_entries": [
+        {
+          "term": "自定义主题",
+          "context": "自定义帮助主题。键为 /<主题名>，值为包含 shortDescription/fullDescription/permission 的 map。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "topics.<主题名>.short-description",
+      "chinese_entries": [
+        {
+          "term": "主题短描述",
+          "context": "自定义主题的短描述。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "topics.<主题名>.full-description",
+      "chinese_entries": [
+        {
+          "term": "主题完整描述",
+          "context": "自定义主题的完整描述（支持多行，用 \\n 分隔）。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "topics.<主题名>.permission",
+      "chinese_entries": [
+        {
+          "term": "主题查看权限",
+          "context": "查看此主题所需的权限节点。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "index",
+      "chinese_entries": [
+        {
+          "term": "索引页内容",
+          "context": "/help 索引页的额外说明内容。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "index.<名称>.short-description",
+      "chinese_entries": [
+        {
+          "term": "索引项短描述",
+          "context": "索引页中某个分类项的短描述。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    },
+    {
+      "key_path": "index.<名称>.full-description",
+      "chinese_entries": [
+        {
+          "term": "索引项完整描述",
+          "context": "索引页中某个分类项的完整描述。",
+          "source": "docs/server-cores/02-bukkit.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}

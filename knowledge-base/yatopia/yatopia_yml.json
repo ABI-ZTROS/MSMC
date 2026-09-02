@@ -1,0 +1,136 @@
+{
+  "config_file": "yatopia.yml",
+  "cores": [
+    "yatopia"
+  ],
+  "source_docs": [
+    {
+      "source": "project-md",
+      "path": "docs/server-cores/14-yatopia.md"
+    }
+  ],
+  "entries": [
+    {
+      "key_path": "config-version",
+      "chinese_entries": [
+        {
+          "term": "配置版本号",
+          "context": "内部使用，**不要手动修改**。Yatopia 用它做配置自动升级与兼容性判断。",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.brand-name",
+      "chinese_entries": [
+        {
+          "term": "服务端品牌名",
+          "context": "发送给客户端的服务端品牌名（F3 界面 \"Mod\" 字段）。可用 § 颜色码，可隐藏真实核心类型",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.disable-connection-messages",
+      "chinese_entries": [
+        {
+          "term": "禁用连接消息",
+          "context": "是否关闭玩家加入 / 退出的全服广播。true=不再显示「XXX joined the game」类消息；false=原版行为",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.use-player-luck-perms",
+      "chinese_entries": [
+        {
+          "term": "使用 LuckPerms 玩家缓存",
+          "context": "是否直接读取 LuckPerms 玩家对象缓存（绕过 Bukkit API）。true=权限查询更快；false=走标准 API，兼容性更好",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "settings.fix-bridging",
+      "chinese_entries": [
+        {
+          "term": "修复速桥",
+          "context": "是否修复速桥（Bridging）时方块放置位置异常。true=修复；false=还原原版时序，部分玩家可能更顺手",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entities.disable-skeleton-ai",
+      "chinese_entries": [
+        {
+          "term": "禁用骷髅 AI",
+          "context": "true=骷髅不再主动寻路 / 射箭，只保持原地待机。可显著降低骷髅密集场景的 CPU 占用，但破坏玩法",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entities.disable-zombie-ai",
+      "chinese_entries": [
+        {
+          "term": "禁用僵尸 AI",
+          "context": "true=僵尸不再主动追击玩家 / 拆门。同上，仅适合刷怪塔或测试服",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.entities.fast-velocity-calc",
+      "chinese_entries": [
+        {
+          "term": "快速速度计算",
+          "context": "是否使用更快的实体速度计算算法。true=省 CPU，可能与原版物理略有差异；false=原版精确计算",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.ticks.disable-tick-scheduler",
+      "chinese_entries": [
+        {
+          "term": "禁用 tick 调度器",
+          "context": "是否禁用原版 tick 调度器改用简化实现。true=省 CPU 但部分依赖调度的红石机器可能失效；false=原版调度",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.ticks.optimize-hopper",
+      "chinese_entries": [
+        {
+          "term": "漏斗优化",
+          "context": "启用 Paper 的漏斗优化。false 可还原 100% 原版漏斗行为，但会破坏大量生电红石机器。生电服可考虑 false",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.fixes.fix-player-z-fighting",
+      "chinese_entries": [
+        {
+          "term": "修复玩家 Z 闪烁",
+          "context": "是否修复玩家在低 Y 高速移动时的 Z 轴闪烁问题。true=修复（推荐）；false=原版行为",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    },
+    {
+      "key_path": "world-settings.default.fixes.disable-void-fishing",
+      "chinese_entries": [
+        {
+          "term": "禁用虚空钓鱼",
+          "context": "是否禁用虚空钓鱼漏洞。true=禁用（钓鱼浮标在虚空时不再生效）；false=原版行为",
+          "source": "docs/server-cores/14-yatopia.md"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "indexed_at": "2026-09-02T16:25:43Z"
+}
