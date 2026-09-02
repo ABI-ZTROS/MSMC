@@ -13,8 +13,10 @@ namespace io.NET.ZTR_OS.Features.ContentMarket.Models;
 public enum MarketSource
 {
     Modrinth,
+    Hangar,        // PaperMC 官方插件站
+    Spiget,        // SpigotMC 资源站
     CurseForge,
-    ForgeOfficial,
+    Polymart,
     CustomUrl,
     Local
 }
@@ -31,6 +33,7 @@ public enum ModLoader
     Spigot,
     Paper,
     Purpur,
+    Folia,        // Paper 的区域多线程分支
     Velocity,
     BungeeCord,
     Generic
