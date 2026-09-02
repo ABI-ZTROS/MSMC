@@ -32,3 +32,10 @@ publish/
 
 ## Frontend
 src/frontend/node_modules/
+
+## Cache / Generated (core-fetcher pipeline)
+cache/
+generated-configs/
+source-hints/
+*.jar
+*.sha256
