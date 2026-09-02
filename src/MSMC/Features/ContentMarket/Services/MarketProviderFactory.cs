@@ -4,8 +4,8 @@
 // 功能描述: 多 Provider 聚合工厂 —— 并行搜索、去重、返回合并结果
 // -----------------------------------------------------------------------------
 
-using Microsoft.Extensions.Logging;
 using io.NET.ZTR_OS.Features.ContentMarket.Models;
+using Microsoft.Extensions.Logging;
 
 namespace io.NET.ZTR_OS.Features.ContentMarket.Services;
 
