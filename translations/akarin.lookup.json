@@ -1,0 +1,374 @@
+{
+  "alternative.allow-spawner-modify": {
+    "DisplayName": "允许修改刷怪笼",
+    "Description": "是否允许玩家挖掉或重新放置刷怪笼方块"
+  },
+  "alternative.disable-end-portal-create": {
+    "DisplayName": "禁用末地传送门创建",
+    "Description": "开启后玩家无法通过末影之眼激活末地传送门"
+  },
+  "alternative.force-difficulty-on-hardcore": {
+    "DisplayName": "硬核强制难度",
+    "Description": "硬核模式下强制锁定难度为 HARD，防止绕过"
+  },
+  "alternative.gc-before-stuck-restart": {
+    "DisplayName": "卡死重启前 GC",
+    "Description": "主线程卡死自动重启前先执行一次 Full GC"
+  },
+  "alternative.legacy-versioning-compat": {
+    "DisplayName": "旧版版本兼容",
+    "Description": "启用对旧版插件版本号的兼容模式"
+  },
+  "alternative.modified-server-brand-name": {
+    "DisplayName": "自定义服务端品牌名",
+    "Description": "留空则用默认值；填入后发送给客户端的品牌名（F3 界面可见）"
+  },
+  "alternative.version-update-interval": {
+    "DisplayName": "版本更新检查间隔",
+    "Description": "每隔多久检查一次新版本，如 3600s=1 小时"
+  },
+  "bootstrap.extra-local-address": {
+    "DisplayName": "额外本地地址",
+    "Description": "启动时额外绑定的本地网卡地址列表"
+  },
+  "core.always-silent-async-timing": {
+    "DisplayName": "静默异步计时",
+    "Description": "让异步性能计时始终保持静默，不输出耗时日志"
+  },
+  "core.chunk-save-threads": {
+    "DisplayName": "区块保存线程数",
+    "Description": "并行保存区块数据的线程数，默认 2"
+  },
+  "core.enable-panda-redstone-wire": {
+    "DisplayName": "启用 Panda 红石优化",
+    "Description": "启用 Panda 红石优化模块（实验性）"
+  },
+  "core.enable-real-time-ticking": {
+    "DisplayName": "实时 Tick",
+    "Description": "让服务器 Tick 跟随真实时间，不受 TPS 抖动影响"
+  },
+  "core.keep-alive-response-timeout": {
+    "DisplayName": "保活响应超时",
+    "Description": "等待玩家回复 Keepalive 包的超时时间（默认 30s）"
+  },
+  "core.optimize-chunk-unloading": {
+    "DisplayName": "区块卸载优化",
+    "Description": "启用更激进的区块卸载策略以节省内存"
+  },
+  "core.parallel-mode": {
+    "DisplayName": "并行模式",
+    "Description": "并行处理级别，0=关闭，1=默认多线程"
+  },
+  "core.players-per-chunk-io-thread": {
+    "DisplayName": "每区块 IO 线程玩家数",
+    "Description": "单个区块 IO 线程负责的玩家数量阈值，默认 50"
+  },
+  "core.primary-thread-priority": {
+    "DisplayName": "主线程优先级",
+    "Description": "Java 主线程的 OS 优先级（1-10），默认 7"
+  },
+  "core.send-light-only-chunk-sections": {
+    "DisplayName": "仅发送光照区块段",
+    "Description": "只发送有光照数据的区块段给客户端，减少带宽"
+  },
+  "core.thread-safe.async-catcher.throw-on-caught": {
+    "DisplayName": "异步异常抛出",
+    "Description": "异步线程捕获到异常时是否向上抛出而不是静默吞掉"
+  },
+  "core.tick-rate.keep-alive-packet-send-interval": {
+    "DisplayName": "保活包发送间隔",
+    "Description": "服务器向玩家发送 Keepalive 包的间隔（默认 15s）"
+  },
+  "core.tick-rate.players-info-update-interval": {
+    "DisplayName": "玩家信息更新间隔",
+    "Description": "玩家列表/皮肤等信息刷新间隔（默认 30s）"
+  },
+  "core.tick-rate.world-time-update-interval": {
+    "DisplayName": "世界时间更新间隔",
+    "Description": "世界时间广播给客户端的间隔（默认 1s）"
+  },
+  "messages.connect.player-join-server": {
+    "DisplayName": "玩家加入消息",
+    "Description": "%s 为玩家名；玩家加入服务器时的聊天提示"
+  },
+  "messages.connect.renamed-player-join-server": {
+    "DisplayName": "改名玩家加入消息",
+    "Description": "%s=新名，%s=旧名；改名后首次登录提示"
+  },
+  "messages.disconnect.ban-expires": {
+    "DisplayName": "封禁到期提示",
+    "Description": "被封禁玩家尝试连接时显示的剩余时间提示"
+  },
+  "messages.disconnect.ban-player-ip": {
+    "DisplayName": "IP 封禁消息",
+    "Description": "IP 被封时玩家看到的提示文字"
+  },
+  "messages.disconnect.ban-player-name": {
+    "DisplayName": "玩家封禁消息",
+    "Description": "玩家名被封时看到的提示文字"
+  },
+  "messages.disconnect.ban-reason": {
+    "DisplayName": "封禁原因前缀",
+    "Description": "显示封禁原因时的前缀文字"
+  },
+  "messages.disconnect.kick-player": {
+    "DisplayName": "OP 踢出消息",
+    "Description": "被 OP 用 /kick 命令踢出时显示的文字"
+  },
+  "messages.disconnect.kick-player-duplicate-login": {
+    "DisplayName": "异地登录踢出",
+    "Description": "同一账号在别处登录时玩家被踢出的提示"
+  },
+  "messages.disconnect.kick-player-timeout-keep-alive": {
+    "DisplayName": "超时踢出消息",
+    "Description": "长时间未响应 Keepalive 包被踢出时的提示"
+  },
+  "messages.disconnect.player-quit-server": {
+    "DisplayName": "玩家退出消息",
+    "Description": "%s 为玩家名；离开服务器时的聊天提示"
+  },
+  "advancements.disable-saving": {
+    "DisplayName": "禁用进度保存",
+    "Description": "关闭后玩家进度数据不再自动写入磁盘"
+  },
+  "advancements.disabled": {
+    "DisplayName": "禁用的进度",
+    "Description": "这些进度 ID 会被禁用，玩家无法获取"
+  },
+  "commands.log": {
+    "DisplayName": "记录命令日志",
+    "Description": "是否在控制台记录所有玩家执行的命令"
+  },
+  "commands.replace-commands": {
+    "DisplayName": "替换命令",
+    "Description": "这些命令会被优化版实现替换"
+  },
+  "commands.silent-commandblock-console": {
+    "DisplayName": "命令方块静默",
+    "Description": "命令方块执行命令时不在控制台输出"
+  },
+  "commands.spam-exclusions": {
+    "DisplayName": "刷屏排除命令",
+    "Description": "这些命令不受反刷屏限制（如 /skill）"
+  },
+  "config-version": {
+    "DisplayName": "配置版本号",
+    "Description": "内部配置版本标识，请勿手动修改"
+  },
+  "messages.outdated-client": {
+    "DisplayName": "客户端过旧消息",
+    "Description": "{0} 为服务器版本；客户端版本太旧时的提示"
+  },
+  "messages.outdated-server": {
+    "DisplayName": "服务端过旧消息",
+    "Description": "{0} 为客户端版本；服务器版本落后时的提示"
+  },
+  "messages.restart": {
+    "DisplayName": "重启消息",
+    "Description": "服务器即将重启时显示给在线玩家的消息"
+  },
+  "messages.server-full": {
+    "DisplayName": "服务器已满消息",
+    "Description": "达到玩家上限后新玩家连接时看到的提示"
+  },
+  "messages.unknown-command": {
+    "DisplayName": "未知命令消息",
+    "Description": "玩家输入不存在的命令时显示的提示"
+  },
+  "messages.whitelist": {
+    "DisplayName": "白名单消息",
+    "Description": "未在白名单的玩家尝试加入时看到的提示"
+  },
+  "settings.attribute.attackDamage.max": {
+    "DisplayName": "攻击伤害属性上限",
+    "Description": "攻击伤害 attribute 允许的最大值"
+  },
+  "settings.attribute.maxHealth.max": {
+    "DisplayName": "最大生命属性上限",
+    "Description": "最大生命值 attribute 允许的最大值"
+  },
+  "settings.attribute.movementSpeed.max": {
+    "DisplayName": "移动速度属性上限",
+    "Description": "移动速度 attribute 允许的最大值"
+  },
+  "settings.filter-creative-items": {
+    "DisplayName": "过滤创造物品",
+    "Description": "过滤创造模式物品栏中无效/不存在的物品"
+  },
+  "settings.int-cache-limit": {
+    "DisplayName": "整数缓存上限",
+    "Description": "优化用的 Integer 对象缓存池上限，影响 GC 频率"
+  },
+  "settings.item-dirty-ticks": {
+    "DisplayName": "物品脏数据 Tick",
+    "Description": "物品实体被标记为脏后等待多久才自动清理"
+  },
+  "settings.late-bind": {
+    "DisplayName": "延迟绑定",
+    "Description": "插件监听器采用延迟绑定以提升加载速度"
+  },
+  "settings.moved-too-quickly-multiplier": {
+    "DisplayName": "过速检测倍数",
+    "Description": "玩家被检测到移动过快时的容忍倍数"
+  },
+  "settings.moved-wrongly-threshold": {
+    "DisplayName": "位置异常阈值",
+    "Description": "玩家位置被判定异常/作弊的最小位移阈值"
+  },
+  "settings.save-user-cache-on-stop-only": {
+    "DisplayName": "仅停机保存用户缓存",
+    "Description": "usercache.json 只在服务器关闭时才写入磁盘"
+  },
+  "stats.disable-saving": {
+    "DisplayName": "禁用统计保存",
+    "Description": "关闭后玩家统计数据不再自动写入磁盘"
+  },
+  "world-settings.default.entity-activation-range.animals": {
+    "DisplayName": "动物激活距离",
+    "Description": "动物在玩家周围多远范围内才会执行 AI Tick"
+  },
+  "world-settings.default.entity-activation-range.misc": {
+    "DisplayName": "杂项实体激活距离",
+    "Description": "矿车、箭等杂项实体的激活距离"
+  },
+  "world-settings.default.entity-activation-range.monsters": {
+    "DisplayName": "怪物激活距离",
+    "Description": "僵尸、骷髅等怪物的激活距离"
+  },
+  "world-settings.default.entity-activation-range.tick-inactive-villagers": {
+    "DisplayName": "非活跃村民 Tick",
+    "Description": "是否持续 Tick 附近没有玩家的村民实体"
+  },
+  "world-settings.default.entity-activation-range.water": {
+    "DisplayName": "水生实体激活距离",
+    "Description": "鱿鱼、海豚等水生实体的激活距离"
+  },
+  "world-settings.default.entity-tracking-range.animals": {
+    "DisplayName": "动物追踪距离",
+    "Description": "客户端接收动物实体移动包的距离"
+  },
+  "world-settings.default.entity-tracking-range.misc": {
+    "DisplayName": "杂项实体追踪距离",
+    "Description": "客户端接收杂项实体移动包的距离"
+  },
+  "world-settings.default.entity-tracking-range.monsters": {
+    "DisplayName": "怪物追踪距离",
+    "Description": "客户端接收怪物实体移动包的距离"
+  },
+  "world-settings.default.entity-tracking-range.other": {
+    "DisplayName": "其他实体追踪距离",
+    "Description": "盔甲架、物品展示框等的追踪距离"
+  },
+  "world-settings.default.entity-tracking-range.players": {
+    "DisplayName": "玩家追踪距离",
+    "Description": "客户端接收其他玩家实体的距离"
+  },
+  "world-settings.default.growth.cactus-modifier": {
+    "DisplayName": "仙人掌生长速度",
+    "Description": "仙人掌生长速度百分比，100=原版"
+  },
+  "world-settings.default.growth.cane-modifier": {
+    "DisplayName": "甘蔗生长速度",
+    "Description": "甘蔗生长速度百分比，100=原版"
+  },
+  "world-settings.default.growth.cocoa-modifier": {
+    "DisplayName": "可可豆生长速度",
+    "Description": "可可豆生长速度百分比，100=原版"
+  },
+  "world-settings.default.growth.melon-modifier": {
+    "DisplayName": "西瓜生长速度",
+    "Description": "西瓜生长速度百分比，100=原版"
+  },
+  "world-settings.default.growth.mushroom-modifier": {
+    "DisplayName": "蘑菇生长速度",
+    "Description": "蘑菇生长速度百分比，100=原版"
+  },
+  "world-settings.default.growth.netherwart-modifier": {
+    "DisplayName": "地狱疣生长速度",
+    "Description": "地狱疣生长速度百分比，100=原版"
+  },
+  "world-settings.default.growth.pumpkin-modifier": {
+    "DisplayName": "南瓜生长速度",
+    "Description": "南瓜生长速度百分比，100=原版"
+  },
+  "world-settings.default.growth.sapling-modifier": {
+    "DisplayName": "树苗生长速度",
+    "Description": "树苗生长速度百分比，100=原版"
+  },
+  "world-settings.default.growth.vine-modifier": {
+    "DisplayName": "藤蔓生长速度",
+    "Description": "藤蔓生长速度百分比，100=原版"
+  },
+  "world-settings.default.growth.wheat-modifier": {
+    "DisplayName": "小麦生长速度",
+    "Description": "小麦生长速度百分比，100=原版"
+  },
+  "world-settings.default.hopper-amount": {
+    "DisplayName": "漏斗每次传输数量",
+    "Description": "每个漏斗检查周期内可移动的物品堆数上限"
+  },
+  "world-settings.default.hunger.combat-exhaustion": {
+    "DisplayName": "战斗饥饿消耗",
+    "Description": "战斗时的饥饿度消耗系数"
+  },
+  "world-settings.default.hunger.jump-sprint-exhaustion": {
+    "DisplayName": "疾跑跳跃饥饿",
+    "Description": "疾跑中跳跃的饥饿度消耗"
+  },
+  "world-settings.default.hunger.jump-walk-exhaustion": {
+    "DisplayName": "走路跳跃饥饿",
+    "Description": "普通走路跳跃的饥饿度消耗"
+  },
+  "world-settings.default.hunger.other-multiplier": {
+    "DisplayName": "其他饥饿倍率",
+    "Description": "其他未分类行为的饥饿消耗倍率"
+  },
+  "world-settings.default.hunger.regen-exhaustion": {
+    "DisplayName": "回血饥饿消耗",
+    "Description": "自然回血时消耗的饥饿度值"
+  },
+  "world-settings.default.hunger.sprint-multiplier": {
+    "DisplayName": "疾跑饥饿倍率",
+    "Description": "疾跑时的饥饿消耗倍率"
+  },
+  "world-settings.default.hunger.swim-multiplier": {
+    "DisplayName": "游泳饥饿倍率",
+    "Description": "游泳时的饥饿消耗倍率"
+  },
+  "world-settings.default.item-despawn-rate": {
+    "DisplayName": "物品消失时间",
+    "Description": "掉落物在地上保留的游戏刻数（6000=5 分钟）"
+  },
+  "world-settings.default.max-tick-time.entity": {
+    "DisplayName": "实体最大 Tick 时间",
+    "Description": "单个实体单次 Tick 允许的最大耗时（毫秒）"
+  },
+  "world-settings.default.max-tick-time.tile": {
+    "DisplayName": "Tile 实体最大 Tick 时间",
+    "Description": "命令方块、漏斗等 Tile 单次 Tick 最大耗时"
+  },
+  "world-settings.default.max-tnt-per-tick": {
+    "DisplayName": "每 Tick TNT 爆炸上限",
+    "Description": "单个 tick 内允许同时爆炸的 TNT 数量上限"
+  },
+  "world-settings.default.merge-radius.exp": {
+    "DisplayName": "经验球合并半径",
+    "Description": "经验球实体互相靠近时自动合并的距离（格）"
+  },
+  "world-settings.default.squid-spawn-range.min": {
+    "DisplayName": "鱿鱼最小生成距离",
+    "Description": "鱿鱼生成区域距离玩家的最小半径（格）"
+  },
+  "world-settings.default.ticks-per.hopper-check": {
+    "DisplayName": "漏斗检查间隔",
+    "Description": "漏斗检查上方物品的 Tick 间隔"
+  },
+  "world-settings.default.ticks-per.hopper-transfer": {
+    "DisplayName": "漏斗传输间隔",
+    "Description": "漏斗尝试吸/推物品每 N tick 一次"
+  },
+  "world-settings.default.verbose": {
+    "DisplayName": "详细日志",
+    "Description": "是否在控制台输出更详细的调试/告警信息"
+  }
+}

@@ -1,0 +1,606 @@
+{
+  "advanced.compression-threshold": {
+    "DisplayName": "压缩阈值",
+    "Description": "超过多少字节的网络包才启用压缩（默认 256）"
+  },
+  "advanced.connection-throttle": {
+    "DisplayName": "连接节流时间",
+    "Description": "同一 IP 两次连接请求的最小间隔（毫秒，默认 4000）"
+  },
+  "advanced.deprecated-verbose": {
+    "DisplayName": "废弃 API 详细日志",
+    "Description": "插件调用废弃 API 时是否输出详细告警堆栈"
+  },
+  "advanced.exact-login-location": {
+    "DisplayName": "精确登录位置",
+    "Description": "玩家登录时是否精确恢复上次下线坐标"
+  },
+  "advanced.graphics-compute.enable": {
+    "DisplayName": "启用图形计算",
+    "Description": "是否启用 GPU 加速的实体光照计算（需要独显）"
+  },
+  "advanced.graphics-compute.use-any-device": {
+    "DisplayName": "允许任意 GPU",
+    "Description": "图形计算时是否允许使用任意可用的 GPU 设备"
+  },
+  "advanced.idle-timeout": {
+    "DisplayName": "闲置超时",
+    "Description": "玩家无操作多少分钟后自动踢出，0=关闭"
+  },
+  "advanced.player-sample-count": {
+    "DisplayName": "玩家采样数",
+    "Description": "服务器列表 Ping 同时查询的玩家样本数量"
+  },
+  "advanced.plugin-profiling": {
+    "DisplayName": "插件性能分析",
+    "Description": "是否启用插件调用耗时统计面板"
+  },
+  "advanced.profile-lookup-timeout": {
+    "DisplayName": "Profile 查询超时",
+    "Description": "从 Mojang 查询玩家 UUID/皮肤的超时秒数"
+  },
+  "advanced.proxy-support": {
+    "DisplayName": "代理支持",
+    "Description": "是否支持 BungeeCord/Velocity 等代理反代"
+  },
+  "advanced.region-file.cache-size": {
+    "DisplayName": "区域文件缓存大小",
+    "Description": "同时在内存中打开的 .mca 区域文件数量上限"
+  },
+  "advanced.region-file.compression": {
+    "DisplayName": "区域文件压缩",
+    "Description": "区域文件保存时是否启用 Zlib 压缩"
+  },
+  "advanced.suggest-player-name-when-null-tab-completions": {
+    "DisplayName": "Tab 补全建议玩家",
+    "Description": "Tab 补全命令参数时是否自动建议在线玩家名"
+  },
+  "advanced.warn-on-overload": {
+    "DisplayName": "过载告警",
+    "Description": "服务器主线程 TPS 过低时是否输出告警日志"
+  },
+  "console.date-format": {
+    "DisplayName": "控制台时间格式",
+    "Description": "控制台输出时间戳的格式（HH:mm:ss）"
+  },
+  "console.log-date-format": {
+    "DisplayName": "日志时间格式",
+    "Description": "写入日志文件的时间戳格式（yyyy/MM/dd HH:mm:ss）"
+  },
+  "console.prompt": {
+    "DisplayName": "控制台提示符",
+    "Description": "交互式控制台的提示符文字"
+  },
+  "console.use-jline": {
+    "DisplayName": "启用 JLine",
+    "Description": "使用 JLine 实现更高级的控制台行编辑（历史、Tab 补全）"
+  },
+  "creatures.enable.animals": {
+    "DisplayName": "启用动物",
+    "Description": "是否允许世界中自然生成动物（牛、羊等）"
+  },
+  "creatures.enable.monsters": {
+    "DisplayName": "启用怪物",
+    "Description": "是否允许世界中自然生成怪物（僵尸、骷髅等）"
+  },
+  "creatures.enable.npcs": {
+    "DisplayName": "启用 NPC",
+    "Description": "是否允许村民等 NPC 自然生成"
+  },
+  "creatures.limit.ambient": {
+    "DisplayName": "环境生物上限",
+    "Description": "每区块同时存在的环境生物（蝙蝠等）数量上限"
+  },
+  "creatures.limit.animals": {
+    "DisplayName": "动物上限",
+    "Description": "每区块同时存在的动物数量上限"
+  },
+  "creatures.limit.monsters": {
+    "DisplayName": "怪物上限",
+    "Description": "每区块同时存在的怪物数量上限"
+  },
+  "creatures.limit.water": {
+    "DisplayName": "水生生物上限",
+    "Description": "每区块同时存在的水生生物数量上限"
+  },
+  "creatures.ticks.animal": {
+    "DisplayName": "动物 Tick 频率",
+    "Description": "动物每多少 tick 执行一次 AI 判定"
+  },
+  "creatures.ticks.monsters": {
+    "DisplayName": "怪物 Tick 频率",
+    "Description": "怪物每多少 tick 执行一次 AI 判定"
+  },
+  "extras.query-enabled": {
+    "DisplayName": "启用 Query",
+    "Description": "是否启用 Minecraft Query 协议（第三方工具查询用）"
+  },
+  "extras.query-plugins": {
+    "DisplayName": "Query 返回插件列表",
+    "Description": "Query 查询时是否返回已安装插件列表"
+  },
+  "extras.query-port": {
+    "DisplayName": "Query 端口",
+    "Description": "Query 协议监听的 UDP 端口"
+  },
+  "extras.rcon-colors": {
+    "DisplayName": "RCON 颜色支持",
+    "Description": "RCON 远程控制台是否支持 § 颜色码"
+  },
+  "extras.rcon-enabled": {
+    "DisplayName": "启用 RCON",
+    "Description": "是否开启 RCON 远程管理功能"
+  },
+  "extras.rcon-password": {
+    "DisplayName": "RCON 密码",
+    "Description": "RCON 登录认证密码"
+  },
+  "extras.rcon-port": {
+    "DisplayName": "RCON 端口",
+    "Description": "RCON 协议监听的 TCP 端口"
+  },
+  "files.commands": {
+    "DisplayName": "命令配置文件",
+    "Description": "命令配置文件名（默认 commands.yml）"
+  },
+  "files.help": {
+    "DisplayName": "帮助配置文件",
+    "Description": "帮助菜单配置文件名（默认 help.yml）"
+  },
+  "files.permissions": {
+    "DisplayName": "权限配置文件",
+    "Description": "权限配置文件名（默认 permissions.yml）"
+  },
+  "folders.libraries": {
+    "DisplayName": "依赖库目录",
+    "Description": "存放第三方依赖 jar 的子目录名"
+  },
+  "folders.plugins": {
+    "DisplayName": "插件目录",
+    "Description": "插件存放目录名"
+  },
+  "folders.update": {
+    "DisplayName": "更新目录",
+    "Description": "自动更新时存放临时文件的目录"
+  },
+  "folders.worlds": {
+    "DisplayName": "世界目录",
+    "Description": "世界存档的根目录名"
+  },
+  "game.allow-flight": {
+    "DisplayName": "允许飞行",
+    "Description": "生存模式玩家是否可以飞行（反作弊配合用）"
+  },
+  "game.announce-achievements": {
+    "DisplayName": "广播进度",
+    "Description": "玩家获取新进度时是否在聊天栏广播"
+  },
+  "game.command-blocks": {
+    "DisplayName": "启用命令方块",
+    "Description": "是否允许玩家放置/使用命令方块"
+  },
+  "game.difficulty": {
+    "DisplayName": "游戏难度",
+    "Description": "世界默认难度：PEACEFUL/EASY/NORMAL/HARD"
+  },
+  "game.gamemode": {
+    "DisplayName": "游戏模式",
+    "Description": "玩家默认游戏模式：SURVIVAL/CREATIVE/ADVENTURE/SPECTATOR"
+  },
+  "game.gamemode-force": {
+    "DisplayName": "强制游戏模式",
+    "Description": "开启后玩家无法手动切换游戏模式"
+  },
+  "game.hardcore": {
+    "DisplayName": "硬核模式",
+    "Description": "开启后玩家死亡无法复活，强制 HARD 难度"
+  },
+  "game.max-build-height": {
+    "DisplayName": "最大建筑高度",
+    "Description": "玩家可放置方块的最高 Y 坐标"
+  },
+  "game.pvp": {
+    "DisplayName": "启用 PvP",
+    "Description": "允许玩家之间互相攻击造成伤害"
+  },
+  "game.resource-pack": {
+    "DisplayName": "材质包 URL",
+    "Description": "向玩家推送的资源包下载地址，留空关闭"
+  },
+  "game.resource-pack-hash": {
+    "DisplayName": "材质包校验哈希",
+    "Description": "资源包 SHA1 哈希，用于客户端校验完整性"
+  },
+  "libraries.checksum-validation": {
+    "DisplayName": "依赖校验",
+    "Description": "下载第三方依赖 jar 时是否校验 SHA 哈希"
+  },
+  "libraries.compatibility-bundle": {
+    "DisplayName": "兼容包类型",
+    "Description": "使用哪种兼容 API 包：CRAFTBUKKIT 兼容旧插件"
+  },
+  "libraries.download-attempts": {
+    "DisplayName": "下载重试次数",
+    "Description": "依赖下载失败后最多重试几次"
+  },
+  "libraries.list": {
+    "DisplayName": "额外依赖列表",
+    "Description": "需要额外下载的 Maven 依赖坐标列表"
+  },
+  "libraries.repository-url": {
+    "DisplayName": "仓库地址",
+    "Description": "依赖下载用的 Maven 仓库地址"
+  },
+  "server.allow-client-mods": {
+    "DisplayName": "允许客户端模组",
+    "Description": "携带模组的客户端是否允许进入服务器"
+  },
+  "server.dns": {
+    "DisplayName": "DNS 服务器",
+    "Description": "自定义 DNS 解析服务器 IP 列表"
+  },
+  "server.prevent-proxy-connections": {
+    "DisplayName": "拒绝代理连接",
+    "Description": "直接拒绝疑似来自代理/VPN 的客户端连接"
+  },
+  "server.shutdown-message": {
+    "DisplayName": "关停消息",
+    "Description": "服务器关闭时显示给在线玩家的提示"
+  },
+  "server.whitelisted": {
+    "DisplayName": "启用白名单",
+    "Description": "开启后只有白名单中的玩家才能进入服务器"
+  },
+  "world.allow-end": {
+    "DisplayName": "允许末地",
+    "Description": "是否允许玩家进入末地维度"
+  },
+  "world.allow-nether": {
+    "DisplayName": "允许下界",
+    "Description": "是否允许玩家进入下界维度"
+  },
+  "world.classic-style-water": {
+    "DisplayName": "经典水域样式",
+    "Description": "使用 1.7 时代的静态水面生成方式"
+  },
+  "world.disable-generation": {
+    "DisplayName": "禁用地形生成",
+    "Description": "是否关闭新区块的地形生成（配合预制地图用）"
+  },
+  "world.gen-structures": {
+    "DisplayName": "生成结构",
+    "Description": "是否自然生成村庄、神殿、要塞等建筑结构"
+  },
+  "world.keep-spawn-loaded": {
+    "DisplayName": "保持出生点加载",
+    "Description": "世界出生点区块是否常驻内存不卸载"
+  },
+  "world.level-type": {
+    "DisplayName": "世界类型",
+    "Description": "地形类型：DEFAULT/FLAT/LARGE_BIOMES/AMPLIFIED"
+  },
+  "world.name": {
+    "DisplayName": "世界名称",
+    "Description": "主世界存档文件夹名"
+  },
+  "world.populate-anchored-chunks": {
+    "DisplayName": "填充锚定区块",
+    "Description": "对出生点锚定区块进行结构/矿物填充"
+  },
+  "world.seed": {
+    "DisplayName": "世界种子",
+    "Description": "地形生成种子，留空则每次随机"
+  },
+  "world.spawn-radius": {
+    "DisplayName": "出生半径",
+    "Description": "新玩家首次生成时在出生点周围随机的半径"
+  },
+  "world.view-distance": {
+    "DisplayName": "视距",
+    "Description": "客户端加载并渲染的区块半径（格）"
+  },
+  "end.coordinate-scale": {
+    "DisplayName": "末地坐标缩放",
+    "Description": "末地地形的坐标缩放系数，影响起伏幅度"
+  },
+  "end.detail.noise-scale.x": {
+    "DisplayName": "末地细节噪声 X",
+    "Description": "末地细节噪声在 X 轴的缩放系数"
+  },
+  "end.detail.noise-scale.y": {
+    "DisplayName": "末地细节噪声 Y",
+    "Description": "末地细节噪声在 Y 轴的缩放系数"
+  },
+  "end.detail.noise-scale.z": {
+    "DisplayName": "末地细节噪声 Z",
+    "Description": "末地细节噪声在 Z 轴的缩放系数"
+  },
+  "end.height.scale": {
+    "DisplayName": "末地高度缩放",
+    "Description": "末地地形整体高度的缩放系数"
+  },
+  "general.sea_level": {
+    "DisplayName": "海平面",
+    "Description": "世界中海平面的 Y 坐标（原版 64）"
+  },
+  "nether.coordinate-scale": {
+    "DisplayName": "下界坐标缩放",
+    "Description": "下界地形的坐标缩放系数"
+  },
+  "nether.detail.noise-scale.x": {
+    "DisplayName": "下界细节噪声 X",
+    "Description": "下界细节噪声在 X 轴的缩放系数"
+  },
+  "nether.detail.noise-scale.y": {
+    "DisplayName": "下界细节噪声 Y",
+    "Description": "下界细节噪声在 Y 轴的缩放系数"
+  },
+  "nether.detail.noise-scale.z": {
+    "DisplayName": "下界细节噪声 Z",
+    "Description": "下界细节噪声在 Z 轴的缩放系数"
+  },
+  "nether.height.noise-scale.x": {
+    "DisplayName": "下界高度噪声 X",
+    "Description": "下界高度噪声在 X 轴的缩放系数"
+  },
+  "nether.height.noise-scale.z": {
+    "DisplayName": "下界高度噪声 Z",
+    "Description": "下界高度噪声在 Z 轴的缩放系数"
+  },
+  "nether.height.scale": {
+    "DisplayName": "下界高度缩放",
+    "Description": "下界地形整体高度的缩放系数"
+  },
+  "nether.surface-scale": {
+    "DisplayName": "下界地表缩放",
+    "Description": "下界地表起伏的缩放系数"
+  },
+  "overworld.base-size": {
+    "DisplayName": "主世界基础尺寸",
+    "Description": "主世界地形生成的基础尺寸参数"
+  },
+  "overworld.biome.height-offset": {
+    "DisplayName": "群系高度偏移",
+    "Description": "所有生物群系高度的整体偏移量"
+  },
+  "overworld.biome.height-weight": {
+    "DisplayName": "群系高度权重",
+    "Description": "生物群系高度计算的权重系数"
+  },
+  "overworld.biome.height.big-hills": {
+    "DisplayName": "大丘陵群系高度",
+    "Description": "Big Hills 生物群系的地形高度值"
+  },
+  "overworld.biome.height.big-hills2": {
+    "DisplayName": "大丘陵2群系高度",
+    "Description": "Big Hills II 变体群系的高度"
+  },
+  "overworld.biome.height.deep-ocean": {
+    "DisplayName": "深海群系高度",
+    "Description": "深海群系的高度（负值=低于海平面）"
+  },
+  "overworld.biome.height.default": {
+    "DisplayName": "默认群系高度",
+    "Description": "默认生物群系的地形高度"
+  },
+  "overworld.biome.height.default-hills": {
+    "DisplayName": "默认丘陵群系高度",
+    "Description": "默认丘陵型群系的高度值"
+  },
+  "overworld.biome.height.extreme-hills": {
+    "DisplayName": "极端丘陵群系高度",
+    "Description": "Extreme Hills 群系的高度"
+  },
+  "overworld.biome.height.flat-shore": {
+    "DisplayName": "平坦海岸群系高度",
+    "Description": "平坦海岸群系的高度值"
+  },
+  "overworld.biome.height.flatlands": {
+    "DisplayName": "平原群系高度",
+    "Description": "平原生物群系的地形高度"
+  },
+  "overworld.biome.height.flatlands-hills": {
+    "DisplayName": "平原丘陵群系高度",
+    "Description": "平原带小丘陵群系的高度"
+  },
+  "overworld.biome.height.high-plateau": {
+    "DisplayName": "高高原群系高度",
+    "Description": "高高原群系的地形高度值"
+  },
+  "overworld.biome.height.high-spikes": {
+    "DisplayName": "高耸尖岩群系高度",
+    "Description": "高耸尖岩类群系的高度"
+  },
+  "overworld.biome.height.hills": {
+    "DisplayName": "丘陵群系高度",
+    "Description": "普通丘陵型群系的高度"
+  },
+  "overworld.biome.height.low-hills": {
+    "DisplayName": "低丘陵群系高度",
+    "Description": "较低矮的丘陵群系高度"
+  },
+  "overworld.biome.height.low-spikes": {
+    "DisplayName": "低矮尖岩群系高度",
+    "Description": "较矮小的尖岩类群系高度"
+  },
+  "overworld.biome.height.mid-hills": {
+    "DisplayName": "中丘陵群系高度",
+    "Description": "中等高度的丘陵群系高度"
+  },
+  "overworld.biome.height.mid-hills2": {
+    "DisplayName": "中丘陵2群系高度",
+    "Description": "中丘陵 2 变体群系的高度"
+  },
+  "overworld.biome.height.mid-plains": {
+    "DisplayName": "中平原群系高度",
+    "Description": "中等高度平原群系的高度"
+  },
+  "overworld.biome.height.ocean": {
+    "DisplayName": "海洋群系高度",
+    "Description": "海洋群系的高度（负值=低于海平面）"
+  },
+  "overworld.biome.height.river": {
+    "DisplayName": "河流群系高度",
+    "Description": "河流生物群系的高度值"
+  },
+  "overworld.biome.height.rocky-shore": {
+    "DisplayName": "岩岸群系高度",
+    "Description": "岩质海岸群系的高度"
+  },
+  "overworld.biome.height.swampland": {
+    "DisplayName": "沼泽群系高度",
+    "Description": "沼泽生物群系的高度值"
+  },
+  "overworld.biome.height.swampland-hills": {
+    "DisplayName": "沼泽丘陵群系高度",
+    "Description": "沼泽带小丘陵群系的高度"
+  },
+  "overworld.biome.scale-offset": {
+    "DisplayName": "群系缩放偏移",
+    "Description": "所有群系缩放的整体偏移量"
+  },
+  "overworld.biome.scale-weight": {
+    "DisplayName": "群系缩放权重",
+    "Description": "群系缩放计算的权重系数"
+  },
+  "overworld.biome.scale.big-hills": {
+    "DisplayName": "大丘陵群系缩放",
+    "Description": "Big Hills 群系的地形粗糙度"
+  },
+  "overworld.biome.scale.big-hills2": {
+    "DisplayName": "大丘陵2群系缩放",
+    "Description": "Big Hills II 群系的粗糙度"
+  },
+  "overworld.biome.scale.deep-ocean": {
+    "DisplayName": "深海群系缩放",
+    "Description": "深海群系的粗糙度"
+  },
+  "overworld.biome.scale.default": {
+    "DisplayName": "默认群系缩放",
+    "Description": "默认生物群系的粗糙度"
+  },
+  "overworld.biome.scale.default-hills": {
+    "DisplayName": "默认丘陵群系缩放",
+    "Description": "默认丘陵群系的粗糙度"
+  },
+  "overworld.biome.scale.extreme-hills": {
+    "DisplayName": "极端丘陵群系缩放",
+    "Description": "极端丘陵群系的粗糙度"
+  },
+  "overworld.biome.scale.flat-shore": {
+    "DisplayName": "平坦海岸群系缩放",
+    "Description": "平坦海岸群系的粗糙度"
+  },
+  "overworld.biome.scale.flatlands": {
+    "DisplayName": "平原群系缩放",
+    "Description": "平原生物群系的粗糙度"
+  },
+  "overworld.biome.scale.flatlands-hills": {
+    "DisplayName": "平原丘陵群系缩放",
+    "Description": "平原带丘陵群系的粗糙度"
+  },
+  "overworld.biome.scale.high-plateau": {
+    "DisplayName": "高高原群系缩放",
+    "Description": "高高原群系的粗糙度"
+  },
+  "overworld.biome.scale.high-spikes": {
+    "DisplayName": "高耸尖岩群系缩放",
+    "Description": "高耸尖岩类群系的粗糙度"
+  },
+  "overworld.biome.scale.hills": {
+    "DisplayName": "丘陵群系缩放",
+    "Description": "普通丘陵型群系的粗糙度"
+  },
+  "overworld.biome.scale.low-hills": {
+    "DisplayName": "低丘陵群系缩放",
+    "Description": "较低矮丘陵群系的粗糙度"
+  },
+  "overworld.biome.scale.low-spikes": {
+    "DisplayName": "低矮尖岩群系缩放",
+    "Description": "较矮小尖岩类群系的粗糙度"
+  },
+  "overworld.biome.scale.mid-hills": {
+    "DisplayName": "中丘陵群系缩放",
+    "Description": "中等高度丘陵群系的粗糙度"
+  },
+  "overworld.biome.scale.mid-hills2": {
+    "DisplayName": "中丘陵2群系缩放",
+    "Description": "中丘陵 2 变体群系的粗糙度"
+  },
+  "overworld.biome.scale.mid-plains": {
+    "DisplayName": "中平原群系缩放",
+    "Description": "中等高度平原群系的粗糙度"
+  },
+  "overworld.biome.scale.ocean": {
+    "DisplayName": "海洋群系缩放",
+    "Description": "海洋群系的粗糙度"
+  },
+  "overworld.biome.scale.river": {
+    "DisplayName": "河流群系缩放",
+    "Description": "河流生物群系的粗糙度"
+  },
+  "overworld.biome.scale.rocky-shore": {
+    "DisplayName": "岩岸群系缩放",
+    "Description": "岩质海岸群系的粗糙度"
+  },
+  "overworld.biome.scale.swampland": {
+    "DisplayName": "沼泽群系缩放",
+    "Description": "沼泽生物群系的粗糙度"
+  },
+  "overworld.biome.scale.swampland-hills": {
+    "DisplayName": "沼泽丘陵群系缩放",
+    "Description": "沼泽带小丘陵群系的粗糙度"
+  },
+  "overworld.coordinate-scale": {
+    "DisplayName": "主世界坐标缩放",
+    "Description": "主世界地形的坐标缩放系数"
+  },
+  "overworld.density.fill.mode": {
+    "DisplayName": "密度填充模式",
+    "Description": "地形密度填充算法的模式编号"
+  },
+  "overworld.density.fill.offset": {
+    "DisplayName": "密度填充偏移",
+    "Description": "地形密度填充的数值偏移量"
+  },
+  "overworld.density.fill.sea-mode": {
+    "DisplayName": "海平面密度模式",
+    "Description": "海平面区域密度填充算法模式"
+  },
+  "overworld.detail.noise-scale.x": {
+    "DisplayName": "主世界细节噪声 X",
+    "Description": "主世界细节噪声在 X 轴的缩放系数"
+  },
+  "overworld.detail.noise-scale.y": {
+    "DisplayName": "主世界细节噪声 Y",
+    "Description": "主世界细节噪声在 Y 轴的缩放系数"
+  },
+  "overworld.detail.noise-scale.z": {
+    "DisplayName": "主世界细节噪声 Z",
+    "Description": "主世界细节噪声在 Z 轴的缩放系数"
+  },
+  "overworld.height.noise-scale.x": {
+    "DisplayName": "主世界高度噪声 X",
+    "Description": "主世界高度噪声在 X 轴的缩放系数"
+  },
+  "overworld.height.noise-scale.z": {
+    "DisplayName": "主世界高度噪声 Z",
+    "Description": "主世界高度噪声在 Z 轴的缩放系数"
+  },
+  "overworld.height.scale": {
+    "DisplayName": "主世界高度缩放",
+    "Description": "主世界地形整体高度的缩放系数"
+  },
+  "overworld.stretch-y": {
+    "DisplayName": "Y 轴拉伸",
+    "Description": "地形在 Y 轴方向的额外拉伸倍数"
+  },
+  "overworld.surface-scale": {
+    "DisplayName": "主世界地表缩放",
+    "Description": "主世界地表起伏的缩放系数"
+  },
+  "aliases.icanhasbukkit": {
+    "DisplayName": "icanhasbukkit 别名",
+    "Description": "icanhasbukkit 会执行 version 和 plugins 命令"
+  }
+}

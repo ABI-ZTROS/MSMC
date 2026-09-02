@@ -1,16 +1,19 @@
 {
   "core": "glowstone",
-  "generated_at": "2026-09-02T17:48:18Z",
+  "generated_at": "2026-09-02T18:08:46Z",
   "configs": {
     "glowstone.yml": {
       "versions_scanned": [
+        "2018.6.0",
+        "2018.9.0",
+        "2021.7.0",
         "2021.8.0"
       ],
       "total_keys": 83,
       "keys": [
         {
           "path": "advanced.compression-threshold",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "256",
           "default_changes": [],
@@ -19,7 +22,7 @@
         },
         {
           "path": "advanced.connection-throttle",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "4000",
           "default_changes": [],
@@ -28,7 +31,7 @@
         },
         {
           "path": "advanced.deprecated-verbose",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "false",
           "default_changes": [],
@@ -37,7 +40,7 @@
         },
         {
           "path": "advanced.exact-login-location",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -46,7 +49,7 @@
         },
         {
           "path": "advanced.graphics-compute.enable",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -55,7 +58,7 @@
         },
         {
           "path": "advanced.graphics-compute.use-any-device",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -64,7 +67,7 @@
         },
         {
           "path": "advanced.idle-timeout",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0",
           "default_changes": [],
@@ -73,7 +76,7 @@
         },
         {
           "path": "advanced.player-sample-count",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "12",
           "default_changes": [],
@@ -82,7 +85,7 @@
         },
         {
           "path": "advanced.plugin-profiling",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -91,7 +94,7 @@
         },
         {
           "path": "advanced.profile-lookup-timeout",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "5",
           "default_changes": [],
@@ -100,7 +103,7 @@
         },
         {
           "path": "advanced.proxy-support",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -109,7 +112,7 @@
         },
         {
           "path": "advanced.region-file.cache-size",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "256",
           "default_changes": [],
@@ -118,7 +121,7 @@
         },
         {
           "path": "advanced.region-file.compression",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -127,7 +130,7 @@
         },
         {
           "path": "advanced.suggest-player-name-when-null-tab-completions",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -136,7 +139,7 @@
         },
         {
           "path": "advanced.warn-on-overload",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -145,7 +148,7 @@
         },
         {
           "path": "console.date-format",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "HH:mm:ss",
           "default_changes": [],
@@ -154,7 +157,7 @@
         },
         {
           "path": "console.log-date-format",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "yyyy/MM/dd HH:mm:ss",
           "default_changes": [],
@@ -163,7 +166,7 @@
         },
         {
           "path": "console.prompt",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "> ",
           "default_changes": [],
@@ -172,7 +175,7 @@
         },
         {
           "path": "console.use-jline",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -181,7 +184,7 @@
         },
         {
           "path": "creatures.enable.animals",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -190,7 +193,7 @@
         },
         {
           "path": "creatures.enable.monsters",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -199,7 +202,7 @@
         },
         {
           "path": "creatures.enable.npcs",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -208,7 +211,7 @@
         },
         {
           "path": "creatures.limit.ambient",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "15",
           "default_changes": [],
@@ -217,7 +220,7 @@
         },
         {
           "path": "creatures.limit.animals",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "15",
           "default_changes": [],
@@ -226,7 +229,7 @@
         },
         {
           "path": "creatures.limit.monsters",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "70",
           "default_changes": [],
@@ -235,7 +238,7 @@
         },
         {
           "path": "creatures.limit.water",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "5",
           "default_changes": [],
@@ -244,7 +247,7 @@
         },
         {
           "path": "creatures.ticks.animal",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "400",
           "default_changes": [],
@@ -253,7 +256,7 @@
         },
         {
           "path": "creatures.ticks.monsters",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "1",
           "default_changes": [],
@@ -262,7 +265,7 @@
         },
         {
           "path": "extras.query-enabled",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -271,7 +274,7 @@
         },
         {
           "path": "extras.query-plugins",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -280,7 +283,7 @@
         },
         {
           "path": "extras.query-port",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "25614",
           "default_changes": [],
@@ -289,7 +292,7 @@
         },
         {
           "path": "extras.rcon-colors",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -298,7 +301,7 @@
         },
         {
           "path": "extras.rcon-enabled",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -307,7 +310,7 @@
         },
         {
           "path": "extras.rcon-password",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "glowstone",
           "default_changes": [],
@@ -316,7 +319,7 @@
         },
         {
           "path": "extras.rcon-port",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "25575",
           "default_changes": [],
@@ -325,7 +328,7 @@
         },
         {
           "path": "files.commands",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "commands.yml",
           "default_changes": [],
@@ -334,7 +337,7 @@
         },
         {
           "path": "files.help",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "help.yml",
           "default_changes": [],
@@ -343,7 +346,7 @@
         },
         {
           "path": "files.permissions",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "permissions.yml",
           "default_changes": [],
@@ -352,7 +355,7 @@
         },
         {
           "path": "folders.libraries",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "lib",
           "default_changes": [],
@@ -361,7 +364,7 @@
         },
         {
           "path": "folders.plugins",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "plugins",
           "default_changes": [],
@@ -370,7 +373,7 @@
         },
         {
           "path": "folders.update",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "update",
           "default_changes": [],
@@ -379,7 +382,7 @@
         },
         {
           "path": "folders.worlds",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "worlds",
           "default_changes": [],
@@ -388,7 +391,7 @@
         },
         {
           "path": "game.allow-flight",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -397,7 +400,7 @@
         },
         {
           "path": "game.announce-achievements",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -406,7 +409,7 @@
         },
         {
           "path": "game.command-blocks",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -415,7 +418,7 @@
         },
         {
           "path": "game.difficulty",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "NORMAL",
           "default_changes": [],
@@ -424,7 +427,7 @@
         },
         {
           "path": "game.gamemode",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "SURVIVAL",
           "default_changes": [],
@@ -433,7 +436,7 @@
         },
         {
           "path": "game.gamemode-force",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -442,7 +445,7 @@
         },
         {
           "path": "game.hardcore",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -451,7 +454,7 @@
         },
         {
           "path": "game.max-build-height",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "256",
           "default_changes": [],
@@ -460,7 +463,7 @@
         },
         {
           "path": "game.pvp",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -469,7 +472,7 @@
         },
         {
           "path": "game.resource-pack",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "",
           "default_changes": [],
@@ -478,7 +481,7 @@
         },
         {
           "path": "game.resource-pack-hash",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "",
           "default_changes": [],
@@ -487,7 +490,7 @@
         },
         {
           "path": "libraries.checksum-validation",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -496,7 +499,7 @@
         },
         {
           "path": "libraries.compatibility-bundle",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "CRAFTBUKKIT",
           "default_changes": [],
@@ -505,7 +508,7 @@
         },
         {
           "path": "libraries.download-attempts",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "2",
           "default_changes": [],
@@ -514,7 +517,7 @@
         },
         {
           "path": "libraries.list",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "[]",
           "default_changes": [],
@@ -523,16 +526,23 @@
         },
         {
           "path": "libraries.repository-url",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "https://repo.glowstone.net/repository/maven-public/",
-          "default_changes": [],
+          "default_changes": [
+            {
+              "from_version": null,
+              "to_version": "2021.7.0",
+              "old_default": "https://repo.glowstone.net/service/local/repositories/central/content/",
+              "new_default": "https://repo.glowstone.net/repository/maven-public/"
+            }
+          ],
           "state": "new_key",
           "needs_translation": true
         },
         {
           "path": "server.allow-client-mods",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -541,7 +551,7 @@
         },
         {
           "path": "server.dns",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2021.7.0",
           "removed_in": null,
           "default_latest": "[]",
           "default_changes": [],
@@ -550,7 +560,7 @@
         },
         {
           "path": "server.ip",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "",
           "default_changes": [],
@@ -559,7 +569,7 @@
         },
         {
           "path": "server.log-file",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "logs/log-%D.txt",
           "default_changes": [],
@@ -568,7 +578,7 @@
         },
         {
           "path": "server.max-players",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "20",
           "default_changes": [],
@@ -577,7 +587,7 @@
         },
         {
           "path": "server.motd",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "A Glowstone server",
           "default_changes": [],
@@ -586,7 +596,7 @@
         },
         {
           "path": "server.name",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "Glowstone Server",
           "default_changes": [],
@@ -595,7 +605,7 @@
         },
         {
           "path": "server.online-mode",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -604,7 +614,7 @@
         },
         {
           "path": "server.port",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "25565",
           "default_changes": [],
@@ -613,7 +623,7 @@
         },
         {
           "path": "server.prevent-proxy-connections",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -622,7 +632,7 @@
         },
         {
           "path": "server.shutdown-message",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "Server shutting down.",
           "default_changes": [],
@@ -631,7 +641,7 @@
         },
         {
           "path": "server.snooper-enabled",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -640,7 +650,7 @@
         },
         {
           "path": "server.whitelisted",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -649,7 +659,7 @@
         },
         {
           "path": "world.allow-end",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -658,7 +668,7 @@
         },
         {
           "path": "world.allow-nether",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -667,7 +677,7 @@
         },
         {
           "path": "world.classic-style-water",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -676,7 +686,7 @@
         },
         {
           "path": "world.disable-generation",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "False",
           "default_changes": [],
@@ -685,7 +695,7 @@
         },
         {
           "path": "world.gen-structures",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -694,7 +704,7 @@
         },
         {
           "path": "world.keep-spawn-loaded",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -703,7 +713,7 @@
         },
         {
           "path": "world.level-type",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "DEFAULT",
           "default_changes": [],
@@ -712,7 +722,7 @@
         },
         {
           "path": "world.name",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "world",
           "default_changes": [],
@@ -721,7 +731,7 @@
         },
         {
           "path": "world.populate-anchored-chunks",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "True",
           "default_changes": [],
@@ -730,7 +740,7 @@
         },
         {
           "path": "world.seed",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "",
           "default_changes": [],
@@ -739,7 +749,7 @@
         },
         {
           "path": "world.spawn-radius",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "16",
           "default_changes": [],
@@ -748,7 +758,7 @@
         },
         {
           "path": "world.view-distance",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "8",
           "default_changes": [],
@@ -759,13 +769,16 @@
     },
     "worlds.yml": {
       "versions_scanned": [
+        "2018.6.0",
+        "2018.9.0",
+        "2021.7.0",
         "2021.8.0"
       ],
       "total_keys": 75,
       "keys": [
         {
           "path": "end.coordinate-scale",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "684.412",
           "default_changes": [],
@@ -774,7 +787,7 @@
         },
         {
           "path": "end.detail.noise-scale.x",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "80.0",
           "default_changes": [],
@@ -783,7 +796,7 @@
         },
         {
           "path": "end.detail.noise-scale.y",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "160.0",
           "default_changes": [],
@@ -792,7 +805,7 @@
         },
         {
           "path": "end.detail.noise-scale.z",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "80.0",
           "default_changes": [],
@@ -801,7 +814,7 @@
         },
         {
           "path": "end.height.scale",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "1368.824",
           "default_changes": [],
@@ -810,7 +823,7 @@
         },
         {
           "path": "general.sea_level",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "64",
           "default_changes": [],
@@ -819,7 +832,7 @@
         },
         {
           "path": "nether.coordinate-scale",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "684.412",
           "default_changes": [],
@@ -828,7 +841,7 @@
         },
         {
           "path": "nether.detail.noise-scale.x",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "80.0",
           "default_changes": [],
@@ -837,7 +850,7 @@
         },
         {
           "path": "nether.detail.noise-scale.y",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "60.0",
           "default_changes": [],
@@ -846,7 +859,7 @@
         },
         {
           "path": "nether.detail.noise-scale.z",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "80.0",
           "default_changes": [],
@@ -855,7 +868,7 @@
         },
         {
           "path": "nether.height.noise-scale.x",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "100.0",
           "default_changes": [],
@@ -864,7 +877,7 @@
         },
         {
           "path": "nether.height.noise-scale.z",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "100.0",
           "default_changes": [],
@@ -873,7 +886,7 @@
         },
         {
           "path": "nether.height.scale",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "2053.236",
           "default_changes": [],
@@ -882,7 +895,7 @@
         },
         {
           "path": "nether.surface-scale",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.0625",
           "default_changes": [],
@@ -891,7 +904,7 @@
         },
         {
           "path": "overworld.base-size",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "8.5",
           "default_changes": [],
@@ -900,7 +913,7 @@
         },
         {
           "path": "overworld.biome.height-offset",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.0",
           "default_changes": [],
@@ -909,7 +922,7 @@
         },
         {
           "path": "overworld.biome.height-weight",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "1.0",
           "default_changes": [],
@@ -918,7 +931,7 @@
         },
         {
           "path": "overworld.biome.height.big-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.525",
           "default_changes": [],
@@ -927,7 +940,7 @@
         },
         {
           "path": "overworld.biome.height.big-hills2",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.55",
           "default_changes": [],
@@ -936,7 +949,7 @@
         },
         {
           "path": "overworld.biome.height.deep-ocean",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "-1.8",
           "default_changes": [],
@@ -945,7 +958,7 @@
         },
         {
           "path": "overworld.biome.height.default",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.1",
           "default_changes": [],
@@ -954,7 +967,7 @@
         },
         {
           "path": "overworld.biome.height.default-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.2",
           "default_changes": [],
@@ -963,7 +976,7 @@
         },
         {
           "path": "overworld.biome.height.extreme-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "1.0",
           "default_changes": [],
@@ -972,7 +985,7 @@
         },
         {
           "path": "overworld.biome.height.flat-shore",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.0",
           "default_changes": [],
@@ -981,7 +994,7 @@
         },
         {
           "path": "overworld.biome.height.flatlands",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.125",
           "default_changes": [],
@@ -990,7 +1003,7 @@
         },
         {
           "path": "overworld.biome.height.flatlands-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.275",
           "default_changes": [],
@@ -999,7 +1012,7 @@
         },
         {
           "path": "overworld.biome.height.high-plateau",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "1.5",
           "default_changes": [],
@@ -1008,7 +1021,7 @@
         },
         {
           "path": "overworld.biome.height.high-spikes",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "1.1",
           "default_changes": [],
@@ -1017,7 +1030,7 @@
         },
         {
           "path": "overworld.biome.height.hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.45",
           "default_changes": [],
@@ -1026,7 +1039,7 @@
         },
         {
           "path": "overworld.biome.height.low-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.2",
           "default_changes": [],
@@ -1035,7 +1048,7 @@
         },
         {
           "path": "overworld.biome.height.low-spikes",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.4125",
           "default_changes": [],
@@ -1044,7 +1057,7 @@
         },
         {
           "path": "overworld.biome.height.mid-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.3",
           "default_changes": [],
@@ -1053,7 +1066,7 @@
         },
         {
           "path": "overworld.biome.height.mid-hills2",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.1",
           "default_changes": [],
@@ -1062,7 +1075,7 @@
         },
         {
           "path": "overworld.biome.height.mid-plains",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.2",
           "default_changes": [],
@@ -1071,7 +1084,7 @@
         },
         {
           "path": "overworld.biome.height.ocean",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "-1.0",
           "default_changes": [],
@@ -1080,7 +1093,7 @@
         },
         {
           "path": "overworld.biome.height.river",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "-0.5",
           "default_changes": [],
@@ -1089,7 +1102,7 @@
         },
         {
           "path": "overworld.biome.height.rocky-shore",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.1",
           "default_changes": [],
@@ -1098,7 +1111,7 @@
         },
         {
           "path": "overworld.biome.height.swampland",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "-0.2",
           "default_changes": [],
@@ -1107,7 +1120,7 @@
         },
         {
           "path": "overworld.biome.height.swampland-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "-0.1",
           "default_changes": [],
@@ -1116,7 +1129,7 @@
         },
         {
           "path": "overworld.biome.scale-offset",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.0",
           "default_changes": [],
@@ -1125,7 +1138,7 @@
         },
         {
           "path": "overworld.biome.scale-weight",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "1.0",
           "default_changes": [],
@@ -1134,7 +1147,7 @@
         },
         {
           "path": "overworld.biome.scale.big-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.55",
           "default_changes": [],
@@ -1143,7 +1156,7 @@
         },
         {
           "path": "overworld.biome.scale.big-hills2",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.5",
           "default_changes": [],
@@ -1152,7 +1165,7 @@
         },
         {
           "path": "overworld.biome.scale.deep-ocean",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.1",
           "default_changes": [],
@@ -1161,7 +1174,7 @@
         },
         {
           "path": "overworld.biome.scale.default",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.2",
           "default_changes": [],
@@ -1170,7 +1183,7 @@
         },
         {
           "path": "overworld.biome.scale.default-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.4",
           "default_changes": [],
@@ -1179,7 +1192,7 @@
         },
         {
           "path": "overworld.biome.scale.extreme-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.5",
           "default_changes": [],
@@ -1188,7 +1201,7 @@
         },
         {
           "path": "overworld.biome.scale.flat-shore",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.025",
           "default_changes": [],
@@ -1197,7 +1210,7 @@
         },
         {
           "path": "overworld.biome.scale.flatlands",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.05",
           "default_changes": [],
@@ -1206,7 +1219,7 @@
         },
         {
           "path": "overworld.biome.scale.flatlands-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.25",
           "default_changes": [],
@@ -1215,7 +1228,7 @@
         },
         {
           "path": "overworld.biome.scale.high-plateau",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.025",
           "default_changes": [],
@@ -1224,7 +1237,7 @@
         },
         {
           "path": "overworld.biome.scale.high-spikes",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "1.3125",
           "default_changes": [],
@@ -1233,7 +1246,7 @@
         },
         {
           "path": "overworld.biome.scale.hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.3",
           "default_changes": [],
@@ -1242,7 +1255,7 @@
         },
         {
           "path": "overworld.biome.scale.low-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.3",
           "default_changes": [],
@@ -1251,7 +1264,7 @@
         },
         {
           "path": "overworld.biome.scale.low-spikes",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "1.325",
           "default_changes": [],
@@ -1260,7 +1273,7 @@
         },
         {
           "path": "overworld.biome.scale.mid-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.4",
           "default_changes": [],
@@ -1269,7 +1282,7 @@
         },
         {
           "path": "overworld.biome.scale.mid-hills2",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.4",
           "default_changes": [],
@@ -1278,7 +1291,7 @@
         },
         {
           "path": "overworld.biome.scale.mid-plains",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.2",
           "default_changes": [],
@@ -1287,7 +1300,7 @@
         },
         {
           "path": "overworld.biome.scale.ocean",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.1",
           "default_changes": [],
@@ -1296,7 +1309,7 @@
         },
         {
           "path": "overworld.biome.scale.river",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.0",
           "default_changes": [],
@@ -1305,7 +1318,7 @@
         },
         {
           "path": "overworld.biome.scale.rocky-shore",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.8",
           "default_changes": [],
@@ -1314,7 +1327,7 @@
         },
         {
           "path": "overworld.biome.scale.swampland",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.1",
           "default_changes": [],
@@ -1323,7 +1336,7 @@
         },
         {
           "path": "overworld.biome.scale.swampland-hills",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.3",
           "default_changes": [],
@@ -1332,7 +1345,7 @@
         },
         {
           "path": "overworld.coordinate-scale",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "684.412",
           "default_changes": [],
@@ -1341,7 +1354,7 @@
         },
         {
           "path": "overworld.density.fill.mode",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0",
           "default_changes": [],
@@ -1350,7 +1363,7 @@
         },
         {
           "path": "overworld.density.fill.offset",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.0",
           "default_changes": [],
@@ -1359,7 +1372,7 @@
         },
         {
           "path": "overworld.density.fill.sea-mode",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0",
           "default_changes": [],
@@ -1368,7 +1381,7 @@
         },
         {
           "path": "overworld.detail.noise-scale.x",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "80.0",
           "default_changes": [],
@@ -1377,7 +1390,7 @@
         },
         {
           "path": "overworld.detail.noise-scale.y",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "160.0",
           "default_changes": [],
@@ -1386,7 +1399,7 @@
         },
         {
           "path": "overworld.detail.noise-scale.z",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "80.0",
           "default_changes": [],
@@ -1395,7 +1408,7 @@
         },
         {
           "path": "overworld.height.noise-scale.x",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "200.0",
           "default_changes": [],
@@ -1404,7 +1417,7 @@
         },
         {
           "path": "overworld.height.noise-scale.z",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "200.0",
           "default_changes": [],
@@ -1413,7 +1426,7 @@
         },
         {
           "path": "overworld.height.scale",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "684.412",
           "default_changes": [],
@@ -1422,7 +1435,7 @@
         },
         {
           "path": "overworld.stretch-y",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "12.0",
           "default_changes": [],
@@ -1431,7 +1444,7 @@
         },
         {
           "path": "overworld.surface-scale",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "0.0625",
           "default_changes": [],
@@ -1442,13 +1455,16 @@
     },
     "commands.yml": {
       "versions_scanned": [
+        "2018.6.0",
+        "2018.9.0",
+        "2021.7.0",
         "2021.8.0"
       ],
       "total_keys": 1,
       "keys": [
         {
           "path": "aliases.icanhasbukkit",
-          "introduced_in": "2021.8.0",
+          "introduced_in": "2018.6.0",
           "removed_in": null,
           "default_latest": "[\"version $1-\", \"plugins\"]",
           "default_changes": [],
@@ -1459,6 +1475,9 @@
     },
     "permissions.yml": {
       "versions_scanned": [
+        "2018.6.0",
+        "2018.9.0",
+        "2021.7.0",
         "2021.8.0"
       ],
       "total_keys": 0,
@@ -1466,6 +1485,9 @@
     },
     "help.yml": {
       "versions_scanned": [
+        "2018.6.0",
+        "2018.9.0",
+        "2021.7.0",
         "2021.8.0"
       ],
       "total_keys": 0,
