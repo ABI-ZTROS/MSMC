@@ -1,0 +1,270 @@
+# Core Registry v1 — Minecraft server core definition
+# Each entry: how to download, Java version, launch params, config files to capture
+schema: 1
+
+defaults:
+  launch:
+    java-args: ["-Xms256M", "-Xmx1024M", "-XX:+UseSerialGC", "-jar"]
+    timeout_seconds: 90
+    ready-match-flags: ig
+
+cores:
+  # ═══════════════════════════════════════════════════
+  # Paper 系（PaperMC Hangar API）
+  # ═══════════════════════════════════════════════════
+  paper:
+    display: Paper
+    type: paper-fork
+    github: PaperMC/Paper
+    java-min: "21"
+    download:
+      kind: hangar
+      project: Paper
+      owner: PaperMC
+    launch:
+      ready-match: "Done \\(.*s\\)! For help, type"
+      eula: true
+      config-files:
+        - {path: config/paper-global.yml, type: yaml}
+        - {path: config/paper-world-defaults.yml, type: yaml}
+        - {path: spigot.yml, type: yaml}
+        - {path: bukkit.yml, type: yaml}
+        - {path: server.properties, type: properties}
+
+  folia:
+    display: Folia
+    type: paper-fork
+    github: PaperMC/Folia
+    java-min: "21"
+    download:
+      kind: github-releases
+      asset-regex: "folia-[0-9]+\\.jar"
+    launch:
+      ready-match: "Done \\(.*s\\)! For help, type"
+      eula: true
+      config-files:
+        - {path: config/paper-global.yml, type: yaml}
+
+  purpur:
+    display: Purpur
+    type: paper-fork
+    github: PurpurMC/Purpur
+    java-min: "21"
+    download:
+      kind: github-releases
+      asset-regex: "purpur-[0-9]+\\.jar"
+    launch:
+      ready-match: "Done \\(.*s\\)! For help, type"
+      eula: true
+      config-files:
+        - {path: purpur.yml, type: yaml}
+        - {path: config/paper-global.yml, type: yaml}
+
+  leaves:
+    display: Leaves
+    type: paper-fork
+    github: LeavesMC/Leaves
+    java-min: "21"
+    download:
+      kind: github-releases
+      asset-regex: "leaves-[0-9]+\\.jar"
+    launch:
+      ready-match: "Done \\(.*s\\)! For help, type"
+      eula: true
+      config-files:
+        - {path: leaves.yml, type: yaml}
+        - {path: config/paper-global.yml, type: yaml}
+
+  leaf:
+    display: Leaf
+    type: paper-fork
+    github: LeafMC/Leaf
+    java-min: "21"
+    download:
+      kind: github-releases
+      asset-regex: "leaf-[0-9]+\\.jar"
+    launch:
+      ready-match: "Done \\(.*s\\)! For help, type"
+      eula: true
+      config-files:
+        - {path: leaf.yml, type: yaml}
+        - {path: config/leaf-global.yml, type: yaml}
+
+  # ═══════════════════════════════════════════════════
+  # 代理端
+  # ═══════════════════════════════════════════════════
+  velocity:
+    display: Velocity
+    type: proxy
+    github: PaperMC/Velocity
+    java-min: "21"
+    download:
+      kind: github-releases
+      asset-regex: "velocity-[0-9]+(-[a-z]+)?\\.jar"
+    launch:
+      ready-match: "Done \\(.*s\\)! Type"
+      eula: false
+      config-files:
+        - {path: velocity.toml, type: toml}
+
+  bungee:
+    display: BungeeCord
+    type: proxy
+    github: SpigotMC/BungeeCord
+    java-min: "11"
+    download:
+      kind: github-releases
+      asset-regex: "BungeeCord-[0-9]+\\.jar"
+    launch:
+      ready-match: "Listening on /"
+      eula: false
+      config-files:
+        - {path: config.yml, type: yaml}
+
+  # ═══════════════════════════════════════════════════
+  # 基岩版实现
+  # ═══════════════════════════════════════════════════
+  nukkit:
+    display: Nukkit
+    type: bedrock-java
+    github: CloudburstTeam/Nukkit
+    java-min: "17"
+    download:
+      kind: circleci-workflow
+      workflow: build
+    launch:
+      ready-match: "Done"
+      eula: true
+      config-files:
+        - {path: nukkit.yml, type: yaml}
+        - {path: nukkit-server.properties, type: properties}
+
+  # ═══════════════════════════════════════════════════
+  # Bukkit API 独立实现
+  # ═══════════════════════════════════════════════════
+  glowstone:
+    display: Glowstone
+    type: bukkit-api-impl
+    github: GlowstoneMC/Glowstone
+    java-min: "8"
+    download:
+      kind: maven-central
+      group: net.glowstone
+      artifact: glowstone-server
+    launch:
+      ready-match: "Done \\(.*s\\)!"
+      eula: true
+      config-files:
+        - {path: config/glowstone/glowstone.yml, type: yaml}
+
+  # ═══════════════════════════════════════════════════
+  # 模组加载器（installer 类型）
+  # ═══════════════════════════════════════════════════
+  forge:
+    display: Forge
+    type: modloader
+    github: MinecraftForge
+    java-min: "17"
+    download:
+      kind: forge-installer
+      mc-versions: ["1.16.5", "1.17.1", "1.18.2", "1.19.4", "1.20.1", "1.20.4", "1.21.1"]
+    special: installer-first
+    launch:
+      ready-match: "Done \\(.*s\\)!"
+      eula: true
+      config-files:
+        - {path: forge-server.toml, type: toml}
+
+  fabric:
+    display: Fabric
+    type: modloader
+    github: FabricMC
+    java-min: "17"
+    download:
+      kind: fabric-installer
+    special: installer-first
+    launch:
+      ready-match: "Done \\(.*s\\)!"
+      eula: true
+      config-files:
+        - {path: fabric-server-launcher.properties, type: properties}
+
+  # ═══════════════════════════════════════════════════
+  # Bungee 系 Fork
+  # ═══════════════════════════════════════════════════
+  waterfell:
+    display: Waterfall
+    type: proxy
+    github: PaperMC/Waterfall
+    java-min: "21"
+    download:
+      kind: github-releases
+      asset-regex: "waterfall-[0-9]+\\.jar"
+    launch:
+      ready-match: "Done \\(.*s\\)!"
+      eula: false
+      config-files:
+        - {path: waterfall.yml, type: yaml}
+
+  flamecord:
+    display: FlameCord
+    type: proxy
+    github: geysermc/FlameCord
+    java-min: "11"
+    download:
+      kind: github-releases
+      asset-regex: "FlameCord-[0-9]+\\.jar"
+    launch:
+      ready-match: "Done \\(.*s\\)!"
+      eula: false
+      config-files:
+        - {path: flamecord.yml, type: yaml}
+
+  # ═══════════════════════════════════════════════════
+  # Sponge
+  # ═══════════════════════════════════════════════════
+  sponge:
+    display: Sponge
+    type: sponge
+    github: SpongePowered/Sponge
+    java-min: "17"
+    download:
+      kind: github-releases
+      asset-regex: "sponge-[0-9]+\\.jar"
+    launch:
+      ready-match: "Done \\(.*s\\)!"
+      eula: true
+      config-files:
+        - {path: config/sponge/global.conf, type: hocon}
+
+  # ═══════════════════════════════════════════════════
+  # 混合端（Forge+Bukkit / Fabric+Bukkit）
+  # ═══════════════════════════════════════════════════
+  mohist:
+    display: Mohist
+    type: hybrid
+    github: MohistMC/Mohist
+    java-min: "17"
+    download:
+      kind: github-releases
+      asset-regex: "Mohist-[0-9]+\\.jar"
+    special: installer-first
+    launch:
+      ready-match: "Done \\(.*s\\)!"
+      eula: true
+      config-files:
+        - {path: mohist-config.yml, type: yaml}
+
+  banner:
+    display: Banner
+    type: hybrid
+    github: MohistMC/Banner
+    java-min: "21"
+    download:
+      kind: github-releases
+      asset-regex: "banner-[0-9]+\\.jar"
+    launch:
+      ready-match: "Done \\(.*s\\)!"
+      eula: true
+      config-files:
+        - {path: banner.yml, type: yaml}
