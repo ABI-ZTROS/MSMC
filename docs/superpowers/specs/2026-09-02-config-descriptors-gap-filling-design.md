@@ -1,591 +1,881 @@
 # Minecraft 服务器核心配置翻译——全量版本覆盖与增量补齐
 
 > 日期：2026-09-02
-> 状态：已批准设计
+> 状态：已批准设计 v2（用户审阅后修订）
 > 目标：为 MSMC 配置编辑器补全所有 Minecraft 服务器核心的配置描述符，做到全历史版本溯源
 
 ***
 
-## 1. 背景与动机
+## 1. 背景
 
-MSMC 现有 35 种服务器核心、1161 个配置描述符、37 个配置文件的中文翻译，均通过 [ConfigDescriptorRegistry.cs](../../src/MSMC/Features/ConfigEditor/Services/ConfigDescriptorRegistry.cs) 注册。但存在以下问题：
+MSMC 现有 35 种服务器核心、1161 个配置描述符、37 个配置文件的中文翻译，集中在 [ConfigDescriptorRegistry.cs](../../src/MSMC/Features/ConfigEditor/Services/ConfigDescriptorRegistry.cs) 注册。存在四个缺口：
 
-1. **覆盖不全**——市面上还有 Geyser、DragonWell、Pterodactyl 衍生端等核心未收录
-2. **版本滞后**——翻译基于某次静态快照，核心跨版本键名漂移、默认值变化时未同步更新
-3. **无版本溯源**——Registry 不知道某个键是在哪个版本引入、哪个版本移除的
-4. **配置生成源头不透明**——部分核心运行时动态生成配置文件（Purpur/Paper 1.19+），仅解压 JAR 拿不到
-
-***
-
-## 2. 设计总览
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        核心清单 (YAML)                            │
-│  tools/core-fetcher/core-registry.yaml                           │
-│  每种核心: name / github / artifact-api / java-min / launch-cmd   │
-└──────────────────────────────┬───────────────────────────────────┘
-                               │
-              ┌────────────────▼────────────────┐
-              │  Stage 1: 下载层 fetch.py       │
-              │  · GitHub Releases              │
-              │  · PaperMC Hangar API            │
-              │  · GetBukkit (Bukkit/Spigot)    │
-              │  · CircleCI (Nukkit/PowerNukkit)│
-              │  · Forge/Fabric 安装器           │
-              │  输出: cache/jars/<core>/<ver>.jar │
-              └────────────────┬────────────────┘
-                               │
-              ┌────────────────▼────────────────┐
-              │  Stage 2: 运行层 run.py         │
-              │  · 按 Java-min 选择 JDK          │
-              │  · 写入 eula.txt=true            │
-              │  · nogui + max 1GB RAM           │
-              │  · 等 ready (日志 match)          │
-              │  · /stop 优雅关闭                 │
-              │  输出: generated-configs/<core>/<ver>/ │
-              └────────────────┬────────────────┘
-                               │
-              ┌────────────────▼────────────────┐
-              │  Stage 3: 源码辅助层 src.py     │
-              │  · git clone 浅克隆源码仓库      │
-              │  · 扫 @Config / @Value 注解      │
-              │  · 扫描 ConfigKey / Bukkit YAML  │
-              │  · 输出: sources/<core>/<ver>/config-hints.json │
-              └────────────────┬────────────────┘
-                               │
-              ┌────────────────▼────────────────┐
-              │  Stage 4: 比对层 diff.py        │
-              │  · 标准化 YAML/Properties/TOML  │
-              │  · 扁平化点号路径                 │
-              │  · 跨版本键树构建                  │
-              │  · 与 ConfigDescriptorRegistry 比对 │
-              │  输出: diffs/<core>.diff.json    │
-              └────────────────┬────────────────┘
-                               │
-              ┌────────────────▼────────────────┐
-              │  Stage 5: 翻译注入 + 文档生成    │
-              │  · 差异 JSON 喂给 AI 翻译         │
-              │  · 更新 ConfigDescriptorRegistry │
-              │  · 更新 docs/server-cores/*.md   │
-              │  · git commit + push              │
-              └─────────────────────────────────┘
-```
+1. **覆盖不全**——市面上还有 Geyser、DragonWell、LiteBans 衍生端、以及 Modrinth / CurseForge 上活跃的非 Paper 系核心尚未收录
+2. **版本滞后**——翻译基于某次静态快照，核心跨版本键名漂移、默认值变化、类型变更时未同步
+3. **无版本溯源**——Registry 不知道某个键在哪个版本引入、哪个版本废弃
+4. **翻译质量缺乏权威依据**——纯 AI 机翻导致小白看不懂、大佬一眼唾弃。应当基于 MineBBS、中文 Minecraft Wiki、以及项目内已有的高质量 .md 文档做 RAG 增强
 
 ***
 
-## 3. 核心清单格式（YAML）
+## 2. 设计总览（带数据流）
 
-每种核心一条记录，定义下载方式、Java 需求、启动参数。示例：
+```
+                 ┌─────────────────────────────┐
+                 │  Phase 0: RAG 知识库构建     │
+                 │  tools/core-fetcher/rag.py   │
+                 │                              │
+                 │  · 爬 MineBBS 配置帖          │
+                 │  · 抓 zh.minecraft.wiki       │
+                 │  · 索引项目内 .md 文档         │
+                 │  · 结构化为 knowledge-base/   │
+                 │  · 入库 GitHub (长期保存)       │
+                 └──────────────┬──────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│                                                                           │
+│  ┌─────────────────────┐    ┌─────────────────────┐                      │
+│  │  Stage 1: 下载层     │    │  Stage 2: 运行层     │                      │
+│  │  fetch.py            │    │  run.py              │                      │
+│  │                      │    │                       │                      │
+│  │  Hangar / GH Release │───▶│  Java 8/11/17/21 自动 │                      │
+│  │  CircleCI / Maven    │    │  EULA=true            │                      │
+│  │  Forge/Fabric 安装器  │    │  nogui + 1GB          │                      │
+│  │                      │    │  ready-match 检测      │                      │
+│  │  → cache/jars/      │    │  → generated-configs/  │                      │
+│  └─────────────────────┘    └──────────┬────────────┘                      │
+│                                        │                                   │
+│  ┌─────────────────────┐               ▼                                   │
+│  │  Stage 3: 源码辅助层 │    ┌─────────────────────┐                      │
+│  │  src.py              │    │  Stage 4: 比对层     │                      │
+│  │                      │    │  diff.py              │                      │
+│  │  git clone 浅克隆    │───▶│  标准化 YAML/Properties/TOML                 │
+│  │  扫 @Config 注解     │    │  跨版本键树构建          │                      │
+│  │  提取类型+约束+注释   │    │  与 Registry 比对      │                      │
+│  │                      │    │  合并运行时+源码 hints  │                      │
+│  │  → source-hints/    │    │  → diffs/*.diff.json   │                      │
+│  └─────────────────────┘    └──────────┬────────────┘                      │
+│                                        │                                   │
+│                                        ▼                                   │
+│  ┌──────────────────────────────────────────────────────┐                 │
+│  │  Stage 5: RAG 翻译注入 + 文档同步  (translate.py)   │                 │
+│  │                                                       │                 │
+│  │  diff.json → 逐键查询 RAG 知识库                      │                 │
+│  │              ↓                                        │                 │
+│  │  翻译 prompt 携带:                                    │                 │
+│  │    - 键名、默认值、类型                               │                 │
+│  │    - 社区 RAG 匹配到的权威中文资料片段                  │                 │
+│  │    - 同核心已翻译的相邻键（保证术语一致）                │                 │
+│  │              ↓                                        │                 │
+│  │  → 更新 ConfigDescriptorRegistry.cs                  │                 │
+│  │  → 更新 docs/server-cores/*.md                       │                 │
+│  │  → git commit + push                                 │                 │
+│  └──────────────────────────────────────────────────────┘                 │
+│                                                                           │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+***
+
+## 3. RAG 知识库（**Phase 0，最优先**）
+
+### 3.1 目标
+
+构建一个**本地持久化、入库 GitHub** 的权威中文配置知识库，供翻译时 RAG 查询。这个知识库本身就是长期资产，不仅服务本次翻译，以后新核心 / 新版本发布时也能复用。
+
+### 3.2 数据源优先级（按权威性）
+
+| 优先级 | 数据源                                  | 类型                    | 爬取方式                            |
+| --- | ------------------------------------ | --------------------- | ------------------------------- |
+| 1   | 项目内 `docs/server-cores/*.md`         | 已有高质量中文手册             | 直接读取，结构化抽取                      |
+| 2   | MineBBS（minebbs.com）配置帖              | 社区公认最佳实践              | 搜索 API + 帖子正文抓取（需遵守 robots.txt） |
+| 3   | 中文 Minecraft Wiki（zh.minecraft.wiki） | 游戏机制权威                | 爬 `/w/配置文件`、`/w/服务器配置` 等页面      |
+| 4   | 官方文档本地化                              | PaperMC/Velocity 等有中译 | 官方 docs 镜像 / GitHub 仓库          |
+| 5   | GitHub Issues / Discussions 中的中文讨论   | 问题场景下的真实使用            | 搜索 `lang:zh "配置键名"`             |
+
+### 3.3 知识库存储结构（入库 GitHub）
+
+```
+knowledge-base/
+├── paper/
+│   ├── paper-global.yml.json        # 每个配置文件一个 JSON
+│   └── paper-world-defaults.yml.json
+├── purpur/
+│   └── purpur.yml.json
+├── velocity/
+│   └── velocity.toml.json
+└── ...
+```
+
+每个 JSON 格式：
+
+```json
+{
+  "config_file": "config/paper-global.yml",
+  "cores": ["paper", "folia", "purpur"],
+  "source_docs": [
+    {"source": "project-md", "path": "docs/server-cores/04-paper.md"},
+    {"source": "minebbs", "url": "https://www.minebbs.com/threads/xxx", "title": "Paper 优化配置全解"},
+    {"source": "wiki", "url": "https://zh.minecraft.wiki/...", "title": "Minecraft 服务器配置"}
+  ],
+  "entries": [
+    {
+      "key_path": "chunk-loading.basic-maximizer-chunk-limit",
+      "chinese_entries": [
+        {
+          "term": "区块加载器区块上限",
+          "context": "单个玩家每 tick 最多加载多少区块，降低可缓解鞘翅飞行卡顿",
+          "source": "docs/server-cores/04-paper.md: 区块加载章节"
+        },
+        {
+          "term": "区块加载最大数量",
+          "context": "推荐服务器开服默认 4，不要设太大",
+          "source": "minebbs.com/threads/1234"
+        }
+      ],
+      "enum_values": {
+        "说明": [
+          {"value": "true", "chinese": "开启"},
+          {"value": "false", "chinese": "关闭"}
+        ]
+      }
+    }
+  ],
+  "indexed_at": "2026-09-02T08:30:00Z",
+  "schema_version": 1
+}
+```
+
+### 3.4 RAG 查询逻辑
+
+翻译时对每个新键执行：
+
+```python
+def query_knowledge(key_path: str, core: str, config_file: str) -> KnowledgeResult:
+    """
+    1. 精确匹配 knowledge-base/<core>/<config_file>.json 中 key_path
+    2. 跨核心模糊匹配（如果 purpur.yml 的键在 paper-global.yml 里有类似语义）
+    3. 按 term 关键词全库搜索（如 "chunk-limit" 找到其他核心的同类键）
+    4. 按 priority 聚合，取 top 3 相关片段
+    """
+```
+
+### 3.5 翻译 prompt 模板
+
+```
+你是一位资深 Minecraft 服务器运维专家，需要把一个配置项翻译成自然中文。
+
+[键信息]
+核心: {core_name}
+配置文件: {config_file}
+键路径: {key_path}
+类型: {type}
+默认值: {default}
+
+[社区权威参考资料 - 必须参考这些，不要自己瞎编]
+{priority_1_snippets}    # 项目内 .md 文档的中文描述
+{priority_2_snippets}    # MineBBS 帖子中的用法
+{priority_3_snippets}    # Minecraft Wiki 的术语
+
+[同核心已翻译的相邻键 - 保证术语一致]
+{neighbor_translations}
+
+[输出要求]
+- 显示名：10-20 字，自然口语化，小白能一眼懂
+- 详细说明：2-4 句，解释这个配置做什么、改了有什么影响、推荐怎么设
+- 枚举值翻译（如果是 enum 类型）
+- 重启要求判断（能推断的话）
+- 取值范围标注（能从源码 / 默认值推断的话）
+
+[语言风格]
+- 参考 MineBBS 论坛开服教程、中文 Minecraft Wiki、官方文档中译的风格
+- 不要机翻腔，不要出现"该参数用于控制..."这种 AI 感明显的套话
+- 用真实开服者的语气，偶尔可以加一句小经验（"建议设 2-4"、"改了之后需要重启服务器"）
+```
+
+### 3.6 入库策略
+
+* `knowledge-base/` 目录全程入库 GitHub（Git LFS 如遇大文件）
+
+* 每次 RAG 爬完新数据或手动补充后 commit 一次
+
+* 知识库与翻译结果是**两个独立的提交**，便于回溯
+
+***
+
+## 4. 核心清单（YAML）
+
+### 4.1 结构
 
 ```yaml
+# 核心清单 v1
+# 每项定义: 下载方式、Java 版本、启动参数、配置文件列表、源码仓库
+# 字段全部必填，无 optional
+
+schema: 1
+
+defaults:
+  launch:
+    java-args: ["-Xms256M", "-Xmx1024M", "-XX:+UseSerialGC", "-jar"]
+    timeout_seconds: 60
+    ready-match-flags: ig       # 忽略大小写，多行匹配
+
 cores:
   paper:
     display: Paper
     type: paper-fork
     github: PaperMC/Paper
-    java-min: 21          # Minecraft 1.21+ 推荐 Java 21
+    java-min: 21
     java-max: 25
-    source-github: PaperMC/Paper
-    versions-api:
-      kind: hangar        # PaperMC Hangar 专用 API
-      owner: PaperMC
+    source-repo: PaperMC/Paper
+    download:
+      kind: hangar
       project: Paper
-    artifact:
-      kind: standard      # 标准 paper-<ver>.jar
     launch:
-      cmd: ["java", "-Xms256M", "-Xmx1024M", "-jar", "{jar}", "nogui"]
       ready-match: "Done \\(.*s\\)! For help, type"
+      eula: true
       config-files:
-        - config/paper-global.yml
-        - config/paper-world-defaults.yml
-        - spigot.yml
-        - bukkit.yml
-        - server.properties
+        - path: config/paper-global.yml
+          type: yaml
+        - path: config/paper-world-defaults.yml
+          type: yaml
+    inherits-translations: [spigot.yml, bukkit.yml, server.properties]  # 从已有翻译继承
+    notes: Minecraft 1.19.4+ 使用新配置体系
 
   purpur:
     display: Purpur
     type: paper-fork
     github: PurpurMC/Purpur
     java-min: 21
-    versions-api:
+    download:
       kind: github-releases
+      asset-regex: "purpur-[0-9]+\\.jar"
     launch:
-      cmd: ["java", "-Xms256M", "-Xmx1024M", "-jar", "{jar}", "nogui"]
       ready-match: "Done \\(.*s\\)! For help, type"
+      eula: true
       config-files:
-        - purpur.yml
-        - config/paper-global.yml
+        - path: purpur.yml
+          type: yaml
+        - path: config/paper-global.yml
+          type: yaml
+    inherits-translations: [spigot.yml, bukkit.yml, server.properties, paper-global.yml]
 
   nuakit:
     display: Nukkit
     type: bedrock-java
     github: CloudburstTeam/Nukkit
     java-min: 17
-    versions-api:
+    download:
       kind: circleci-workflow
       workflow: build
     launch:
-      cmd: ["java", "-Xms256M", "-Xmx1024M", "-jar", "{jar}"]
       ready-match: "Done"
+      eula: true
       config-files:
-        - nukkit.yml
-        - nukkit-server.properties
+        - path: nukkit.yml
+          type: yaml
+        - path: nukkit-server.properties
+          type: properties
 
   velocity:
     display: Velocity
     type: proxy
     github: PaperMC/Velocity
     java-min: 21
-    versions-api:
+    download:
       kind: github-releases
+      asset-regex: "velocity-[0-9]+(-[a-z]+)?\\.jar"
     launch:
-      cmd: ["java", "-Xms256M", "-Xmx512M", "-jar", "{jar}"]
       ready-match: "Done \\(.*s\\)! Type"
+      eula: false              # 代理端不需要 EULA
       config-files:
-        - velocity.toml
-    eula-required: false  # 代理端不需要 EULA
+        - path: velocity.toml
+          type: toml
 
   forge:
     display: Forge
     type: modloader
-    java-min: 17           # Minecraft 1.20.1 Forge
-    versions-api:
+    github: MinecraftForge/MinecraftForge
+    java-min: 17              # Minecraft 1.20+ Forge 统一 Java 17+
+    download:
       kind: forge-installer
       mc-versions: [1.16.5, 1.17.1, 1.18.2, 1.19.4, 1.20.1, 1.20.4, 1.21.1]
-    launcher-kind: installer  # 不是单一 JAR，要跑安装器
-    source-github: MinecraftForge/MinecraftForge
+    source-repo: MinecraftForge/MinecraftForge
+    special: installer-first   # 先跑安装器生成 run 目录
     launch:
-      cmd: ["java", "-Xms256M", "-Xmx1024M", "-jar", "{jar}", "nogui"]
       ready-match: "Done \\(.*s\\)!"
+      eula: true
       config-files:
-        - forge-server.toml
-    special-notes: 需要先运行安装器生成 run 目录
+        - path: forge-server.toml
+          type: toml
+
+  fabric:
+    display: Fabric
+    type: modloader
+    github: FabricMC
+    java-min: 17
+    download:
+      kind: fabric-installer
+      loader-versions: all
+    source-repo: FabricMC/fabric-loader
+    special: installer-first
+    launch:
+      ready-match: "Done \\(.*s\\)!"
+      eula: true
+      config-files:
+        - path: fabric-server-launcher.properties
+          type: properties
+    notes: Fabric 需要 fabric-server-launch.jar + intermediary 映射
 
   glowstone:
     display: Glowstone
     type: bukkit-api-impl
     github: GlowstoneMC/Glowstone
     java-min: 8
-    versions-api:
+    download:
       kind: maven-central
       group: net.glowstone
       artifact: glowstone-server
-      packaging: jar
+    source-repo: GlowstoneMC/Glowstone
     launch:
-      cmd: ["java", "-Xms128M", "-Xmx512M", "-jar", "{jar}", "nogui"]
       ready-match: "Done \\(.*s\\)!"
+      eula: true
       config-files:
-        - config/glowstone/glowstone.yml
+        - path: config/glowstone/glowstone.yml
+          type: yaml
+
+  leaf:
+    display: Leaf
+    type: paper-fork
+    github: LeafMC/Leaf
+    java-min: 21
+    download:
+      kind: github-releases
+      asset-regex: "leaf-[0-9]+\\.jar"
+    launch:
+      ready-match: "Done \\(.*s\\)! For help, type"
+      eula: true
+      config-files:
+        - path: leaf.yml
+          type: yaml
+        - path: config/leaf-global.yml
+          type: yaml
+    inherits-translations: [spigot.yml, bukkit.yml, server.properties, paper-global.yml]
+    notes: Leaf 有独立 leaf.yml 继承 Purpur 的大部分配置 + 自己的增强项
+
+  # ... 其他 30+ 核心照此格式补充
+```
+
+### 4.2 download.kind 枚举
+
+| kind                | 说明                                                          |
+| ------------------- | ----------------------------------------------------------- |
+| `hangar`            | PaperMC Hangar v2 API `/api/v2/projects/{project}/versions` |
+| `github-releases`   | GitHub Releases API（tag + asset 正则匹配）                       |
+| `circleci-workflow` | CircleCI Pipeline API 扫 artifacts                           |
+| `maven-central`     | Maven Central 元数据（Glowstone）                                |
+| `forge-installer`   | Forge Maven XML 找 installer JAR                             |
+| `fabric-installer`  | Fabric Meta API                                             |
+| `modrinth`          | Modrinth API（可选，扫新核心）                                       |
+| `curseforge`        | CurseForge API（可选，扫新核心）                                     |
+
+### 4.3 核心清单完整性补漏（Phase 3）
+
+用 GitHub Search API + 主流平台 API 扫描未收录的核心：
+
+```python
+def discover_new_cores() -> list[Candidates]:
+    """
+    GitHub Search: language:Java minecraft server core stars:>100 pushed:>2025-01-01
+    Modrinth search: category=server-modloader
+    Hangar projects: active
+    CurseForge: Server-Side categories
+    排除 Paper/Folia/Purpur 等已收录的
+    对候选者做 JAR 可用性 + 配置文件存在性验证
+    返回可追加进 core-registry.yaml 的条目建议
+    """
 ```
 
 ***
 
-## 4. 下载层（fetch.py）实现细节
+## 5. Stage 1: 下载层（fetch.py）
 
-### 4.1 版本发现策略
-
-按 `versions-api.kind` 选择策略：
-
-| kind                | 说明                                                          | 示例核心                                                |
-| ------------------- | ----------------------------------------------------------- | --------------------------------------------------- |
-| `hangar`            | PaperMC Hangar v2 API `/api/v2/projects/{project}/versions` | Paper、Folia、Waterfall                               |
-| `github-releases`   | 扫描 GitHub Releases tags + assets                            | Purpur、Leaves、Leaf、Mohist、FlameCord、HexaCord、Banner |
-| `circleci-workflow` | CircleCI Pipeline API 扫 artifacts                           | Nukkit、PowerNukkit                                  |
-| `getbukkit`         | GetBukkit Build API                                         | Bukkit、Spigot                                       |
-| `forge-installer`   | Forge Maven 元数据找 installer JAR                              | Forge                                               |
-| `fabric-installer`  | Fabric Meta API + Intermediary                              | Fabric                                              |
-| `maven-central`     | Maven Central 元数据                                           | Glowstone                                           |
-| `builtin`           | 安装器型核心，不直接下 JAR，标记 `launcher-kind=installer`                | Forge、Fabric、NeoForge                               |
-
-### 4.2 版本筛选
-
-对每个核心获取到的版本列表做筛选：
+### 5.1 下载缓存结构
 
 ```
-1. 过滤 pre-release / snapshot（YAML 里 override 可保留）
-2. 版本语义化排序（vercmp）
-3. 保留全部（用户明确要求"全部历史版本"）
-4. 跳过明显坏掉的（发布页里直接有红色 broken 标记）
-```
-
-### 4.3 下载缓存
-
-```
-cache/
-├── cores/
-│   ├── paper/
-│   │   ├── paper-1.21.1-133.jar        # 原始文件名
-│   │   ├── paper-1.21.1-133.jar.sha256  # 完整性校验
-│   │   └── paper-meta.json              # 下载 metadata (source url, release date, 作者)
-│   ├── purpur/
-│   └── ...
+cache/                              # .gitignore
+├── cores/<core>/
+│   ├── <ver>.jar
+│   └── <ver>-meta.json             # {url, sha256, release_date, source}
 └── runtimes/
-    ├── jdk-8/
-    ├── jdk-11/
-    ├── jdk-17/
-    ├── jdk-21/
-    └── jdk-25/          # 已有
+    ├── jdk-8/    /jdk-8/bin/java
+    ├── jdk-11/   /jdk-11/bin/java
+    ├── jdk-17/   /jdk-17/bin/java
+    └── jdk-21/   /jdk-21/bin/java
 ```
+
+### 5.2 版本发现 + 下载流程
+
+```python
+def fetch(core_id: str) -> list[Path]:
+    core = load_core_registry()[core_id]
+    versions = discover_versions(core["download"])  # 按 kind 分派
+    jars = []
+    for v in versions:
+        jar = cache_path(core_id, v)
+        if jar.exists():          # 命中缓存
+            jars.append(jar)
+            continue
+        url = resolve_url(core["download"], v)
+        download_with_retry(url, jar)
+        jars.append(jar)
+    return jars
+```
+
+### 5.3 完整性校验
+
+* SHA-256 校验（GitHub Release 提供的 artifact hash）
+
+* 无法校验时，检查 JAR 的 Manifest 是否包含 Minecraft 标识
 
 ***
 
-## 5. 运行层（run.py）实现细节
+## 6. Stage 2: 运行层（run.py）
 
-### 5.1 JDK 版本选择
-
-用 mise 或脚本自带的选择器：
+### 6.1 JDK 版本选择器
 
 ```python
-def pick_jdk(core: dict) -> str:
-    available = {
-        "1.8": "/root/.local/share/mise/installs/openjdk@8/bin/java",
-        "11":  "/root/.local/share/mise/installs/openjdk@11/bin/java",
-        "17":  "/root/.local/share/mise/installs/openjdk@17/bin/java",
-        "21":  "/root/.local/share/mise/installs/openjdk@21/bin/java",
-        "25":  "/root/.local/share/mise/shims/java",
-    }
-    required = core["java-min"]
-    # 选 >= required 的最低版本
-    for v, path in sorted(available.items(), key=lambda x: _parse_ver(x[0])):
-        if _parse_ver(v) >= _parse_ver(required):
+JDK_PATHS = {
+    "1.8": "/root/.local/share/mise/installs/openjdk@8/bin/java",
+    "11":  "/root/.local/share/mise/installs/openjdk@11/bin/java",
+    "17":  "/root/.local/share/mise/installs/openjdk@17/bin/java",
+    "21":  "/root/.local/share/mise/installs/openjdk@21/bin/java",
+    "25":  "/root/.local/share/mise/shims/java",
+}
+
+def pick_jdk(java_min: str) -> str:
+    v_min = _parse(java_min)
+    for ver, path in sorted(JDK_PATHS.items(), key=lambda x: _parse(x[0])):
+        if _parse(ver) >= v_min:
             return path
-    raise RuntimeError(f"No JDK >= {required}")
+    raise RuntimeError(f"No JDK >= {java_min}")
 ```
 
-### 5.2 启动流程
+### 6.2 启动流程
 
 ```python
-def run_core(jar_path: str, workdir: Path, core: dict) -> RunResult:
-    # 1. 准备工作目录（全新 copy）
-    shutil.rmtree(workdir, ignore_errors=True)
+def run_one(jar_path: Path, workdir: Path, core: dict) -> RunResult | RunFailure:
+    # 1. 全新工作目录
+    if workdir.exists():
+        shutil.rmtree(workdir)
     workdir.mkdir(parents=True)
 
-    # 2. 写入 eula.txt=true（代理端例外）
-    if core.get("eula-required", True):
+    # 2. EULA
+    if core["launch"]["eula"]:
         (workdir / "eula.txt").write_text("eula=true\n")
 
-    # 3. 如果是 installer 类型，先跑安装器
-    if core.get("launcher-kind") == "installer":
-        _run_installer(jar_path, workdir, core)
+    # 3. 安装器型核心特殊处理
+    if core.get("special") == "installer-first":
+        run_installer(jar_path, workdir, core)
 
-    # 4. 组装启动命令
-    cmd = [jdk_path, "-Xms256M", "-Xmx1024M"]
-    cmd += ["-XX:+UseSerialGC"]  # 沙盒 GC 优化
-    cmd += ["-jar", str(jar_path), "nogui"]
+    # 4. 组装命令
+    cmd = [pick_jdk(core["java-min"])] + core.get("defaults", {}).get("launch", {}).get("java-args", []) + \
+          ["-jar", str(jar_path), "nogui"]
 
-    # 5. 启动子进程 + 日志捕获
-    proc = subprocess.Popen(cmd, cwd=workdir, ...)
+    # 5. 启动并捕获日志
+    proc = subprocess.Popen(cmd, cwd=workdir,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            bufsize=1, text=True)
 
-    # 6. 等待 ready-match 出现（正则匹配日志）
-    ready_re = re.compile(core["launch"]["ready-match"])
+    # 6. 等待 ready
+    ready_re = re.compile(core["launch"]["ready-match"], re.IGNORECASE | re.MULTILINE)
     start = time.time()
-    timeout = 60  # 秒；老版本可能更快
-    while time.time() - start < timeout:
+    log_tail = deque(maxlen=200)
+    while time.time() - start < core.get("defaults", {}).get("launch", {}).get("timeout_seconds", 60):
         line = proc.stdout.readline()
+        if not line and proc.poll() is not None:
+            break
+        log_tail.append(line)
         if ready_re.search(line):
             break
-        if proc.poll() is not None:
-            raise RuntimeError(f"Process exited early with code {proc.returncode}")
     else:
         proc.kill()
-        raise TimeoutError(f"Timeout waiting for ready-match in {jar_path}")
+        return RunFailure(category="timeout", log_tail="".join(log_tail))
 
-    # 7. 优雅关闭
-    proc.stdin.write(b"stop\n")
-    proc.stdin.flush()
+    if proc.poll() is not None and proc.returncode != 0:
+        return RunFailure(category="early-exit", log_tail="".join(log_tail))
+
+    # 7. 优雅停止
     try:
+        proc.stdin.write("stop\n")
+        proc.stdin.flush()
         proc.wait(timeout=15)
-    except subprocess.TimeoutExpired:
+    except Exception:
         proc.kill()
 
-    # 8. 收集生成的配置文件
+    # 8. 收集生成的配置
     generated = {}
-    for rel_path in core["launch"]["config-files"]:
-        full = workdir / rel_path
+    for cf in core["launch"]["config-files"]:
+        full = workdir / cf["path"]
         if full.exists():
-            generated[rel_path] = full.read_text(errors="replace")
-    return RunResult(generated_configs=generated, jar_name=Path(jar_path).name)
+            generated[cf["path"]] = full.read_text(errors="replace")
+        else:
+            # 尝试解压 JAR 默认配置
+            jcf = extract_from_jar(jar_path, cf["path"])
+            if jcf:
+                generated[cf["path"]] = jcf  # 兜底
+    return RunResult(generated, jar_path.name)
 ```
 
-### 5.3 启动失败分类（便于报告）
+### 6.3 失败分类
 
-| 类别             | 原因                 | 处理               |
-| -------------- | ------------------ | ---------------- |
-| timeout        | 60 秒内没打 ready 日志   | 标记失败，报告日志尾部      |
-| early-exit     | 进程启动即崩             | 抓 stderr         |
-| java-mismatch  | Wrong Java version | 自动降级/升级 JDK 重试一次 |
-| native-missing | 需要 LWJGL/图形库       | 永久跳过，标记为需要 GUI   |
-| config-corrupt | 作者脑子抽风             | 解压 JAR 里的默认配置代替  |
+| category                           | 处理                          | 记录            |
+| ---------------------------------- | --------------------------- | ------------- |
+| `timeout`                          | 跳过该版本                       | failures.json |
+| `early-exit`                       | 抓 stderr 分析；自动降级 JDK 重试 1 次 | failures.json |
+| `java-mismatch`                    | 自动切换 JDK 重试 1 次             | failures.json |
+| `native-missing`（LWJGL/图形库）        | 永久跳过该核心，标记 GUI-dependent    | failures.json |
+| `config-not-generated`（作者脑子抽风不写文件） | 回退到解压 JAR 默认配置              | warnings      |
+| `corrupt-jar`                      | 下载重新拉取 1 次                  | failures.json |
+
+`failures.json` 入库 GitHub：
+
+```json
+[
+  {"core": "some-core", "version": "2.0.0", "category": "native-missing", "detail": "java.lang.UnsatisfiedLinkError: no lwjgl", "timestamp": "2026-09-02T08:30:00Z"}
+]
+```
 
 ***
 
-## 6. 源码辅助层（src.py）
+## 7. Stage 3: 源码辅助层（src.py）
 
-用户明确说"源码比配置文件好看"。核心类有 `@Config` 注解、`ServerConfiguration` 类、`BukkitConfig` 注册等结构，比运行时吐出来的 YAML 更完整、有类型信息。
+**核心类有 @Config 注解、类型约束、中文注释（部分核心），比运行时吐出来的 YAML 更完整**。
 
-```python
-def extract_config_from_source(source_root: Path, core: dict) -> list[SourceConfigHint]:
-    """
-    扫描源码仓库，从 Java/Kotlin 文件中提取配置定义。
-    
-    Paper/Purpur 系: 扫 io/papermc/paper/configuration 包下所有类的 @Config
-    Bukkit 系: 扫 BukkitYaml / SpigotYaml / CraftServer 中的 YAMLDefaults
-    Forge: 扫 ModLoadingContext.registerConfig() 调用
-    Velocity: 扫 @Config / VelocityConfiguration 类
-    Glowstone: 扫 GlowstoneConfiguration 类
-    """
+### 7.1 源码提取策略
+
+| 核心系                       | 扫描目标                                                           |
+| ------------------------- | -------------------------------------------------------------- |
+| Paper/Folia/Purpur/Leaf 等 | `io/papermc/paper/configuration/**` 下所有 Java 类的 `@Config` 注解   |
+| Bukkit/Spigot             | `CraftServer.java` 中的 `BukkitYaml`、`spigot.yml` 的 YAMLDefaults |
+| Forge                     | `ModLoadingContext.registerConfig()` 调用                        |
+| NeoForge                  | `ModLoadingContext.registerConfig()`                           |
+| Velocity                  | `io/velocity/configuration/VelocityConfiguration` 类            |
+| BungeeCord                | `net.md_5.bungee.conf.Configuration`                           |
+| Nukkit/PowerNukkit        | `cn.nukkit.utils.Config` 注册点                                   |
+| Glowstone                 | `net.glowstone.conf.GlowstoneConfiguration`                    |
+| Sponge                    | `org.spongepowered.api.config.*` + HOCON 注解                    |
+
+### 7.2 输出格式
+
+```
+source-hints/<core>/<ver>/
+├── paper-global.yml.json         # 提取的每个键
+└── meta.json                     # {commit, source_repo, extractor_version}
 ```
 
-输出 `config-hints.json`：
-
-```json
+```jsonc
 {
-  "source": "PaperMC/Paper",
-  "commit": "abc1234",
-  "configs": [
-    {
-      "file": "config/paper-global.yml",
-      "keys": [
-        {
-          "path": "chunk-loading.basic-maximizer-chunk-limit",
-          "field": "basicMaximizerChunkLimit",
-          "type": "int",
-          "default": 4,
-          "annotation": "@Min(0)",
-          "comment": "The maximum number of chunks per player per tick for the basic chunk loader"
-        }
-      ]
-    }
-  ]
+  "key_path": "chunk-loading.basic-maximizer-chunk-limit",
+  "field_name": "basicMaximizerChunkLimit",
+  "java_type": "int",
+  "default_value": 4,
+  "annotations": ["@Min(0)", @Description("...")],
+  "source_file": "io/papermc/paper/configuration/GlobalConfiguration.java",
+  "line": 123,
+  "enclosing_class": "GlobalConfiguration.ChunkLoadingSection"
 }
 ```
 
-源码分析与运行时配置取并集，源码提供**类型 + 注释 + 约束**，运行时提供**真实默认值 + 实际生成的结构**。
-
 ***
 
-## 7. 比对层（diff.py）
+## 8. Stage 4: 比对层（diff.py）
 
-### 7.1 标准化输入
+### 8.1 合并策略
 
-* **YAML**：PyYAML → 扁平化（`a.b.c: val`）
-
-* **Properties**：按点号拆分层级 → 扁平化
-
-* **TOML**：tomllib → 扁平化
-
-* **HOCON**：需要专门解析（Sponge 用），如不支持就当普通文本
-
-### 7.2 跨版本键树构建
+运行时配置 + 源码 hints + RAG 知识库 **三者取并集**：
 
 ```python
-def build_key_evolution(core: str, config_file: str, versions: list[Path]) -> list[KeyEvent]:
-    """
-    遍历所有版本的配置，构建每个键的生命周期：
-    - 在哪个版本首次出现 → introduced_in
-    - 在哪个版本改名 → renamed_to (保留原键的生命周期链)
-    - 在哪个版本移除 → removed_in
-    - 默认值 / 类型 在哪些版本变化
-    """
+def merge(runtime_config, source_hints, rag_knowledge) -> MergedConfig:
+    keys = set(runtime_config.keys()) | set(source_hints.keys())
+    merged = {}
+    for key in keys:
+        entry = MergedKey(key=key)
+        if key in runtime_config:
+            entry.runtime = runtime_config[key]      # 真实默认值
+        if key in source_hints:
+            entry.type = source_hints[key].java_type
+            entry.annotations = source_hints[key].annotations
+            entry.source_default = source_hints[key].default_value  # 源码声明的默认值
+        entry.rag_snippets = rag_knowledge.query(key)
+        merged[key] = entry
+    return MergedConfig(merged)
 ```
 
-输出 `diffs/<core>.diff.json`：
+### 8.2 跨版本键树构建
 
-```json
+对每个核心的所有版本配置做并集遍历，得到每个键的生命周期：
+
+```python
+@dataclass
+class KeyEvolution:
+    path: str
+    introduced_in: str | None          # 首次出现版本
+    removed_in: str | None             # 最后出现版本之后的版本（即哪个版本移除了）
+    type_changes: list[TypeChange]     # 类型变化记录
+    default_changes: list[DefaultChange]
+    rename_chain: list[str]            # 重命名历史，["old.path", "new.path"]
+```
+
+### 8.3 与 ConfigDescriptorRegistry 比对
+
+解析 Registry.cs 里所有 `(ConfigFileName, Key)` 复合键（正则提取），与 diff JSON 比对：
+
+* **new\_key**：diff 有、Registry 没有 → 需翻译
+
+* **existing**：都有 → 跳过，除非类型/默认值有漂移
+
+* **removed\_key**：Registry 有、diff 里没有（任何版本）→ 标记 deprecated，加 `RemovedIn`
+
+* **drifted**：Registry 有但默认值 / 类型在新版本变了 → 报告
+
+### 8.4 diff.json 输出
+
+```jsonc
 {
   "core": "purpur",
   "config_file": "purpur.yml",
+  "generated_at": "2026-09-02T08:30:00Z",
+  "versions_scanned": ["1.16.5-999", "1.17.1-927", "..."],
   "keys": [
     {
       "path": "settings.player-clip-plane",
       "introduced_in": "1.16.5-999",
+      "removed_in": null,
       "type_history": [
         {"version": "1.16.5-999", "type": "bool", "default": "false"},
-        {"version": "1.19.4-1500", "type": "double", "default": "0.0", "changed": "bool→double，新增 plane 尺寸参数"}
+        {"version": "1.19.4-1500", "type": "double", "default": "0.0", "note": "bool→double，新增 plane 尺寸参数"}
       ],
-      "removed_in": null,
       "rename_chain": null,
-      "existing_in_registry": false,
+      "state": "new_key",                       // new_key / existing / removed / drifted
+      "rag_snippets_count": 3,
       "needs_translation": true
-    },
-    {
-      "path": "settings.banner-item",
-      "introduced_in": "1.17.1-927",
-      "removed_in": "1.19.0-1300",
-      "existing_in_registry": true,
-      "existing_desc": "玩家旗帜物品设置",
-      "needs_translation": false
     }
-  ]
+  ],
+  "summary": {"total_keys": 187, "new_keys": 52, "existing": 128, "removed": 7}
 }
 ```
 
-### 7.3 与 ConfigDescriptorRegistry 比对
-
-从 Registry 中解析 `(ConfigFileName, Key)` 复合键，与 diff JSON 逐键比对，标记：
-
-* **新增**：diff 有、Registry 没有 → 需翻译
-
-* **已存在**：两者都有 → 跳过
-
-* **已废弃**：Registry 有、diff 没有（在任何版本） → 标记 deprecated，加 VersionRemoved
-
-* **变化**：Registry 有但默认值 / 类型在新版本变了 → 更新
-
 ***
 
-## 8. 翻译注入 + 文档生成
+## 9. Stage 5: RAG 翻译注入 + 文档同步
 
-### 8.1 ConfigDescriptorRegistry 结构扩展
+### 9.1 翻译流程
 
-在 `ServerConfigDescriptor` 类上加字段：
+```python
+def translate_and_inject(core_id: str, config_file: str, diff_json: Path):
+    # 1. 读取所有 new_key / drifted 条目
+    diff = load(diff_json)
+    for entry in diff["keys"]:
+        if not entry["needs_translation"]:
+            continue
 
-```csharp
-/// <summary>配置项的 Minecraft 版本中引入的版本（语义化字符串，如 "1.16.5-927"）</summary>
-public string? IntroducedIn { get; init; }
+        # 2. 从 RAG 知识库取 top 3 片段
+        rag = query_knowledge(entry["path"], core_id, config_file)
 
-/// <summary>配置项被移除的版本（null 表示仍存在）</summary>
-public string? RemovedIn { get; init; }
+        # 3. 取同核心已翻译相邻键（保证术语一致）
+        neighbors = get_neighbor_translations(core_id, config_file, entry["path"])
 
-/// <summary>默认值的历史变更记录（可选，数组形式）</summary>
-public ConfigValueChange[]? ValueHistory { get; init; }
+        # 4. 构建 prompt 调用 AI
+        prompt = build_prompt(entry, rag, neighbors)
+        result = ai_call(prompt)
+
+        # 5. 格式化为 C# ServerConfigDescriptor
+        cs_snippet = format_as_cs_descriptor(entry, result)
+
+        # 6. 追加到 Registry.cs（按 ConfigFileName 分区）
+        inject_into_registry("src/MSMC/Features/ConfigEditor/Services/ConfigDescriptorRegistry.cs", cs_snippet)
+
+        # 7. 更新 .md 文档对应表格行
+        update_md_row(f"docs/server-cores/{core_id}.md", entry, result)
+
+    # 8. 单独 commit 翻译结果
+    git_commit(f"feat: translate {core_id} {config_file} ({count} keys via RAG)")
 ```
 
-### 8.2 翻译内容
+### 9.2 ServerConfigDescriptor 扩展字段
 
-对 `needs_translation: true` 的键，喂给 AI 翻译：
+```csharp
+/// <summary>配置项在 Minecraft 版本中首次引入的版本号（语义化，如 "1.16.5-927"）。null 表示未知</summary>
+public string? IntroducedIn { get; init; }
 
-* 中文显示名（10–20 字，小白友好）
+/// <summary>配置项被移除的版本号。null 表示仍存在。用于在旧版兼容中隐藏废弃配置</summary>
+public string? RemovedIn { get; init; }
 
-* 详细描述（2–3 句话，解释用途、修改影响、推荐取值）
+/// <summary>默认值的跨版本变更记录。数组中每个条目代表一次有意义的变更</summary>
+public ValueHistoryEntry[]? ValueHistory { get; init; }
+```
 
-* 枚举值翻译（如果是 enum）
+```csharp
+public record ValueHistoryEntry(string Version, string OldDefault, string NewDefault, string? Note);
+```
 
-* 取值范围（如果有）
+### 9.3 防膨胀：Registry.cs 拆分为 partial class
 
-* 重启要求（如果能推断）
+当前 Registry.cs 已 50k+ 字符中文，继续膨胀会单文件超 1500 行。改为：
 
-产出是一段可以直接贴进 Registry.cs 的 C# 代码片段。
-
-### 8.3 文档更新
-
-同步更新 `docs/server-cores/*.md` 的表格。
+```csharp
+// ConfigDescriptorRegistry.cs          —— 注册表逻辑（查找、比对、初始化调度）
+// ConfigDescriptorRegistry.Paper.cs     —— 所有 Paper/Folia/Purpur 系键的注册
+// ConfigDescriptorRegistry.ModLoader.cs —— Forge/Fabric/NeoForge/Quilt
+// ConfigDescriptorRegistry.Proxy.cs     —— Velocity/BungeeCord/Waterfall/...
+// ConfigDescriptorRegistry.Hybrid.cs    —— Mohist/Arclight/CatServer/Magma/Banner
+// ConfigDescriptorRegistry.Other.cs     —— Nukkit/PowerNukkit/Glowstone/Sponge
+```
 
 ***
 
-## 9. 目录结构变更
+## 10. 目录结构变更
 
 ```
 /workspace/
-├── tools/
-│   └── core-fetcher/
-│       ├── core-registry.yaml     # 核心清单（人工维护，越全越好）
-│       ├── fetch.py               # Stage 1: 下载层
-│       ├── run.py                 # Stage 2: 运行层
-│       ├── src.py                 # Stage 3: 源码辅助
-│       ├── diff.py                # Stage 4: 比对层
-│       ├── inject.py              # Stage 5: 翻译注入
-│       ├── README.md              # 使用说明
-│       └── requirements.txt       # PyYAML, requests, toml, ...
+├── tools/core-fetcher/                  # 全部入库
+│   ├── core-registry.yaml               # 核心清单（越全越好）
+│   ├── rag.py                           # Phase 0: 知识库构建
+│   ├── fetch.py                         # Stage 1: 下载
+│   ├── run.py                           # Stage 2: 运行
+│   ├── src.py                           # Stage 3: 源码辅助
+│   ├── diff.py                          # Stage 4: 比对
+│   ├── translate.py                     # Stage 5: RAG 翻译注入
+│   ├── verify.py                        # 最终校验: dotnet test + C# 编译
+│   ├── requirements.txt
+│   └── README.md
 │
-├── cache/                         # 全部 .gitignore
+├── knowledge-base/                      # 入库 GitHub（长期资产）
+│   ├── paper/paper-global.yml.json
+│   ├── purpur/purpur.yml.json
+│   └── ...
+│
+├── diffs/                               # 入库 GitHub（运行产物快照）
+│   ├── <core>.diff.json
+│   ├── <core>.new-keys.json
+│   ├── summary.json
+│   └── failures.json                   # 启动失败清单
+│
+├── cache/                               # .gitignore（几十 GB JAR + JDK）
 │   ├── cores/<core>/<ver>.jar
-│   ├── cores/<core>/<ver>-meta.json
-│   └── runtimes/jdk-8/ jdk-11/ jdk-17/ jdk-21/
+│   └── runtimes/jdk-{8,11,17,21}/
 │
-├── generated-configs/             # 全部 .gitignore
-│   └── <core>/<ver>/<files>
+├── generated-configs/                   # .gitignore
+│   └── <core>/<ver>/
 │
-├── source-hints/                  # 全部 .gitignore
-│   └── <core>/<ver>/config-hints.json
-│
-├── diffs/
-│   ├── <core>.diff.json           # 版本间键演化
-│   ├── <core>.new-keys.json       # 翻译候选
-│   └── summary.json               # 全量汇总
-│
-└── failures.json                  # 启动失败清单，入库
+└── source-hints/                        # .gitignore
+    └── <core>/<ver>/
 ```
 
 ***
 
-## 10. 执行顺序
+## 11. 执行顺序（Phase 重新排）
 
-为了尽快拿到增量价值，分 Phase 跑：
+**Phase 0: RAG 知识库构建（最优先，独立 commit）**
 
-### Phase 1：基础设施 + 最活跃核心（先做）
+* [ ] 爬 MineBBS 配置帖 + 中文 Minecraft Wiki
 
-* 装 JDK 8/11/17/21
+* [ ] 索引项目内 `docs/server-cores/*.md`（已有 36 个高质量手册）
 
-* 写 core-registry.yaml 前 10 种核心（Paper/Folia/Purpur/Leaves/Leaf/Luminol/Velocity/Bungee/Nukkit/Glowstone）
+* [ ] 生成 `knowledge-base/*.json`
 
-* 实现完整 5 个 Stage 的脚本
+* [ ] commit: `docs: initial RAG knowledge base for config translation`
 
-* 跑通 Paper 全历史作为 demo
+**Phase 1: 基础设施 + 最活跃 10 种核心跑通**
 
-### Phase 2：批量跑全部已知核心
+* [ ] 装 JDK 8/11/17/21（用 mise 或直接 tar 解）
 
-* 剩余 25 种核心
+* [ ] core-registry.yaml 前 10 种核心（Paper、Purpur、Leaf、Velocity、Bungee、Nukkit、Glowstone、Forge、Fabric、Folia）
 
-* 代理端 + 模组端 + 混合端 + 已停更核心
+* [ ] fetch.py + run.py + src.py + diff.py 全部写完
 
-* 记录失败清单
+* [ ] Paper 全历史版本跑一遍做 demo
 
-### Phase 3：扫新核心补漏
+* [ ] translate.py 翻译 Paper 新键注入 Registry
 
-* GitHub Search API（`language:Java minecraft server core`）
+**Phase 2: 批量跑全部已知核心**
 
-* Modrinth / CurseForge / Hangar 平台扫
+* [ ] 剩余 25 种已知核心写进 core-registry.yaml
 
-* 发现的新核心追加进 core-registry.yaml，跑一遍
+* [ ] 循环跑所有核心 × 全部历史版本
 
-### Phase 4：翻译 + 代码集成
+* [ ] diff JSON 批量生成
 
-* 全部 diff JSON 喂给 AI 翻译
+* [ ] failures.json 记录失败清单
 
-* 更新 ConfigDescriptorRegistry + .md 文档
+**Phase 3: 扫新核心补漏**
 
-* 提交
+* [ ] GitHub Search API + Modrinth/CurseForge/Hangar 扫活跃核心
+
+* [ ] 候选验证（能否下载？能否运行？有独立配置？）
+
+* [ ] 追加进 core-registry.yaml 跑一遍
+
+**Phase 4: 翻译 + C# 集成 + 文档**
+
+* [ ] 全部 diff 喂 translate.py 翻译注入
+
+* [ ] Registry.cs 按核心拆分为 partial class
+
+* [ ] 新增 IntroducedIn/RemovedIn/ValueHistory 字段
+
+* [ ] `dotnet build` + `dotnet test` 全过
+
+* [ ] docs/server-cores/\*.md 同步更新
+
+* [ ] commit
 
 ***
 
-## 11. 风险与缓解
+## 12. 风险与缓解
 
-| 风险                           | 概率 | 影响                   | 缓解                                        |
-| ---------------------------- | -- | -------------------- | ----------------------------------------- |
-| 某个核心某版本启动即崩                  | 高  | 跳过 1 个版本             | 解压 JAR 默认配置兜底；或直接读源码注解                    |
-| 磁盘不够                         | 中  | 核心历史版本加起来可能 50–100GB | 1.2TB 够用；事后清理                             |
-| Forge/Fabric 安装器流程复杂         | 高  | 模组端跑不起来              | 写死专门的 installer 适配函数；实在不行只做源码分析           |
-| GitHub API rate limit        | 中  | 下载受限                 | Token 已配置，5000 req/h；分页缓存元数据              |
-| 运行时网络超时                      | 中  | 代理端可能需要网络            | 60s timeout + 重试 1 次                      |
-| AI 翻译质量                      | 中  | 小白看不懂                | 翻译后人工审 1 轮；枚举值重点审                         |
-| C# Registry 文件 50k+ 字中文，持续膨胀 | 高  | 单文件 1000+ 行字段注册      | 考虑按核心拆分 Registry.cs（一个核心一个 partial class） |
-
-***
-
-## 12. 验收标准
-
-1. `cache/cores/` 下存在 ≥ 40 种核心的至少 1 个历史版本 JAR
-2. 每个核心至少 1 个版本的运行配置 + 源码 hints 合并后与 Registry diff 输出
-3. `diffs/summary.json` 汇总所有新键数（预期 500–1500 个）
-4. ConfigDescriptorRegistry.cs 更新，新增 IntroducedIn/RemovedIn 字段 + 全部新键
-5. `docs/server-cores/*.md` 同步更新
-6. 1 次完整脚本可重跑（下一个核心发布时）
+| 风险                    | 概率 | 影响                  | 缓解                                            |
+| --------------------- | -- | ------------------- | --------------------------------------------- |
+| 某核心某版本启动即崩            | 高  | 跳过 1 个版本            | 解压 JAR 默认配置兜底 / 直接读源码注解                       |
+| Forge/Fabric 安装器流程复杂  | 高  | 模组端跑不起来             | 专门的 installer 适配函数；不行就只做源码分析                  |
+| 磁盘不够                  | 中  | 50–100GB JAR + 生成目录 | 1.2TB 够用；事后自动清理 cache/cores/                  |
+| GitHub API rate limit | 中  | 下载受限                | Token 已配（5000 req/h）；元数据本地缓存                  |
+| 运行时网络超时               | 中  | 代理端可能需要网络           | 60s timeout + 重试 1 次                          |
+| AI 翻译仍小白不友好           | 中  | 翻译质量不达标             | RAG + prompt 模板双重保险；关键核心人工审 1 轮               |
+| Registry.cs 继续膨胀      | 高  | 单文件 2000 行          | Phase 4 拆 partial class                       |
+| MineBBS 爬取被反爬         | 低  | RAG 片段少             | 用已有 .md 文档兜底；加 requests.Session + UA          |
+| 某个核心某版本 config 键全改了   | 中  | 版本溯源失败              | rename\_chain 记录，diff.py 里标记 `state: renamed` |
 
 ***
 
 ## 13. 不做什么（Scope Boundary）
 
-* **不下载 world 数据**——只要配置
+* **不下 world 数据 / 插件数据**——只要配置
 
-* **不运行模组/插件**——纯核心裸启动
+* **不跑模组 / 插件**——纯核心裸启动
 
-* **不做翻译质量自动化打分**——翻译完跑通编译就算过
+* **不做翻译质量自动打分**——跑通 dotnet test + 人工 spot check 就算过
 
 * **不做 GUI 启动器**——CLI 脚本足够
 
-* **不处理 Fornax / Pterodactyl 这类启动管理端**——它们不是核心，有独立配置体系
+* **不处理 Pterodactyl / FTB / CurseForge Modpack 这类启动管理端**——不是核心，独立配置体系
 
-* **不跑完整单元测试**——脚本本身用 pytest 自测；C# 端跑 `dotnet test` 即可
+* **不跑完整单元测试脚本**——脚本用 pytest 自测；C# 端跑 `dotnet test`
+
+* **不做 Docker 化**——沙盒里直接 python + java 够用
+
+***
+
+## 14. 验收标准
+
+1. `knowledge-base/` 入库 GitHub，每种核心至少 1 个配置文件有 RAG 条目
+2. `cache/cores/` 下 ≥ 40 种核心的至少 1 个历史版本 JAR
+3. 每种核心至少 1 个版本的运行配置 + 源码 hints 合并后与 Registry diff 输出
+4. `diffs/summary.json` 汇总所有新键数（预期 500–2000 个）
+5. `diffs/failures.json` 记录所有启动失败的核心+版本
+6. ConfigDescriptorRegistry.cs 引入 IntroducedIn/RemovedIn/ValueHistory 字段，按核心拆分 partial class
+7. 全部新键注入 + `docs/server-cores/*.md` 同步更新
+8. `dotnet build` + `dotnet test` 全过
+9. `tools/core-fetcher/` 的脚本可以在**下一个核心发布时一键增量更新**
 
