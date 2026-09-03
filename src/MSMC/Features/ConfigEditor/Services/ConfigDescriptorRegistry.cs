@@ -2461,7 +2461,682 @@ public sealed class ConfigDescriptorRegistry
  MinValue = 0,
  ValueType = "double",
  });
- }
+ 
+
+    // ===== AUTO-INJECTED by core-fetcher pipeline =====
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advancements.disable-saving",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "禁用进度保存",
+        Description = "关闭后玩家进度数据不再自动写入磁盘",
+        Category = "Spigot 通用",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advancements.disabled",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "禁用的进度",
+        Description = "这些进度 ID 会被禁用，玩家无法获取",
+        Category = "Spigot 通用",
+        DefaultValue = "[\"minecraft:story/disabled\"]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "commands.log",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "记录命令日志",
+        Description = "是否在控制台记录所有玩家执行的命令",
+        Category = "Spigot 通用",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "commands.replace-commands",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "替换命令",
+        Description = "这些命令会被优化版实现替换",
+        Category = "Spigot 通用",
+        DefaultValue = "[\"setblock\", \"summon\", \"testforblock\", \"tellraw\"]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "commands.silent-commandblock-console",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "命令方块静默",
+        Description = "命令方块执行命令时不在控制台输出",
+        Category = "Spigot 通用",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "commands.spam-exclusions",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "刷屏排除命令",
+        Description = "这些命令不受反刷屏限制（如 /skill）",
+        Category = "Spigot 通用",
+        DefaultValue = "[\"/skill\"]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "config-version",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "配置版本号",
+        Description = "内部配置版本标识，请勿手动修改",
+        Category = "Spigot 通用",
+        DefaultValue = "11",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.outdated-client",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "客户端过旧消息",
+        Description = "{0} 为服务器版本；客户端版本太旧时的提示",
+        Category = "Spigot 通用",
+        DefaultValue = "Outdated client! Please use {0}",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.outdated-server",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "服务端过旧消息",
+        Description = "{0} 为客户端版本；服务器版本落后时的提示",
+        Category = "Spigot 通用",
+        DefaultValue = "Outdated server! I'm still on {0}",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.restart",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "重启消息",
+        Description = "服务器即将重启时显示给在线玩家的消息",
+        Category = "Spigot 通用",
+        DefaultValue = "Server is restarting",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.server-full",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "服务器已满消息",
+        Description = "达到玩家上限后新玩家连接时看到的提示",
+        Category = "Spigot 通用",
+        DefaultValue = "The server is full!",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.unknown-command",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "未知命令消息",
+        Description = "玩家输入不存在的命令时显示的提示",
+        Category = "Spigot 通用",
+        DefaultValue = "Unknown command. Type \"/help\" for help.",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.whitelist",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "白名单消息",
+        Description = "未在白名单的玩家尝试加入时看到的提示",
+        Category = "Spigot 通用",
+        DefaultValue = "You are not whitelisted on this server!",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.attribute.attackDamage.max",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "攻击伤害属性上限",
+        Description = "攻击伤害 attribute 允许的最大值",
+        Category = "Spigot 通用",
+        DefaultValue = "2048.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.attribute.maxHealth.max",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "最大生命属性上限",
+        Description = "最大生命值 attribute 允许的最大值",
+        Category = "Spigot 通用",
+        DefaultValue = "2048.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.attribute.movementSpeed.max",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "移动速度属性上限",
+        Description = "移动速度 attribute 允许的最大值",
+        Category = "Spigot 通用",
+        DefaultValue = "2048.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.filter-creative-items",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "过滤创造物品",
+        Description = "过滤创造模式物品栏中无效/不存在的物品",
+        Category = "Spigot 通用",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.int-cache-limit",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "整数缓存上限",
+        Description = "优化用的 Integer 对象缓存池上限，影响 GC 频率",
+        Category = "Spigot 通用",
+        DefaultValue = "1024",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.item-dirty-ticks",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "物品脏数据 Tick",
+        Description = "物品实体被标记为脏后等待多久才自动清理",
+        Category = "Spigot 通用",
+        DefaultValue = "20",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.late-bind",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "延迟绑定",
+        Description = "插件监听器采用延迟绑定以提升加载速度",
+        Category = "Spigot 通用",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.moved-too-quickly-multiplier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "过速检测倍数",
+        Description = "玩家被检测到移动过快时的容忍倍数",
+        Category = "Spigot 通用",
+        DefaultValue = "10.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.moved-wrongly-threshold",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "位置异常阈值",
+        Description = "玩家位置被判定异常/作弊的最小位移阈值",
+        Category = "Spigot 通用",
+        DefaultValue = "0.0625",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.save-user-cache-on-stop-only",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "仅停机保存用户缓存",
+        Description = "usercache.json 只在服务器关闭时才写入磁盘",
+        Category = "Spigot 通用",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "stats.disable-saving",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "禁用统计保存",
+        Description = "关闭后玩家统计数据不再自动写入磁盘",
+        Category = "Spigot 通用",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.entity-activation-range.animals",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "动物激活距离",
+        Description = "动物在玩家周围多远范围内才会执行 AI Tick",
+        Category = "Spigot 通用",
+        DefaultValue = "32",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.entity-activation-range.misc",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "杂项实体激活距离",
+        Description = "矿车、箭等杂项实体的激活距离",
+        Category = "Spigot 通用",
+        DefaultValue = "16",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.entity-activation-range.monsters",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "怪物激活距离",
+        Description = "僵尸、骷髅等怪物的激活距离",
+        Category = "Spigot 通用",
+        DefaultValue = "32",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.entity-activation-range.tick-inactive-villagers",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "非活跃村民 Tick",
+        Description = "是否持续 Tick 附近没有玩家的村民实体",
+        Category = "Spigot 通用",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.entity-activation-range.water",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "水生实体激活距离",
+        Description = "鱿鱼、海豚等水生实体的激活距离",
+        Category = "Spigot 通用",
+        DefaultValue = "16",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.entity-tracking-range.animals",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "动物追踪距离",
+        Description = "客户端接收动物实体移动包的距离",
+        Category = "Spigot 通用",
+        DefaultValue = "48",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.entity-tracking-range.misc",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "杂项实体追踪距离",
+        Description = "客户端接收杂项实体移动包的距离",
+        Category = "Spigot 通用",
+        DefaultValue = "32",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.entity-tracking-range.monsters",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "怪物追踪距离",
+        Description = "客户端接收怪物实体移动包的距离",
+        Category = "Spigot 通用",
+        DefaultValue = "48",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.entity-tracking-range.other",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "其他实体追踪距离",
+        Description = "盔甲架、物品展示框等的追踪距离",
+        Category = "Spigot 通用",
+        DefaultValue = "64",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.entity-tracking-range.players",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "玩家追踪距离",
+        Description = "客户端接收其他玩家实体的距离",
+        Category = "Spigot 通用",
+        DefaultValue = "48",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.growth.cactus-modifier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "仙人掌生长速度",
+        Description = "仙人掌生长速度百分比，100=原版",
+        Category = "Spigot 通用",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.growth.cane-modifier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "甘蔗生长速度",
+        Description = "甘蔗生长速度百分比，100=原版",
+        Category = "Spigot 通用",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.growth.cocoa-modifier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "可可豆生长速度",
+        Description = "可可豆生长速度百分比，100=原版",
+        Category = "Spigot 通用",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.growth.melon-modifier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "西瓜生长速度",
+        Description = "西瓜生长速度百分比，100=原版",
+        Category = "Spigot 通用",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.growth.mushroom-modifier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "蘑菇生长速度",
+        Description = "蘑菇生长速度百分比，100=原版",
+        Category = "Spigot 通用",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.growth.netherwart-modifier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "地狱疣生长速度",
+        Description = "地狱疣生长速度百分比，100=原版",
+        Category = "Spigot 通用",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.growth.pumpkin-modifier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "南瓜生长速度",
+        Description = "南瓜生长速度百分比，100=原版",
+        Category = "Spigot 通用",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.growth.sapling-modifier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "树苗生长速度",
+        Description = "树苗生长速度百分比，100=原版",
+        Category = "Spigot 通用",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.growth.vine-modifier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "藤蔓生长速度",
+        Description = "藤蔓生长速度百分比，100=原版",
+        Category = "Spigot 通用",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.growth.wheat-modifier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "小麦生长速度",
+        Description = "小麦生长速度百分比，100=原版",
+        Category = "Spigot 通用",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.hopper-amount",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "漏斗每次传输数量",
+        Description = "每个漏斗检查周期内可移动的物品堆数上限",
+        Category = "Spigot 通用",
+        DefaultValue = "1",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.hunger.combat-exhaustion",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "战斗饥饿消耗",
+        Description = "战斗时的饥饿度消耗系数",
+        Category = "Spigot 通用",
+        DefaultValue = "0.1",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.hunger.jump-sprint-exhaustion",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "疾跑跳跃饥饿",
+        Description = "疾跑中跳跃的饥饿度消耗",
+        Category = "Spigot 通用",
+        DefaultValue = "0.2",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.hunger.jump-walk-exhaustion",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "走路跳跃饥饿",
+        Description = "普通走路跳跃的饥饿度消耗",
+        Category = "Spigot 通用",
+        DefaultValue = "0.05",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.hunger.other-multiplier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "其他饥饿倍率",
+        Description = "其他未分类行为的饥饿消耗倍率",
+        Category = "Spigot 通用",
+        DefaultValue = "0.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.hunger.regen-exhaustion",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "回血饥饿消耗",
+        Description = "自然回血时消耗的饥饿度值",
+        Category = "Spigot 通用",
+        DefaultValue = "6.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.hunger.sprint-multiplier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "疾跑饥饿倍率",
+        Description = "疾跑时的饥饿消耗倍率",
+        Category = "Spigot 通用",
+        DefaultValue = "0.1",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.hunger.swim-multiplier",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "游泳饥饿倍率",
+        Description = "游泳时的饥饿消耗倍率",
+        Category = "Spigot 通用",
+        DefaultValue = "0.01",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.item-despawn-rate",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "物品消失时间",
+        Description = "掉落物在地上保留的游戏刻数（6000=5 分钟）",
+        Category = "Spigot 通用",
+        DefaultValue = "6000",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.max-tick-time.entity",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "实体最大 Tick 时间",
+        Description = "单个实体单次 Tick 允许的最大耗时（毫秒）",
+        Category = "Spigot 通用",
+        DefaultValue = "50",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.max-tick-time.tile",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "Tile 实体最大 Tick 时间",
+        Description = "命令方块、漏斗等 Tile 单次 Tick 最大耗时",
+        Category = "Spigot 通用",
+        DefaultValue = "50",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.max-tnt-per-tick",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "每 Tick TNT 爆炸上限",
+        Description = "单个 tick 内允许同时爆炸的 TNT 数量上限",
+        Category = "Spigot 通用",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.merge-radius.exp",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "经验球合并半径",
+        Description = "经验球实体互相靠近时自动合并的距离（格）",
+        Category = "Spigot 通用",
+        DefaultValue = "3.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.squid-spawn-range.min",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "鱿鱼最小生成距离",
+        Description = "鱿鱼生成区域距离玩家的最小半径（格）",
+        Category = "Spigot 通用",
+        DefaultValue = "45.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.ticks-per.hopper-check",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "漏斗检查间隔",
+        Description = "漏斗检查上方物品的 Tick 间隔",
+        Category = "Spigot 通用",
+        DefaultValue = "1",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.ticks-per.hopper-transfer",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "漏斗传输间隔",
+        Description = "漏斗尝试吸/推物品每 N tick 一次",
+        Category = "Spigot 通用",
+        DefaultValue = "8",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world-settings.default.verbose",
+        ConfigFileName = "config/spigot.yml",
+        DisplayName = "详细日志",
+        Description = "是否在控制台输出更详细的调试/告警信息",
+        Category = "Spigot 通用",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    // ===== END AUTO-INJECTED =====
+}
 
  /// <summary>
  /// 注册 config/paper-global.yml 配置文件的关键配置项
@@ -3225,7 +3900,429 @@ public sealed class ConfigDescriptorRegistry
  ValueType = "bool",
  RequiresRestart = true,
  });
- }
+ 
+
+    // ===== AUTO-INJECTED by core-fetcher pipeline =====
+    Register(new ServerConfigDescriptor
+    {
+        Key = "_version",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "配置文件版本号",
+        Description = "内部版本标识，请勿手动修改。Paper 升级时会自动更新。",
+        Category = "Paper 全局配置",
+        DefaultValue = "31",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "anticheat.obfuscation.items.all-models.also-obfuscate",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "额外混淆模型",
+        Description = "这些模型会被额外混淆（叠加到基础混淆规则上）",
+        Category = "Paper 全局配置",
+        DefaultValue = "[]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "anticheat.obfuscation.items.all-models.dont-obfuscate",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "跳过混淆模型",
+        Description = "这些模型永远不参与混淆（例如绑定追踪器）",
+        Category = "Paper 全局配置",
+        DefaultValue = "[\"minecraft:lodestone_tracker\"]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "anticheat.obfuscation.items.all-models.sanitize-count",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "清理计数",
+        Description = "是否清理物品的 stack count 信息",
+        Category = "Paper 全局配置",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "anticheat.obfuscation.items.enable-item-obfuscation",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "启用物品混淆",
+        Description = "对 ItemStack 进行反作弊混淆，防止客户端识别特定物品",
+        Category = "Paper 全局配置",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "anticheat.obfuscation.items.model-overrides.minecraft:elytra.also-obfuscate",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "鞘翅额外混淆模型",
+        Description = "鞘翅上的模型额外混淆规则",
+        Category = "Paper 全局配置",
+        DefaultValue = "[]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "anticheat.obfuscation.items.model-overrides.minecraft:elytra.dont-obfuscate",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "鞘翅跳过混淆模型",
+        Description = "鞘翅上不参与混淆的模型",
+        Category = "Paper 全局配置",
+        DefaultValue = "[\"minecraft:damage\"]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "anticheat.obfuscation.items.model-overrides.minecraft:elytra.sanitize-count",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "鞘翅清理计数",
+        Description = "鞘翅是否清理 stack count",
+        Category = "Paper 全局配置",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "logging.deobfuscate-stacktraces",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "反混淆堆栈",
+        Description = "日志中的异常堆栈是否反混淆，便于定位问题。线上服可保持 true 以保留可读性",
+        Category = "Paper 全局配置",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.kick.authentication-servers-down",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "认证服离线踢出消息",
+        Description = "Mojang 认证服务器离线时，正版玩家被踢出看到的消息。可用 <lang:> 引用原版语言键",
+        Category = "Paper 全局配置",
+        DefaultValue = "<lang:multiplayer.disconnect.authservers_down>",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.kick.connection-throttle",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "连接限流踢出消息",
+        Description = "玩家连接过快被限流踢出时显示的消息",
+        Category = "Paper 全局配置",
+        DefaultValue = "Connection throttled! Please wait before reconnecting.",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.kick.flying-player",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "飞行玩家踢出消息",
+        Description = "生存模式检测到玩家飞行（无飞行权限）时踢出的提示",
+        Category = "Paper 全局配置",
+        DefaultValue = "<lang:multiplayer.disconnect.flying>",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.kick.flying-vehicle",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "飞行载具踢出消息",
+        Description = "检测到玩家坐在飞行载具上（无权限）时踢出的提示",
+        Category = "Paper 全局配置",
+        DefaultValue = "<lang:multiplayer.disconnect.flying>",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.no-permission",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "无权限提示",
+        Description = "玩家执行无权限命令时显示的提示消息。可用 § 颜色码。建议引导 OP 需求",
+        Category = "Paper 全局配置",
+        DefaultValue = "<red>I'm sorry, but you do not have permission to perform this command. Please contact the server administrators if you believe that this is in error.",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.use-display-name-in-quit-message",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "退出消息用显示名",
+        Description = "玩家退出服务器时，是否用 display name 代替用户名显示在退出消息中",
+        Category = "Paper 全局配置",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "misc.enable-nether",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "启用下界",
+        Description = "是否允许玩家进入下界维度",
+        Category = "Paper 全局配置",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "misc.fix-far-end-terrain-generation",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "修复远处地形生成",
+        Description = "修复离玩家较远的 chunk 地形生成缺失问题",
+        Category = "Paper 全局配置",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "packet-limiter.kick-message",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "限流踢出消息",
+        Description = "因超限被踢出时显示的消息",
+        Category = "Paper 全局配置",
+        DefaultValue = "<red><lang:disconnect.exceeded_packet_rate>",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "packet-limiter.overrides.minecraft:place_recipe.action",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "配方放置限流动作",
+        Description = "place_recipe 包单独限流阈值触发后的动作",
+        Category = "Paper 全局配置",
+        DefaultValue = "DROP",
+        ValueType = "enum",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "packet-limiter.overrides.minecraft:place_recipe.interval",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "配方放置检测间隔",
+        Description = "place_recipe 限流时间窗口",
+        Category = "Paper 全局配置",
+        DefaultValue = "4.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "packet-limiter.overrides.minecraft:place_recipe.max-packet-rate",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "配方放置最大包速率",
+        Description = "place_recipe 每秒最大包速率",
+        Category = "Paper 全局配置",
+        DefaultValue = "5.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "proxies.bungee-cord.online-mode",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "BC 代理正版验证",
+        Description = "BungeeCord 反代下是否保持正版验证（需配置 forwarding secret）",
+        Category = "Paper 全局配置",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "proxies.proxy-protocol",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "启用代理协议",
+        Description = "是否支持 HAProxy PROXY protocol v1/v2",
+        Category = "Paper 全局配置",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "scoreboards.save-empty-scoreboard-teams",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "保存空队伍计分板",
+        Description = "是否保存没有成员的计分板队伍",
+        Category = "Paper 全局配置",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "scoreboards.track-plugin-scoreboards",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "追踪插件计分板",
+        Description = "是否追踪插件创建的计分板以优化",
+        Category = "Paper 全局配置",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "spark.enable-immediately",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "立即启用 spark",
+        Description = "服务器启动后是否立即初始化 spark profiler",
+        Category = "Paper 全局配置",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "spark.enabled",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "启用 spark",
+        Description = "是否启用 spark profiler（性能分析）",
+        Category = "Paper 全局配置",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "unsupported-settings.allow-piston-duplication",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "允许活塞复制",
+        Description = "是否允许活塞复制物品的旧 exploit",
+        Category = "Paper 全局配置",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "unsupported-settings.allow-unsafe-end-portal-teleportation",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "允许不安全末地传送",
+        Description = "是否允许玩家用安全协议不支持的方式进入末地",
+        Category = "Paper 全局配置",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "unsupported-settings.compression-format",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "压缩格式",
+        Description = "网络数据包压缩算法。ZLIB = 原版",
+        Category = "Paper 全局配置",
+        DefaultValue = "ZLIB",
+        ValueType = "enum",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "unsupported-settings.oversized-item-component-sanitizer.dont-sanitize",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "跳过清理的组件",
+        Description = "这些 item component 即使超过大小限制也不清理",
+        Category = "Paper 全局配置",
+        DefaultValue = "[]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "unsupported-settings.perform-username-validation",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "用户名验证",
+        Description = "是否对玩家名做严格字符验证",
+        Category = "Paper 全局配置",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "unsupported-settings.skip-tripwire-hook-placement-validation",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "跳过绊线放置验证",
+        Description = "是否跳过绊线钩放置的合法性检查",
+        Category = "Paper 全局配置",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "unsupported-settings.skip-vanilla-damage-tick-when-shield-blocked",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "跳过盾牌格挡伤害",
+        Description = "原版在盾牌格挡时跳过的 damage tick 是否也跳过",
+        Category = "Paper 全局配置",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "unsupported-settings.update-equipment-on-player-actions",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "玩家行为时更新装备",
+        Description = "玩家进行某些操作（潜行、吃东西）时是否强制同步装备到客户端",
+        Category = "Paper 全局配置",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "update-checker.enabled",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "启用更新检查",
+        Description = "Paper 启动时是否检查新版本",
+        Category = "Paper 全局配置",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "watchdog.early-warning-delay",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "Watchdog 预警延迟",
+        Description = "主线程超过此毫秒触发 watchdog 预警日志",
+        Category = "Paper 全局配置",
+        DefaultValue = "10000",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "watchdog.early-warning-every",
+        ConfigFileName = "config/paper-global.yml",
+        DisplayName = "Watchdog 预警间隔",
+        Description = "预警日志的最小输出间隔（毫秒），避免刷屏",
+        Category = "Paper 全局配置",
+        DefaultValue = "5000",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    // ===== END AUTO-INJECTED =====
+}
 
  /// <summary>
  /// 注册 config/paper-world-defaults.yml 配置文件的关键配置项
@@ -4887,7 +5984,1958 @@ public sealed class ConfigDescriptorRegistry
  AllowedValues = ["true", "false"],
  ValueType = "bool"
  });
- }
+ 
+
+    // ===== AUTO-INJECTED by core-fetcher pipeline =====
+    Register(new ServerConfigDescriptor
+    {
+        Key = "config-version",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "配置版本号",
+        Description = "内部配置版本标识，请勿手动修改",
+        Category = "Leaves 专属",
+        DefaultValue = "6",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.fix.collision-behavior",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "碰撞行为",
+        Description = "原版/Paper/Leaves 不同碰撞判定逻辑，默认 PAPER",
+        Category = "Leaves 专属",
+        DefaultValue = "PAPER",
+        ValueType = "enum",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.fix.stacked-container-destroyed-drop",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "堆叠容器破坏掉落",
+        Description = "堆叠容器（如木桶）被破坏时是否正确掉落物品",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.fix.vanilla-display-name",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "原版显示名修复",
+        Description = "修复物品/方块显示名回归原版行为",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.fix.vanilla-hopper",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "原版漏斗修复",
+        Description = "还原漏斗为原版工作逻辑，关闭 Paper 优化",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.fix.vanilla-portal-handle",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "原版传送门处理",
+        Description = "修复 Nether/End 传送门处理流程回归原版",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.async-keepalive.enable",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "异步保活",
+        Description = "是否异步处理玩家 Keepalive 包以降低主线程开销",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.async-keepalive.timeout-seconds",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "保活超时秒",
+        Description = "异步保活模式下判定玩家掉线的超时时间（秒）",
+        Category = "Leaves 专属",
+        DefaultValue = "20",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.auto-update.allow-experimental",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "允许实验版更新",
+        Description = "自动更新时是否允许拉取实验/预览版本",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.auto-update.download-source",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "更新下载源",
+        Description = "自动更新时从何处拉取：application = 构建渠道内置源",
+        Category = "Leaves 专属",
+        DefaultValue = "application",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.auto-update.enable",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "自动更新",
+        Description = "是否在后台定时检查并下载 Leaves 核心新版本",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.auto-update.time",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "自动更新时间",
+        Description = "每天执行自动更新检查的时间点（可多个）",
+        Category = "Leaves 专属",
+        DefaultValue = "[\"14:00\", \"2:00\"]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.bstats-privacy-mode",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "BStats 隐私模式",
+        Description = "开启后 bStats 匿名统计将不上报敏感信息",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.disable-method-profiler",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "关闭方法分析器",
+        Description = "禁用 Java 方法级 Profiler，降低生产环境性能开销",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.dont-respond-ping-before-start-fully",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "完全启动前不响应 Ping",
+        Description = "服务器未完整就绪时直接拒绝 Ping 包，防止过早连接",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.extra-yggdrasil-service.enable",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "外置 Yggdrasil 服务",
+        Description = "启用自定义的外置正版验证服务（authlib-injector 用法）",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.extra-yggdrasil-service.login-protect",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Yggdrasil 登录保护",
+        Description = "开启后 Yggdrasil 登录请求经过额外风控拦截",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.extra-yggdrasil-service.urls",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Yggdrasil 服务地址",
+        Description = "外置 Yggdrasil 验证服务的 URL 列表，支持多个节点",
+        Category = "Leaves 专属",
+        DefaultValue = "[\"https://url.with.authlib-injector-yggdrasil\"]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.force-minecraft-command",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "强制 Minecraft 命令",
+        Description = "将 /minecraft:xxx 形式的命令强制走原版命令解析器",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.leaves-packet-event",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Leaves 包事件",
+        Description = "向插件派发 Leaves 特有的网络包事件，方便监听自定义协议",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.no-chat-sign",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "禁用聊天签名",
+        Description = "禁用 Minecraft 1.19+ 的聊天签名验证，允许多签名聊天",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.server-lang",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "服务器语言",
+        Description = "服务器侧 UI/日志的语言代码，如 zh_cn",
+        Category = "Leaves 专属",
+        DefaultValue = "en_us",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.misc.server-mod-name",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "服务端模组名",
+        Description = "客户端查看服务端信息时显示的模组/核心名称（默认 Leaves）",
+        Category = "Leaves 专属",
+        DefaultValue = "Leaves",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.avoid-anvil-too-expensive",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "规避砧太昂贵",
+        Description = "当砧合并费用过高时自动丢弃费用最高的附魔，强制保留",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.bedrock-break-list",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "可破坏基岩列表",
+        Description = "允许玩家破坏的基岩方块清单（配命令使用）",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.bow-infinity-fix",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "无限弓修复",
+        Description = "修复 1.21+ 无限附魔弓仍然需要箭的 bug",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.container-passthrough",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "容器穿透",
+        Description = "让玩家在潜行时能穿过容器方块而不打开界面",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.creative-no-clip",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "创造模式无碰撞",
+        Description = "创造模式玩家对所有方块开启穿透",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.despawn-enderman-with-block",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "带方块末影人消失",
+        Description = "让正抱着方块的末影人也能因距离过远而消失",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.disable-check-out-of-order-command",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "禁用命令乱序检查",
+        Description = "跳过命令包顺序的安全校验，减少指令顺序错误的拒包",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.disable-distance-check-for-use-item",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "禁用物品使用距离",
+        Description = "服务器不再校验客户端使用物品时与目标的距离",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.disable-packet-limit",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "禁用包速率限制",
+        Description = "关闭所有 packet-limiter，不对客户端发包频率做限速",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.disable-vault-blacklist",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "禁用 Vault 黑名单",
+        Description = "跳过 Vault 权限插件对特定名称的黑名单拦截",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.elytra-aeronautics.message",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "巡航模式提示",
+        Description = "进入/退出鞘翅巡航模式时是否在玩家屏幕提示文字",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.elytra-aeronautics.message-end",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "退出巡航提示",
+        Description = "退出鞘翅巡航模式时显示的提示文字",
+        Category = "Leaves 专属",
+        DefaultValue = "Flight exit cruise mode",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.elytra-aeronautics.message-start",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "进入巡航提示",
+        Description = "进入鞘翅巡航模式时显示的提示文字",
+        Category = "Leaves 专属",
+        DefaultValue = "Flight enter cruise mode",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.elytra-aeronautics.no-chunk-height",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "无区块加载高度",
+        Description = "启用无区块加载滑翔的最小飞行高度（y 值），低于则取消",
+        Category = "Leaves 专属",
+        DefaultValue = "500.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.elytra-aeronautics.no-chunk-load",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "无区块加载滑翔",
+        Description = "鞘翅巡航时不主动加载前方区块，适合高延时网络",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.elytra-aeronautics.no-chunk-speed",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "无区块加载速度",
+        Description = "无区块加载模式下滑翔的目标速度上限，-1 表示不限制",
+        Category = "Leaves 专属",
+        DefaultValue = "-1.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.exp-orb-absorb-mode",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "经验球吸收模式",
+        Description = "经验球被玩家吸入的策略：VANILLA=原版、PLAYER=集中到玩家身上等",
+        Category = "Leaves 专属",
+        DefaultValue = "VANILLA",
+        ValueType = "enum",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.cache-skin",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "缓存假人皮肤",
+        Description = "在本地缓存假人皮肤数据，避免每次登录都重新请求",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.enable",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "开启假人",
+        Description = "允许通过指令/插件在服务器内生成模拟玩家（FakePlayer）",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.in-game.always-send-data",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "始终同步游戏数据",
+        Description = "假人在线时始终向客户端同步游戏状态（即便附近没有真实玩家）",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.in-game.enable-locator-bar",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "启用定位信标",
+        Description = "允许其他玩家通过定位信标（指南针）追踪假人位置",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.in-game.simulation-distance",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "假人模拟距离",
+        Description = "假人周围多少格内保持实体活动，-1 表示跟随服务器模拟距离",
+        Category = "Leaves 专属",
+        DefaultValue = "-1",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.in-game.skip-sleep-check",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "跳过睡觉检查",
+        Description = "假人进入世界时不触发关于睡觉的村民/玩家判定",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.in-game.spawn-phantom",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "生成幻翼",
+        Description = "假人长时间不睡觉后是否在其周围生成幻翼",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.in-game.tick-type",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "假人 Tick 类型",
+        Description = "假人使用的 Tick 策略：NETWORK=网络驱动、TICK=随世界 Tick",
+        Category = "Leaves 专属",
+        DefaultValue = "NETWORK",
+        ValueType = "enum",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.limit",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "假人上限",
+        Description = "单个服务器实例同时存在的假人数量上限",
+        Category = "Leaves 专属",
+        DefaultValue = "10",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.manual-save-and-load",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "手动存档载入",
+        Description = "关闭假人自动存档流程，改为按指令手动保存/载入",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.modify-config",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "假人改配置",
+        Description = "允许假人登录后修改自身的部分运行配置",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.open-fakeplayer-inventory",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "假人库存打开",
+        Description = "允许在游戏内 GUI 中直接打开假人的背包/末影箱",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.prefix",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "假人前缀",
+        Description = "自动生成假人名字时追加的前缀字符串",
+        Category = "Leaves 专属",
+        DefaultValue = "",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.regen-amount",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "假人自然回血量",
+        Description = "假人静置时每秒自动恢复的生命值点数，0 表示关闭",
+        Category = "Leaves 专属",
+        DefaultValue = "0.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.resident-fakeplayer",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "常驻假人",
+        Description = "开启后服务器重启时会自动恢复上次的假人名单",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.suffix",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "假人后缀",
+        Description = "自动生成假人名字时追加的后缀字符串",
+        Category = "Leaves 专属",
+        DefaultValue = "",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.unable-fakeplayer-names",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "禁用的假人名字",
+        Description = "不允许被用作假人的玩家名列表，避免与真实账号冲突",
+        Category = "Leaves 专属",
+        DefaultValue = "[\"player-name\"]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fakeplayer.use-action",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "假人动作同步",
+        Description = "让假人参与原版动作/动画（挥剑、进食等）状态同步",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fix-stuck-zombified-piglin-anger-target",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "修复僵猪灵仇恨卡壳",
+        Description = "僵猪灵追击时目标消失后不再卡死仇恨",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.fix-update-suppression-crash",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "修复更新抑制崩溃",
+        Description = "修正由方块更新抑制链引起的主线程崩溃",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.flatten-triangular-distribution",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "三角分布平坦化",
+        Description = "把某些随机三角分布拉平成均匀分布，减少极端值",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.follow-tick-sequence-merge",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "遵循 Tick 合并顺序",
+        Description = "让实体合并流程严格跟随原版 Tick 序列执行",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.force-void-trade",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "强制虚空交易",
+        Description = "允许村民交易因浮点数溢出而出现负数价格",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.hopper-counter.enable",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "漏斗计数器",
+        Description = "开启漏斗物品计数/速率统计面板（给管理员看的）",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.hopper-counter.unlimited-speed",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "漏斗无限速",
+        Description = "跳过漏斗吸取物品的速率限制，让漏斗瞬间吸走物品",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.lava-riptide",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "岩浆激流",
+        Description = "激流三叉戟在岩浆中也能触发冲刺效果",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.mc-technical-survival-mode",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "MC 技术生存模式",
+        Description = "启用技术向生存玩法的一组组合调整（如零刻、红石刻板等）",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.allow-anvil-destroy-item-entities",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "砧压落物",
+        Description = "让下落中的砧方块能砸扁地上的掉落物实体",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.allow-entity-portal-with-passenger",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "带乘客实体过传送门",
+        Description = "允许骑乘中的实体（马、船等）一起穿过 Nether/End 传送门",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.allow-inf-nan-motion-values",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "允许 Inf/NaN 运动",
+        Description = "跳过运动向量的边界检查，允许非法值通过（可能引入 bug）",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.block-updater.cce-update-suppression",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "抑制 CCE 更新",
+        Description = "抑制会导致 ConcurrentModificationException 的方块更新链",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.block-updater.instant-block-updater-reintroduced",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "即时方块更新器",
+        Description = "重新引入旧版即时方块更新逻辑（1.12 时代行为）",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.block-updater.old-block-remove-behaviour",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "旧版方块移除",
+        Description = "还原旧版方块被破坏/清除时的更新传播方式",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.block-updater.redstone-ignore-upwards-update",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "红石忽略向上更新",
+        Description = "让红石方块在上方方块变动时不触发更新",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.block-updater.sound-update-suppression",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "抑制音效更新",
+        Description = "取消由方块更新触发的冗余音效播放",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.copper-bulb-1gt-delay",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "铜灯泡 1gt 延迟",
+        Description = "让铜灯泡的点亮/熄灭延迟 1 game tick，还原早期行为",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.crafter-1gt-delay",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "合成器 1gt 延迟",
+        Description = "让合成器（Crafter）的合成产出延迟 1gt",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.disable-LivingEntity-ai-step-alive-check",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "跳过存活判定",
+        Description = "关闭 LivingEntity AI 每 tick 的 isAlive 检查，减少分支",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.disable-gateway-portal-entity-ticking",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "关闭 Gateway Tick",
+        Description = "关闭末地折跃门（Gateway）的实体 Tick 过程，节省性能",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.disable-item-damage-check",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "关闭物品伤害校验",
+        Description = "跳过物品使用/装备时的伤害值边界检查，允许负值等",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.ender-dragon-part-can-use-end-portal",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "龙穿过末地传送门",
+        Description = "让末影龙的身体部位也能穿过末地传送门",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.keep-leash-connect-when-use-firework",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "烟花时保留缰绳",
+        Description = "玩家被烟花弹射时仍保留与马/豹猫的缰绳连接",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.old-hopper-suck-in-behavior",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "旧版漏斗吸入",
+        Description = "恢复旧版漏斗吸入物品的速率/范围逻辑",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.old-minecart-motion-behavior",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "旧版矿车运动",
+        Description = "还原 1.10 前矿车加速度、摩擦的计算公式",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.old-projectile-explosion-behavior",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "旧版爆炸弹射物",
+        Description = "还原早期版本爆炸产生的弹射物（如 TNT 二次弹射）行为",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.old-raid-behavior",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "旧版袭击",
+        Description = "恢复 1.19 前的村庄袭击（Raid）行为",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.old-throwable-projectile-tick-order",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "旧版投掷物 Tick 顺序",
+        Description = "还原雪球/鸡蛋等投掷物的 Tick 执行先后次序",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.old-zombie-piglin-drop",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "旧版僵猪灵掉落",
+        Description = "让 zombified piglin 按 1.15 前版本掉落金粒/金锭",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.old-zombie-reinforcement",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "旧版僵尸增援",
+        Description = "让僵尸在阳光下也可能召唤增援，还原早期行为",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.rng-fishing",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "旧版钓鱼 RNG",
+        Description = "还原 1.16 时代钓鱼奖励的随机数序列",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.shears-in-dispenser-can-zero-amount",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "发射器剪刀零耐久",
+        Description = "让发射器内剪刀即使耐久为 0 也能继续剪方块",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.spawn-invulnerable-time",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "旧版出生无敌",
+        Description = "恢复 1.16 时代玩家出生时的短暂无敌时间",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.tnt-wet-explosion-no-item-damage",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "湿 TNT 无物品伤害",
+        Description = "让潮湿环境中的 TNT 爆炸不破坏掉落物",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.tripwire-and-hook-behavior.string-tripwire-hook-duplicate",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "绊线钩复制物品",
+        Description = "还原旧版绊线钩被破坏时可能复制物品的行为",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.tripwire-and-hook-behavior.tripwire-behavior",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "绊线钩行为模式",
+        Description = "绊线判定逻辑：VANILLA_21=1.21 行为等",
+        Category = "Leaves 专属",
+        DefaultValue = "VANILLA_21",
+        ValueType = "enum",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.villager-infinite-discounts",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "村民无限折扣",
+        Description = "允许村民反复打折而不触发打折上限机制",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.void-trade",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "虚空交易",
+        Description = "允许村民交易的价格计算出现负数（原版废弃特性）",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.minecraft-old.zero-tick-plants",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "零刻植物",
+        Description = "允许在同一 tick 内完成农作物生长/破坏（作物可被跳过）",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.movable-budding-amethyst",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "可移动紫水晶母岩",
+        Description = "允许用活塞/黏性活塞推动紫水晶母岩方块",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.no-block-update-command",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "无方块更新命令",
+        Description = "让某些世界编辑类操作不触发方块更新广播",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.no-feather-falling-trample",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "无摔落踩踏",
+        Description = "关闭有摔落保护时对农作物/耕地的踩踏判定",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.no-tnt-place-update",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "放置 TNT 不触发更新",
+        Description = "玩家放置 TNT 方块时不触发周围方块更新",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.player-operation-limiter",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "玩家操作限流",
+        Description = "对高频操作（连点、长按）进行节流，防止恶意刷包",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.redstone-shears-wrench",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "红石刻板扳手",
+        Description = "开启后用剪刀/扳手右键红石比较器可切换模式",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.renewable-coral",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "可再生珊瑚",
+        Description = "让珊瑚块/珊瑚在特定条件下能够重新生长繁殖",
+        Category = "Leaves 专属",
+        DefaultValue = "FALSE",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.renewable-deepslate",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "可再生深板岩",
+        Description = "允许通过刷怪/转换等方式让深板岩变成可再生资源",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.renewable-elytra",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "可再生鞘翅",
+        Description = "击杀末影龙时额外掉落鞘翅的概率，-1 表示关闭",
+        Category = "Leaves 专属",
+        DefaultValue = "-1.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.renewable-sponges",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "可再生海绵",
+        Description = "允许从海底神殿守卫者等途径获得可再生海绵",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.return-nether-portal-fix",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "返程传送门修复",
+        Description = "修复 Nether 返程传送门总是把玩家送回世界出生点的 bug",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.shared-villager-discounts",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "共享村民折扣",
+        Description = "一名玩家压低的村民价格会被所有玩家共享，而不是各自独立",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.shave-snow-layers",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "刮除雪层",
+        Description = "用铲/剑扫雪时会顺带刮掉一层雪层方块",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.shulker-box.same-nbt-stackable",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "同 NBT 堆叠",
+        Description = "不仅空盒，完全相同 NBT 的潜影盒也允许堆叠",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.shulker-box.stackable-shulker-boxes",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "潜影盒可堆叠",
+        Description = "让物品栏中相同的空潜影盒能够堆叠到一组 64",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.snowball-and-egg-can-knockback-player",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "雪球鸡蛋击退玩家",
+        Description = "让雪球/鸡蛋也能把玩家击退（类似其他弹射物）",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.spectator-dont-get-advancement",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "旁观者不获取进度",
+        Description = "处于旁观模式的玩家完成行为时不触发任何进度",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.spider-jockeys-drop-gapples",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "蜘蛛骑士掉落金苹果",
+        Description = "蜘蛛骑士/骷髅骑手被击杀时额外掉落金苹果的概率，-1 表示关闭",
+        Category = "Leaves 专属",
+        DefaultValue = "-1.0",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.stick-change-armorstand-arm-status",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "木棍切换盔甲架手臂",
+        Description = "用木棍右键盔甲架可切换其手臂姿态",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.modify.use-vanilla-random",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "使用原版随机源",
+        Description = "让所有随机决策都走原版 Random 实现，而不是 Leaves 的优化 RNG",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.cache-climb-check",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "缓存攀爬检查",
+        Description = "把玩家/实体是否可攀爬（梯子、藤蔓）的结果缓存几 tick",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.cache-ignite-odds",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "缓存点燃概率",
+        Description = "缓存苦力怕点燃概率等随机值，避免重复计算",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.check-frozen-ticks-before-landing-block",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "落地前检查冰 Tick",
+        Description = "玩家/实体落地前先检查下方是否有冰冻方块，避免空翻事件",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.dont-send-useless-entity-packets",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "不发无用实体包",
+        Description = "客户端无需接收的实体移动/位置包直接丢弃，减少带宽",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.enable-suffocation-optimization",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "窒息优化",
+        Description = "重写方块内窒息伤害计算，减少每 tick 的位置碰撞次数",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.equipment-tracking",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "装备追踪",
+        Description = "开启后实时追踪所有玩家装备，方便插件查询但会增加开销",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.faster-chunk-serialization",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "更快区块序列化",
+        Description = "对区块保存到磁盘的 NBT 序列化进行加速",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.inactive-goal-selector-disable",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "停用目标选择器",
+        Description = "当实体附近无目标时，禁用其 AI goal selector 循环",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.optimize-noise-generation",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "优化噪声生成",
+        Description = "优化地形噪声（Perlin）生成速度，主要影响新世界加载",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.optimize-sun-burn-tick",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "优化晒 AI Tick",
+        Description = "把僵尸/骷髅等的晒阳光判定合并批量计算",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.optimized-CubePointRange",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "优化 CubePointRange",
+        Description = "对 AABB 范围查询用更紧凑的数据结构，加速玩家/目标碰撞",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.optimized-dragon-respawn",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "龙复活优化",
+        Description = "压缩末影龙复活的区块加载范围与 Tick 开销",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.reduce-chuck-load-and-lookup",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "减少区块加载查找",
+        Description = "批量合并同类区块加载/查找请求，降低磁盘 IO",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.reduce-entity-allocations",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "减少实体对象分配",
+        Description = "让部分短暂实体（箭、经验球）复用对象而不是 new",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.remove.damage-lambda",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "移除伤害 Lambda",
+        Description = "移除实体伤害流程中频繁创建的 Lambda",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.remove.tick-guard-lambda",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "移除 Tick 守护 Lambda",
+        Description = "移除每个 Tick 都创建的匿名 Lambda 对象，降低 GC 压力",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.skip-cloning-advancement-criteria",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "跳过进度条件克隆",
+        Description = "跳过进度判定中不必要的 Criteria 对象克隆",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.skip-entity-move-if-movement-is-zero",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "零运动跳过移动",
+        Description = "实体 movement 向量为 0 时跳过整个 move 流程",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.skip-negligible-planar-movement-multiplication",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "跳过极小水平运动乘法",
+        Description = "当实体水平运动极小时跳过与摩擦/阻力的乘法计算",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.skip-secondary-POI-sensor-if-absent",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "跳过次级 POI 传感器",
+        Description = "当附近没有村民工作站等 POI 时直接跳过 AI 次级传感器扫描",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.sleeping-block-entity",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "休眠方块实体",
+        Description = "对长期未被访问的方块实体（容器、红石）进行 Tick 休眠",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.performance.store-mob-counts-in-array",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "数组存储怪物计数",
+        Description = "把各怪物类型的全局计数用数组代替散列表，提升查询速度",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.alternative-block-placement",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "替代方块放置",
+        Description = "与模组客户端的特殊方块放置协议对接方式，默认 NONE（关闭）",
+        Category = "Leaves 专属",
+        DefaultValue = "NONE",
+        ValueType = "enum",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.appleskin.protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "AppleSkin 协议",
+        Description = "与 AppleSkin 模组对接，同步营养值/饱和度 HUD 数据",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.appleskin.sync-tick-interval",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "AppleSkin 同步间隔",
+        Description = "AppleSkin 数据同步到客户端的 Tick 间隔",
+        Category = "Leaves 专属",
+        DefaultValue = "20",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.bbor-protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "BBOR 模组协议",
+        Description = "与 BBOR（更好的 Boss 血条）模组协议对接，服务端向客户端发送血条数据",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.bladeren.mspt-sync-protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Bladeren MSPT 同步",
+        Description = "将服务器 MSPT 实时推送到所有连接的 Bladeren 客户端",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.bladeren.mspt-sync-tick-interval",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Bladeren MSPT 间隔",
+        Description = "MSPT 数据同步的 Tick 间隔，越小越实时但开销越高",
+        Category = "Leaves 专属",
+        DefaultValue = "20",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.bladeren.protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Bladeren 协议",
+        Description = "启用 Leaves 自研的 Bladeren 客户端协议，用于更好的实体/网络同步",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.chat-image-protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "聊天图片协议",
+        Description = "对接聊天图片模组，允许玩家在聊天里发图片",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.jade-protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Jade 模组协议",
+        Description = "与 Jade（WAILA 后继）模组协议对接，同步方块/实体信息给客户端 HUD",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.leaves-carpet-support",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Leaves Carpet 支持",
+        Description = "给 Carpet Mod（假人）提供 Leaves 专属的底层兼容",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.pca.pca-sync-player-entity",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "PCA 同步玩家实体范围",
+        Description = "向哪些客户端同步玩家实体：OPS=仅 OP、ALL=全员",
+        Category = "Leaves 专属",
+        DefaultValue = "OPS",
+        ValueType = "enum",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.pca.pca-sync-protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "PCA 同步协议",
+        Description = "启用 PCA（玩家聊天动画类）协议，同步客户端动作动画",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.rei-server-protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "REI 服务端协议",
+        Description = "为 REI（Roughly Enough Items）提供服务端物品/配方查询数据",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.servux.entity-protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Servux 实体协议",
+        Description = "与 Servux 模组对接，同步实体详情给客户端 HUD",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.servux.hud-enabled-loggers",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Servux HUD 启用日志源",
+        Description = "Servux HUD 中显示哪些数据源：TPS/MOB_CAPS/...",
+        Category = "Leaves 专属",
+        DefaultValue = "[\"TPS\", \"MOB_CAPS\"]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.servux.hud-logger-protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Servux HUD 日志协议",
+        Description = "让 Servux HUD 从服务器拉取关键运行日志进行显示",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.servux.hud-metadata-protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Servux HUD 元数据协议",
+        Description = "向 Servux 客户端 HUD 发送服务器元数据（TPS、版本等）",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.servux.hud-metadata-protocol-share-seed",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Servux 共享种子",
+        Description = "Servux 是否把世界种子发送给客户端 HUD（影响地图/结构显示）",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.servux.hud-update-interval",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Servux HUD 更新间隔",
+        Description = "Servux HUD 每隔几个 Tick 向服务器请求一次状态",
+        Category = "Leaves 专属",
+        DefaultValue = "1",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.servux.litematics.enable",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Servux Litematica 支持",
+        Description = "允许 Servux 在客户端侧运行 Litematica 模组并同步保存到服务器",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.servux.litematics.max-nbt-size",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Servux Litematica NBT 上限",
+        Description = "Servux 向服务器提交 Litematica 结构的最大 NBT 字节数",
+        Category = "Leaves 专属",
+        DefaultValue = "2097152",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.servux.structure-protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Servux 结构协议",
+        Description = "与 Servux 模组对接，同步结构（Structure）NBT 数据给客户端",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.strict-mode",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "严格协议模式",
+        Description = "开启后完全拒绝偏离原版协议的客户端包，兼容差但安全",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.syncmatica.enable",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Syncmatica 启用",
+        Description = "允许 Syncmatica 模组将客户端的结构/选区数据上传服务器共享",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.syncmatica.quota",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Syncmatica 配额",
+        Description = "开启后对 Syncmatica 上传做字节量配额控制",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.syncmatica.quota-limit",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Syncmatica 配额上限",
+        Description = "单个玩家/会话允许的 Syncmatica 上传总字节数上限",
+        Category = "Leaves 专属",
+        DefaultValue = "40000000",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.xaero-map-protocol",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Xaero 地图协议",
+        Description = "向 Xaero's Minimap 模组发送世界地图、路点等数据",
+        Category = "Leaves 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.protocol.xaero-map-server-id",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Xaero 地图服务器 ID",
+        Description = "在 Xaero 客户端中用于区分不同服务器存档的 ID 数字",
+        Category = "Leaves 专属",
+        DefaultValue = "69732304",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.region.format",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "区域文件格式",
+        Description = "世界区域文件的存储格式：ANVIL、LINEAR 等",
+        Category = "Leaves 专属",
+        DefaultValue = "ANVIL",
+        ValueType = "enum",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.region.linear.compression-level",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Linear 压缩等级",
+        Description = "Linear 区域文件的 Zstd/Deflate 压缩等级（越高压得越小越慢）",
+        Category = "Leaves 专属",
+        DefaultValue = "1",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.region.linear.flush-delay-ms",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Linear 刷新延迟",
+        Description = "区域数据改动到真正写盘之间的延迟毫秒数，越大批量越大",
+        Category = "Leaves 专属",
+        DefaultValue = "100",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.region.linear.flush-max-threads",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Linear 刷新最大线程数",
+        Description = "Linear 格式并行写盘时最多同时使用的工作线程数",
+        Category = "Leaves 专属",
+        DefaultValue = "6",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.region.linear.max-flush-per-run",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Linear 单次最大刷新量",
+        Description = "每轮刷新最多同时写入多少个区域文件，防止 IO 风暴",
+        Category = "Leaves 专属",
+        DefaultValue = "256",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.region.linear.region-unload-check-interval-ms",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Linear 卸载检查间隔",
+        Description = "每隔多少毫秒执行一次可卸载区域文件的检查",
+        Category = "Leaves 专属",
+        DefaultValue = "30000",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.region.linear.region-unload-idle-ms",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Linear 区域卸载闲置",
+        Description = "区域文件连续闲置多少毫秒后可被从内存中卸载",
+        Category = "Leaves 专属",
+        DefaultValue = "600000",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.region.linear.use-virtual-thread",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Linear 使用虚拟线程",
+        Description = "Java 21+ 环境下用虚拟线程执行区域写盘，减少平台线程占用",
+        Category = "Leaves 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "settings.region.linear.version",
+        ConfigFileName = "config/leaves.yml",
+        DisplayName = "Linear 存储版本",
+        Description = "Linear（平展式区域文件）的版本号，目前为 V2",
+        Category = "Leaves 专属",
+        DefaultValue = "V2",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    // ===== END AUTO-INJECTED =====
+}
 
  /// <summary>
  /// 注册 Leaf 专属配置文件 leaf.yml 的配置描述符
@@ -13708,6 +16756,593 @@ private void RegisterGlowstoneConfig()
  ValueType = "bool",
  RequiresRestart = true
  });
+
+
+    // ===== AUTO-INJECTED by core-fetcher pipeline =====
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advanced.compression-threshold",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "压缩阈值",
+        Description = "超过多少字节的网络包才启用压缩（默认 256）",
+        Category = "Glowstone 专属",
+        DefaultValue = "256",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advanced.deprecated-verbose",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "废弃 API 详细日志",
+        Description = "插件调用废弃 API 时是否输出详细告警堆栈",
+        Category = "Glowstone 专属",
+        DefaultValue = "false",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advanced.graphics-compute.enable",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "启用图形计算",
+        Description = "是否启用 GPU 加速的实体光照计算（需要独显）",
+        Category = "Glowstone 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advanced.graphics-compute.use-any-device",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "允许任意 GPU",
+        Description = "图形计算时是否允许使用任意可用的 GPU 设备",
+        Category = "Glowstone 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advanced.player-sample-count",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "玩家采样数",
+        Description = "服务器列表 Ping 同时查询的玩家样本数量",
+        Category = "Glowstone 专属",
+        DefaultValue = "12",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advanced.profile-lookup-timeout",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "Profile 查询超时",
+        Description = "从 Mojang 查询玩家 UUID/皮肤的超时秒数",
+        Category = "Glowstone 专属",
+        DefaultValue = "5",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advanced.proxy-support",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "代理支持",
+        Description = "是否支持 BungeeCord/Velocity 等代理反代",
+        Category = "Glowstone 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advanced.region-file.cache-size",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "区域文件缓存大小",
+        Description = "同时在内存中打开的 .mca 区域文件数量上限",
+        Category = "Glowstone 专属",
+        DefaultValue = "256",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advanced.region-file.compression",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "区域文件压缩",
+        Description = "区域文件保存时是否启用 Zlib 压缩",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "advanced.suggest-player-name-when-null-tab-completions",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "Tab 补全建议玩家",
+        Description = "Tab 补全命令参数时是否自动建议在线玩家名",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "console.log-date-format",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "日志时间格式",
+        Description = "写入日志文件的时间戳格式（yyyy/MM/dd HH:mm:ss）",
+        Category = "Glowstone 专属",
+        DefaultValue = "yyyy/MM/dd HH:mm:ss",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "console.prompt",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "控制台提示符",
+        Description = "交互式控制台的提示符文字",
+        Category = "Glowstone 专属",
+        DefaultValue = "> ",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "console.use-jline",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "启用 JLine",
+        Description = "使用 JLine 实现更高级的控制台行编辑（历史、Tab 补全）",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "creatures.enable.animals",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "启用动物",
+        Description = "是否允许世界中自然生成动物（牛、羊等）",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "creatures.enable.monsters",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "启用怪物",
+        Description = "是否允许世界中自然生成怪物（僵尸、骷髅等）",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "creatures.enable.npcs",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "启用 NPC",
+        Description = "是否允许村民等 NPC 自然生成",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "creatures.limit.ambient",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "环境生物上限",
+        Description = "每区块同时存在的环境生物（蝙蝠等）数量上限",
+        Category = "Glowstone 专属",
+        DefaultValue = "15",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "creatures.limit.animals",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "动物上限",
+        Description = "每区块同时存在的动物数量上限",
+        Category = "Glowstone 专属",
+        DefaultValue = "15",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "creatures.limit.monsters",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "怪物上限",
+        Description = "每区块同时存在的怪物数量上限",
+        Category = "Glowstone 专属",
+        DefaultValue = "70",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "creatures.limit.water",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "水生生物上限",
+        Description = "每区块同时存在的水生生物数量上限",
+        Category = "Glowstone 专属",
+        DefaultValue = "5",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "creatures.ticks.animal",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "动物 Tick 频率",
+        Description = "动物每多少 tick 执行一次 AI 判定",
+        Category = "Glowstone 专属",
+        DefaultValue = "400",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "creatures.ticks.monsters",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "怪物 Tick 频率",
+        Description = "怪物每多少 tick 执行一次 AI 判定",
+        Category = "Glowstone 专属",
+        DefaultValue = "1",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "extras.query-enabled",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "启用 Query",
+        Description = "是否启用 Minecraft Query 协议（第三方工具查询用）",
+        Category = "Glowstone 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "extras.query-plugins",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "Query 返回插件列表",
+        Description = "Query 查询时是否返回已安装插件列表",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "extras.query-port",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "Query 端口",
+        Description = "Query 协议监听的 UDP 端口",
+        Category = "Glowstone 专属",
+        DefaultValue = "25614",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "extras.rcon-colors",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "RCON 颜色支持",
+        Description = "RCON 远程控制台是否支持 § 颜色码",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "extras.rcon-enabled",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "启用 RCON",
+        Description = "是否开启 RCON 远程管理功能",
+        Category = "Glowstone 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "extras.rcon-password",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "RCON 密码",
+        Description = "RCON 登录认证密码",
+        Category = "Glowstone 专属",
+        DefaultValue = "glowstone",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "extras.rcon-port",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "RCON 端口",
+        Description = "RCON 协议监听的 TCP 端口",
+        Category = "Glowstone 专属",
+        DefaultValue = "25575",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "folders.libraries",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "依赖库目录",
+        Description = "存放第三方依赖 jar 的子目录名",
+        Category = "Glowstone 专属",
+        DefaultValue = "lib",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "folders.update",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "更新目录",
+        Description = "自动更新时存放临时文件的目录",
+        Category = "Glowstone 专属",
+        DefaultValue = "update",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "game.command-blocks",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "启用命令方块",
+        Description = "是否允许玩家放置/使用命令方块",
+        Category = "Glowstone 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "game.gamemode-force",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "强制游戏模式",
+        Description = "开启后玩家无法手动切换游戏模式",
+        Category = "Glowstone 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "game.resource-pack",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "材质包 URL",
+        Description = "向玩家推送的资源包下载地址，留空关闭",
+        Category = "Glowstone 专属",
+        DefaultValue = "",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "game.resource-pack-hash",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "材质包校验哈希",
+        Description = "资源包 SHA1 哈希，用于客户端校验完整性",
+        Category = "Glowstone 专属",
+        DefaultValue = "",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "libraries.checksum-validation",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "依赖校验",
+        Description = "下载第三方依赖 jar 时是否校验 SHA 哈希",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "libraries.compatibility-bundle",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "兼容包类型",
+        Description = "使用哪种兼容 API 包：CRAFTBUKKIT 兼容旧插件",
+        Category = "Glowstone 专属",
+        DefaultValue = "CRAFTBUKKIT",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "libraries.download-attempts",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "下载重试次数",
+        Description = "依赖下载失败后最多重试几次",
+        Category = "Glowstone 专属",
+        DefaultValue = "2",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "libraries.list",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "额外依赖列表",
+        Description = "需要额外下载的 Maven 依赖坐标列表",
+        Category = "Glowstone 专属",
+        DefaultValue = "[]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "libraries.repository-url",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "仓库地址",
+        Description = "依赖下载用的 Maven 仓库地址",
+        Category = "Glowstone 专属",
+        DefaultValue = "https://repo.glowstone.net/repository/maven-public/",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "server.allow-client-mods",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "允许客户端模组",
+        Description = "携带模组的客户端是否允许进入服务器",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "server.dns",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "DNS 服务器",
+        Description = "自定义 DNS 解析服务器 IP 列表",
+        Category = "Glowstone 专属",
+        DefaultValue = "[]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "server.prevent-proxy-connections",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "拒绝代理连接",
+        Description = "直接拒绝疑似来自代理/VPN 的客户端连接",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "server.shutdown-message",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "关停消息",
+        Description = "服务器关闭时显示给在线玩家的提示",
+        Category = "Glowstone 专属",
+        DefaultValue = "Server shutting down.",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "server.whitelisted",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "启用白名单",
+        Description = "开启后只有白名单中的玩家才能进入服务器",
+        Category = "Glowstone 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world.allow-end",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "允许末地",
+        Description = "是否允许玩家进入末地维度",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world.allow-nether",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "允许下界",
+        Description = "是否允许玩家进入下界维度",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world.classic-style-water",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "经典水域样式",
+        Description = "使用 1.7 时代的静态水面生成方式",
+        Category = "Glowstone 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world.disable-generation",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "禁用地形生成",
+        Description = "是否关闭新区块的地形生成（配合预制地图用）",
+        Category = "Glowstone 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world.gen-structures",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "生成结构",
+        Description = "是否自然生成村庄、神殿、要塞等建筑结构",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world.level-type",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "世界类型",
+        Description = "地形类型：DEFAULT/FLAT/LARGE_BIOMES/AMPLIFIED",
+        Category = "Glowstone 专属",
+        DefaultValue = "DEFAULT",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world.populate-anchored-chunks",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "填充锚定区块",
+        Description = "对出生点锚定区块进行结构/矿物填充",
+        Category = "Glowstone 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "world.spawn-radius",
+        ConfigFileName = "config/glowstone.yml",
+        DisplayName = "出生半径",
+        Description = "新玩家首次生成时在出生点周围随机的半径",
+        Category = "Glowstone 专属",
+        DefaultValue = "16",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    // ===== END AUTO-INJECTED =====
 }
 // RegisterSpongeGlobalConf.cs
 // 注册 Sponge 全局配置项（config/sponge/global.conf，HOCON 格式）
@@ -16077,6 +19712,362 @@ private void RegisterAkarinYml()
  ValueType = "bool",
  RequiresRestart = false
  });
+
+
+    // ===== AUTO-INJECTED by core-fetcher pipeline =====
+    Register(new ServerConfigDescriptor
+    {
+        Key = "alternative.allow-spawner-modify",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "允许修改刷怪笼",
+        Description = "是否允许玩家挖掉或重新放置刷怪笼方块",
+        Category = "Akarin 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "alternative.disable-end-portal-create",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "禁用末地传送门创建",
+        Description = "开启后玩家无法通过末影之眼激活末地传送门",
+        Category = "Akarin 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "alternative.force-difficulty-on-hardcore",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "硬核强制难度",
+        Description = "硬核模式下强制锁定难度为 HARD，防止绕过",
+        Category = "Akarin 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "alternative.gc-before-stuck-restart",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "卡死重启前 GC",
+        Description = "主线程卡死自动重启前先执行一次 Full GC",
+        Category = "Akarin 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "alternative.legacy-versioning-compat",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "旧版版本兼容",
+        Description = "启用对旧版插件版本号的兼容模式",
+        Category = "Akarin 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "alternative.modified-server-brand-name",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "自定义服务端品牌名",
+        Description = "留空则用默认值；填入后发送给客户端的品牌名（F3 界面可见）",
+        Category = "Akarin 专属",
+        DefaultValue = "",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "alternative.version-update-interval",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "版本更新检查间隔",
+        Description = "每隔多久检查一次新版本，如 3600s=1 小时",
+        Category = "Akarin 专属",
+        DefaultValue = "3600s",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "bootstrap.extra-local-address",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "额外本地地址",
+        Description = "启动时额外绑定的本地网卡地址列表",
+        Category = "Akarin 专属",
+        DefaultValue = "[]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.always-silent-async-timing",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "静默异步计时",
+        Description = "让异步性能计时始终保持静默，不输出耗时日志",
+        Category = "Akarin 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.chunk-save-threads",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "区块保存线程数",
+        Description = "并行保存区块数据的线程数，默认 2",
+        Category = "Akarin 专属",
+        DefaultValue = "2",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.enable-panda-redstone-wire",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "启用 Panda 红石优化",
+        Description = "启用 Panda 红石优化模块（实验性）",
+        Category = "Akarin 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.enable-real-time-ticking",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "实时 Tick",
+        Description = "让服务器 Tick 跟随真实时间，不受 TPS 抖动影响",
+        Category = "Akarin 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.keep-alive-response-timeout",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "保活响应超时",
+        Description = "等待玩家回复 Keepalive 包的超时时间（默认 30s）",
+        Category = "Akarin 专属",
+        DefaultValue = "30s",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.optimize-chunk-unloading",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "区块卸载优化",
+        Description = "启用更激进的区块卸载策略以节省内存",
+        Category = "Akarin 专属",
+        DefaultValue = "False",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.parallel-mode",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "并行模式",
+        Description = "并行处理级别，0=关闭，1=默认多线程",
+        Category = "Akarin 专属",
+        DefaultValue = "1",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.players-per-chunk-io-thread",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "每区块 IO 线程玩家数",
+        Description = "单个区块 IO 线程负责的玩家数量阈值，默认 50",
+        Category = "Akarin 专属",
+        DefaultValue = "50",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.primary-thread-priority",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "主线程优先级",
+        Description = "Java 主线程的 OS 优先级（1-10），默认 7",
+        Category = "Akarin 专属",
+        DefaultValue = "7",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.send-light-only-chunk-sections",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "仅发送光照区块段",
+        Description = "只发送有光照数据的区块段给客户端，减少带宽",
+        Category = "Akarin 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.thread-safe.async-catcher.throw-on-caught",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "异步异常抛出",
+        Description = "异步线程捕获到异常时是否向上抛出而不是静默吞掉",
+        Category = "Akarin 专属",
+        DefaultValue = "True",
+        ValueType = "bool",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.tick-rate.keep-alive-packet-send-interval",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "保活包发送间隔",
+        Description = "服务器向玩家发送 Keepalive 包的间隔（默认 15s）",
+        Category = "Akarin 专属",
+        DefaultValue = "15s",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.tick-rate.players-info-update-interval",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "玩家信息更新间隔",
+        Description = "玩家列表/皮肤等信息刷新间隔（默认 30s）",
+        Category = "Akarin 专属",
+        DefaultValue = "30s",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "core.tick-rate.world-time-update-interval",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "世界时间更新间隔",
+        Description = "世界时间广播给客户端的间隔（默认 1s）",
+        Category = "Akarin 专属",
+        DefaultValue = "1s",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.connect.player-join-server",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "玩家加入消息",
+        Description = "%s 为玩家名；玩家加入服务器时的聊天提示",
+        Category = "Akarin 专属",
+        DefaultValue = "§e%s joined the game",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.connect.renamed-player-join-server",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "改名玩家加入消息",
+        Description = "%s=新名，%s=旧名；改名后首次登录提示",
+        Category = "Akarin 专属",
+        DefaultValue = "§e%s (formerly known as %s) joined the game",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.disconnect.ban-expires",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "封禁到期提示",
+        Description = "被封禁玩家尝试连接时显示的剩余时间提示",
+        Category = "Akarin 专属",
+        DefaultValue = "\nYour ban will be removed on ",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.disconnect.ban-player-ip",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "IP 封禁消息",
+        Description = "IP 被封时玩家看到的提示文字",
+        Category = "Akarin 专属",
+        DefaultValue = "Your IP address is banned from this server! %s %s",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.disconnect.ban-player-name",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "玩家封禁消息",
+        Description = "玩家名被封时看到的提示文字",
+        Category = "Akarin 专属",
+        DefaultValue = "You are banned from this server! %s %s",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.disconnect.ban-reason",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "封禁原因前缀",
+        Description = "显示封禁原因时的前缀文字",
+        Category = "Akarin 专属",
+        DefaultValue = "\nReason: ",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.disconnect.kick-player",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "OP 踢出消息",
+        Description = "被 OP 用 /kick 命令踢出时显示的文字",
+        Category = "Akarin 专属",
+        DefaultValue = "Kicked by an operator.",
+        ValueType = "double",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.disconnect.kick-player-duplicate-login",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "异地登录踢出",
+        Description = "同一账号在别处登录时玩家被踢出的提示",
+        Category = "Akarin 专属",
+        DefaultValue = "You logged in from another location",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.disconnect.kick-player-timeout-keep-alive",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "超时踢出消息",
+        Description = "长时间未响应 Keepalive 包被踢出时的提示",
+        Category = "Akarin 专属",
+        DefaultValue = "Timed out",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    Register(new ServerConfigDescriptor
+    {
+        Key = "messages.disconnect.player-quit-server",
+        ConfigFileName = "config/akarin.yml",
+        DisplayName = "玩家退出消息",
+        Description = "%s 为玩家名；离开服务器时的聊天提示",
+        Category = "Akarin 专属",
+        DefaultValue = "§e%s left the game",
+        ValueType = "int",
+        RequiresRestart = false,
+    });
+    // ===== END AUTO-INJECTED =====
 }
 // -----------------------------------------------------------------------------
 // 文件名: RegisterPermissionsYml.cs
@@ -16471,6 +20462,21 @@ private void RegisterCommandsYml()
  ValueType = "string",
  RequiresRestart = false
  });
+
+
+    // ===== AUTO-INJECTED by core-fetcher pipeline =====
+    Register(new ServerConfigDescriptor
+    {
+        Key = "aliases.icanhasbukkit",
+        ConfigFileName = "config/commands.yml",
+        DisplayName = "icanhasbukkit 别名",
+        Description = "icanhasbukkit 会执行 version 和 plugins 命令",
+        Category = "Glowstone",
+        DefaultValue = "[\"version $1-\", \"plugins\"]",
+        ValueType = "list",
+        RequiresRestart = false,
+    });
+    // ===== END AUTO-INJECTED =====
 }
 // -----------------------------------------------------------------------------
 // 文件名: RegisterHelpYml.cs
