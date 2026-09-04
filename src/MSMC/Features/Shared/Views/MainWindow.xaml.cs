@@ -3967,16 +3967,16 @@ public partial class MainWindow : Window
             {
                 var cfgSvc = App.Services.GetService<INotificationConfigService>();
                 if (cfgSvc == null)
-                    return new { success = false, error = "通知配置服务不可用" };
+                    return Task.FromResult<object?>(new { success = false, error = "通知配置服务不可用" });
 
                 var cfg = cfgSvc.Load();
                 var json = JsonSerializer.Serialize(cfg, BridgeJsonOptions);
-                return new { success = true, config = json };
+                return Task.FromResult<object?>(new { success = true, config = json });
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "notify.getConfig 异常");
-                return new { success = false, error = ex.Message };
+                return Task.FromResult<object?>(new { success = false, error = ex.Message });
             }
         });
 
