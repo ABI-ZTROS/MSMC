@@ -513,3 +513,103 @@ jobs:
             echo "✅ 传递依赖安全扫描通过！"
           }
         shell: pwsh
+
+  # ═══════════════════════════════════════════════════════════════
+  # 📦 跨架构发布：win-arm64（Windows on Arm 原生）+ win-x86（32 位兼容）
+  # ═══════════════════════════════════════════════════════════════
+  # 最终兼容性评估结论（2026-09-04 全面代码审查，证据见评估报告）：
+  #   - 源码零架构分支：全部 P/Invoke 用 Marshal.SizeOf<T>()（架构正确）、
+  #     UIntPtr/IntPtr 指针域、无 IntPtr.Size 假设、无 #if 架构指令
+  #   - csproj 已声明 win-x64;win-x86;win-arm64 三个 RID + EnableWindowsTargeting
+  #   - 原生依赖均有对应架构：SkiaSharp(win-arm64/win-x86 native)、WebView2、系统 DLL
+  #   - win-arm64 = Windows on Arm 原生（骁龙X / Copilot+ PC / Surface Pro X 最佳性能）
+  #   - win-x86  = 32 位兼容产物（注意：32 位进程约 2GB 地址空间，仅作兼容非性能目标）
+  # 设计：独立 matrix job，不触碰 x64 既有 7z/SFX 发布管线（降低回归风险）。
+  publish-cross:
+    name: 📦 发布 win-arm64 / win-x86
+    needs: build
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-arm64
+            tag: arm64
+          - rid: win-x86
+            tag: x86
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          # Nerdbank.GitVersioning 需要完整 Git 历史计算版本高度
+          fetch-depth: 0
+
+      - name: Setup .NET 9.0
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Publish Full (self-contained) ${{ matrix.rid }}
+        run: |
+          dotnet publish src/MSMC/MSMC.csproj `
+            --configuration Release `
+            -p:RuntimeIdentifier=${{ matrix.rid }} `
+            -p:SelfContained=true `
+            -p:PublishSingleFile=true `
+            -p:EnableCompressionInSingleFile=true `
+            -o publish/full
+        shell: pwsh
+
+      - name: Publish Lite (framework-dependent) ${{ matrix.rid }}
+        run: |
+          dotnet publish src/MSMC/MSMC.csproj `
+            --configuration Release `
+            -p:RuntimeIdentifier=${{ matrix.rid }} `
+            -p:SelfContained=false `
+            -p:PublishSingleFile=true `
+            -o publish/lite
+        shell: pwsh
+
+      - name: Verify Artifacts (${{ matrix.rid }})
+        shell: pwsh
+        run: |
+          foreach ($variant in @("full", "lite")) {
+            $exe = "publish/$variant/MSMC.exe"
+            if (-not (Test-Path $exe)) {
+              echo "❌ [${{ matrix.rid }}/$variant] 发布产物中找不到 MSMC.exe！"
+              exit 1
+            }
+            $size = (Get-Item $exe).Length
+            $sizeMB = [math]::Round($size/1MB, 2)
+            echo "📦 [${{ matrix.rid }}/$variant] MSMC.exe 大小: $sizeMB MB"
+            if ($variant -eq "full" -and $size -lt 10MB) {
+              echo "❌ [${{ matrix.rid }}/full] EXE 太小 ($sizeMB MB)，自包含发布可能失败！"
+              exit 1
+            }
+            if ($variant -eq "lite" -and $size -lt 1MB) {
+              echo "❌ [${{ matrix.rid }}/lite] EXE 太小 ($sizeMB MB)，框架依赖发布可能失败！"
+              exit 1
+            }
+            echo "✅ [${{ matrix.rid }}/$variant] 发布产物检查通过！"
+          }
+
+      - name: Upload Full Artifact (${{ matrix.rid }})
+        if: success() || failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v5
+        with:
+          name: MSMC-win-${{ matrix.tag }}-full
+          path: publish/full/
+          retention-days: 30
+
+      - name: Upload Lite Artifact (${{ matrix.rid }})
+        if: success() || failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v5
+        with:
+          name: MSMC-win-${{ matrix.tag }}-lite
+          path: publish/lite/
+          retention-days: 30
