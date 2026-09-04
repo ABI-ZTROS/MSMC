@@ -1,8 +1,14 @@
 # MSMC on Linux 实施计划
 
+> **⚠️ 变更记录（2026-09-04 当日，用户决策）**：**梦幻联动（自动同步）已取消**。MSMC 与 MSMC-on-Linux 改为**一次导入、独立演进**：
+> - MSMC-on-Linux 仓库已独立落地：从 MSMC 导入跨平台逻辑为 `src/MSMC.Shared`，前端复制为 `frontend/`，Linux 系统服务为 `src/MSMC.Linux`（Avalonia 壳 + 自建同源 HTTP 桥 + `/proc` 解析）。
+> - **不部署 `sync-to-linux.yml`**、不做 push 镜像；两仓库各自直推 main，代码可自由分叉演进。
+> - 本项目落地状态见仓库 [MSMC-on-Linux](https://github.com/ABI-ZTROS/MSMC-on-Linux) README（✅ 已落地：骨架 + 共享库 + Linux 服务 + 桥宿主 + 冒烟测试 + CI）。
+> 下方第 0/1/2 节仍保留原调研与联动设计作为历史决策记录。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 在 Linux 上实现与 Windows MSMC 功能对等的 Minecraft 服务器管理客户端——Avalonia 壳 + WebKitGTK WebView 承载现有 React 前端；并通过"共享库 + 自动同步工作流"与 MSMC 梦幻联动（MSMC 功能更新自动同步到 Linux 版，杜绝双份代码漂移）。
+**Goal:** 在 Linux 上实现与 Windows MSMC 功能对等的 Minecraft 服务器管理客户端——Avalonia 壳 + WebKitGTK WebView 承载现有 React 前端；共享代码采用**一次导入、独立演进**（原方案为"共享库 + 自动同步工作流"实现梦幻联动，已于 2026-09-04 取消）。
 
 **Architecture:** 抽取 MSMC 全部跨平台纯托管逻辑为 `MSMC.Shared` 库（调度/通知/插件市场/配置编辑器/持久化/桥协议，约 50% 功能面），Windows 版与 Linux 版共同引用。MSMC-on-Linux = Avalonia 窗口壳 + Avalonia.WebView(WebKitGTK) 承载 React 前端 + 一层 Linux 系统服务（`/proc`、`taskset`、`cgroup`、`systemd`、`notify-send` 替代 WMI/netsh/Job Object/注册表/Toast）。"梦幻联动" = MSMC 仓库 push 到 main 时，GitHub Actions `sync-to-linux.yml` 自动把 `MSMC.Shared` 与 `frontend` 镜像到 MSMC-on-Linux 仓库并提交推送。
 
