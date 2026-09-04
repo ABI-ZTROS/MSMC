@@ -596,6 +596,48 @@ jobs:
             echo "✅ [${{ matrix.rid }}/$variant] 发布产物检查通过！"
           }
 
+      - name: Install 7-Zip (${{ matrix.rid }})
+        shell: pwsh
+        run: |
+          # 复用 x64 管线的 7z 安装方式：windows-latest 上装官方 7z
+          $url = "https://www.7-zip.org/a/7z2407-x64.exe"
+          Invoke-WebRequest -Uri $url -OutFile 7z-installer.exe
+          Start-Process -FilePath "7z-installer.exe" -ArgumentList "/S" -Wait
+          $sevenZip = "C:\Program Files\7-Zip\7z.exe"
+          if (-not (Test-Path $sevenZip)) {
+            $sevenZip = (Get-Command 7z -ErrorAction SilentlyContinue).Source
+            if (-not $sevenZip) { $sevenZip = "7z" }
+          }
+          echo "7z path: $sevenZip"
+          echo "SEVEN_ZIP=$sevenZip" >> $env:GITHUB_ENV
+
+      - name: 7z compress Full (${{ matrix.rid }})
+        shell: pwsh
+        run: |
+          & $env:SEVEN_ZIP a -t7z -mx=9 -m0=lzma2 -ms=on -mf=on -mfb=273 `
+            -mtc=off -mtm=off -mta=off -mmt=on `
+            "MSMC-win-${{ matrix.tag }}-full.7z" "publish/full/*"
+          if ($LASTEXITCODE -ne 0) { echo "❌ [${{ matrix.rid }}/full] 7z 压缩失败！"; exit 1 }
+
+      - name: 7z compress Lite (${{ matrix.rid }})
+        shell: pwsh
+        run: |
+          & $env:SEVEN_ZIP a -t7z -mx=9 -m0=lzma2 -ms=on -mf=on -mfb=273 `
+            -mtc=off -mtm=off -mta=off -mmt=on `
+            "MSMC-win-${{ matrix.tag }}-lite.7z" "publish/lite/*"
+          if ($LASTEXITCODE -ne 0) { echo "❌ [${{ matrix.rid }}/lite] 7z 压缩失败！"; exit 1 }
+
+      - name: 7z integrity test (${{ matrix.rid }})
+        shell: pwsh
+        run: |
+          foreach ($variant in @("full", "lite")) {
+            $archive = "MSMC-win-${{ matrix.tag }}-$variant.7z"
+            if (-not (Test-Path $archive)) { echo "❌ [$variant] 7z 包不存在！"; exit 1 }
+            & $env:SEVEN_ZIP t $archive
+            if ($LASTEXITCODE -ne 0) { echo "❌ [$variant] 7z 完整性测试失败！"; exit 1 }
+            echo "✅ [${{ matrix.rid }}/$variant] 7z 完整性测试通过"
+          }
+
       - name: Upload Full Artifact (${{ matrix.rid }})
         if: success() || failure()
         continue-on-error: true
@@ -612,4 +654,22 @@ jobs:
         with:
           name: MSMC-win-${{ matrix.tag }}-lite
           path: publish/lite/
+          retention-days: 30
+
+      - name: Upload Full 7z (${{ matrix.rid }})
+        if: success() || failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v5
+        with:
+          name: MSMC-win-${{ matrix.tag }}-full-7z
+          path: MSMC-win-${{ matrix.tag }}-full.7z
+          retention-days: 30
+
+      - name: Upload Lite 7z (${{ matrix.rid }})
+        if: success() || failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v5
+        with:
+          name: MSMC-win-${{ matrix.tag }}-lite-7z
+          path: MSMC-win-${{ matrix.tag }}-lite.7z
           retention-days: 30
