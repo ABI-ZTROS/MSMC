@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
 using io.NET.ZTR_OS.Features.ContentMarket.Models;
@@ -134,4 +134,38 @@ public class BridgeContractTests
         Assert.Equal(5000000, project.Downloads);
         Assert.Equal(MarketSource.Modrinth, project.Source);
     }
+
+
+    [Fact]
+    public void NotificationChannelConfig_CamelCaseJson_DeserializesCorrectly()
+    {
+        // 前端发: camelCase 属性名 (匹配 BridgeJsonOptions.CamelCase 策略)
+        var json = "{\"windowsToast\":{\"enabled\":true},\"discord\":{\"enabled\":false,\"webhookUrl\":\"\"},\"retryMaxAttempts\":3,\"retryBaseDelayMs\":1000}";
+        var cfg = Deserialize<NotificationChannelConfig>(json);
+        Assert.NotNull(cfg);
+        Assert.True(cfg!.WindowsToast.Enabled);
+        Assert.False(cfg.Discord.Enabled);
+        Assert.Equal(3, cfg.RetryMaxAttempts);
+        Assert.Equal(1000, cfg.RetryBaseDelayMs);
+    }
+
+    [Fact]
+    public void NotificationChannelConfig_SerializesToCamelCase()
+    {
+        var cfg = new NotificationChannelConfig
+        {
+            WindowsToast = new ToastChannelConfig { Enabled = true },
+            Discord = new DiscordChannelConfig { Enabled = false, WebhookUrl = "https://discord.com/api/webhooks/xxx" },
+            RetryMaxAttempts = 5,
+            RetryBaseDelayMs = 2000
+        };
+        var json = JsonSerializer.Serialize(cfg, BridgeJsonOptions);
+        // 必须输出 camelCase 属性名
+        Assert.Contains("windowsToast", json);
+        Assert.Contains("discord", json);
+        Assert.Contains("retryMaxAttempts", json);
+        Assert.DoesNotContain("WindowsToast", json);
+        Assert.DoesNotContain("Discord", json);
+    }
+
 }

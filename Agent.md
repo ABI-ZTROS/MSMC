@@ -62,16 +62,22 @@ src/McServerGuard.Tests/          # xUnit 测试项目
 
 ### 4.1 日志：Serilog 静态调用
 
+> ⚠️ **McServerGuard 遗留约定（MSMC 已更新）**
+> MSMC 项目已全面切换到 `ILogger<T>` + Serilog DI 桥接模式。
+> `App.xaml.cs` 中注册了 `services.AddLogging(logging => logging.AddSerilog())`，
+> 所有服务（SchedulerService, NotificationService 等）均通过构造函数注入 `ILogger<T>`。
+> 仍可在顶层（DI 未就绪时）使用 `Serilog.Log.Information(...)` 静态方法。
+
 ```csharp
-// 正确
-Log.Information("服务器已启动: {Name}", name);
-Log.Debug("检测到进程 PID={Pid}", pid);
+// ✅ MSMC 推荐 - 通过 DI 注入（Service 内部用）
+public class SomeService(ILogger<SomeService> logger)
+{
+    logger.LogInformation("处理完成");
+}
 
-// 错误 - 不要这样做
-public class SomeService(ILogger<SomeService> logger) { }  // 禁止
+// ✅ 允许 - 顶层/无 DI 时使用静态方法
+Serilog.Log.Information("DI 容器已构建");
 ```
-
-本项目使用 Serilog 的**全局静态方法** `Log.*`，不使用 `ILogger<T>` 依赖注入。
 
 ### 4.2 监控：Timer + 回调模式
 
