@@ -711,34 +711,40 @@ public partial class MainWindow : Window
         });
 
         // 获取历史数据（用于图表）— 当天持久化数据
-        _bridgeService.RegisterRequestHandler("systemMonitor:getHistory", _ =>
+        _bridgeService.RegisterRequestHandler("systemMonitor:getHistory", async _ =>
         {
             try
             {
                 var persistence = App.Services.GetRequiredService<IMetricsPersistenceService>();
-                // v2: 直接用 DateTime.Now（不再经过 NTP 偏移）
-                var today = persistence.LoadDay(DateTime.Now);
-                var result = today.Select(p => new
+                // P10 弱机优化 + P6 异步纪律：
+                // 1) 重活（读盘 + 降采样 + 序列化）移出 UI 线程 → Task.Run 后台执行
+                // 2) 全天 43200 原始点降采样到 ≤1440 点/天 再下发，避免弱机前端 SVG 直灌 ~4MB path
+                //    （MetricsDownsampler 早已存在且有 MetricsDownsamplingTests 覆盖，此处接线复用）
+                var result = await Task.Run(() =>
                 {
-                    // v2: 北京时间(UTC+8) → UTC → UnixMs
-                    timestamp = new DateTimeOffset(
-                            DateTime.SpecifyKind(p.Timestamp.AddHours(-8), DateTimeKind.Utc))
-                        .ToUnixTimeMilliseconds(),
-                    cpuUsagePercent = p.CpuUsagePercent,
-                    memoryUsagePercent = p.MemoryUsagePercent,
-                }).ToList();
+                    var down = MetricsDownsampler.LoadRecentDaysDownsampled(persistence, days: 1);
+                    return down.Select(p => new
+                    {
+                        // v2: 北京时间(UTC+8) → UTC → UnixMs
+                        timestamp = new DateTimeOffset(
+                                DateTime.SpecifyKind(p.BucketStart.AddHours(-8), DateTimeKind.Utc))
+                            .ToUnixTimeMilliseconds(),
+                        cpuUsagePercent = p.CpuPercent,
+                        memoryUsagePercent = p.MemoryPercent,
+                    }).ToList();
+                });
 
-                return Task.FromResult<object?>(result);
+                return (object?)result;
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "获取历史数据失败");
-                return Task.FromResult<object?>(Array.Empty<object>());
+                return Array.Empty<object>();
             }
         });
 
         // 获取多天历史数据（用于跨天趋势图表）
-        _bridgeService.RegisterRequestHandler("systemMonitor:getHistoryRange", payload =>
+        _bridgeService.RegisterRequestHandler("systemMonitor:getHistoryRange", async payload =>
         {
             try
             {
@@ -750,23 +756,30 @@ public partial class MainWindow : Window
                 days = Math.Clamp(days, 1, 30);
 
                 var persistence = App.Services.GetRequiredService<IMetricsPersistenceService>();
-                var data = persistence.LoadRecentDays(days);
-                var result = data.Select(p => new
+                // P10/P6：重活移出 UI 线程 + 多天数据降采样。
+                // 原来 30 天 = 1,296,000 原始点一次性读入并序列化（弱机内存峰值 ~480MB + 秒级冻结），
+                // 降采样后上限 = 30 × 1440 = 43,200 点（内存 ~16MB，30 倍削减），图表曲线不变。
+                var result = await Task.Run(() =>
                 {
-                    // v2: 北京时间(UTC+8) → UTC → UnixMs
-                    timestamp = new DateTimeOffset(
-                            DateTime.SpecifyKind(p.Timestamp.AddHours(-8), DateTimeKind.Utc))
-                        .ToUnixTimeMilliseconds(),
-                    cpuUsagePercent = p.CpuUsagePercent,
-                    memoryUsagePercent = p.MemoryUsagePercent,
-                }).ToList();
+                    var down = MetricsDownsampler.LoadRecentDaysDownsampled(persistence, days);
+                    var points = down.Select(p => new
+                    {
+                        // v2: 北京时间(UTC+8) → UTC → UnixMs
+                        timestamp = new DateTimeOffset(
+                                DateTime.SpecifyKind(p.BucketStart.AddHours(-8), DateTimeKind.Utc))
+                            .ToUnixTimeMilliseconds(),
+                        cpuUsagePercent = p.CpuPercent,
+                        memoryUsagePercent = p.MemoryPercent,
+                    }).ToList();
+                    return new { points, days };
+                });
 
-                return Task.FromResult<object?>(new { points = result, days });
+                return (object?)result;
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "获取多天历史数据失败");
-                return Task.FromResult<object?>(new { points = Array.Empty<object>(), days = 0, error = ex.Message });
+                return new { points = Array.Empty<object>(), days = 0, error = ex.Message };
             }
         });
 
@@ -841,18 +854,21 @@ public partial class MainWindow : Window
         // === 进程管理相关 API ===
 
         // 获取所有进程的 CPU 亲和性信息（按 CPU 占用降序，最多 200 个）
-        _bridgeService.RegisterRequestHandler("processManager:getAffinities", _ =>
+        _bridgeService.RegisterRequestHandler("processManager:getAffinities", async _ =>
         {
             try
             {
                 var processManager = App.Services.GetRequiredService<IProcessManagerService>();
-                var affinities = processManager.GetAllProcessAffinities();
-                return Task.FromResult<object?>(affinities);
+                // P10/P6：全进程枚举（含 MainModule 句柄读取 + WMI 查询）很重，
+                // 在弱机上可达秒级，必须移出 UI 线程，避免进程管理页一打开就冻结界面。
+                // 注意：不动 ServerDetector/ProcessScanner 的检测路径，仅优化本 handler 的执行线程。
+                var affinities = await Task.Run(() => processManager.GetAllProcessAffinities());
+                return (object?)affinities;
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "获取进程亲和性信息失败");
-                return Task.FromResult<object?>(Array.Empty<object>());
+                return Array.Empty<object>();
             }
         });
 

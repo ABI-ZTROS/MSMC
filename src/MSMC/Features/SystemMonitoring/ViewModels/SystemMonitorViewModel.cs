@@ -45,6 +45,16 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
     /// <summary>历史数据点最大保留数量（环形缓冲区容量）</summary>
     private const int MaxHistoryPoints = 120;
 
+    /// <summary>持久化批量大小：攒 5 条（≈10s）一次落盘，降低 HDD 写入频率（P10 弱机优化）。
+    /// 采样精度不受影响——环形缓冲/图表仍按 2s 粒度刷新，仅磁盘写入从每 2s 降到每 10s。</summary>
+    private const int PersistBatchSize = 5;
+
+    /// <summary>待落盘的批量缓冲（P10：每 2s 唤醒磁盘 → 每 10s 一次）</summary>
+    private readonly List<SystemMetrics> _pendingPersist = [];
+
+    /// <summary>批量落盘计数</summary>
+    private int _persistPendingCount;
+
     /// <summary>监控取消令牌源</summary>
     private CancellationTokenSource? _monitoringCts;
 
@@ -292,12 +302,25 @@ public partial class SystemMonitorViewModel : ObservableObject, IDisposable
         Log.Debug("[METRIC] 采集到系统指标: CPU={Cpu}% 内存={Mem}%", metrics.CpuUsagePercent, metrics.MemoryUsagePercent);
         CurrentMetrics = metrics;
 
-        // 持久化到磁盘（异步避免阻塞 UI）
-        _ = Task.Run(() =>
+        // 持久化到磁盘（P10 弱机优化：批量缓冲攒 PersistBatchSize 条一次落盘，
+        // 避免每 2s 唤醒 HDD；异步执行不阻塞 UI 线程）
+        _pendingPersist.Add(metrics);
+        _persistPendingCount++;
+        if (_persistPendingCount >= PersistBatchSize)
         {
-            try { _persistence.Append(metrics.Timestamp, metrics.CpuUsagePercent, metrics.MemoryUsagePercent); }
-            catch (Exception ex) { Log.Error(ex, "持久化监控数据失败"); }
-        });
+            _persistPendingCount = 0;
+            var batch = _pendingPersist.ToList();
+            _pendingPersist.Clear();
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    foreach (var m in batch)
+                        _persistence.Append(m.Timestamp, m.CpuUsagePercent, m.MemoryUsagePercent);
+                }
+                catch (Exception ex) { Log.Error(ex, "持久化监控数据失败"); }
+            });
+        }
 
         // 写入环形缓冲区槽位并推进 tail 指针（O(1)，无数组复制）
         _ringBuffer[_ringTail] = metrics;

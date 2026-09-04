@@ -555,7 +555,10 @@ export function SystemMonitorPage(): JSX.Element {
           data={history}
           height={280}
           label="使用率趋势"
-          gapThresholdSec={30}
+          // P10 弱机优化契约对齐：后端历史已降采样为按分钟分桶(相邻点间隔 60s)，
+          // 断线阈值必须 > 60s 才能保持连续曲线；真实停机缺口(分钟级以上)仍会正确断线。
+          // 180s 阈值下连续数据不碎、停机缺口照常断开。
+          gapThresholdSec={180}
         />
       </div>
 

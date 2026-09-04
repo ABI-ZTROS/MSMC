@@ -33,6 +33,11 @@ public class SchedulerStorageService : ISchedulerStorageService
 {
     private readonly ILogger<SchedulerStorageService> _logger;
     private readonly string _storagePath;
+    /// <summary>保存写门闸：SchedulerService 在任务执行 finally 中可能并发调 SaveAll/SaveAllAsync，
+    /// 多个线程同时写同一 .tmp 路径会互相覆盖/抛异常（因果链竞态）。
+    /// 用 SemaphoreSlim 而非 Monitor —— 因为 SaveAllAsync 在临界区内 await，Monitor 跨 await 会在
+    /// 非持有线程上 Exit 抛 SynchronizationLockException（执行链 bug）。SemaphoreSlim 是异步安全的。</summary>
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true,
@@ -104,17 +109,26 @@ public class SchedulerStorageService : ISchedulerStorageService
                 task.LastStatus = TaskStatus.Idle;
             }
 
-            var json = JsonSerializer.Serialize(taskList, _jsonOptions);
-            var tempPath = _storagePath + ".tmp";
-            
-            File.WriteAllText(tempPath, json);
-            
-            if (File.Exists(_storagePath))
+            // 串行化写入，防止并发 SaveAll 竞争同一 .tmp 路径
+            _saveGate.Wait();
+            try
             {
-                File.Delete(_storagePath);
+                var json = JsonSerializer.Serialize(taskList, _jsonOptions);
+                var tempPath = _storagePath + ".tmp";
+
+                File.WriteAllText(tempPath, json);
+
+                if (File.Exists(_storagePath))
+                {
+                    File.Delete(_storagePath);
+                }
+                File.Move(tempPath, _storagePath);
             }
-            File.Move(tempPath, _storagePath);
-            
+            finally
+            {
+                _saveGate.Release();
+            }
+
             _logger.LogInformation("[SchedStorage] Saved successfully");
         }
         catch (Exception ex)
@@ -147,17 +161,28 @@ public class SchedulerStorageService : ISchedulerStorageService
                 task.LastStatus = TaskStatus.Idle;
             }
 
-            var json = JsonSerializer.Serialize(taskList, _jsonOptions);
-            var tempPath = _storagePath + ".tmp";
-            
-            await File.WriteAllTextAsync(tempPath, json, ct);
-            
-            if (File.Exists(_storagePath))
+            // 串行化写入，防止并发 SaveAllAsync 竞争同一 .tmp 路径
+            // 注意：此处 await 必须在 SemaphoreSlim 内（不能用 Monitor/lock —— 跨 await 会抛
+            // SynchronizationLockException）。SemaphoreSlim.WaitAsync 可安全跨异步等待。
+            await _saveGate.WaitAsync(ct);
+            try
             {
-                File.Delete(_storagePath);
+                var json = JsonSerializer.Serialize(taskList, _jsonOptions);
+                var tempPath = _storagePath + ".tmp";
+
+                await File.WriteAllTextAsync(tempPath, json, ct);
+
+                if (File.Exists(_storagePath))
+                {
+                    File.Delete(_storagePath);
+                }
+                File.Move(tempPath, _storagePath);
             }
-            File.Move(tempPath, _storagePath);
-            
+            finally
+            {
+                _saveGate.Release();
+            }
+
             _logger.LogInformation("[SchedStorage] Async saved successfully");
         }
         catch (OperationCanceledException)

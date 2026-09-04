@@ -35,8 +35,9 @@ public class ProcessManagerService : IProcessManagerService
     /// <summary>进程列表缓存（使用单调时钟隔离 NTP 污染）</summary>
     private (long TickMs, List<ProcessAffinityInfo> Data)? _affinityCache;
 
-    /// <summary>缓存 TTL（毫秒）</summary>
-    private const int CacheTtlMs = 2000;
+    /// <summary>缓存 TTL（毫秒）。P10 弱机优化：前端进程页按 5s 轮询，
+    /// 8s 缓存可让约 3/5 的轮询命中缓存，全进程枚举频率下降 ~2.5 倍（配合 handler 移出 UI 线程）。</summary>
+    private const int CacheTtlMs = 8000;
 
     /// <summary>单次返回的最大进程数（避免前端渲染过载）</summary>
     private const int MaxProcessCount = 200;
