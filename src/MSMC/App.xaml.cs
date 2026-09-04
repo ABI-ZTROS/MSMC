@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------------
 // 文件名: App.xaml.cs
 // 命名空间: io.NET.ZTR_OS
 // 功能描述: WPF 应用程序入口，负责 DI 容器构建、服务注册、全局异常处理与启动流程编排
@@ -37,7 +37,9 @@ using io.NET.ZTR_OS.Features.Startup.Views;
 using io.NET.ZTR_OS.Features.UserAgreement.Views;
 using io.NET.ZTR_OS.Features.Update.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Extensions.Logging;
 
 namespace io.NET.ZTR_OS;
 
@@ -577,7 +579,10 @@ public partial class App : Application
                     // ServiceCollection 必须在辅助方法之前声明，否则 CS0841
                     var services = new ServiceCollection();
 
-                    // 注册 Serilog ILogger 单例 — 所有服务构造函数注入 ILogger 都走这里
+                    // ── 关键桥接：AddLogging() + AddSerilog() 让 Microsoft.Extensions.Logging.ILogger<T> 能被 DI 解析 ──
+                    // 没有这行，所有注入 ILogger<T> 的服务（SchedulerService、NotificationConfigService 等）会在 DI 容器构建时直接炸掉
+                    services.AddLogging(logging => logging.AddSerilog(dispose: true));
+                    // 注册 Serilog ILogger 单例 — 直接使用 Serilog.Log.Logger 的代码走这里
                     services.AddSingleton<Serilog.ILogger>(Serilog.Log.Logger);
 
                     // 注册单个服务并打印加载结果（成功/失败）
@@ -727,7 +732,11 @@ public partial class App : Application
                     // ════════════ 通知模块 (P0+P1) ════════════
                     await Step(53, "正在注册通知模块...", "[NOTIFY] === 通知模块 (P0+P1) ===");
                     await Register<IDiscordWebhookSender, DiscordWebhookSender>(53, "[NOTIFY]", "DiscordWebhookSender", "Discord Webhook 发送（指数退避+429）");
-                    await RegisterInstance<NotificationChannelConfig>(53, "[NOTIFY]", "NotificationChannelConfig", "通知通道配置", _ => new NotificationChannelConfig());
+                    await RegisterInstance<NotificationChannelConfig>(53, "[NOTIFY]", "NotificationChannelConfig", "通知通道配置（从持久化加载）", sp =>
+                    {
+                        var svc = sp.GetRequiredService<INotificationConfigService>();
+                        return svc.Load();  // 首次启动无持久化文件时返回 new NotificationChannelConfig()（WindowsToast.Enabled=true 默认可用）
+                    });
                     await RegisterInstance<INotificationConfigService>(53, "[NOTIFY]", "NotificationConfigService", "通知配置持久化", sp =>
                     {
                         var configPath = Path.Combine(

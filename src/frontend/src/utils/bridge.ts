@@ -53,6 +53,7 @@ import type {
   StartupMode,
   StartupConfig,
   DiffReport,
+  NotificationChannelConfig,
 } from '@/types/bridge'
 
 declare global {
@@ -989,6 +990,16 @@ export function dispatchNotification(evt: NotificationEvent): Promise<Notificati
 
 export function testNotificationChannel(message?: string): Promise<NotificationDispatchResult> {
   return bridge.invoke<NotificationDispatchResult>('notify.test', message)
+}
+
+/** 读取通知通道配置（从持久化 JSON 文件加载） */
+export function getNotificationConfig(): Promise<{ success: boolean; config?: string; error?: string }> {
+  return bridge.invoke<{ success: boolean; config?: string; error?: string }>('notify.getConfig')
+}
+
+/** 保存通知通道配置（写入持久化 JSON 文件） */
+export function saveNotificationConfig(cfg: NotificationChannelConfig): Promise<{ success: boolean; error?: string }> {
+  return bridge.invoke<{ success: boolean; error?: string }>('notify.saveConfig', cfg)
 }
 
 export function getScheduledTasks(): Promise<ScheduledTask[]> {

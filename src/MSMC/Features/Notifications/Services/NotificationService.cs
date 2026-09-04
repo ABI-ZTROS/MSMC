@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------------
 // 文件名: NotificationService.cs
 // 命名空间: io.NET.ZTR_OS.Features.Notifications.Services
 // 功能描述: 通知服务核心 —— 事件路由 + 通道调度
@@ -21,7 +21,7 @@ public class NotificationService : INotificationService
     private readonly IToastNotificationService _toastService;
     private readonly EmailNotificationService _emailService;
     private readonly GenericWebhookSender _genericWebhookSender;
-    private readonly NotificationChannelConfig _config;
+    private readonly INotificationConfigService _configSvc;
 
     public NotificationService(
         ILogger<NotificationService> logger,
@@ -29,14 +29,14 @@ public class NotificationService : INotificationService
         IToastNotificationService toastService,
         EmailNotificationService emailService,
         GenericWebhookSender genericWebhookSender,
-        NotificationChannelConfig config)
+        INotificationConfigService configSvc)
     {
         _logger = logger;
         _discordSender = discordSender;
         _toastService = toastService;
         _emailService = emailService;
         _genericWebhookSender = genericWebhookSender;
-        _config = config;
+        _configSvc = configSvc;
     }
 
     /// <summary>
@@ -47,18 +47,21 @@ public class NotificationService : INotificationService
         _logger.LogInformation("[Notify] Dispatching event {EventType} (Id={EventId}) from {Source}",
             evt.EventType, evt.Id, evt.SourceModule);
 
+        // 每次调度时从持久化服务重新加载配置 — 前端修改开关后立即生效
+        var cfg = _configSvc.Load();
+
         var results = new Dictionary<NotificationChannelType, bool>();
 
         // Discord 通道
-        if (_config.Discord.Enabled)
+        if (cfg.Discord.Enabled)
         {
             bool shouldSend = evt.EventType switch
             {
-                NotificationEventType.ServerCrashed => _config.Discord.EnableOnCrash,
-                NotificationEventType.ServerStarted or NotificationEventType.ServerStopped => _config.Discord.EnableOnStartStop,
-                NotificationEventType.BackupCompleted or NotificationEventType.BackupFailed => _config.Discord.EnableOnBackup,
-                NotificationEventType.PluginInstalled or NotificationEventType.PluginUpdateAvailable => _config.Discord.EnableOnPlugin,
-                NotificationEventType.ScheduleCompleted => _config.Discord.EnableOnSchedule,
+                NotificationEventType.ServerCrashed => cfg.Discord.EnableOnCrash,
+                NotificationEventType.ServerStarted or NotificationEventType.ServerStopped => cfg.Discord.EnableOnStartStop,
+                NotificationEventType.BackupCompleted or NotificationEventType.BackupFailed => cfg.Discord.EnableOnBackup,
+                NotificationEventType.PluginInstalled or NotificationEventType.PluginUpdateAvailable => cfg.Discord.EnableOnPlugin,
+                NotificationEventType.ScheduleCompleted => cfg.Discord.EnableOnSchedule,
                 _ => true
             };
 
@@ -67,7 +70,7 @@ public class NotificationService : INotificationService
                 try
                 {
                     var embed = BuildEmbed(evt);
-                    var success = await _discordSender.SendEmbedAsync(_config.Discord.WebhookUrl, embed, ct);
+                    var success = await _discordSender.SendEmbedAsync(cfg.Discord.WebhookUrl, embed, ct);
                     results[NotificationChannelType.DiscordWebhook] = success;
                 }
                 catch (Exception ex)
@@ -79,7 +82,7 @@ public class NotificationService : INotificationService
         }
 
         // Generic Webhook 通道
-        if (_config.GenericWebhook.Enabled)
+        if (cfg.GenericWebhook.Enabled)
         {
             try
             {
@@ -94,7 +97,7 @@ public class NotificationService : INotificationService
         }
 
         // Windows Toast 通道
-        if (_config.WindowsToast.Enabled)
+        if (cfg.WindowsToast.Enabled)
         {
             try
             {
@@ -127,7 +130,7 @@ public class NotificationService : INotificationService
         }
 
         // Email 通道
-        if (_config.Email.Enabled)
+        if (cfg.Email.Enabled)
         {
             try
             {

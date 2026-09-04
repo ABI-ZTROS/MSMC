@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------------
 // 文件名: MainWindow.xaml.cs
 // 命名空间: io.NET.ZTR_OS.Features.Shared.Views
 // 功能描述: 主窗口代码隐藏类 - WebView2 重构版
@@ -3953,6 +3953,54 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 Log.Error(ex, "notify.test 异常");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // 📨 Notification Config Bridge Handlers（读写通知通道配置）
+        // ═══════════════════════════════════════════════════════════════
+
+        _bridgeService.RegisterRequestHandler("notify.getConfig", _ =>
+        {
+            try
+            {
+                var cfgSvc = App.Services.GetService<INotificationConfigService>();
+                if (cfgSvc == null)
+                    return new { success = false, error = "通知配置服务不可用" };
+
+                var cfg = cfgSvc.Load();
+                var json = JsonSerializer.Serialize(cfg, BridgeJsonOptions);
+                return new { success = true, config = json };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "notify.getConfig 异常");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        _bridgeService.RegisterRequestHandler("notify.saveConfig", async payload =>
+        {
+            try
+            {
+                var cfgSvc = App.Services.GetService<INotificationConfigService>();
+                if (cfgSvc == null)
+                    return new { success = false, error = "通知配置服务不可用" };
+
+                string json = payload is string s ? s
+                    : payload is JsonElement el ? el.GetRawText()
+                    : "{}";
+                var cfg = JsonSerializer.Deserialize<NotificationChannelConfig>(json, BridgeJsonOptions);
+                if (cfg == null)
+                    return new { success = false, error = "无效的配置数据" };
+
+                await cfgSvc.SaveAsync(cfg);
+                return new { success = true };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "notify.saveConfig 异常");
                 return new { success = false, error = ex.Message };
             }
         });

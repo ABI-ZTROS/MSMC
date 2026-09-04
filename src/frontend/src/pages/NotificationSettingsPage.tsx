@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import {
   FaBell,
   FaDiscord,
@@ -7,32 +7,44 @@ import {
   FaServer,
   FaLock,
 } from 'react-icons/fa6'
-import { testNotificationChannel, dispatchNotification } from '@/utils/bridge'
+import { testNotificationChannel, dispatchNotification, getNotificationConfig, saveNotificationConfig } from '@/utils/bridge'
 import type {
   NotificationEvent,
   NotificationEventType,
   NotificationDispatchResult,
+  NotificationChannelConfig,
 } from '@/types/bridge'
 
-// 通道定义 —— 诚实化 UI：目前仅展示通道名称与测试能力，配置入口尚未开放
-const channels = [
+interface ChannelDef {
+  key: 'windows' | 'discord' | 'email' | 'webhook'
+  name: string
+  desc: string
+  icon: typeof FaWindows
+  iconColor: string
+  /** 是否支持前端直接开关：Windows Toast 默认启用且零配置 */
+  hasToggle: boolean
+  /** 其他通道是否需后端配置（Webhook URL / SMTP / Discord URL） */
+  needsCredentials: boolean
+}
+
+const CHANNEL_DEFS: ChannelDef[] = [
+  {
+    key: 'windows',
+    name: 'Windows 通知',
+    desc: '系统原生 Toast（Win10/Win11）',
+    icon: FaWindows,
+    iconColor: '#0078D4',
+    hasToggle: true,
+    needsCredentials: false,
+  },
   {
     key: 'discord',
     name: 'Discord Webhook',
     desc: '支持消息嵌入和格式化',
     icon: FaDiscord,
     iconColor: '#5865F2',
-    status: 'comingSoon',
-    statusText: '配置入口即将开放',
-  },
-  {
-    key: 'windows',
-    name: 'Windows 通知',
-    desc: '系统托盘弹出提示',
-    icon: FaWindows,
-    iconColor: '#0078D4',
-    status: 'comingSoon',
-    statusText: '配置入口即将开放',
+    hasToggle: false,
+    needsCredentials: true,
   },
   {
     key: 'email',
@@ -40,8 +52,8 @@ const channels = [
     desc: 'SMTP 邮件推送',
     icon: FaEnvelope,
     iconColor: '#EA4335',
-    status: 'comingSoon',
-    statusText: '配置入口即将开放',
+    hasToggle: false,
+    needsCredentials: true,
   },
   {
     key: 'webhook',
@@ -49,15 +61,56 @@ const channels = [
     desc: '自定义 HTTP 端点',
     icon: FaServer,
     iconColor: 'var(--md-accent-text)',
-    status: 'comingSoon',
-    statusText: '配置入口即将开放',
+    hasToggle: false,
+    needsCredentials: true,
   },
-] as const
+]
 
 export function NotificationSettingsPage(): JSX.Element {
   const [testing, setTesting] = useState(false)
   const [lastResult, setLastResult] = useState<NotificationDispatchResult | null>(null)
   const [statusMsg, setStatusMsg] = useState('')
+  const [config, setConfig] = useState<NotificationChannelConfig | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  // 页面加载时读通知配置（一次性）
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const resp = await getNotificationConfig()
+        if (resp.success && resp.config) {
+          const parsed = JSON.parse(resp.config) as NotificationChannelConfig
+          setConfig(parsed)
+        } else {
+          // 后端无配置时用默认值（WindowsToast.Enabled = true）
+          setConfig({ windowsToast: { enabled: true }, retryMaxAttempts: 3, retryBaseDelayMs: 1000 })
+        }
+      } catch {
+        setConfig({ windowsToast: { enabled: true }, retryMaxAttempts: 3, retryBaseDelayMs: 1000 })
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [])
+
+  const handleToggleWindows = async (enabled: boolean) => {
+    if (!config) return
+    const next: NotificationChannelConfig = {
+      ...config,
+      windowsToast: { enabled },
+    }
+    setConfig(next)
+    try {
+      const resp = await saveNotificationConfig(next)
+      if (!resp.success) {
+        setStatusMsg(`❌ 保存失败：${resp.error ?? '未知错误'}`)
+      } else {
+        setStatusMsg(enabled ? '✅ Windows 通知已开启' : '✅ Windows 通知已关闭')
+      }
+    } catch (e) {
+      setStatusMsg(`❌ 保存失败：${(e as Error).message}`)
+    }
+  }
 
   const eventTypes: { value: NotificationEventType; label: string; color: string }[] = [
     { value: 'ServerCrashed', label: '服务器崩溃', color: '#e74c3c' },
@@ -130,7 +183,7 @@ export function NotificationSettingsPage(): JSX.Element {
               color: 'var(--md-body-light)',
             }}
           >
-            配置入口即将开放
+            Windows 通知已开放开关；其他通道需后端配置凭证
           </span>
         </div>
         <p style={{ fontSize: 12, color: 'var(--md-body-light)', marginBottom: 14, lineHeight: 1.5 }}>
@@ -138,8 +191,18 @@ export function NotificationSettingsPage(): JSX.Element {
           当前可通过下方「通知测试」验证已配置的通道是否正常工作。
         </p>
         <div className="grid grid-cols-2 gap-3">
-          {channels.map((ch) => {
+          {CHANNEL_DEFS.map((ch) => {
             const Icon = ch.icon
+            const windowsEnabled = config?.windowsToast?.enabled ?? true
+            const discordEnabled = config?.discord?.enabled ?? false
+            const emailEnabled = config?.email?.enabled ?? false
+            const webhookEnabled = config?.genericWebhook?.enabled ?? false
+            const channelEnabled =
+              ch.key === 'windows' ? windowsEnabled :
+              ch.key === 'discord' ? discordEnabled :
+              ch.key === 'email' ? emailEnabled :
+              ch.key === 'webhook' ? webhookEnabled : false
+
             return (
               <div
                 key={ch.key}
@@ -149,8 +212,7 @@ export function NotificationSettingsPage(): JSX.Element {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
-                  opacity: 0.75,
-                  cursor: 'default',
+                  opacity: ch.needsCredentials && !channelEnabled ? 0.75 : 1,
                 }}
               >
                 <div
@@ -165,7 +227,7 @@ export function NotificationSettingsPage(): JSX.Element {
                     flexShrink: 0,
                   }}
                 >
-                  <Icon size={20} style={{ color: ch.iconColor, opacity: 0.8 }} />
+                  <Icon size={20} style={{ color: ch.iconColor }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--md-body)' }}>
@@ -175,23 +237,48 @@ export function NotificationSettingsPage(): JSX.Element {
                     {ch.desc}
                   </div>
                 </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    fontSize: 10,
-                    color: 'var(--md-body-lighter)',
-                    padding: '3px 8px',
-                    borderRadius: 10,
-                    background: 'var(--md-subtle-background)',
-                    flexShrink: 0,
-                  }}
-                  title="配置入口即将开放"
-                >
-                  <FaLock size={10} />
-                  <span>待配置</span>
-                </div>
+                {ch.hasToggle ? (
+                  // ✅ Windows Toast：前端直接开关（即时持久化 + 即时生效）
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      color: channelEnabled ? '#22C55E' : 'var(--md-body-lighter)',
+                    }}
+                    title={loading ? '加载中...' : (channelEnabled ? '点击关闭' : '点击开启')}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={channelEnabled}
+                      disabled={loading}
+                      onChange={(e) => handleToggleWindows(e.target.checked)}
+                      style={{ width: 16, height: 16, cursor: 'pointer' }}
+                    />
+                    <span>{channelEnabled ? '启用' : '关闭'}</span>
+                  </label>
+                ) : (
+                  // 🔒 其他通道：需要凭证，UI 诚实展示"需后端配置"
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 10,
+                      color: 'var(--md-body-lighter)',
+                      padding: '3px 8px',
+                      borderRadius: 10,
+                      background: 'var(--md-subtle-background)',
+                      flexShrink: 0,
+                    }}
+                    title="需后端配置 Webhook URL / SMTP 等凭证"
+                  >
+                    <FaLock size={10} />
+                    <span>{channelEnabled ? '已启用(有凭证)' : '需配置'}</span>
+                  </div>
+                )}
               </div>
             )
           })}
