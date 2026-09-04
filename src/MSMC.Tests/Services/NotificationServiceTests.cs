@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------------
 // 文件名: NotificationServiceTests.cs
 // 项目: MSMC.Tests
 // 功能描述: 通知服务单元测试 —— 验证因果链（事件触发）与返回链（日志记录）
@@ -56,13 +56,17 @@ public class NotificationServiceTests
         var mockGenericLogger = new Mock<ILogger<GenericWebhookSender>>();
         var genericWebhookSender = new GenericWebhookSender(mockGenericLogger.Object, config);
 
+        // Mock INotificationConfigService — NotificationService 每次 DispatchAsync 都调用 Load()
+        var mockConfigSvc = new Mock<INotificationConfigService>();
+        mockConfigSvc.Setup(s => s.Load()).Returns(config);
+
         return new NotificationService(
             logger.Object,
             discordSender.Object,
             mockToastService.Object,
             emailService,
             genericWebhookSender,
-            config);
+            mockConfigSvc.Object);
     }
 
     [Fact]
