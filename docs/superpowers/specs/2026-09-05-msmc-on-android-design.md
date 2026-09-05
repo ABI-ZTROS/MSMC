@@ -7,9 +7,13 @@
 **核心决策（用户逐项确认）**
 - 部署形态：独立 Android App（APK）
 - 技术栈：.NET for Android（`net9.0-android`）单体 —— 最大复用 `MSMC.Shared` 与 MSMC-on-Linux 的 `BridgeHost`/action 注册表
-- Java runtime：强制 root；内置 Termux（捆绑 openjdk-21 aarch64，root 下解压即用）
+- Java runtime：强制 root；**内置完整 Termux 环境**（shell/bash/wget/ssh 全量包），root 解压即用
+- **内置 JDK：17 / 21 / 25 / 26 四版本全捆绑**（覆盖全 MC 版本）
+- **CI 双 flavor**：`internal`（完整 Termux + 4 JDK 捆绑，离线开箱）/ `external`（完整 Termux、不含 JDK 捆绑），各自产出 APK
+- **选 JDK：自动识别 MC 版本映射 + 每实例可手动覆盖**（1.17–1.20.4→17，≥1.20.5→21+）
+- **非内置版 JDK 来源：检测 Termux 已有 JDK 优先 + 引导下载兜底**（下载到 app 私有目录，源为 Termux 仓库 aarch64 .deb）
 - root 用途：全部能力（性能调优 / 网络转发 / 深度系统信息 / 常驻自启）
-- 服务器类型：Java 版（Paper/vanish/Spigot 生态），支持多开
+- 服务器类型：Java 版（Paper/vanilla/Spigot 生态），支持多开
 - 浏览器形态：`ACTION_VIEW` 调起系统默认浏览器（不内嵌 WebView，不注入 JS 桥）
 - root 调用：topjohnwu **libsu**（core + nio + busybox，版本 6.0.0）—— 通过 .NET for Android Java Bindings 绑定为 C# API，不搓 su 轮子
 - 仓库：新建独立公开仓库 `ABI-ZTROS/MSMC-on-Android`，一次导入 `MSMC.Shared`（63 cs）+ `frontend` 全量，独立演进
@@ -44,10 +48,24 @@
 组件分解（隔离 + 单职责 + 明界面）：
 1. **WebPanel**：监听 0.0.0.0:8080（可配置），复用 MSMC-on-Linux `BridgeHost` 同源 HTTP 思路（静态托管 + `/api/invoke` + `/api/poll` + `/health`）；静态不鉴权、API 携带 token 鉴权；未构建 dist 时显示占位页。
 2. **RootService**：封装 libsu（Bindings）——`Shell.Su(..).Exec()`、`Shell.IsAppGrantedRoot()`、`SuFile` IO；无 root 时 App 降级为引导页（说明 + 跳转 KernelSU Manager 授权）。
-3. **TermuxRuntime**：openjdk-21 aarch64 捆绑进 APK（约 100–150MB，离线可用）；root 解压到 `/data/data/<pkg>/termux`，首次校验 `java -version`。
-4. **ServerSupervisor**：多开——每实例独立目录/内存上限/CPU 亲和性/启动参数；`setsid` 进程组启动防杀；日志落盘；进程退出监测 + 可选崩溃自动重启 N 次。
+3. **TermuxRuntime（完整 Termux）**：捆绑 Termux 完整 bootstrap（shell/bash/wget/ssh 全量包）+ 内置版额外捆绑 JDK 17/21/25/26；root 解压到 `/data/data/<pkg>/termux`；首次校验 `java -version`。
+4. **ServerSupervisor**：多开——每实例独立目录/内存上限/CPU 亲和性/启动参数；`setsid` 进程组启动防杀；日志落盘；进程退出监测 + 可选崩溃自动重启 N 次；**JDK 自动识别（MC 版本映射）+ 手动覆盖**。
 5. **PowerManager**：root 下 taskset 锁核、renice、OOM 保护（oom_score_adj）。
 6. **NetworkManager**：root 下 iptables/nftables 端口转发与防火墙；监听端口占用查询（/proc/net）。
+
+## 1.5 内置版 / 非内置版（CI 双 flavor）
+
+同一代码库、Android Gradle 双 flavor，各自的 JDK 供给链路：
+
+| | internal（内置版） | external（非内置版） |
+|---|---|---|
+| Termux 运行时 | 完整捆绑 | 完整捆绑 |
+| JDK 17/21/25/26 | 全部捆绑（离线开箱） | 不捆绑 |
+| JDK 来源 | 内置（Termux 仓库 aarch64 .deb 解包，CI 时打进 assets） | ① 检测 Termux 已有 JDK ② 引导从 Termux 仓库下载到 app 私有目录 |
+| APK 体积 | 大（约 300–400MB） | 小（约 40–80MB） |
+| 适用 | 离线机 / 开箱即用 | 体积敏感 / 已有 JDK / 允许首启联网 |
+
+两者共享全部功能代码，差异仅限 JDK 捆绑与供给链路。
 
 ## 2. 功能面与网页 API
 
@@ -80,17 +98,17 @@
 ## 4. 测试
 
 - 纯逻辑（Scheduler/Market/Config/Persistence）：单元测试（CI 跑）
-- root 层：真机冒烟清单（su 探测/锁核/iptables/java 启动），CI 仅编译级验证
+- root 层：真机冒烟清单（su 探测/锁核/iptables/4×JDK java -version/开服），CI 仅编译级验证
 - 网页 API：MSMC-on-Linux 式 smoke（HTTP 服务器 / invoke / poll / token 鉴权），CI 无 root 可跑协议层
-- 构建：GitHub Actions 出 debug+release APK（arm64），附测试报告
+- 构建：GitHub Actions 出 **internal + external 双 flavor** 的 debug+release APK（arm64），附测试报告
 
 ## 5. 里程碑 M0→M4
 
-- **M0 骨架**：新仓库 + 复制 MSMC.Shared/frontend + MSMC.Android 最小 APK（无 root 可装，显示引导页）
-- **M1 root + TermuxRuntime**：libsu Bindings + 授权流 + openjdk 解压校验 + `java -version` 通过
-- **M2 核心开服**：ServerSupervisor 多开 + 网页面板壳（登录/仪表盘/启停）+ 开服自动开浏览器端到端
+- **M0 骨架**：新仓库 + 复制 MSMC.Shared/frontend + MSMC.Android 最小 APK（双 flavor 占位：无 root 可装，显示引导页）
+- **M1 root + TermuxRuntime**：libsu Bindings + 授权流 + 完整 Termux 解压校验 + 4×JDK `java -version` 通过（internal 捆绑 / external 检测+下载）
+- **M2 核心开服**：ServerSupervisor 多开（含 JDK 自动识别+手动覆盖）+ 网页面板壳（登录/仪表盘/启停）+ 开服自动开浏览器端到端
 - **M3 深化**：监控/性能/网络/调度/通知/市场/配置 全接通
-- **M4 打磨**：开机自启、保活、崩溃重启、真机清单全过、APK 发布产物
+- **M4 打磨**：开机自启、保活、崩溃重启、真机清单全过、internal/external APK 发布产物
 
 ## 6. 风险与取舍
 
