@@ -4044,10 +4044,23 @@ public partial class MainWindow : Window
             }
             else if (payload is JsonElement el)
             {
-                projectId = el.TryGetProperty("projectId", out var pid) ? pid.GetString() ?? "" : "";
-                if (string.IsNullOrEmpty(projectId))
+                // P5 契约守卫: TryGetProperty 在 ValueKind != Object 时会抛 InvalidOperationException
+                // (System.Text.Json.ThrowHelper.ThrowJsonElementWrongTypeException)
+                // 必须先检查 ValueKind 再决定用 object 还是 string 方式提取
+                if (el.ValueKind == JsonValueKind.Object)
+                {
+                    projectId = el.TryGetProperty("projectId", out var pid) ? pid.GetString() ?? "" : "";
+                    sourceStr = el.TryGetProperty("source", out var src) ? src.GetString() ?? "Modrinth" : "Modrinth";
+                }
+                else if (el.ValueKind == JsonValueKind.String)
+                {
+                    // 前端只传 projectId string，不传 source
                     projectId = el.GetString() ?? "";
-                sourceStr = el.TryGetProperty("source", out var src) ? src.GetString() ?? "Modrinth" : "Modrinth";
+                }
+                else
+                {
+                    throw new ArgumentException($"无效 payload 类型: {el.ValueKind}，期望 Object 或 String");
+                }
             }
             else
             {
