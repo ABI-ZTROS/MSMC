@@ -162,7 +162,7 @@ public class ToastNotificationService : IToastNotificationService
     public const string DisplayName = "MSMC";
 
     // PKEY_AppUserModel_ID: {9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3}, PID=5
-    private static readonly PropertyKey PKEY_AppUserModel_ID =
+    private static PropertyKey PKEY_AppUserModel_ID =
         new("{9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3}", 5);
 
     [DllImport("shell32.dll", SetLastError = true)]
@@ -174,10 +174,10 @@ public class ToastNotificationService : IToastNotificationService
         ref Guid riid, out IntPtr ppv);
 
     // CLSID_ShellLink = 00021401-0000-0000-C000-000000000046
-    private static readonly Guid CLSID_ShellLink = new("00021401-0000-0000-C000-000000000046");
-    private static readonly Guid IID_IShellLinkW = new("000214F9-0000-0000-C000-000000000046");
-    private static readonly Guid IID_IPropertyStore = new("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99");
-    private static readonly Guid IID_IPersistFile = new("0000010B-0000-0000-C000-000000000046");
+    private static Guid CLSID_ShellLink = new("00021401-0000-0000-C000-000000000046");
+    private static Guid IID_IShellLinkW = new("000214F9-0000-0000-C000-000000000046");
+    private static Guid IID_IPropertyStore = new("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99");
+    private static Guid IID_IPersistFile = new("0000010B-0000-0000-C000-000000000046");
 
     private Dispatcher? _uiDispatcher;
     private bool _initialized;
