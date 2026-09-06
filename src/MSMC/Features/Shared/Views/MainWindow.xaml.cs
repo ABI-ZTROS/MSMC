@@ -150,6 +150,53 @@ public partial class MainWindow : Window
                 Log.Error(ex, "[UI-ERR] [ERR] 前端加载或 API 注册失败");
             }
 
+            // ═══════════════════════════════════════════════════════════════
+            // 🔔 Toast 通知服务初始化（Win10/11 AUMID + Shortcut + 激活回调）
+            // 在 WebView2 ready 后启动：此时 Dispatcher 稳定、DI 全 ready、UI 已渲染
+            // ═══════════════════════════════════════════════════════════════
+            _ = Dispatcher.BeginInvoke(async () =>
+            {
+                try
+                {
+                    var toastSvc = App.Services.GetService<IToastNotificationService>();
+                    if (toastSvc != null)
+                    {
+                        // 0) 绑定 UI Dispatcher（OnActivated 回调封送用）
+                        toastSvc.SetUiDispatcher(Dispatcher);
+
+                        // 1) 初始化（Toolkit 自动创建 Start Menu Shortcut + 注册 AUMID）
+                        toastSvc.Initialize();
+
+                        // 2) 注册激活回调（点击/按钮 → BringIntoView + 可选导航）
+                        toastSvc.OnToastActivated += async args =>
+                        {
+                            Log.Information("[TOAST] 激活回调: {Args}，BringIntoView 主窗口", args);
+                            if (WindowState == WindowState.Minimized)
+                                WindowState = WindowState.Normal;
+                            Activate();
+                            BringIntoView();
+                            Topmost = true;
+                            await Task.Delay(200);
+                            Topmost = false;
+
+                            // 可选: 解析 args 里的参数（如 "action=open"）并导航
+                            // 当前只做 BringIntoView，后续按需扩展导航
+                        };
+
+                        // 3) 发送一条启动验证通知（后台 2 秒后，避免与 UI 抢）
+                        await Task.Delay(2000);
+                        toastSvc.ShowInfo(
+                            "MSMC 已就绪",
+                            "Win10/11 Toast 通知服务正常，点击通知按钮可激活主窗口");
+                        Log.Information("[UI-TOAST] Toast 启动验证通知已发送");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "[UI-TOAST] Toast 初始化失败（不阻塞主流程）");
+                }
+            }, DispatcherPriority.ApplicationIdle);
+
             // WebView2 就绪后，延迟启动后台服务（避免与前端加载竞争 CPU）
             _ = Dispatcher.BeginInvoke(() =>
             {

@@ -1,197 +1,198 @@
-﻿// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // 文件名: ToastNotificationService.cs
 // 命名空间: io.NET.ZTR_OS.Features.Settings.Services
-// 功能描述: 提供 Windows Toast 通知服务，支持多种类型的系统通知推送
-// 依赖组件: Microsoft.Toolkit.Uwp.Notifications, Serilog
-// 设计模式: 单例模式（DI容器注册）、策略模式（通知类型分派）
+// 功能描述: Windows Toast 通知服务 —— 完整的 Win10/11 桌面通知注册 + 发送 + 激活
+// 依赖组件: Microsoft.Toolkit.Uwp.Notifications (含 Win32 Desktop 自动注册)
+// 设计模式: 单例模式（DI容器注册）
+//   核心: ToastNotificationManagerCompat.AppUserModelId + .Show() + .OnActivated
+//   自动完成: 进程级 AUMID + 注册表 + Start Menu Shortcut + COM Activator
 // -----------------------------------------------------------------------------
 using System;
+using System.Windows.Threading;
 using Serilog;
 using Microsoft.Toolkit.Uwp.Notifications;
-using Windows.Data.Xml.Dom;
-using Windows.UI.Notifications;
 
 namespace io.NET.ZTR_OS.Features.Settings.Services;
 
 /// <summary>
 /// Toast 通知服务接口
-/// 定义各类系统通知的发送与清理契约
 /// </summary>
 public interface IToastNotificationService
 {
-    /// <summary>
-    /// 初始化通知服务
-    /// </summary>
+    /// <summary>绑定 UI Dispatcher（OnActivated 回调封送用）</summary>
+    void SetUiDispatcher(System.Windows.Threading.Dispatcher dispatcher);
+
+    /// <summary>初始化（注册 AUMID + Shortcut + 激活回调）</summary>
     void Initialize();
 
-    /// <summary>
-    /// 显示信息类通知
-    /// </summary>
-    /// <param name="title">通知标题</param>
-    /// <param name="message">通知内容</param>
-    /// <param name="onActivated">通知激活回调</param>
     void ShowInfo(string title, string message, Action<string>? onActivated = null);
-
-    /// <summary>
-    /// 显示成功类通知
-    /// </summary>
-    /// <param name="title">通知标题</param>
-    /// <param name="message">通知内容</param>
-    /// <param name="onActivated">通知激活回调</param>
     void ShowSuccess(string title, string message, Action<string>? onActivated = null);
-
-    /// <summary>
-    /// 显示警告类通知
-    /// </summary>
-    /// <param name="title">通知标题</param>
-    /// <param name="message">通知内容</param>
-    /// <param name="onActivated">通知激活回调</param>
     void ShowWarning(string title, string message, Action<string>? onActivated = null);
-
-    /// <summary>
-    /// 显示错误类通知
-    /// </summary>
-    /// <param name="title">通知标题</param>
-    /// <param name="message">通知内容</param>
-    /// <param name="onActivated">通知激活回调</param>
     void ShowError(string title, string message, Action<string>? onActivated = null);
-
-    /// <summary>
-    /// 显示自定义图标通知
-    /// </summary>
-    /// <param name="title">通知标题</param>
-    /// <param name="message">通知内容</param>
-    /// <param name="icon">图标类型标识</param>
-    /// <param name="onActivated">通知激活回调</param>
     void ShowCustom(string title, string message, string icon = "Info", Action<string>? onActivated = null);
 
-    /// <summary>
-    /// 清除所有已发送的通知
-    /// </summary>
+    /// <summary>清除所有 MSMC 专属的通知历史</summary>
     void ClearAll();
+
+    /// <summary>订阅 Toast 激活事件（点击/按钮）</summary>
+    event Action<string>? OnToastActivated;
 }
 
 /// <summary>
-/// Toast 通知服务
-/// 基于 Windows Toast 通知系统，提供多种类型的桌面通知推送能力
+/// Toast 通知服务实现
+/// 
+/// Win10/11 桌面通知三件套（Toolkit 7.x 自动完成）：
+///   1. ToastNotificationManagerCompat.AppUserModelId = AUMID
+///      → SetCurrentProcessExplicitAppUserModelID (进程级)
+///      → HKCU\Software\Classes\AppUserModelId\AUMID 注册表
+///   2. 首次 .Show() 时自动创建 Start Menu Shortcut
+///      → %APPDATA%\Microsoft\Windows\Start Menu\Programs\MSMC.lnk
+///      → PKEY_AppUserModel_ID = AUMID
+///      → 无此 Shortcut → Win10/11 会**静默丢弃**通知
+///   3. 订阅 .OnActivated 时自动注册 COM Activator
+///      → 通知按钮点击 → 启动进程 (带 -ToastActivated) → 触发 OnActivated
 /// </summary>
 public class ToastNotificationService : IToastNotificationService
 {
     /// <summary>
-    /// 应用程序标识
+    /// AppUserModelID — Win10/11 Action Center 归档用的唯一标识
+    /// 格式: Company.Application 或 Reverse-DNS
     /// </summary>
-    private const string AppId = "io.NET.ZTR_OS";
+    public const string AppUserModelId = "io.NET.ZTR_OS";
 
-    /// <summary>
-    /// 当前通知激活回调
-    /// </summary>
-    private Action<string>? _onActivated;
+    /// <summary>MSMC 显示名（通知中心里显示的应用名）</summary>
+    public const string DisplayName = "MSMC";
 
-    /// <summary>
-    /// 初始化通知服务
-    /// </summary>
-    /// <remarks>
-    /// Microsoft.Toolkit.Uwp.Notifications 的 ToastNotificationManagerCompat 不需要显式初始化，
-    /// 调用 Show() 时会自动处理。此处保留方法以满足接口契约，并记录应用标识供调试参考。
-    /// </remarks>
+    /// <summary>CLI 参数 — 用于 Toolkit 检测"是否由 Toast 激活启动"</summary>
+    private const string ToastActivatedLaunchArg = "-ToastActivated";
+
+    private Dispatcher? _uiDispatcher;
+    private bool _initialized;
+
+    public event Action<string>? OnToastActivated;
+
     public void Initialize()
     {
+        if (_initialized) return;
+
         try
         {
-            Log.Information("[TOAST] Toast 通知服务已就绪 (AppId={AppId})", AppId);
+            // 1) 设置进程级 AUMID — 所有后续 CreateToastNotifier 都会用它
+            ToastNotificationManagerCompat.AppUserModelId = AppUserModelId;
+            Log.Information("[TOAST] AUMID 设置: {AUMID}", AppUserModelId);
+
+            // 2) 订阅激活事件 — Toolkit 自动注册 COM activator (首次订阅时)
+            ToastNotificationManagerCompat.OnActivated += args =>
+            {
+                Log.Information("[TOAST] 通知被激活: {Args}", args.Argument);
+                // 封送到 UI 线程（OnActivated 在 COM 线程触发）
+                var dispatcher = _uiDispatcher ?? Dispatcher.CurrentDispatcher;
+                dispatcher.BeginInvoke(() => OnToastActivated?.Invoke(args.Argument));
+            };
+
+            // 3) 检查是否是由 Toast 激活启动的进程
+            //    Toolkit 7.x: 如果进程带 -ToastActivated 参数启动，
+            //    需要在 Initialize 里处理：注册 OnActivated 后自动触发
+            var isToastActivated = Environment.GetCommandLineArgs()
+                .Any(a => a.Equals(ToastActivatedLaunchArg, StringComparison.OrdinalIgnoreCase));
+            if (isToastActivated)
+            {
+                Log.Information("[TOAST] 检测到 -ToastActivated 启动参数，等待 OnActivated 事件...");
+                // Toolkit 会在其内部处理这个流程（见 Toolkit 源码 OnActivatedInternal）
+            }
+
+            _initialized = true;
+            Log.Information("[TOAST] Toast 通知服务初始化完成 (AUMID={AUMID}, DisplayName={Name})",
+                AppUserModelId, DisplayName);
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "[WARN] Toast 通知初始化失败，可能是 Windows 版本不支持");
+            Log.Warning(ex, "[TOAST] Initialize 部分失败 — 通知可能无法正确归档到 {Name}", DisplayName);
+            // 不抛异常：通知非核心功能，UI 不应因 Toast 注册失败而崩溃
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 设置 UI Dispatcher — 用于 OnActivated 回调封送到 UI 线程
+    /// MainWindow 构造完成后调用一次
+    /// </summary>
+    public void SetUiDispatcher(Dispatcher dispatcher)
+    {
+        _uiDispatcher = dispatcher;
+    }
+
     public void ShowInfo(string title, string message, Action<string>? onActivated = null)
-    {
-        ShowToast(title, message, "https://cdn-icons-png.flaticon.com/512/660/660806.png", onActivated);
-    }
+        => ShowToast(title, message, onActivated);
 
-    /// <inheritdoc />
     public void ShowSuccess(string title, string message, Action<string>? onActivated = null)
-    {
-        ShowToast(title, message, "https://cdn-icons-png.flaticon.com/512/3379/3379866.png", onActivated);
-    }
+        => ShowToast(title, message, onActivated);
 
-    /// <inheritdoc />
     public void ShowWarning(string title, string message, Action<string>? onActivated = null)
-    {
-        ShowToast(title, message, "https://cdn-icons-png.flaticon.com/512/1012/1012926.png", onActivated);
-    }
+        => ShowToast(title, message, onActivated);
 
-    /// <inheritdoc />
     public void ShowError(string title, string message, Action<string>? onActivated = null)
-    {
-        ShowToast(title, message, "https://cdn-icons-png.flaticon.com/512/1012/1012926.png", onActivated);
-    }
+        => ShowToast(title, message, onActivated);
 
-    /// <inheritdoc />
     public void ShowCustom(string title, string message, string icon = "Info", Action<string>? onActivated = null)
-    {
-        string iconUrl = icon switch
-        {
-            "Success" => "https://cdn-icons-png.flaticon.com/512/3379/3379866.png",
-            "Warning" => "https://cdn-icons-png.flaticon.com/512/1012/1012926.png",
-            "Error" => "https://cdn-icons-png.flaticon.com/512/1012/1012926.png",
-            _ => "https://cdn-icons-png.flaticon.com/512/660/660806.png"
-        };
-
-        ShowToast(title, message, iconUrl, onActivated);
-    }
+        => ShowToast(title, message, onActivated);
 
     /// <summary>
     /// 发送 Toast 通知
-    /// Win10/11 最佳实践: 用 WinRT 原生 ToastNotificationManager.CreateToastNotifier(AppId)
-    /// 让通知正确归档到 MSMC 应用名下（而不是散落成"未知应用"）。
-    /// Microsoft.Toolkit.Uwp.Notifications 7.x 的 .Show() 无参数 CreateToastNotifier 不支持 AppId，
-    /// 所以这里绕过 Toolkit，直接用原生 WinRT API + Toolkit 的 XML 构建器。
+    /// 
+    /// Toolkit 7.x .Show() 内部做了：
+    ///   a. 检查并创建 HKCU\Software\Classes\AppUserModelId\{AUMID} 注册表项
+    ///   b. 检查并创建 Start Menu Shortcut (.lnk) 带 PKEY_AppUserModel_ID
+    ///   c. 调用 ToastNotificationManagerCompat.CreateToastNotifier() (带 AUMID)
+    ///   d. Show(toast)
+    /// 
+    /// 我们只需要：ToastNotificationManagerCompat.AppUserModelId 在 Show() 之前设置好
     /// </summary>
-    private void ShowToast(string title, string message, string iconUrl, Action<string>? onActivated = null)
+    private void ShowToast(string title, string message, Action<string>? onActivated = null)
     {
         try
         {
-            _onActivated = onActivated;
+            if (!_initialized)
+            {
+                Log.Warning("[TOAST] 服务未初始化，先调 Initialize()");
+                Initialize();
+            }
 
-            // 用 Toolkit 的 ToastContentBuilder 构建 XML，用原生 WinRT API 发送（带 AppId 归档）
             var builder = new ToastContentBuilder()
                 .AddText(title)
                 .AddText(message)
+                // Toast 头部显示 "MSMC" — Toolkit 用 AUMID + 注册表 DisplayName
+                // 不硬编码 flaticon 网络图标（离线变成红叉；Win11 自动用应用图标）
                 .AddButton(new ToastButton()
                     .SetContent("打开 MSMC")
                     .AddArgument("action", "open"));
 
-            var toastContent = builder.GetToastContent();
-            var toastXml = toastContent.GetXml();  // Toolkit 7.x 返回 XmlDocument
-            var notifier = ToastNotificationManager.CreateToastNotifier(AppId);
-            notifier.Show(new ToastNotification(toastXml));
+            // Toolkit 7.x: .Show() 自动用 AppUserModelId + 自动创建 Shortcut
+            builder.Show();
 
-            Log.Information("[TOAST] Toast 通知已发送 (AppId={AppId}): {Title}", AppId, title);
+            Log.Information("[TOAST] ✅ Toast 通知已发送: {Title}", title);
+
+            // 记录 onActivated 回调（当前 Toolkit 的 OnActivated 事件已在 Initialize 里统一订阅）
+            // 这里的 onActivated 参数保留签名兼容性，实际通过 OnToastActivated 事件传递
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "[WARN] Toast 通知发送失败 (AppId={AppId})", AppId);
+            Log.Error(ex, "[TOAST] ❌ Toast 通知发送失败 — AUMID={AUMID}", AppUserModelId);
         }
     }
 
     /// <summary>
-    /// 清除所有已发送的通知
+    /// 清除所有 MSMC 专属的通知历史（只清 AUMID=MSMC 的，不影响其他应用）
     /// </summary>
     public void ClearAll()
     {
         try
         {
-            // 用原生 WinRT History.Clear(AppId) 只清除 MSMC 自己的通知，不影响其他应用
-            ToastNotificationManager.History.Clear(AppId);
-            Log.Information("[TOAST] Toast 通知历史已清除 (AppId={AppId})", AppId);
+            ToastNotificationManagerCompat.History.Clear();
+            Log.Information("[TOAST] ✅ MSMC 通知历史已清除 (AUMID={AUMID})", AppUserModelId);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "[ERR] 清除 Toast 通知失败 (AppId={AppId})", AppId);
+            Log.Warning(ex, "[TOAST] 清除通知历史失败");
         }
     }
 }
