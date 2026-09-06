@@ -36,15 +36,14 @@ public interface IToastNotificationService
     event Action<string>? OnToastActivated;
 }
 
-// ─── P/Invoke ────────────────────────────────────────────────────────
-
-/// <summary>shell32.dll: 设置进程级 AppUserModelID</summary>
-[DllImport("shell32.dll", SetLastError = true)]
-static extern int SetCurrentProcessExplicitAppUserModelID(
-    [MarshalAs(UnmanagedType.LPWStr)] string appID);
-
-// ─── 实现 ─────────────────────────────────────────────────────────────
-
+/// <summary>
+/// Win32 Desktop Toast 通知服务
+/// 
+/// 微软官方三步流程:
+///   SetCurrentProcessExplicitAppUserModelID → 进程级 AUMID
+///   Start Menu .lnk with PKEY_AppUserModel_ID → 关联应用源名
+///   ToastNotificationManager.CreateToastNotifier(AUMID).Show() → 发送
+/// </summary>
 public class ToastNotificationService : IToastNotificationService
 {
     public const string AppUserModelId = "io.NET.ZTR_OS";
@@ -55,6 +54,15 @@ public class ToastNotificationService : IToastNotificationService
 
     public event Action<string>? OnToastActivated;
 
+    // ─── P/Invoke（放在 class 内部，避免 namespace-scope 语法问题）───
+
+    /// <summary>shell32.dll: 设置进程级 AppUserModelID</summary>
+    [DllImport("shell32.dll", SetLastError = true)]
+    private static extern int SetCurrentProcessExplicitAppUserModelID(
+        [MarshalAs(UnmanagedType.LPWStr)] string appID);
+
+    // ─── 公共 API ────────────────────────────────────────────────────────
+
     public void SetUiDispatcher(Dispatcher dispatcher) => _uiDispatcher = dispatcher;
 
     public void Initialize()
@@ -63,21 +71,14 @@ public class ToastNotificationService : IToastNotificationService
 
         try
         {
-            // ═══════════════════════════════════════════════════════
             // Step 1: 设置进程级 AUMID
-            // ═══════════════════════════════════════════════════════
             int hr = SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
             Log.Information("[TOAST] SetCurrentProcessExplicitAppUserModelID hr=0x{Hr:X8} AUMID={AUMID}", hr, AppUserModelId);
 
-            // ═══════════════════════════════════════════════════════
-            // Step 2: 创建 Start Menu .lnk 并设置 AUMID 属性
-            // 微软要求: 没有带 PKEY_AppUserModel_ID 的 .lnk → Toast 静默丢弃
-            // ═══════════════════════════════════════════════════════
+            // Step 2: 创建 Start Menu .lnk + 设置 AUMID 属性
             EnsureStartMenuShortcut();
 
-            // ═══════════════════════════════════════════════════════
             // Step 3: 订阅激活回调
-            // ═══════════════════════════════════════════════════════
             ToastNotificationManagerCompat.OnActivated += args =>
             {
                 Log.Information("[TOAST] 激活回调: {Args}", args.Argument);
@@ -96,8 +97,8 @@ public class ToastNotificationService : IToastNotificationService
     }
 
     /// <summary>
-    /// 创建/验证 Start Menu 快捷方式（用 WScript.Shell，简单可靠）
-    /// 关键: 设置 AppUserModelID 属性让 Toast 正确关联应用
+    /// 创建/验证 Start Menu 快捷方式（WScript.Shell）
+    /// 微软要求: 没有带 AppUserModelID 的 .lnk → Toast 静默丢弃
     /// </summary>
     private static void EnsureStartMenuShortcut()
     {
@@ -119,7 +120,6 @@ public class ToastNotificationService : IToastNotificationService
 
             Directory.CreateDirectory(startMenu);
 
-            // WScript.Shell 创建 .lnk + 设置 AppUserModelID
             Type shellType = Type.GetTypeFromProgID("WScript.Shell");
             if (shellType == null) { Log.Warning("[TOAST] WScript.Shell 不可用"); return; }
 
@@ -131,28 +131,20 @@ public class ToastNotificationService : IToastNotificationService
                 shortcut.WorkingDirectory = Path.GetDirectoryName(exePath);
                 shortcut.Description = DisplayName;
                 shortcut.Arguments = "";
-
-                // AppUserModelID — 让 Win10/11 Toast 正确关联应用源名
                 try { shortcut.AppUserModelID = AppUserModelId; }
-                catch (Exception ex) { Log.Debug(ex, "[TOAST] shortcut.AppUserModelID 设置跳过"); }
-
+                catch (Exception ex) { Log.Debug(ex, "[TOAST] shortcut.AppUserModelID 跳过"); }
                 shortcut.Save();
                 Log.Information("[TOAST] ✅ Start Menu .lnk 创建: {Path}", lnkPath);
             }
-            finally
-            {
-                Marshal.ReleaseComObject(shell);
-            }
+            finally { Marshal.ReleaseComObject(shell); }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "[TOAST] Start Menu Shortcut 创建失败 — Toast 可能无法正确关联应用名");
+            Log.Warning(ex, "[TOAST] Start Menu Shortcut 创建失败");
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 发送通知 — 严格按微软官方流程
-    // ═══════════════════════════════════════════════════════════════
+    // ─── 发送通知 ────────────────────────────────────────────────────────
 
     public void ShowInfo(string title, string message, Action<string>? onActivated = null)
         => ShowToastCore(title, message);
@@ -167,10 +159,8 @@ public class ToastNotificationService : IToastNotificationService
 
     /// <summary>
     /// 微软官方流程:
-    ///   1. ToastContentBuilder 生成 XML（简化构造）
-    ///   2. new ToastNotification(xml)
-    ///   3. ⚠️ **带 AUMID 参数**的 CreateToastNotifier(appUserModelId)
-    ///      Toolkit 7.x 的 .Show() 用无参数版 → Win32 Desktop 静默丢弃！
+    ///   ToastNotificationManager.CreateToastNotifier(AUMID) — 必须带参数！
+    ///   Toolkit 7.x 的 .Show() 用无参数版 → Win32 Desktop 静默丢弃
     /// </summary>
     private void ShowToastCore(string title, string message)
     {
@@ -181,16 +171,12 @@ public class ToastNotificationService : IToastNotificationService
             var builder = new ToastContentBuilder()
                 .AddText(title)
                 .AddText(message)
-                .AddButton(new ToastButton()
-                    .SetContent("打开 MSMC")
-                    .AddArgument("action", "open"));
+                .AddButton(new ToastButton().SetContent("打开 MSMC").AddArgument("action", "open"));
 
-            var toastXml = builder.GetToastContent().GetXml();
-            var toast = new ToastNotification(toastXml);
+            var toast = new ToastNotification(builder.GetToastContent().GetXml());
 
             // ⚠️ 关键: 带 AUMID 参数 —— 微软官方明确要求！
-            var notifier = ToastNotificationManager.CreateToastNotifier(AppUserModelId);
-            notifier.Show(toast);
+            ToastNotificationManager.CreateToastNotifier(AppUserModelId).Show(toast);
 
             Log.Information("[TOAST] ✅ Toast 已发送 (AUMID={AUMID}, Title={Title})", AppUserModelId, title);
         }
@@ -202,14 +188,7 @@ public class ToastNotificationService : IToastNotificationService
 
     public void ClearAll()
     {
-        try
-        {
-            ToastNotificationManagerCompat.History.Clear();
-            Log.Information("[TOAST] ✅ 通知历史已清除");
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "[TOAST] 清除通知历史失败");
-        }
+        try { ToastNotificationManagerCompat.History.Clear(); }
+        catch (Exception ex) { Log.Warning(ex, "[TOAST] 清除通知历史失败"); }
     }
 }
