@@ -114,8 +114,8 @@ internal struct PROPVARIANT
 class ShellLinkCoClass { }
 
 // P/Invoke: ole32.dll
-[DllImport("ole32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
-extern static void CoInitializeEx(IntPtr pvReserved, uint dwCoInit);
+[DllImport("ole32.dll", CharSet = CharSet.Unicode)]
+extern static int CoInitializeEx(IntPtr pvReserved, uint dwCoInit);
 
 // ═══════════════════════════════════════════════════════════════
 // 实现
