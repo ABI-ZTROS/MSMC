@@ -247,7 +247,7 @@ public class ToastNotificationService : IToastNotificationService
 
             // COM 流程 — 严格按 emoacht/DesktopToast + 微软 Windows 官方示例
             uint hr = CoCreateInstance(ref CLSID_ShellLink, IntPtr.Zero, 1 /* CLSCTX_INPROC_SERVER */,
-                in IID_IShellLinkW, out IntPtr pShellLink);
+                ref IID_IShellLinkW, out IntPtr pShellLink);
             if (hr > 1) { Log.Warning("[TOAST] CoCreateInstance(ShellLink) HRESULT=0x{Hr:X8}", hr); return; }
 
             try
