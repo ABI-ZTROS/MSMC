@@ -137,7 +137,7 @@ public class ToastNotificationService : IToastNotificationService
                 return;
             }
 
-            string exePath = Environment.ProcessPath;
+            string? exePath = Environment.ProcessPath;
             if (string.IsNullOrEmpty(exePath))
             {
                 Log.Warning("[TOAST] 无法获取自身 EXE 路径，跳过 Shortcut 创建");
