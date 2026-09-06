@@ -246,8 +246,8 @@ public class ToastNotificationService : IToastNotificationService
             Directory.CreateDirectory(startMenu);
 
             // COM 流程 — 严格按 emoacht/DesktopToast + 微软 Windows 官方示例
-            uint hr = CoCreateInstance(ref CLSID_ShellLink, IntPtr.Zero, 1 /* CLSCTX_INPROC_SERVER */,
-                ref IID_IShellLinkW, out IntPtr pShellLink);
+            uint hr = CoCreateInstance(in CLSID_ShellLink, IntPtr.Zero, 1 /* CLSCTX_INPROC_SERVER */,
+                in IID_IShellLinkW, out IntPtr pShellLink);
             if (hr > 1) { Log.Warning("[TOAST] CoCreateInstance(ShellLink) HRESULT=0x{Hr:X8}", hr); return; }
 
             try
@@ -264,7 +264,7 @@ public class ToastNotificationService : IToastNotificationService
                 if (hr > 1) { Log.Warning("[TOAST] SetWorkingDirectory HRESULT=0x{Hr:X8}", hr); return; }
 
                 // QueryInterface → IPropertyStore（COM 接口指针查询）
-                Marshal.QueryInterface(pShellLink, ref IID_IPropertyStore, out IntPtr pPropStore);
+                Marshal.QueryInterface(pShellLink, in IID_IPropertyStore, out IntPtr pPropStore);
                 var propStore = (IPropertyStore)Marshal.GetObjectForIUnknown(pPropStore);
                 Marshal.Release(pPropStore);
 
@@ -279,7 +279,7 @@ public class ToastNotificationService : IToastNotificationService
                 }
 
                 // QueryInterface → IPersistFile → 保存
-                Marshal.QueryInterface(pShellLink, ref IID_IPersistFile, out IntPtr pPersistFile);
+                Marshal.QueryInterface(pShellLink, in IID_IPersistFile, out IntPtr pPersistFile);
                 var persistFile = (IPersistFile)Marshal.GetObjectForIUnknown(pPersistFile);
                 Marshal.Release(pPersistFile);
 
