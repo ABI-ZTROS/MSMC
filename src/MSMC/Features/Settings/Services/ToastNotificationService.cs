@@ -120,7 +120,7 @@ public class ToastNotificationService : IToastNotificationService
 
             Directory.CreateDirectory(startMenu);
 
-            Type shellType = Type.GetTypeFromProgID("WScript.Shell");
+            Type? shellType = Type.GetTypeFromProgID("WScript.Shell");
             if (shellType == null) { Log.Warning("[TOAST] WScript.Shell 不可用"); return; }
 
             dynamic shell = Activator.CreateInstance(shellType)!;
