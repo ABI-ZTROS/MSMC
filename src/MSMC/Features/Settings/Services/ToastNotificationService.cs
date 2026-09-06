@@ -91,7 +91,6 @@ internal interface IPersistFile
     [PreserveSig] int Load([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, int dwMode);
     [PreserveSig] int Save([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, bool fRemember);
     [PreserveSig] int SaveCompleted([MarshalAs(UnmanagedType.LPWStr)] string pszFileName);
-    [PreserveSig] int GetCurFile([MarshalAs(UnmanagedType.LPWStr)] out string ppszFileName);
 }
 
 [StructLayout(LayoutKind.Sequential)]
