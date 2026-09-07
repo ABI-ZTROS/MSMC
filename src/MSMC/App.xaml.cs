@@ -18,6 +18,7 @@ using io.NET.ZTR_OS.Features.ConfigEditor.Services;
 using io.NET.ZTR_OS.Features.Startup.Services.Privilege;
 using io.NET.ZTR_OS.Features.ServerDetection.Services;
 using io.NET.ZTR_OS.Features.SystemMonitoring.Services;
+using io.NET.ZTR_OS.Features.Troubleshooting.Services;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Services;
 using io.NET.ZTR_OS.Features.WebView2.Services;
 using io.NET.ZTR_OS.Features.Notifications.Models;
@@ -786,6 +787,12 @@ public partial class App : Application
                     // ════════════ 系统监控与告警 (P2) ════════════
                     await Step(56, "正在注册系统监控模块...", "[MONITOR] === 系统监控与告警 (P2) ===");
                     await RegisterType<HistoryAlertService>(56, "[MONITOR]", "HistoryAlertService", "历史数据告警（CPU/内存/磁盘阈值）");
+
+                    // ════════════ 疑难解答 (P0) ════════════
+                    await Step(56, "正在注册疑难解答服务...", "[DIAG] === 疑难解答 (P0) ===");
+                    await Register<IDiagnosticEngine, DiagnosticEngine>(56, "[DIAG]", "DiagnosticEngine", "全链路诊断引擎协调器");
+                    await Register<ICheckRunner, CheckRunner>(56, "[DIAG]", "CheckRunner", "10 个系统/配置检查点");
+                    await Register<IDiagnosticArchiveAnalyzer, DiagnosticArchiveAnalyzer>(56, "[DIAG]", "DiagnosticArchiveAnalyzer", "存档 NBT/Region 分析器");
 
                     // ════════════ 自动更新 (P2) ════════════
                     await Step(57, "正在注册自动更新模块...", "[UPDATE] === 自动更新 (P2) ===");

@@ -27,6 +27,7 @@ using io.NET.ZTR_OS.Features.ServerDetection.Services;
 using io.NET.ZTR_OS.Features.Settings.Colors;
 using io.NET.ZTR_OS.Features.Settings.Services;
 using io.NET.ZTR_OS.Features.SystemMonitoring.Services;
+using io.NET.ZTR_OS.Features.Troubleshooting.Services;
 using io.NET.ZTR_OS.Features.WebView2.Frontend;
 using io.NET.ZTR_OS.Features.WebView2.Services;
 using io.NET.ZTR_OS.Features.ConfigEditor.ViewModels;
@@ -4247,6 +4248,39 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 Log.Error(ex, "scheduler.runNow 异常");
+                return new { success = false, error = ex.Message };
+            }
+        });
+
+        // ─── Troubleshooting（疑难解答）───
+        _bridgeService.RegisterRequestHandler("diagnostic.run", async payload =>
+        {
+            try
+            {
+                var engine = App.Services.GetService<IDiagnosticEngine>();
+                if (engine == null)
+                    return new { success = false, error = "DiagnosticEngine 未注册（DI 拓扑缺失）" };
+
+                string serverJarPath = "";
+                string? worldPath = null;
+                if (payload is JsonElement el)
+                {
+                    serverJarPath = el.TryGetProperty("serverJarPath", out var jarProp) ? jarProp.GetString() ?? "" : "";
+                    worldPath = el.TryGetProperty("worldPath", out var worldProp) ? worldProp.GetString() : null;
+                }
+
+                if (string.IsNullOrEmpty(serverJarPath))
+                {
+                    // 尝试从 KnownServer 里拿（前端不传完整 path 时的兜底）
+                    return new { success = false, error = "缺少 serverJarPath 参数" };
+                }
+
+                var report = await engine.RunDiagnosticAsync(serverJarPath, worldPath);
+                return new { success = report.Succeeded, report, error = report.ErrorMessage };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "diagnostic.run 异常");
                 return new { success = false, error = ex.Message };
             }
         });

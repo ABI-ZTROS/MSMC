@@ -14,6 +14,7 @@ import {
   FaBell,
   FaClock,
   FaStore,
+  FaWrench,
 } from 'react-icons/fa6'
 
 interface NavItem {
