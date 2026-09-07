@@ -232,13 +232,7 @@ public static class BridgeActionRegistrar
                 var fullPath = Path.Combine(dir, fileName);
                 var content = format == "json"
                     ? JsonSerializer.Serialize(new { generatedAt = DateTime.Now, msmcNote = "P0 导出占位：完整 DiagnosticReport 将在 P1 接入" }, new JsonSerializerOptions { WriteIndented = true })
-                    : $"# MSMC 诊断报告
-
-生成时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
-MSMC 版本: (unknown)
-
-> 完整报告导出将在 P1 接入 DiagnosticReport 数据流
-";
+                    : $"# MSMC 诊断报告\n\n生成时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\nMSMC 版本: (unknown)\n\n> 完整报告导出将在 P1 接入 DiagnosticReport 数据流\n";
                 File.WriteAllText(fullPath, content);
                 Log.Information("[DIAG] exportReport 成功: {Path} ({Size} bytes)", fullPath, content.Length);
                 return Task.FromResult<object?>(new { path = fullPath, size = content.Length });
@@ -252,8 +246,6 @@ MSMC 版本: (unknown)
 
         Log.Information("[BRDG-REG] [OK] 桥接 actions 注册完成: {Ok} OK / {Fail} FAIL", registered, failed);
     }
-
-    /// <summary>根据 fixId 构造最小 FixAction</summary>
 
     /// <summary>
     /// 安全注册单个 action handler —— 执行链的兜底，单个 handler 失败不影响其他
