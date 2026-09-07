@@ -394,7 +394,7 @@ public class FixExecutor : IFixExecutor
                 {
                     _log.Information("[FIX] Kill PID={Pid} for {Jar}", p.Id, jarName);
                     p.Kill();
-                    try { await p.WaitForExitAsync(TimeSpan.FromSeconds(5)); }
+                    try { await p.WaitForExitAsync(new CancellationTokenSource(5000).Token); }
                     catch { }
                     anyKilled = true;
                 }

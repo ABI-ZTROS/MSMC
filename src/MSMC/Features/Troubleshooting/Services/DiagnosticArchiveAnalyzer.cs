@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Text;
 
 namespace io.NET.ZTR_OS.Features.Troubleshooting.Services;
@@ -176,7 +177,7 @@ public class DiagnosticArchiveAnalyzer : IDiagnosticArchiveAnalyzer
 
     private static string? EstimateTagSize(Dictionary<string, NbtTag> tagDict)
     {
-        try { return Newtonsoft.Json.JsonConvert.SerializeObject(tagDict); }
+        try { return System.Text.Json.JsonSerializer.Serialize(tagDict); }
         catch { return null; }
     }
 

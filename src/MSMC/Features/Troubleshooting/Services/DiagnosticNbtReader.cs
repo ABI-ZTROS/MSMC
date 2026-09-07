@@ -23,7 +23,7 @@ public enum NbtTagType : byte
 public sealed record NbtTag(NbtTagType Type, string? Name, object? Value)
 {
     /// <summary>便捷索引：按路径取值（如 "Items/0/Count"）</summary>
-    public NbtTag? this[string path] => GetByPath(this, path);
+    public NbtTag? this[string path] => DiagnosticNbtReader.GetByPath(this, path);
 }
 
 public static class DiagnosticNbtReader

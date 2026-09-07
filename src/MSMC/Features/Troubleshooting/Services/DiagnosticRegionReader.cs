@@ -105,7 +105,7 @@ public static class DiagnosticRegionReader
     /// <summary>世界绝对坐标 → region 坐标</summary>
     public static (int RegionX, int RegionZ) WorldToRegion(int worldX, int worldZ)
     {
-        return (int.RegionDiv(worldX, 512), int.RegionDiv(worldZ, 512));
+        return (worldX / 512, worldZ / 512);
     }
 
     /// <summary>世界绝对坐标 → region 内的区块坐标 (0-31)</summary>
