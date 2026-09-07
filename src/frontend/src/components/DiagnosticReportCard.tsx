@@ -4,6 +4,7 @@ export interface ReportCardProps {
   issue?: DiagnosticIssue
   check?: DiagnosticCheckResult
   onFix?: (fixId: string) => void
+  highlight?: boolean
 }
 
 // Severity → 图标 + 颜色 + 背景（强制，不走主题系统）
@@ -15,7 +16,7 @@ const SEVERITY_MAP: Record<Severity, { icon: string; color: string; bg: string; 
   4: { icon: '💀', color: '#c0392b', bg: 'rgba(192,57,43,0.12)', border: 'rgba(192,57,43,0.6)', label: 'CRITICAL' },
 }
 
-export function DiagnosticReportCard({ issue, check, onFix }: ReportCardProps) {
+export function DiagnosticReportCard({ issue, check, onFix, highlight }: ReportCardProps) {
   const data = issue ?? check
   if (!data) return null
 
@@ -30,8 +31,11 @@ export function DiagnosticReportCard({ issue, check, onFix }: ReportCardProps) {
     <div
       style={{
         padding: '12px 14px', borderRadius: 10,
-        background: cfg.bg, border: `1px solid ${cfg.border}`,
+        background: highlight ? 'rgba(192,57,43,0.18)' : cfg.bg,
+        border: highlight ? '2px solid #c0392b' : `1px solid ${cfg.border}`,
+        boxShadow: highlight ? '0 0 16px rgba(192,57,43,0.45)' : 'none',
         display: 'flex', gap: 10, fontSize: 13,
+        transition: 'all 0.25s ease',
       }}
     >
       <div style={{ fontSize: 18, marginTop: 2, flexShrink: 0 }}>{cfg.icon}</div>

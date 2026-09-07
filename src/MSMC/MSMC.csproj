@@ -129,6 +129,9 @@
   <PropertyGroup>
     <!-- MSBuildProjectDirectory 即 MSMC.csproj 所在目录，前端项目在兄弟目录 ..\frontend -->
     <FrontendDir>$(MSBuildProjectDirectory)\..\frontend</FrontendDir>
+    <!-- 跨平台 npm 可执行文件名（Windows 是 npm.cmd，Unix/macOS 是 npm） -->
+    <NpmCmd Condition="'$(OS)' == 'Windows_NT'">npm.cmd</NpmCmd>
+    <NpmCmd Condition="'$(OS)' != 'Windows_NT'">npm</NpmCmd>
   </PropertyGroup>
 
   <!-- 诊断输出：构建时在 VS 输出面板高亮显示前端路径，便于排错 -->
@@ -188,7 +191,7 @@
 
     <!-- ── npm install（仅 node_modules 不存在时）── -->
     <Exec Condition="Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\node_modules') And ('$(PublishDir)' != '' Or !Exists('$(FrontendDir)\dist\index.html'))"
-          Command="npm.cmd install --prefix &quot;$(FrontendDir)&quot;"
+          Command="$(NpmCmd) install --prefix &quot;$(FrontendDir)&quot;"
           WorkingDirectory="$(FrontendDir)"
           ContinueOnError="false"
           StandardOutputImportance="high"
@@ -196,7 +199,7 @@
 
     <!-- ── npm run build（发布时强制 / 普通构建时 dist 不存在）── -->
     <Exec Condition="Exists('$(FrontendDir)\package.json') And ('$(PublishDir)' != '' Or !Exists('$(FrontendDir)\dist\index.html'))"
-          Command="npm.cmd run build --prefix &quot;$(FrontendDir)&quot;"
+          Command="$(NpmCmd) run build --prefix &quot;$(FrontendDir)&quot;"
           WorkingDirectory="$(FrontendDir)"
           ContinueOnError="false"
           StandardOutputImportance="high"

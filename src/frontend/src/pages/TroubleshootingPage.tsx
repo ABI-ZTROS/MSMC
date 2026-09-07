@@ -4,6 +4,7 @@ import type { DiagnosticReport, DiagnosticIssue, KnownServerInfo } from '@/types
 import { runDiagnostic, runDeepScan, checkServerRunning, killServerAndScan } from '@/utils/bridge'
 import { DiagnosticReportCard } from '@/components/DiagnosticReportCard'
 import { FixPanel } from '@/components/FixPanel'
+import { TreeNodeDialog } from '@/components/TreeNodeDialog'
 
 const PRIMARY = '#c0392b'
 const ACCENT_BG = 'rgba(192,57,43,0.08)'
@@ -16,6 +17,8 @@ export function TroubleshootingPage(): JSX.Element {
   const [status, setStatus] = useState<'idle' | 'scanning' | 'deep' | 'done' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [activeFix, setActiveFix] = useState<string | null>(null)
+  const [showSymptomDialog, setShowSymptomDialog] = useState(false)
+  const [highlightCheck, setHighlightCheck] = useState<string | null>(null)
 
   useEffect(() => {
     const b = (window as any).__msmc_bridge__
@@ -134,6 +137,16 @@ export function TroubleshootingPage(): JSX.Element {
         )}
         {selectedServer && (
           <button
+            onClick={() => setShowSymptomDialog(true)}
+            style={{
+              padding: '7px 14px', borderRadius: 6,
+              border: '1px solid ' + PRIMARY, background: PRIMARY,
+              color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}
+          >🩺 症状导航</button>
+        )}
+        {selectedServer && (
+          <button
             onClick={handleDeepScan}
             disabled={status === 'scanning' || status === 'deep'}
             style={{
@@ -185,9 +198,9 @@ export function TroubleshootingPage(): JSX.Element {
             </div>
           )}
 
-          {criticalIssues.length > 0 && <IssueGroup title="💀 Critical" count={criticalIssues.length} issues={criticalIssues} onFix={setActiveFix} />}
-          {errorIssues.length > 0 && <IssueGroup title="🔴 Error" count={errorIssues.length} issues={errorIssues} onFix={setActiveFix} />}
-          {warnIssues.length > 0 && <IssueGroup title="🟧 Warning" count={warnIssues.length} issues={warnIssues} onFix={setActiveFix} />}
+          {criticalIssues.length > 0 && <IssueGroup title="💀 Critical" count={criticalIssues.length} issues={criticalIssues} onFix={setActiveFix} highlightCheck={highlightCheck} />}
+          {errorIssues.length > 0 && <IssueGroup title="🔴 Error" count={errorIssues.length} issues={errorIssues} onFix={setActiveFix} highlightCheck={highlightCheck} />}
+          {warnIssues.length > 0 && <IssueGroup title="🟧 Warning" count={warnIssues.length} issues={warnIssues} onFix={setActiveFix} highlightCheck={highlightCheck} />}
 
           {allFixes.length === 0 && (
             <div style={{
@@ -217,6 +230,19 @@ export function TroubleshootingPage(): JSX.Element {
           ❌ {errorMsg}
         </div>
       )}
+
+      {/* 症状导航 Modal — 双轨布局第二轨 */}
+      {showSymptomDialog && (
+        <TreeNodeDialog
+          onClose={() => setShowSymptomDialog(false)}
+          onCheckReference={(checkId) => {
+            setShowSymptomDialog(false)
+            // 关闭对话框后高亮对应 issue
+            setHighlightCheck(checkId)
+            setTimeout(() => setHighlightCheck(null), 3500)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -234,9 +260,10 @@ function StatCard({ label, value, color }: { label: string; value: number; color
   )
 }
 
-function IssueGroup({ title, count, issues, onFix }: {
+function IssueGroup({ title, count, issues, onFix, highlightCheck }: {
   title: string; count: number; issues: DiagnosticIssue[];
   onFix: (id: string) => void;
+  highlightCheck?: string | null;
 }) {
   return (
     <div style={{ marginBottom: 18 }}>
@@ -248,7 +275,12 @@ function IssueGroup({ title, count, issues, onFix }: {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {issues.map((issue, i) => (
-          <DiagnosticReportCard key={i} issue={issue} onFix={onFix} />
+          <DiagnosticReportCard
+            key={i}
+            issue={issue}
+            onFix={onFix}
+            highlight={!!highlightCheck && issue.issueId === highlightCheck}
+          />
         ))}
       </div>
     </div>
