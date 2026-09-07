@@ -263,7 +263,7 @@ public class CheckRunner : ICheckRunner
                     if (xmx.Success)
                     {
                         long num = long.Parse(xmx.Groups[1].Value);
-                        string unit = xmx.Groups[2].Value.ToLower();
+                        string unit = xmx.Groups[2].Value.ToLower(System.Globalization.CultureInfo.InvariantCulture);
                         return unit switch
                         {
                             "g" => num * 1024L * 1024 * 1024,
@@ -478,7 +478,7 @@ public class CheckRunner : ICheckRunner
                 string full = Path.Combine(dir, file);
                 if (!File.Exists(full)) continue;
 
-                string ext = Path.GetExtension(file).ToLower();
+                string ext = Path.GetExtension(file).ToLower(System.Globalization.CultureInfo.InvariantCulture);
                 if (ext == ".yml" || ext == ".yaml")
                 {
                     try
