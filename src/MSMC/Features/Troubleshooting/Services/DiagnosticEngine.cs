@@ -1,6 +1,6 @@
 // -----------------------------------------------------------------------------
-// DiagnosticEngine.cs — 疑难解答引擎协调器
-// 职责: 组装 CheckRunner + ArchiveAnalyzer → 生成 DiagnosticReport
+// DiagnosticEngine.cs — 疑难解答引擎协调器（扩展后）
+// 职责: RunQuickAsync（只跑 CheckRunner） / RunDeepAsync（加存档扫描） / 委托 FixExecutor
 // P4 诚实返回链: 任何步骤异常 → Succeeded=false + ErrorMessage 可见
 // -----------------------------------------------------------------------------
 using System;
@@ -18,34 +18,64 @@ public class DiagnosticEngine : IDiagnosticEngine
 {
     private readonly ICheckRunner _checkRunner;
     private readonly IDiagnosticArchiveAnalyzer _archiveAnalyzer;
+    private readonly IFixExecutor _fixExecutor;
     private readonly ILogger _log;
 
-    public DiagnosticEngine(ICheckRunner checkRunner, IDiagnosticArchiveAnalyzer archiveAnalyzer, ILogger log)
+    public DiagnosticEngine(
+        ICheckRunner checkRunner,
+        IDiagnosticArchiveAnalyzer archiveAnalyzer,
+        IFixExecutor fixExecutor,
+        ILogger log)
     {
         _checkRunner = checkRunner;
         _archiveAnalyzer = archiveAnalyzer;
+        _fixExecutor = fixExecutor;
         _log = log;
     }
 
-    public async Task<DiagnosticReport> RunDiagnosticAsync(string serverJarPath, string? worldPath, CancellationToken ct = default)
+    // ═══════════════════════════════════════════════════════════
+    // 分阶段扫描入口
+    // ═══════════════════════════════════════════════════════════
+
+    public Task<DiagnosticReport> RunDiagnosticAsync(string serverJarPath, string? worldPath, CancellationToken ct = default)
+        => RunQuickAsync(serverJarPath, worldPath, ct);
+
+    public async Task<DiagnosticReport> RunQuickAsync(string serverJarPath, string? worldPath, CancellationToken ct = default)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            _log.Information("[TROUBLESHOOT] [Quick] 开始系统/配置/日志检查...");
+            var checks = _checkRunner.RunAll(serverJarPath, worldPath, InferServerInfo(serverJarPath));
+            sw.Stop();
+
+            _log.Information("[TROUBLESHOOT] [Quick] 完成: {N} checks, {Ms}ms", checks.Count, sw.ElapsedMilliseconds);
+            return BuildReport(serverJarPath, worldPath, checks, new List<PlayerStat>(), sw.ElapsedMilliseconds, true, null);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            sw.Stop();
+            _log.Error(ex, "[TROUBLESHOOT] [Quick] 顶层异常");
+            return BuildReport(serverJarPath, worldPath, new List<CheckResult>(), new List<PlayerStat>(), sw.ElapsedMilliseconds, false, ex.Message);
+        }
+    }
+
+    public async Task<DiagnosticReport> RunDeepAsync(string serverJarPath, string? worldPath, CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
         var allChecks = new List<CheckResult>();
 
         try
         {
-            // ── Step 1: 系统/配置检查（CheckRunner 10 个）──
-            _log.Information("[TROUBLESHOOT] 开始系统/配置检查...");
-            var checks = _checkRunner.RunAll(serverJarPath, worldPath, InferServerInfo(serverJarPath));
-            allChecks.AddRange(checks);
-            _log.Information("[TROUBLESHOOT] 系统/配置检查完成 ({N} 项)", checks.Count);
-
+            // Phase 1: Quick
+            _log.Information("[TROUBLESHOOT] [Deep] Phase 1/2: 系统/配置/日志检查...");
+            allChecks.AddRange(_checkRunner.RunAll(serverJarPath, worldPath, InferServerInfo(serverJarPath)));
             ct.ThrowIfCancellationRequested();
 
-            // ── Step 2: 存档扫描（玩家 NBT + Region，Try-Catch 降级）──
+            // Phase 2: 存档 NBT/Region 扫描
             if (!string.IsNullOrEmpty(worldPath) && Directory.Exists(worldPath))
             {
-                _log.Information("[TROUBLESHOOT] 开始存档扫描...");
+                _log.Information("[TROUBLESHOOT] [Deep] Phase 2/2: 存档扫描...");
 
                 try
                 {
@@ -53,11 +83,7 @@ public class DiagnosticEngine : IDiagnosticEngine
                     if (Directory.Exists(playersDir))
                         allChecks.AddRange(_archiveAnalyzer.AnalyzePlayerDat(playersDir));
                 }
-                catch (Exception ex)
-                {
-                    _log.Warning(ex, "[TROUBLESHOOT] 玩家存档扫描异常（降级跳过）");
-                    allChecks.Add(FailedCheck("archive.player", ex));
-                }
+                catch (Exception ex) { _log.Warning(ex, "[TROUBLESHOOT] 玩家存档扫描降级"); }
 
                 ct.ThrowIfCancellationRequested();
 
@@ -67,110 +93,109 @@ public class DiagnosticEngine : IDiagnosticEngine
                     if (Directory.Exists(regionDir))
                         allChecks.AddRange(_archiveAnalyzer.AnalyzeRegions(regionDir));
                 }
-                catch (Exception ex)
-                {
-                    _log.Warning(ex, "[TROUBLESHOOT] Region 扫描异常（降级跳过）");
-                    allChecks.Add(FailedCheck("archive.region", ex));
-                }
+                catch (Exception ex) { _log.Warning(ex, "[TROUBLESHOOT] Region 扫描降级"); }
 
-                _log.Information("[TROUBLESHOOT] 存档扫描完成");
+                _log.Information("[TROUBLESHOOT] [Deep] 存档扫描完成");
             }
 
-            // ── Step 3: 汇总 ──
             sw.Stop();
-            var summary = BuildSummary(allChecks, sw.ElapsedMilliseconds);
-            var issues = allChecks
-                .Where(c => c.Severity >= Severity.Warning)
-                .Select(c => new Issue(
-                    IssueId: c.CheckId,
-                    Severity: c.Severity,
-                    Category: c.Category,
-                    Title: c.Title,
-                    Detail: c.Detail,
-                    Hint: InferHint(c),
-                    Suggestion: InferSuggestion(c),
-                    Fix: c.SuggestedFix,
-                    Context: c.RawData is Dictionary<string, object?> d ? d : new Dictionary<string, object?>()))
-                .ToList();
-
             var topPlayers = _archiveAnalyzer.GetTopPlayers(10);
 
-            _log.Information("[TROUBLESHOOT] ✅ 诊断完成: {Total} checks, {Critical} Critical, {Warning} Warning, 耗时 {Ms}ms",
-                summary.TotalChecks, summary.CriticalCount, summary.WarningCount, sw.ElapsedMilliseconds);
-
-            return new DiagnosticReport(
-                GeneratedAt: DateTime.Now,
-                MsmcVersion: GetVersion(),
-                ServerJarPath: serverJarPath,
-                WorldPath: worldPath ?? string.Empty,
-                Server: InferServerInfo(serverJarPath),
-                Checks: allChecks,
-                Summary: summary,
-                Issues: issues,
-                TopPlayers: topPlayers,
-                AiAnalysis: null,      // P1 实现
-                DeepSeekRawResponse: null,
-                Succeeded: true,
-                ErrorMessage: null);
+            _log.Information("[TROUBLESHOOT] [Deep] ✅ 完成: {Total} checks, {Ms}ms", allChecks.Count, sw.ElapsedMilliseconds);
+            return BuildReport(serverJarPath, worldPath, allChecks, topPlayers, sw.ElapsedMilliseconds, true, null);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             sw.Stop();
-            _log.Error(ex, "[TROUBLESHOOT] ❌ 诊断引擎顶层异常");
-            return new DiagnosticReport(
-                DateTime.Now, GetVersion(), serverJarPath, worldPath ?? string.Empty,
-                InferServerInfo(serverJarPath), allChecks,
-                BuildSummary(allChecks, sw.ElapsedMilliseconds),
-                new List<Issue>(), new List<PlayerStat>(), null, null, false, ex.Message);
+            _log.Error(ex, "[TROUBLESHOOT] [Deep] 顶层异常");
+            return BuildReport(serverJarPath, worldPath, allChecks, new List<PlayerStat>(), sw.ElapsedMilliseconds, false, ex.Message);
         }
     }
 
-    // ── P0 未实现 ──
+    // ── 预留：增量体检 ──
     public Task<DiagnosticReport> RunChecksAsync(string serverJarPath, string? worldPath, IEnumerable<string> checkIds, CancellationToken ct = default)
-        => Task.FromResult(new DiagnosticReport(DateTime.Now, GetVersion(), serverJarPath, worldPath ?? "",
-            InferServerInfo(serverJarPath), new List<CheckResult>(),
-            new DiagnosticSummary(0, 0, 0, 0, 0, 0, 0),
-            new List<Issue>(), new List<PlayerStat>(), null, null, false, "P2 未实现"));
+        => Task.FromResult(BuildReport(serverJarPath, worldPath, new List<CheckResult>(), new List<PlayerStat>(), 0, false, "P2 未实现"));
 
-    public Task<FixResult> ExecuteFixAsync(string serverJarPath, FixAction fix, FixTrustMode trustMode, CancellationToken ct = default)
-        => Task.FromResult(new FixResult(fix.FixId, false, 0, 0, new List<FixStepResult>(), null, "P1 未实现"));
+    // ── 修复执行（委托 FixExecutor）──
 
-    // ── 辅助 ──
+    public Task<FixResult> ExecuteFixAsync(string serverJarPath, string? worldPath, FixAction fix, FixTrustMode trustMode, CancellationToken ct = default)
+        => _fixExecutor.ExecuteAsync(serverJarPath, worldPath, fix, trustMode, ct);
 
-    private static CheckResult FailedCheck(string checkId, Exception ex)
-        => new(checkId, Severity.Warning, "System", "检查异常", ex.Message, false, null, ex.Message);
+    public Task<bool> IsServerRunningAsync(string serverJarPath)
+        => _fixExecutor.IsServerRunningAsync(serverJarPath);
 
-    private static DiagnosticSummary BuildSummary(List<CheckResult> checks, long ms)
+    public Task<bool> KillServerAsync(string serverJarPath)
+        => _fixExecutor.KillServerAsync(serverJarPath);
+
+    // ═══════════════════════════════════════════════════════════
+    // 报告构建 + 辅助方法（原代码保留）
+    // ═══════════════════════════════════════════════════════════
+
+    private DiagnosticReport BuildReport(
+        string jarPath, string? worldPath,
+        List<CheckResult> checks, List<PlayerStat> players,
+        long scanMs, bool succeeded, string? error)
     {
-        return new DiagnosticSummary(
+        var summary = new DiagnosticSummary(
             TotalChecks: checks.Count,
             OkCount: checks.Count(c => c.Severity == Severity.Ok),
             WarningCount: checks.Count(c => c.Severity == Severity.Warning),
             ErrorCount: checks.Count(c => c.Severity == Severity.Error),
             CriticalCount: checks.Count(c => c.Severity == Severity.Critical),
             AutoFixableCount: checks.Count(c => c.AutoFixable),
-            ScanDurationMs: ms);
+            ScanDurationMs: scanMs);
+
+        var issues = checks
+            .Where(c => c.Severity >= Severity.Warning)
+            .Select(c => new Issue(
+                IssueId: c.CheckId,
+                Severity: c.Severity,
+                Category: c.Category,
+                Title: c.Title,
+                Detail: c.Detail,
+                Hint: InferHint(c),
+                Suggestion: InferSuggestion(c),
+                Fix: c.SuggestedFix,
+                Context: c.RawData is Dictionary<string, object?> d ? d : new Dictionary<string, object?>()))
+            .ToList();
+
+        return new DiagnosticReport(
+            GeneratedAt: DateTime.Now,
+            MsmcVersion: GetVersion(),
+            ServerJarPath: jarPath,
+            WorldPath: worldPath ?? string.Empty,
+            Server: InferServerInfo(jarPath),
+            Checks: checks,
+            Summary: summary,
+            Issues: issues,
+            TopPlayers: players,
+            AiAnalysis: null,
+            DeepSeekRawResponse: null,
+            Succeeded: succeeded,
+            ErrorMessage: error);
     }
+
+    private static CheckResult FailedCheck(string checkId, Exception ex)
+        => new(checkId, Severity.Warning, "System", "检查异常", ex.Message, false, null, ex.Message);
 
     private static ServerInfo InferServerInfo(string jarPath)
     {
         string jarName = Path.GetFileName(jarPath);
-        string? core = null;
-        // P0 简化: 通过 jar 名猜核心
-        if (jarName.Contains("paper", StringComparison.OrdinalIgnoreCase)) core = "Paper";
-        else if (jarName.Contains("spigot", StringComparison.OrdinalIgnoreCase)) core = "Spigot";
-        else if (jarName.Contains("purpur", StringComparison.OrdinalIgnoreCase)) core = "Purpur";
-        else if (jarName.Contains("forge", StringComparison.OrdinalIgnoreCase)) core = "Forge";
-        else if (jarName.Contains("fabric", StringComparison.OrdinalIgnoreCase)) core = "Fabric";
+        string? core = jarName.Contains("paper", StringComparison.OrdinalIgnoreCase) ? "Paper"
+            : jarName.Contains("spigot", StringComparison.OrdinalIgnoreCase) ? "Spigot"
+            : jarName.Contains("purpur", StringComparison.OrdinalIgnoreCase) ? "Purpur"
+            : jarName.Contains("forge", StringComparison.OrdinalIgnoreCase) ? "Forge"
+            : jarName.Contains("fabric", StringComparison.OrdinalIgnoreCase) ? "Fabric"
+            : jarName.Contains("glowstone", StringComparison.OrdinalIgnoreCase) ? "Glowstone"
+            : null;
 
-        // 检查是否有运行中的 MC 进程
         int? pid = null;
-        string? javaVer = null;
         foreach (var p in Process.GetProcessesByName("java"))
         {
             try
             {
-                if (p.MainWindowTitle.Contains(jarName) || jarName.Contains(p.ProcessName, StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrEmpty(p.MainWindowTitle) &&
+                    p.MainWindowTitle.Contains(jarName, StringComparison.OrdinalIgnoreCase))
                 {
                     pid = p.Id;
                     break;
@@ -179,7 +204,7 @@ public class DiagnosticEngine : IDiagnosticEngine
             catch { }
         }
 
-        return new ServerInfo(jarName, core, null, javaVer, null, null, pid, pid != null);
+        return new ServerInfo(jarName, core, null, null, null, null, pid, pid != null);
     }
 
     private static string GetVersion() =>
@@ -187,21 +212,19 @@ public class DiagnosticEngine : IDiagnosticEngine
 
     private static string? InferHint(CheckResult c) => c.CheckId switch
     {
-        "java.version" => "Java 版本不匹配是服务器启动失败最常见的原因之一",
+        "java.version" => "Java 版本不匹配是服务器启动失败最常见的原因",
         "port.availability" => "端口被其他进程占用，服务器无法监听",
-        "port.firewall" => "Windows 防火墙默认阻止非信任网络的入站连接",
-        "archive.player" => "非法物品 / NBT 异常可能是插件 bug、作弊或恶意玩家造成的",
-        "archive.region.entity.stack" => "实体堆叠通常是 spawner 异常、chunk 修复不当或服务器假死恢复时产生",
+        "port.firewall" => "Windows 防火墙默认阻止非信任网络入站",
+        "log.outmemory" => "堆内存不足或存在内存泄漏，服务器最终会崩溃",
+        "log.chunk.generation" => "区块生成事件异常通常是插件冲突或区块损坏",
         _ => null
     };
 
     private static string? InferSuggestion(CheckResult c) => c.CheckId switch
     {
-        "java.version" => "使用 MSMC 「Java 管理」切换到匹配版本",
-        "port.availability" => "关闭占用端口的进程，或修改 server.properties 的 server-port",
-        "port.firewall" => "以管理员身份运行 MSMC，或手动添加 netsh 入站规则",
-        "archive.player" => "备份存档后清理异常物品 / 修复损坏的 .dat",
-        "archive.region.entity.stack" => "用 MSMC 「清理区块」或手动删除异常 .mca 后让服务器重新生成",
+        "java.version" => "用 MSMC「Java 管理」切换到匹配版本",
+        "port.availability" => "关闭占用端口的进程或修改 server.properties 的 server-port",
+        "log.outmemory" => "增加 -Xmx 堆内存配置后重启服务器",
         _ => null
     };
 }

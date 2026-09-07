@@ -554,3 +554,64 @@ interface DiagnosticBridge {
 - Web 控制台远程协助（会话分享留 P3）
 - Windows Crash Dump 自动分析（可以读 dump 但不做自动化 WinDbg 分析）
 - 自动修复插件冲突（只检测 .jar 合法性，不帮用户卸载）
+
+---
+
+## 15. 启发式对话锁定的实施细节（2026-09-07）
+
+> 本轮通过启发式问答从用户获取的最终决策，覆盖之前 spec 留白区域。
+
+### 15.1 TreeNode 节点来源
+**硬编码 TS 常量**（`src/frontend/src/data/troubleshootingNodes.ts`）。理由：结构清晰、版本跟前端走、P0 最快交付。后续加节点直接改数组。
+
+### 15.2 P0 FixAction 数量：7 个全落地
+| fix_id | 真实实现 | 后端文件 |
+|--------|---------|---------|
+| `backup.world` | 复制 world/ → `.bak-{timestamp}/`，File.Copy 递归 + 进度 | `FixExecutor.cs` |
+| `java.switch.version` | 调 IJavaInstallationService 切换 Java → 改启动脚本 | `FixExecutor.cs` |
+| `port.kill.process` | Process.GetProcessById.Kill() + 端口重检 | `FixExecutor.cs` |
+| `config.edit.server-properties` | 改 server.properties max-players / server-port → 写回 | `FixExecutor.cs` |
+| `region.clean.entities` | 读 .mca → 删怪物/掉落物 entity → GZIP 重写区块 NBT | `FixExecutor.cs` + 复用 DiagnosticRegionReader |
+| `player.reset.damage` | 读 .dat NBT → ItemStack.damage 归 0 → GZIP 重写 | `FixExecutor.cs` + 复用 DiagnosticNbtReader |
+| `server.kill` | Process.Kill() + WaitForExit | `FixExecutor.cs` |
+
+### 15.3 进入页面触发方式
+**分阶段：快速自动 + 深度手动**
+- 进入页面 → 自动跑系统/配置层 10 个检查点（3-5s）→ 实时渲染问题树骨架
+- 存档扫描 + 日志分析等用户点「🔬 深度扫描」按钮才触发（原因：可能耗时 10-30s + 需要服务器不在运行中）
+
+### 15.4 运行中服务器存档处理
+**先检测运行态 → 问是否杀进程 → 不运行就全力扫**
+1. 深度扫描前先调 `checkServerRunning` bridge handler 检查目标服务器进程
+2. 如果运行中 → 前端弹确认框「服务器正在运行，杀掉它再扫？」
+3. 用户确认 → 后端先杀进程再扫；用户拒绝 → 跳过存档/日志层，只展示系统/配置层结果 + Warning 标记
+4. 不运行 → 全力扫
+
+### 15.5 日志分析范围
+**CheckRunner 内建 3 个检查点，聚焦 ERROR/WARN**
+- `log.startup.failure`: 扫描 latest.log / logs/ 目录中 ERROR / WARN 关键字出现频率
+- `log.outmemory`: 搜索 `java.lang.OutOfMemoryError` → Critical
+- `log.chunk.generation`: 搜索 `Could not pass event CHUNK_GENERATION` 高频 → Warning
+
+### 15.6 目标服务器选择
+**跟随 MainViewModel 当前选中的 ServerInstance**。页面顶部加切换器可临时换目标。
+
+### 15.7 实施节奏：Bridge 契约先锁死 → 并行开发
+1. 第一步：锁死 `DiagnosticTypes.cs` record ↔ `types/bridge.ts` TypeScript interface 零偏差
+2. 前后端并行：后端补 FixExecutor + LogAnalyzer + Bridge handler；前端写页面 + 组件 + TreeNode
+3. 最后联调
+
+### 15.8 Bridge 接口（最终版）
+```
+diagnostic.runDiagnostic          → 快速扫描（系统/配置层）
+diagnostic.runDeepScan            → 深度扫描（存档+日志+可选杀进程）
+diagnostic.executeFix             → 执行修复（支持 auto / step-by-step / dry-run）
+diagnostic.cancelFix              → 中断修复
+diagnostic.exportReport           → 导出 Markdown / JSON
+diagnostic.checkServerRunning     → 检测目标服务器是否在运行
+diagnostic.killServerAndScan      → 杀进程 + 立即深度扫描
+```
+
+### 15.9 红线约束
+- **绝不写空壳子**：每个 UI 组件必须接真实数据；每个 FixAction 必须真执行；每个 bridge handler 必须有后端逻辑
+- **证据对齐**：汇报时每一项变更必须能对应到可观察的文件修改片段

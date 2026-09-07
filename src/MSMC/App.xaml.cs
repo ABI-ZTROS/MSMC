@@ -791,8 +791,9 @@ public partial class App : Application
                     // ════════════ 疑难解答 (P0) ════════════
                     await Step(56, "正在注册疑难解答服务...", "[DIAG] === 疑难解答 (P0) ===");
                     await Register<IDiagnosticEngine, DiagnosticEngine>(56, "[DIAG]", "DiagnosticEngine", "全链路诊断引擎协调器");
-                    await Register<ICheckRunner, CheckRunner>(56, "[DIAG]", "CheckRunner", "10 个系统/配置检查点");
+                    await Register<ICheckRunner, CheckRunner>(56, "[DIAG]", "CheckRunner", "12 个系统/配置/日志检查点");
                     await Register<IDiagnosticArchiveAnalyzer, DiagnosticArchiveAnalyzer>(56, "[DIAG]", "DiagnosticArchiveAnalyzer", "存档 NBT/Region 分析器");
+                    await Register<IFixExecutor, FixExecutor>(56, "[DIAG]", "FixExecutor", "7 个 FixAction 执行器");
 
                     // ════════════ 自动更新 (P2) ════════════
                     await Step(57, "正在注册自动更新模块...", "[UPDATE] === 自动更新 (P2) ===");

@@ -839,3 +839,130 @@ export interface KnownServerWithStartup {
   workingDirectory?: string
   startup?: StartupConfig | null
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 疑难解答 (Troubleshooting) 类型 —— 严格对标 DiagnosticTypes.cs record
+// ─────────────────────────────────────────────────────────────────────
+
+export type Severity = 0 | 1 | 2 | 3 | 4  // Ok=0 Info=1 Warning=2 Error=3 Critical=4
+export type FixTrustMode = 'Auto' | 'StepByStep' | 'DryRun'
+
+export interface DiagnosticServerInfo {
+  jarName: string
+  coreType?: string | null
+  version?: string | null
+  javaVersion?: string | null
+  port?: number | null
+  totalMemoryMb?: number | null
+  processId?: number | null
+  isRunning: boolean
+}
+
+export interface DiagnosticSummary {
+  totalChecks: number
+  okCount: number
+  warningCount: number
+  errorCount: number
+  criticalCount: number
+  autoFixableCount: number
+  scanDurationMs: number
+}
+
+export interface DiagnosticCheckResult {
+  checkId: string
+  severity: Severity
+  category: string
+  title: string
+  detail: string
+  autoFixable: boolean
+  suggestedFix?: DiagnosticFixAction | null
+  rawData?: unknown
+}
+
+export interface DiagnosticFixAction {
+  fixId: string
+  label: string
+  dangerous: boolean
+  diffPreview?: string | null
+  confidence: number
+  rationale?: string | null
+  steps: DiagnosticFixStep[]
+}
+
+export interface DiagnosticFixStep {
+  label: string
+  actionType: string
+  dangerous: boolean
+  confirmRequired: boolean
+  params: Record<string, unknown>
+}
+
+export interface DiagnosticIssue {
+  issueId: string
+  severity: Severity
+  category: string
+  title: string
+  detail: string
+  hint?: string | null
+  suggestion?: string | null
+  fix?: DiagnosticFixAction | null
+  context: Record<string, unknown>
+}
+
+export interface DiagnosticPlayerStat {
+  uuid: string
+  name: string
+  totalItems: number
+  wealthScore: number
+  anomalyCount: number
+  anomalyTypes: string[]
+}
+
+export interface DiagnosticReport {
+  generatedAt: string
+  msmcVersion: string
+  serverJarPath: string
+  worldPath: string
+  server: DiagnosticServerInfo
+  checks: DiagnosticCheckResult[]
+  summary: DiagnosticSummary
+  issues: DiagnosticIssue[]
+  topPlayers: DiagnosticPlayerStat[]
+  aiAnalysis: null
+  deepSeekRawResponse: null
+  succeeded: boolean
+  errorMessage?: string | null
+}
+
+export interface DiagnosticFixStepResult {
+  label: string
+  actionType: string
+  succeeded: boolean
+  message?: string | null
+}
+
+export interface DiagnosticFixResult {
+  fixId: string
+  succeeded: boolean
+  stepsCompleted: number
+  stepsTotal: number
+  stepResults: DiagnosticFixStepResult[]
+  backupPath?: string | null
+  error?: string | null
+}
+
+export interface ServerRunningCheck {
+  running: boolean
+  pid?: number | null
+}
+
+// ─── TreeNode 二叉树节点 ───
+
+export interface TreeNode {
+  id: string
+  category: 'Player' | 'Map' | 'Plugin' | 'PluginConfig' | 'Network' | 'System' | 'Java'
+  question: string
+  options?: { label: string; next?: string; severity?: Severity }[]
+  aiHint?: string
+  checkReference?: string
+}

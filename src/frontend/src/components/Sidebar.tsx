@@ -33,6 +33,7 @@ const navItems: NavItem[] = [
   { path: '/notifications', label: '通知中心', icon: <FaBell size={16} /> },
   { path: '/scheduler', label: '计划任务', icon: <FaClock size={16} /> },
   { path: '/market', label: '插件市场', icon: <FaStore size={16} /> },
+  { path: '/diagnostics', label: '疑难解答', icon: <FaWrench size={16} style={{ color: '#c0392b' }} /> },
   { path: '/settings', label: '设置', icon: <FaGear size={16} /> },
 ]
 

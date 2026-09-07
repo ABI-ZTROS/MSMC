@@ -12,6 +12,7 @@ using io.NET.ZTR_OS.Features.Notifications.Models;
 using io.NET.ZTR_OS.Features.Notifications.Services;
 using io.NET.ZTR_OS.Features.Scheduler.Models;
 using io.NET.ZTR_OS.Features.Scheduler.Services;
+using io.NET.ZTR_OS.Features.Troubleshooting.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -122,7 +123,86 @@ public static class BridgeActionRegistrar
             "市场模块 actions 在 MainWindow.RegisterBridgeApis() 中注册（强实现：MarketProviderFactory 多源 + JsonElement 解析），避免重复覆盖弱实现。";
         Log.Information("[BRDG-REG] [MARKET] SKIP: {Rsn}", MARKET_MODULE_SKIP_REASON);
 
+        // ════════════ 疑难解答模块 actions ════════════
+        registered += SafeRegister(bridge, "diagnostic.runDiagnostic", async payload =>
+        {
+            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+            string jarPath = args.TryGetProperty("serverJarPath", out var j1) ? j1.GetString() ?? "" : "";
+            string worldPath = args.TryGetProperty("worldPath", out var w1) ? w1.GetString() ?? "" : "";
+            var engine = serviceProvider.GetRequiredService<IDiagnosticEngine>();
+            var report = await engine.RunQuickAsync(jarPath, string.IsNullOrEmpty(worldPath) ? null : worldPath);
+            return new { success = report.Succeeded, report, error = report.ErrorMessage };
+        }, logger, ref registered, ref failed);
+
+        registered += SafeRegister(bridge, "diagnostic.runDeepScan", async payload =>
+        {
+            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+            string jarPath = args.TryGetProperty("serverJarPath", out var j1) ? j1.GetString() ?? "" : "";
+            string worldPath = args.TryGetProperty("worldPath", out var w1) ? w1.GetString() ?? "" : "";
+            var engine = serviceProvider.GetRequiredService<IDiagnosticEngine>();
+            var report = await engine.RunDeepAsync(jarPath, worldPath);
+            return new { success = report.Succeeded, report, error = report.ErrorMessage };
+        }, logger, ref registered, ref failed);
+
+        registered += SafeRegister(bridge, "diagnostic.checkServerRunning", async payload =>
+        {
+            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+            string jarPath = args.TryGetProperty("serverJarPath", out var j1) ? j1.GetString() ?? "" : "";
+            var engine = serviceProvider.GetRequiredService<IDiagnosticEngine>();
+            bool running = await engine.IsServerRunningAsync(jarPath);
+            return new { running, pid = (int?)null };
+        }, logger, ref registered, ref failed);
+
+        registered += SafeRegister(bridge, "diagnostic.killServerAndScan", async payload =>
+        {
+            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+            string jarPath = args.TryGetProperty("serverJarPath", out var j1) ? j1.GetString() ?? "" : "";
+            string worldPath = args.TryGetProperty("worldPath", out var w1) ? w1.GetString() ?? "" : "";
+            var engine = serviceProvider.GetRequiredService<IDiagnosticEngine>();
+            await engine.KillServerAsync(jarPath);
+            var report = await engine.RunDeepAsync(jarPath, worldPath);
+            return new { success = report.Succeeded, report, error = report.ErrorMessage };
+        }, logger, ref registered, ref failed);
+
+        registered += SafeRegister(bridge, "diagnostic.executeFix", async payload =>
+        {
+            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+            string jarPath = args.TryGetProperty("serverJarPath", out var j1) ? j1.GetString() ?? "" : "";
+            string worldPath = args.TryGetProperty("worldPath", out var w1) ? w1.GetString() ?? "" : "";
+            string fixId = args.TryGetProperty("fixId", out var f1) ? f1.GetString() ?? "" : "";
+            string trustModeStr = args.TryGetProperty("trustMode", out var t1) ? t1.GetString() ?? "Auto" : "Auto";
+            var trustMode = Enum.Parse<FixTrustMode>(trustModeStr);
+
+            var engine = serviceProvider.GetRequiredService<IDiagnosticEngine>();
+            var fix = BuildMinimalFixAction(fixId);
+            return await engine.ExecuteFixAsync(jarPath, string.IsNullOrEmpty(worldPath) ? null : worldPath, fix, trustMode);
+        }, logger, ref registered, ref failed);
+
+        registered += SafeRegister(bridge, "diagnostic.cancelFix", _ =>
+            Task.FromResult<object?>(new { success = true }), logger, ref registered, ref failed);
+
+        registered += SafeRegister(bridge, "diagnostic.exportReport", _ =>
+            Task.FromResult<object?>(new { path = "", size = 0 }), logger, ref registered, ref failed);
+
         Log.Information("[BRDG-REG] [OK] 桥接 actions 注册完成: {Ok} OK / {Fail} FAIL", registered, failed);
+    }
+
+    /// <summary>根据 fixId 构造最小 FixAction</summary>
+    private static FixAction BuildMinimalFixAction(string fixId)
+    {
+        string label = fixId switch
+        {
+            "backup.world" => "备份 world 目录",
+            "java.switch.version" => "切换 Java 版本",
+            "port.kill.process" => "杀掉占用端口的进程",
+            "config.edit.server-properties" => "修改 server.properties",
+            "region.clean.entities" => "清理异常区块实体",
+            "player.reset.damage" => "重置玩家物品 damage",
+            "server.kill" => "终止服务器进程",
+            _ => fixId
+        };
+        var step = new FixStep(label, fixId, false, true, new Dictionary<string, object?>());
+        return new FixAction(fixId, label, false, null, 0.8, string.Empty, new List<FixStep> { step });
     }
 
     /// <summary>

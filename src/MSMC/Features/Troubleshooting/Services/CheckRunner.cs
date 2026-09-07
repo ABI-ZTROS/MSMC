@@ -21,7 +21,8 @@ public class CheckRunner : ICheckRunner
     {
         "java.version", "java.heap.size", "process.priority",
         "process.t1.qos", "process.t3.tuning", "port.availability",
-        "port.firewall", "config.syntax", "storage.world.size", "log.startup.failure"
+        "port.firewall", "config.syntax", "storage.world.size",
+        "log.startup.failure", "log.outmemory", "log.chunk.generation"
     };
 
     public IReadOnlyCollection<string> KnownCheckIds => _knownCheckIds;
@@ -43,6 +44,8 @@ public class CheckRunner : ICheckRunner
         results.Add(SafeRun("config.syntax", () => CheckConfigSyntax(serverJarPath)));
         results.Add(SafeRun("storage.world.size", () => CheckWorldSize(worldPath)));
         results.Add(SafeRun("log.startup.failure", () => CheckStartupLogs(worldPath)));
+        results.Add(SafeRun("log.outmemory", () => CheckLogOutOfMemory(worldPath)));
+        results.Add(SafeRun("log.chunk.generation", () => CheckLogChunkGeneration(worldPath)));
 
         return results;
     }
@@ -610,5 +613,104 @@ public class CheckRunner : ICheckRunner
             return all.Skip(skip).ToList();
         }
         catch { return new List<string>(); }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Check 11: log.outmemory — 扫描 OutOfMemoryError
+    // ═══════════════════════════════════════════════════════════
+
+    private CheckResult CheckLogOutOfMemory(string? worldPath)
+    {
+        var logDir = ResolveLogDir(worldPath);
+        if (logDir == null)
+            return new CheckResult("log.outmemory", Severity.Ok, "Log",
+                "未检测到 OOM", "未找到日志目录", false, null, null);
+
+        int oomCount = CountKeywordInLogs(logDir, "java.lang.OutOfMemoryError");
+        if (oomCount == 0)
+            return new CheckResult("log.outmemory", Severity.Ok, "Log",
+                "未检测到 OOM", $"扫描完成，无 OutOfMemoryError", false, null, new { Count = 0 });
+
+        return new CheckResult("log.outmemory", Severity.Critical, "Log",
+            "检测到 OutOfMemoryError",
+            $"日志中出现 {oomCount} 次 OutOfMemoryError — -Xmx 堆内存配置不足或存在泄漏",
+            false,
+            new FixAction("backup.world", "建议增加堆内存后重启", false, null, 0.9,
+                "OOM 说明 -Xmx 不够或内存泄漏", new List<FixStep>()),
+            new { oomCount });
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Check 12: log.chunk.generation — 扫描 CHUNK_GENERATION 事件
+    // ═══════════════════════════════════════════════════════════
+
+    private CheckResult CheckLogChunkGeneration(string? worldPath)
+    {
+        var logDir = ResolveLogDir(worldPath);
+        if (logDir == null)
+            return new CheckResult("log.chunk.generation", Severity.Ok, "Log",
+                "未检测到区块生成异常", "未找到日志目录", false, null, null);
+
+        int count = CountKeywordInLogs(logDir, "Could not pass event CHUNK_GENERATION");
+        if (count == 0)
+            return new CheckResult("log.chunk.generation", Severity.Ok, "Log",
+                "区块生成正常", "无异常事件", false, null, new { Count = 0 });
+
+        if (count < 5)
+            return new CheckResult("log.chunk.generation", Severity.Info, "Log",
+                "少量区块生成异常", $"{count} 次 CHUNK_GENERATION 异常（< 5）", false, null, new { count });
+
+        return new CheckResult("log.chunk.generation", Severity.Warning, "Log",
+            "频繁区块生成异常",
+            $"{count} 次 CHUNK_GENERATION 事件异常，可能是插件冲突或区块损坏",
+            false, null, new { count });
+    }
+
+    // ── 日志扫描辅助方法 ──
+
+    /// <summary>在 latest.log 和 logs/*.log 中统计关键字出现次数</summary>
+    private static int CountKeywordInLogs(string logDir, string keyword)
+    {
+        int count = 0;
+        try
+        {
+            var latest = Path.Combine(logDir, "latest.log");
+            if (File.Exists(latest))
+                count += CountKeywordInFile(latest, keyword);
+
+            foreach (var f in Directory.GetFiles(logDir, "*.log", SearchOption.TopDirectoryOnly))
+            {
+                if (f.EndsWith("latest.log")) continue;
+                count += CountKeywordInFile(f, keyword);
+            }
+        }
+        catch { }
+        return count;
+    }
+
+    private static int CountKeywordInFile(string path, string keyword)
+    {
+        try
+        {
+            // 只扫文件尾部 2MB，性能友好
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            fs.Seek(-Math.Min(fs.Length, 2 * 1024 * 1024), SeekOrigin.End);
+            using var sr = new StreamReader(fs);
+            var text = sr.ReadToEnd();
+            return System.Text.RegularExpressions.Regex.Matches(
+                text,
+                System.Text.RegularExpressions.Regex.Escape(keyword)).Count;
+        }
+        catch { return 0; }
+    }
+
+    /// <summary>从 worldPath 推导出 server jar 同级 logs 目录</summary>
+    private static string? ResolveLogDir(string? worldPath)
+    {
+        if (string.IsNullOrEmpty(worldPath)) return null;
+        var parent = Directory.GetParent(worldPath);
+        if (parent == null) return null;
+        var p = Path.Combine(parent.FullName, "logs");
+        return Directory.Exists(p) ? p : null;
     }
 }

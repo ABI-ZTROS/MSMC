@@ -1093,3 +1093,49 @@ export function reparseScript(knownServerId: string): Promise<{
 }> {
   return bridge.invoke('server:reparseScript', { knownServerId })
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 疑难解答桥接封装
+// ─────────────────────────────────────────────────────────────────────
+
+export async function runDiagnostic(serverJarPath: string): Promise<{ success: boolean; report?: import('@/types/bridge').DiagnosticReport; error?: string }> {
+  const bridge = (window as any).__msmc_bridge__
+  if (!bridge) throw new Error('Bridge not ready')
+  return await bridge.invoke('diagnostic.runDiagnostic', { serverJarPath })
+}
+
+export async function runDeepScan(serverJarPath: string, worldPath: string): Promise<{ success: boolean; report?: import('@/types/bridge').DiagnosticReport; error?: string }> {
+  const bridge = (window as any).__msmc_bridge__
+  if (!bridge) throw new Error('Bridge not ready')
+  return await bridge.invoke('diagnostic.runDeepScan', { serverJarPath, worldPath })
+}
+
+export async function executeFix(fixId: string, trustMode: import('@/types/bridge').FixTrustMode, serverJarPath: string, worldPath?: string): Promise<import('@/types/bridge').DiagnosticFixResult> {
+  const bridge = (window as any).__msmc_bridge__
+  if (!bridge) throw new Error('Bridge not ready')
+  return await bridge.invoke('diagnostic.executeFix', { fixId, trustMode, serverJarPath, worldPath })
+}
+
+export async function cancelFix(fixId: string): Promise<{ success: boolean }> {
+  const bridge = (window as any).__msmc_bridge__
+  if (!bridge) throw new Error('Bridge not ready')
+  return await bridge.invoke('diagnostic.cancelFix', { fixId })
+}
+
+export async function exportDiagnosticReport(format: 'markdown' | 'json', path?: string): Promise<{ path: string; size: number }> {
+  const bridge = (window as any).__msmc_bridge__
+  if (!bridge) throw new Error('Bridge not ready')
+  return await bridge.invoke('diagnostic.exportReport', { format, path })
+}
+
+export async function checkServerRunning(serverJarPath: string): Promise<import('@/types/bridge').ServerRunningCheck> {
+  const bridge = (window as any).__msmc_bridge__
+  if (!bridge) throw new Error('Bridge not ready')
+  return await bridge.invoke('diagnostic.checkServerRunning', { serverJarPath })
+}
+
+export async function killServerAndScan(serverJarPath: string, worldPath: string): Promise<{ success: boolean; report?: import('@/types/bridge').DiagnosticReport; error?: string }> {
+  const bridge = (window as any).__msmc_bridge__
+  if (!bridge) throw new Error('Bridge not ready')
+  return await bridge.invoke('diagnostic.killServerAndScan', { serverJarPath, worldPath })
+}
