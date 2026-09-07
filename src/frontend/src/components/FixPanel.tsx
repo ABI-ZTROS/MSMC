@@ -30,7 +30,7 @@ export function FixPanel({ serverJarPath, worldPath, fix, onDone, onClose }: Fix
     setError(null)
     setResult(null)
     try {
-      const r = await executeFix(fix!.fixId, trustMode, serverJarPath, worldPath)
+      const r = await executeFix(fix!.fixId, trustMode, serverJarPath, worldPath, fix!.steps?.[0]?.params)
       setResult(r)
       onDone?.(r)
     } catch (e: any) {

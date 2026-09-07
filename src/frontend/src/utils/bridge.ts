@@ -1110,10 +1110,16 @@ export async function runDeepScan(serverJarPath: string, worldPath: string): Pro
   return await bridge.invoke('diagnostic.runDeepScan', { serverJarPath, worldPath })
 }
 
-export async function executeFix(fixId: string, trustMode: import('@/types/bridge').FixTrustMode, serverJarPath: string, worldPath?: string): Promise<import('@/types/bridge').DiagnosticFixResult> {
+export async function executeFix(
+  fixId: string,
+  trustMode: import('@/types/bridge').FixTrustMode,
+  serverJarPath: string,
+  worldPath?: string,
+  params?: Record<string, unknown>
+): Promise<import('@/types/bridge').DiagnosticFixResult> {
   const bridge = (window as any).__msmc_bridge__
   if (!bridge) throw new Error('Bridge not ready')
-  return await bridge.invoke('diagnostic.executeFix', { fixId, trustMode, serverJarPath, worldPath })
+  return await bridge.invoke('diagnostic.executeFix', { fixId, trustMode, serverJarPath, worldPath, params })
 }
 
 export async function cancelFix(fixId: string): Promise<{ success: boolean }> {

@@ -5,6 +5,9 @@
 // 设计模式: 三链原则 - 因果链：action 名称 → Service 方法；执行链：try/catch/finally；返回链：结构化日志
 // -----------------------------------------------------------------------------
 
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Text.Json;
 using io.NET.ZTR_OS.Features.ContentMarket.Models;
 using io.NET.ZTR_OS.Features.ContentMarket.Services;
@@ -173,37 +176,84 @@ public static class BridgeActionRegistrar
             string trustModeStr = args.TryGetProperty("trustMode", out var t1) ? t1.GetString() ?? "Auto" : "Auto";
             var trustMode = Enum.Parse<FixTrustMode>(trustModeStr);
 
+            // 从前端 payload 拿 params（pid / maxPlayers / javaPath 等），构造真实 FixAction
+            var @params = new Dictionary<string, object?>();
+            if (args.TryGetProperty("params", out var p) && p.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var prop in p.EnumerateObject())
+                    @params[prop.Name] = prop.Value.ValueKind switch
+                    {
+                        JsonValueKind.Number when prop.Value.TryGetInt32(out var i) => i,
+                        JsonValueKind.Number when prop.Value.TryGetInt64(out var l) => l,
+                        JsonValueKind.String => prop.Value.GetString(),
+                        JsonValueKind.True => true,
+                        JsonValueKind.False => false,
+                        _ => null
+                    };
+            }
+            var label = fixId switch
+            {
+                "backup.world" => "备份 world 目录",
+                "java.switch.version" => "切换 Java 版本",
+                "port.kill.process" => "杀掉占用端口的进程",
+                "config.edit.server-properties" => "修改 server.properties",
+                "region.clean.entities" => "清理异常区块实体",
+                "player.reset.damage" => "重置玩家物品 damage",
+                "server.kill" => "终止服务器进程",
+                _ => fixId
+            };
+            var step = new FixStep(label, fixId, false, true, @params);
+            var fix = new FixAction(fixId, label, false, null, 0.8, string.Empty, new List<FixStep> { step });
+
             var engine = serviceProvider.GetRequiredService<IDiagnosticEngine>();
-            var fix = BuildMinimalFixAction(fixId);
             return await engine.ExecuteFixAsync(jarPath, string.IsNullOrEmpty(worldPath) ? null : worldPath, fix, trustMode);
         }, logger, ref registered, ref failed);
 
-        registered += SafeRegister(bridge, "diagnostic.cancelFix", _ =>
-            Task.FromResult<object?>(new { success = true }), logger, ref registered, ref failed);
+        // cancelFix: 目前 P0 简化为仅记录日志并返回 — 真正的 step-by-step 取消需跨请求 CTS 池（P1）
+        registered += SafeRegister(bridge, "diagnostic.cancelFix", payload =>
+        {
+            Log.Information("[DIAG] cancelFix 收到（P0 简化，目前仅返回 success=true）");
+            return Task.FromResult<object?>(new { success = true, message = "P0 简化: 仅返回成功标记" });
+        }, logger, ref registered, ref failed);
 
-        registered += SafeRegister(bridge, "diagnostic.exportReport", _ =>
-            Task.FromResult<object?>(new { path = "", size = 0 }), logger, ref registered, ref failed);
+        // exportReport: 真实现 — 写 Markdown / JSON 到 %AppData%/MSMC/diagnostic/
+        registered += SafeRegister(bridge, "diagnostic.exportReport", payload =>
+        {
+            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+            string format = args.TryGetProperty("format", out var f1) ? f1.GetString() ?? "markdown" : "markdown";
+            string? customPath = args.TryGetProperty("path", out var p1) ? p1.GetString() : null;
+            try
+            {
+                var dir = customPath ?? Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MSMC", "diagnostic");
+                Directory.CreateDirectory(dir);
+                var fileName = $"diagnostic-report-{DateTime.Now:yyyyMMdd-HHmmss}.{format}";
+                var fullPath = Path.Combine(dir, fileName);
+                var content = format == "json"
+                    ? JsonSerializer.Serialize(new { generatedAt = DateTime.Now, msmcNote = "P0 导出占位：完整 DiagnosticReport 将在 P1 接入" }, new JsonSerializerOptions { WriteIndented = true })
+                    : $"# MSMC 诊断报告
+
+生成时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
+MSMC 版本: (unknown)
+
+> 完整报告导出将在 P1 接入 DiagnosticReport 数据流
+";
+                File.WriteAllText(fullPath, content);
+                Log.Information("[DIAG] exportReport 成功: {Path} ({Size} bytes)", fullPath, content.Length);
+                return Task.FromResult<object?>(new { path = fullPath, size = content.Length });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[DIAG] exportReport 失败");
+                return Task.FromResult<object?>(new { path = "", size = 0, error = ex.Message });
+            }
+        }, logger, ref registered, ref failed);
 
         Log.Information("[BRDG-REG] [OK] 桥接 actions 注册完成: {Ok} OK / {Fail} FAIL", registered, failed);
     }
 
     /// <summary>根据 fixId 构造最小 FixAction</summary>
-    private static FixAction BuildMinimalFixAction(string fixId)
-    {
-        string label = fixId switch
-        {
-            "backup.world" => "备份 world 目录",
-            "java.switch.version" => "切换 Java 版本",
-            "port.kill.process" => "杀掉占用端口的进程",
-            "config.edit.server-properties" => "修改 server.properties",
-            "region.clean.entities" => "清理异常区块实体",
-            "player.reset.damage" => "重置玩家物品 damage",
-            "server.kill" => "终止服务器进程",
-            _ => fixId
-        };
-        var step = new FixStep(label, fixId, false, true, new Dictionary<string, object?>());
-        return new FixAction(fixId, label, false, null, 0.8, string.Empty, new List<FixStep> { step });
-    }
 
     /// <summary>
     /// 安全注册单个 action handler —— 执行链的兜底，单个 handler 失败不影响其他
