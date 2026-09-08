@@ -282,8 +282,11 @@ public static class BridgeActionRegistrar
                 ? r : (JsonElement?)null;
 
             var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
+            Log.Information("[DIAG-AI] askAI 调用: IsConfigured={Configured}, HasReport={HasReport}",
+                ai.IsConfigured, reportElement != null);
+
             if (!ai.IsConfigured)
-                return new { success = false, error = "尚未配置 DeepSeek API Key" };
+                return new { success = false, error = "尚未配置 DeepSeek API Key，请在设置中配置后再试", needsConfig = true };
             if (reportElement is null)
                 return new { success = false, error = "缺少报告数据" };
 
@@ -312,13 +315,23 @@ public static class BridgeActionRegistrar
                 ? uq.GetString() : null;
 
             var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
+            Log.Information("[DIAG-AI] aiInit 调用: IsConfigured={Configured}, TutorialStep={Step}, ServerPath={Path}",
+                ai.IsConfigured, tutorialStep, serverPath ?? "(null)");
+
             if (!ai.IsConfigured)
                 return new { success = false, error = "尚未配置 DeepSeek API Key", needsConfig = true };
 
             var prompt = BuildAiUserPrompt(tutorialStep, serverPath, userQuestion);
+            Log.Information("[DIAG-AI] aiInit 开始 Function Calling 诊断...");
             var analysis = await ai.AnalyzeWithToolsAsync(prompt);
             if (analysis is null)
-                return new { success = false, error = "AI Function Calling 失败（检查网络或 API Key）" };
+            {
+                // AI 返回 null —— 再检查一次 IsConfigured（Key 可能已变更）
+                if (!ai.IsConfigured)
+                    return new { success = false, error = "API Key 已失效或被清除，请重新配置", needsConfig = true };
+                return new { success = false, error = "AI Function Calling 失败（检查网络或 API Key 是否有效）" };
+            }
+            Log.Information("[DIAG-AI] aiInit 成功返回分析结果");
             return new { success = true, analysis };
         }, logger, ref registered, ref failed);
 
@@ -331,13 +344,21 @@ public static class BridgeActionRegistrar
                 return new { success = false, error = "message 不能为空" };
 
             var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
+            Log.Information("[DIAG-AI] aiSend 调用: IsConfigured={Configured}, MessageLen={Len}",
+                ai.IsConfigured, message.Length);
+
             if (!ai.IsConfigured)
                 return new { success = false, error = "尚未配置 DeepSeek API Key", needsConfig = true };
 
             // 追加对话 —— 当前简化为新开一轮，后续可扩展为多轮历史保持
             var analysis = await ai.AnalyzeWithToolsAsync(message);
             if (analysis is null)
-                return new { success = false, error = "AI Function Calling 失败" };
+            {
+                // AI 返回 null —— 可能是 Key 刚被用户删除/变更了，再检查一次 IsConfigured
+                if (!ai.IsConfigured)
+                    return new { success = false, error = "API Key 已失效或被清除，请重新配置", needsConfig = true };
+                return new { success = false, error = "AI Function Calling 失败（检查网络或 API Key 是否有效）" };
+            }
             return new { success = true, analysis };
         }, logger, ref registered, ref failed);
 

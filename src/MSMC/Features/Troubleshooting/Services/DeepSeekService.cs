@@ -79,7 +79,10 @@ public sealed class DeepSeekService : IDeepSeekService
     };
 
     private readonly ILogger _log;
-    private readonly FunctionCallingEngine? _functionEngine;
+    private readonly ToolRegistry _registry;
+    private readonly IWebView2BridgeService? _bridge;
+    private FunctionCallingEngine? _functionEngineCache;
+    private string? _cachedKey;  // 缓存对应的 API Key，用于检测 SetApiKey 后的变更
 
     public DeepSeekService(
         ILogger<DeepSeekService> log,
@@ -87,17 +90,59 @@ public sealed class DeepSeekService : IDeepSeekService
         IWebView2BridgeService? bridge = null)
     {
         _log = log;
-        var apiKey = GetApiKey();
-        _functionEngine = string.IsNullOrEmpty(apiKey)
-            ? null
-            : new FunctionCallingEngine(registry, log, apiKey, bridge);
+        _registry = registry;
+        _bridge = bridge;
+        _log.LogInformation("[DIAG-AI] DeepSeekService 构造完成（延迟初始化 FunctionCallingEngine，Key 存在时首次调用时自动创建）");
+    }
+
+    /// <summary>
+    /// 按需获取 FunctionCallingEngine —— 如果 API Key 有变更（SetApiKey 后）自动重建
+    /// 因果链修复：SetApiKey 写入文件后，缓存 Key 会失配，下次调用此方法时会检测并重建
+    /// </summary>
+    private FunctionCallingEngine? GetOrCreateEngine()
+    {
+        var currentKey = GetApiKey();
+        if (string.IsNullOrEmpty(currentKey))
+        {
+            _functionEngineCache = null;
+            _cachedKey = null;
+            return null;
+        }
+
+        // Key 没变 → 复用缓存
+        if (_functionEngineCache != null && _cachedKey == currentKey)
+            return _functionEngineCache;
+
+        // Key 变了（或首次调用）→ 重建
+        _log.LogInformation("[DIAG-AI] FunctionCallingEngine 重建（Key 变更或首次创建）");
+        _functionEngineCache = new FunctionCallingEngine(_registry, _log, currentKey, _bridge);
+        _cachedKey = currentKey;
+        return _functionEngineCache;
     }
 
     private static string KeyFilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "io.NET.ZTR_OS", "diagnostic", "deepseek-key.bin");
 
-    public bool IsConfigured => !string.IsNullOrEmpty(GetApiKey());
+    public bool IsConfigured
+    {
+        get
+        {
+            try
+            {
+                var key = GetApiKey();
+                var configured = !string.IsNullOrEmpty(key);
+                _log.LogDebug("[DIAG-AI] IsConfigured 查询结果: {Configured} (Key 文件存在: {FileExists})",
+                    configured, File.Exists(KeyFilePath));
+                return configured;
+            }
+            catch (Exception ex)
+            {
+                _log.LogWarning(ex, "[DIAG-AI] IsConfigured 查询异常，返回 false");
+                return false;
+            }
+        }
+    }
 
     public string? GetApiKey()
     {
@@ -106,11 +151,13 @@ public sealed class DeepSeekService : IDeepSeekService
             if (!File.Exists(KeyFilePath)) return null;
             var enc = File.ReadAllBytes(KeyFilePath);
             var dec = ProtectedData.Unprotect(enc, null, DataProtectionScope.CurrentUser);
-            return Encoding.UTF8.GetString(dec);
+            var key = Encoding.UTF8.GetString(dec);
+            _log.LogDebug("[DIAG-AI] 成功读取 API Key（长度 {Len}）", key?.Length ?? 0);
+            return key;
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "[DIAG-AI] 读取 API Key 失败");
+            _log.LogWarning(ex, "[DIAG-AI] 读取 API Key 失败（DPAPI 解密或文件读取异常）");
             return null;
         }
     }
@@ -123,12 +170,25 @@ public sealed class DeepSeekService : IDeepSeekService
             Directory.CreateDirectory(dir);
             if (string.IsNullOrWhiteSpace(key))
             {
-                if (File.Exists(KeyFilePath)) File.Delete(KeyFilePath);
+                if (File.Exists(KeyFilePath))
+                {
+                    File.Delete(KeyFilePath);
+                    _log.LogInformation("[DIAG-AI] API Key 已清除（文件删除）");
+                }
+                // 清除缓存，强制下次调用重建
+                _functionEngineCache = null;
+                _cachedKey = null;
                 return (true, null);
             }
+
+            var trimmedKey = key.Trim();
             var enc = ProtectedData.Protect(
-                Encoding.UTF8.GetBytes(key.Trim()), null, DataProtectionScope.CurrentUser);
+                Encoding.UTF8.GetBytes(trimmedKey), null, DataProtectionScope.CurrentUser);
             File.WriteAllBytes(KeyFilePath, enc);
+            // 清除缓存 → 下次 AnalyzeWithToolsAsync 调用 GetOrCreateEngine 时检测 Key 变更并重建
+            _functionEngineCache = null;
+            _cachedKey = null;
+            _log.LogInformation("[DIAG-AI] API Key 已保存并触发 FunctionCallingEngine 重建（Key 长度 {Len}）", trimmedKey.Length);
             return (true, null);
         }
         catch (Exception ex)
@@ -283,11 +343,20 @@ public sealed class DeepSeekService : IDeepSeekService
     /// <summary>Function Calling AI 诊断入口 —— 多轮工具自主选择</summary>
     public async Task<DeepSeekAnalysis?> AnalyzeWithToolsAsync(string userPrompt, CancellationToken ct = default)
     {
-        if (!IsConfigured || _functionEngine == null)
+        try
         {
-            _log.LogWarning("[DIAG-AI] Function Calling 未配置（API Key 或工具）");
+            var engine = GetOrCreateEngine();
+            if (engine == null)
+            {
+                _log.LogWarning("[DIAG-AI] Function Calling 未配置（API Key 为空或读取失败）");
+                return null;
+            }
+            return await engine.RunAsync(userPrompt, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "[DIAG-AI] AnalyzeWithToolsAsync 未预期异常");
             return null;
         }
-        return await _functionEngine.RunAsync(userPrompt, ct).ConfigureAwait(false);
     }
 }
