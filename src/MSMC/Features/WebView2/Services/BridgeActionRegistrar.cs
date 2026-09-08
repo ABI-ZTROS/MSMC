@@ -254,8 +254,25 @@ public static class BridgeActionRegistrar
             }
         }, logger, ref registered, ref failed);
 
-        // ════════════ DeepSeek AI 分析 actions ════════════
+        // ════════════ DeepSeek AI 分析 actions（抽到独立方法，MainWindow 和 RegisterAll 都能调）════════════
+        RegisterAiHandlers(bridge, serviceProvider, logger, ref registered, ref failed);
+        Log.Information("[BRDG-REG] [OK] 桥接 actions 注册完成: {Ok} OK / {Fail} FAIL", registered, failed);
+    }
 
+    /// <summary>
+    /// 单独注册所有 AI 相关 handler —— MainWindow.RegisterBridgeApis 和 RegisterAll 都能调
+    /// 因果链修复：之前 AI handler 只在 RegisterAll 里注册，如果 RegisterAll 因为任何原因
+    /// 没执行（异常被 MainWindow 外部 catch 吃掉），troubleshooting.aiInit 等 handler 就不存在
+    /// → 后端返回 "handler not found" → 前端 30s 超时 → 用户看不到配置引导
+    /// 现在 MainWindow.RegisterBridgeApis 末尾显式调这个方法，确保 AI handler 肯定被注册
+    /// </summary>
+    public static void RegisterAiHandlers(
+        IWebView2BridgeService bridge,
+        IServiceProvider serviceProvider,
+        Serilog.ILogger logger,
+        ref int registered,
+        ref int failed)
+    {
         // 查询 AI 配置状态（是否已配 Key）
         registered += SafeRegister(bridge, "diagnostic.getAiStatus", _ =>
         {
@@ -461,8 +478,9 @@ public static class BridgeActionRegistrar
             return new { success = true, message = $"Fix action '{fixId}' queued (awaiting FixAction mapping)", fixId };
         }, logger, ref registered, ref failed);
 
-        Log.Information("[BRDG-REG] [OK] 桥接 actions 注册完成: {Ok} OK / {Fail} FAIL", registered, failed);
+        Log.Information("[BRDG-REG] [AI] AI handlers 注册完成: {Ok} OK / {Fail} FAIL", registered, failed);
     }
+
 
     /// <summary>Function Calling AI 用户 prompt 组装（教程上下文 + 用户追问）</summary>
     private static string BuildAiUserPrompt(int? tutorialStep, string? serverPath, string? userQuestion)
@@ -558,7 +576,7 @@ public static class BridgeActionRegistrar
     /// <summary>
     /// 安全注册单个 action handler —— 执行链的兜底，单个 handler 失败不影响其他
     /// </summary>
-    private static int SafeRegister(
+    internal static int SafeRegister(
         IWebView2BridgeService bridge,
         string actionName,
         Func<string?, Task<object?>> handler,

@@ -4298,6 +4298,19 @@ public partial class MainWindow : Window
             }
         });
 
+
+        // ═══ 显式注册 AI handler —— 双保险：即使 BridgeActionRegistrar.RegisterAll 没被调用
+        // （比如 RegisterBridgeApis 后外部 try-catch 提前 return），AI handler 也在这里注册了
+        try
+        {
+            int aiRegistered = 0, aiFailed = 0;
+            BridgeActionRegistrar.RegisterAiHandlers(_bridgeService, App.Services, Log.Logger, ref aiRegistered, ref aiFailed);
+            Log.Information("[BRDG-REG-MW] [OK] MainWindow 显式注册 AI handlers: {Ok} OK / {Fail} FAIL", aiRegistered, aiFailed);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[BRDG-REG-MW] [ERR] MainWindow 注册 AI handlers 失败");
+        }
         Log.Information("[OK] 设置 API 注册完成");
     }
 
