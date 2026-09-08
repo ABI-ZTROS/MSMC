@@ -372,24 +372,11 @@ public static class BridgeActionRegistrar
                 var analysis = await ai.AnalyzeWithToolsAsync(prompt);
                 if (analysis is null)
                 {
-                    // AI 返回 null —— 逐级排查：
+                    // 预检查已经确认 Key 有效 + 网络通了，
+                    // 这里 FunctionCallingEngine 返回 null 只能是 25s 超时 / DeepSeek 服务端异常 / 解析失败
+                    // 再查一次 IsConfigured 兜底（Key 可能在预检查后被用户删了）
                     if (!ai.IsConfigured)
                         return new { success = false, error = "API Key 已失效或被清除，请重新配置", needsConfig = true };
-
-                    // IsConfigured=true 但 AI 失败 —— 调 TestKeyValidity 区分 Key 无效 vs 网络异常
-                    Log.Information("[DIAG-AI] aiInit AI 返回 null → 调用 TestKeyValidityAsync 区分原因");
-                    var validity = await ai.TestKeyValidityAsync();
-                    if (!validity.IsValid && validity.StatusCode is 401 or 403)
-                    {
-                        Log.Warning("[DIAG-AI] aiInit → Key 无效 (HTTP {Status})", validity.StatusCode);
-                        return new { success = false, error = $"API Key 已过期或无效（HTTP {validity.StatusCode}），请重新配置", needsConfig = true };
-                    }
-                    if (!validity.IsValid && validity.StatusCode is null)
-                    {
-                        Log.Warning("[DIAG-AI] aiInit → 网络异常");
-                        return new { success = false, error = "AI 调用失败 — 网络异常，请检查网络后重试" };
-                    }
-                    Log.Warning("[DIAG-AI] aiInit → Key 有效但 AI 调用失败 (Status={Status})", validity.StatusCode);
                     return new { success = false, error = "AI 调用暂时失败 — 可能是限流或服务端问题，请稍后重试" };
                 }
                 Log.Information("[DIAG-AI] aiInit 成功返回分析结果");
@@ -444,12 +431,6 @@ public static class BridgeActionRegistrar
                 {
                     if (!ai.IsConfigured)
                         return new { success = false, error = "API Key 已失效或被清除，请重新配置", needsConfig = true };
-
-                    var validity = await ai.TestKeyValidityAsync();
-                    if (!validity.IsValid && validity.StatusCode is 401 or 403)
-                        return new { success = false, error = $"API Key 已过期或无效（HTTP {validity.StatusCode}），请重新配置", needsConfig = true };
-                    if (!validity.IsValid && validity.StatusCode is null)
-                        return new { success = false, error = "AI 调用失败 — 网络异常，请检查网络后重试" };
                     return new { success = false, error = "AI 调用暂时失败 — 可能是限流或服务端问题，请稍后重试" };
                 }
                 return new { success = true, analysis };
