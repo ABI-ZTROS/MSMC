@@ -36,6 +36,20 @@ public sealed class DeepSeekService : IDeepSeekService
     private const string ApiUrl = "https://api.deepseek.com/chat/completions";
     private const string Model = "deepseek-chat";
 
+    // 【诚实返回链 P4】允许的 fixId 白名单——C# 侧硬约束，AI 侧 system prompt 只是"软建议"
+    // 任何不在此名单的 fixId 一律降级为 "ai.fix"（带 Warning 日志），防止模型幻觉输出
+    // 不存在的修复动作导致用户点了之后静默失败或崩溃
+    private static readonly HashSet<string> AllowedFixIds = new(StringComparer.Ordinal)
+    {
+        "backup.world",
+        "server.kill",
+        "port.kill.process",
+        "config.edit.server-properties",
+        "java.switch.version",
+        "region.clean.entities",
+        "player.reset.damage",
+    };
+
     // 预设词：严格约束输出为固定 schema 的 JSON（防 DeepSeek 降智抽风输出 markdown/散文）
     private const string SystemPrompt =
         "你是一名资深 Minecraft Java 版服务器运维专家。用户会提供服务器体检结果，请给出诊断结论。\n" +
@@ -184,8 +198,21 @@ public sealed class DeepSeekService : IDeepSeekService
             {
                 foreach (var a in acts.EnumerateArray())
                 {
+                    // 【诚实返回链 P4】fixId 白名单硬校验
+                    // 模型幻觉输出不在白名单的 fixId → 降级为 "ai.fix" 并打 Warning
+                    var rawFixId = GetStr(a, "fixId");
+                    var safeFixId = (rawFixId != null && AllowedFixIds.Contains(rawFixId))
+                        ? rawFixId
+                        : "ai.fix";
+                    if (rawFixId != null && safeFixId == "ai.fix")
+                    {
+                        Serilog.Log.Warning(
+                            "[DIAG-AI] DeepSeek 返回了不在白名单的 fixId '{FixId}'，已降级为 'ai.fix'（诚实返回链）",
+                            rawFixId);
+                    }
+
                     actions.Add(new FixAction(
-                        GetStr(a, "fixId") ?? "ai.fix",
+                        safeFixId,
                         GetStr(a, "label") ?? "AI 建议",
                         GetBool(a, "dangerous") ?? false,
                         null,
