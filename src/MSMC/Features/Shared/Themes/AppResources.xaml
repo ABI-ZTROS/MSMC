@@ -160,14 +160,16 @@
     <system:Double x:Key="AppCornerRadiusSmallValue">8</system:Double>
     <system:Double x:Key="AppCornerRadiusLargeValue">16</system:Double>
 
-    <!-- [EDIT] AppFontFamily: 全局字体族（嵌入 Space Grotesk + 简体中文回退） -->
-    <!-- 使用 baseUri,familyNames 字符串语法，等价于 new FontFamily(BaseUri, FamilyNames)。
-         Space Grotesk 是纯英文字体不含中文字形，必须显式指定 Microsoft YaHei UI 作为中文回退，
-         否则 WPF 会走系统字体回退可能选到繁体字体（如 MingLiU）。 -->
-    <FontFamily x:Key="AppFontFamily">pack://application:,,,/MSMC;component/Resources/Fonts/,./#Space Grotesk Light,Microsoft YaHei UI</FontFamily>
+    <!-- AppFontFamily: 全局字体族 —— 全部内嵌，不依赖 Windows 系统字体
+         Space Grotesk Light (内嵌) = 英文/标题，Noto Sans SC (内嵌) = 简体中文回退
+         彻底解决 Windows Server 无桌面体验/精简版 缺 Microsoft YaHei UI 导致中文显示为方框的问题
+         字体均为 SIL Open Font License，可自由嵌入 -->
+    <FontFamily x:Key="AppFontFamily">pack://application:,,,/MSMC;component/Resources/Fonts/,./#Space Grotesk Light,./#Noto Sans SC</FontFamily>
 
-    <!-- [EDIT] AppMonospaceFontFamily: 等宽字体族（终端/代码/日志） -->
-    <FontFamily x:Key="AppMonospaceFontFamily">Consolas, Courier New</FontFamily>
+    <!-- AppMonospaceFontFamily: 等宽字体族（终端/代码/日志）—— 同样内嵌
+         Consolas 是系统英文字体，加 Noto Sans SC 作为中文等宽兜底
+         （Noto Sans SC 不是严格等宽但字形宽度接近，日志场景可接受） -->
+    <FontFamily x:Key="AppMonospaceFontFamily">Consolas,pack://application:,,,/MSMC;component/Resources/Fonts/,./#Noto Sans SC</FontFamily>
 
     <!-- [THEME] AccentGradientBrush: 苍穹蓝 → 水蓝 渐变，用于标题栏、按钮等高亮区域 -->
     <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,0" po:Freeze="True">

@@ -733,15 +733,13 @@ public class ThemeService : IThemeService
         resources["DangerSubtleBackgroundBrush"] = dangerSubtleBgBrush;
         resources["DangerSubtleBorderBrush"] = dangerSubtleBorderBrush;
 
-        // 字体 —— 嵌入 Space Grotesk + 简体中文回退
-        // Space Grotesk 是纯英文字体，不含中文字形。
-        // 如果不指定回退字体，WPF 会走系统字体回退，可能选到繁体字体（如 MingLiU），
-        // 导致界面中文显示为繁体字形。这里显式指定 Microsoft YaHei UI 作为中文回退。
+        // 字体 —— 全部内嵌，不依赖 Windows 系统字体（应对 Windows Server 精简版无桌面体验场景）
+        // Space Grotesk Light (内嵌) = 英文/标题，Noto Sans SC (内嵌 OFL) = 简体中文回退
         try
         {
             var fontFamily = new FontFamily(
                 new Uri("pack://application:,,,/MSMC;component/Resources/Fonts/"),
-                "./#Space Grotesk Light, Microsoft YaHei UI");
+                "./#Space Grotesk Light, ./#Noto Sans SC");
             resources["AppFontFamily"] = fontFamily;
 
             // 覆盖 MaterialDesign 字体
@@ -756,7 +754,10 @@ public class ThemeService : IThemeService
         }
         catch
         {
-            var defaultFont = new FontFamily("Microsoft YaHei UI, Segoe UI");
+            // 极端兜底：至少有内嵌的 Noto Sans SC 中文可用
+            var defaultFont = new FontFamily(
+                new Uri("pack://application:,,,/MSMC;component/Resources/Fonts/"),
+                "./#Noto Sans SC");
             resources["AppFontFamily"] = defaultFont;
         }
 

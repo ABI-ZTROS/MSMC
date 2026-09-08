@@ -90,7 +90,10 @@
          ApplicationIcon 只给 exe 程序集图标用，不等同于 WPF 可 pack 访问的资源。 -->
     <Resource Include="Assets\app.ico" />
     <Resource Include="Resources\Images\yanlanxiang.jpg" />
+    <Resource Include="Resources\Fonts\NotoSansSC-Regular.ttf" />
     <Resource Include="Resources\Fonts\SpaceGrotesk.ttf" />
+    <Resource Include="Resources\Images\Icons\msmc-avatar-64.png" />
+    <Resource Include="Resources\Images\Icons\msmc-avatar-48.png" />
     <Resource Include="Resources\Images\avatars\ABI-ZTROS.png" />
     <Resource Include="Resources\Images\avatars\MochaCello92377.png" />
     <Resource Include="Resources\Images\avatars\CatStack-pixe.png" />

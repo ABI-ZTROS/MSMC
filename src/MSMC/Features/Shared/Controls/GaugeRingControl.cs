@@ -42,8 +42,15 @@ public class GaugeRingControl : FrameworkElement
     private static readonly Brush FallbackWhiteBrush = CreateFrozenBrush(Colors.White);
     private const double TrackPenThickness = 12.0;
 
-    private static readonly Typeface NumTypeface = new(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal);
-    private static readonly Typeface LabelTypeface = new(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+    // 使用内嵌字体：Space Grotesk Light (数字加粗) + Noto Sans SC 回退中文
+    // 全部内嵌，不依赖 Windows 系统字体（兼容 Windows Server 精简版）
+    private static readonly Uri FontBaseUri = new("pack://application:,,,/MSMC;component/Resources/Fonts/");
+    private static readonly Typeface NumTypeface = new(
+        new FontFamily(FontBaseUri, "./#Space Grotesk Light, ./#Noto Sans SC"),
+        FontStyles.Normal, FontWeights.Bold, FontStretches.Normal);
+    private static readonly Typeface LabelTypeface = new(
+        new FontFamily(FontBaseUri, "./#Space Grotesk Light, ./#Noto Sans SC"),
+        FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
 
     private static Brush CreateFrozenBrush(Color color)
     {

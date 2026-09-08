@@ -67,11 +67,11 @@
                             Orientation="Horizontal"
                             VerticalAlignment="Center"
                             Margin="12,0,0,0">
-                    <iconPacks:PackIconFontAwesome6 Kind="ShieldSolid"
-                                            Width="18" Height="18"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,8,0"
-                                            Foreground="{DynamicResource NavItemSelectedBrush}" />
+                    <!-- [BRAND] 标题栏 Logo —— 二次元少女圆形头像，替代原 ShieldSolid 盾牌图标 -->
+                    <Image Source="pack://application:,,,/MSMC;component/Resources/Images/Icons/msmc-avatar-64.png"
+                           Width="20" Height="20"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0" />
                     <TextBlock Text="MSMC"
                                FontSize="14" FontWeight="Bold"
                                VerticalAlignment="Center"
