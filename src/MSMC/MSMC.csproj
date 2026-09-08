@@ -25,7 +25,7 @@
     <AnalysisMode>All</AnalysisMode>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <!-- 暂时关闭 XML 文档注释要求（WPF 项目不需要公开 API 文档） -->
+    NU1603;<!-- 暂时关闭 XML 文档注释要求（WPF 项目不需要公开 API 文档） -->
     <NoWarn>
       <!-- 编译器警告 -->
       CS1591;CS1573;CS1712;CS8618;CS8601;CS8602;CS8604;CS8625;CS8765;CS8767;CS9264;CS1998;
@@ -107,6 +107,11 @@
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.*" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.*" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.*" />
+    <!-- ⚠️ 【CI 修复】显式锁定 Microsoft.Extensions.Options 9.0.0
+         根因: CI restore 报 NU1603 (Warning As Error) —— Logging 9.0.20 依赖 Options >= 9.0.20，
+         但 NuGet 源找不到 9.0.20，解析到了 10.0.0。显式引用 9.0.0 强制选稳定版本，
+         同时加 NoWarn NU1603 双保险防止未来再冒版本漂移警告 -->
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.*" />
     <PackageReference Include="Serilog" Version="4.*" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.*" />
