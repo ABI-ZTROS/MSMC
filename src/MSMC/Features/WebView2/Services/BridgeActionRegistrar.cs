@@ -277,7 +277,11 @@ public static class BridgeActionRegistrar
         registered += SafeRegister(bridge, "diagnostic.getAiStatus", _ =>
         {
             var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
-            return Task.FromResult<object?>(new { configured = ai.IsConfigured, hasKey = !string.IsNullOrEmpty(ai.GetApiKey()) });
+            bool configured = ai.IsConfigured;
+            string? key = ai.GetApiKey();
+            Log.Information("[DIAG-AI] getAiStatus 被调用: configured={Configured}, hasKey={HasKey}",
+                configured, !string.IsNullOrEmpty(key));
+            return Task.FromResult<object?>(new { configured, hasKey = !string.IsNullOrEmpty(key) });
         }, logger, ref registered, ref failed);
 
         // 设置 / 清除 API Key（DPAPI 加密存储）

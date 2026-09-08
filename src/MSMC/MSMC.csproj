@@ -172,15 +172,31 @@
        1. 无顶级 Condition —— 中文路径下 MSBuild 静态评估 Exists() 可能误判为
           false（项目历史已证实），因此 Target 无条件进入，所有存在性判断改在
           内部 Task 的 Condition 上做（与 DiagnoseFrontendPaths 同模式）。
-       2. 发布时强制重建 —— dotnet publish 会设置 $(PublishDir)（非空），
-          此时无论 dist 是否已存在都重新 npm run build，保证发布产物是最新的。
-       3. 普通构建按需 —— dotnet build 仅在 dist\index.html 不存在时才构建，
-          避免开发迭代时每次都等前端编译。
+       2. 发布时强制重建 —— dotnet publish 会设置 $(PublishDir)（非空）：
+          Outputs 指向一个【不存在的哨兵文件】，MSBuild 增量判定天然认为
+          "产物缺失 → 必须构建"，从而发布时每次都会重新 npm run build。
+       3. 【增量修复 P0】普通构建不再"dist 存在就跳过"——Target 级
+          Inputs/Outputs 增量判断（MSBuild 原生机制）：
+          只要 src/** 源码 / package.json / vite.config.ts 中【任一文件】
+          比 dist/index.html 新，就自动重新构建；全部比 dist 旧才跳过。
+          根因复盘：用户 git pull 拉到最新前端源码后按 F5（dotnet build），
+          dist/index.html 已存在 → 旧逻辑整 Target 跳过 → 跑的一直是旧页面，
+          导致"改了什么前端都没用、AI 引导永远不出现"。
        4. npm install 按需 —— 仅 node_modules 不存在时才安装依赖。
        5. 构建失败即终止 —— 构建后仍无 dist\index.html 则用 Error 中断，
           防止带着空前端打包出残缺 exe。
        ═══════════════════════════════════════════════════════════════ -->
-  <Target Name="BuildFrontend" BeforeTargets="PrepareForBuild">
+  <PropertyGroup>
+    <!-- 增量 Outputs 锚点：
+         普通构建 → dist/index.html（有源码更新才进 Target）
+         发布构建 → 不存在的哨兵（永远"产物缺失"→ 强制进 Target） -->
+    <_FrontendBuildOutput Condition="'$(PublishDir)' != ''">$(IntermediateOutputPath)_force_frontend_rebuild.marker</_FrontendBuildOutput>
+    <_FrontendBuildOutput Condition="'$(PublishDir)' == ''">$(FrontendDir)\dist\index.html</_FrontendBuildOutput>
+  </PropertyGroup>
+
+  <Target Name="BuildFrontend" BeforeTargets="PrepareForBuild"
+          Inputs="$(FrontendDir)\src\**\*;$(FrontendDir)\package.json;$(FrontendDir)\vite.config.ts;$(FrontendDir)\index.html"
+          Outputs="$(_FrontendBuildOutput)">
     <!-- ── 无 package.json：直接跳过 ── -->
     <Message Condition="!Exists('$(FrontendDir)\package.json')"
              Text="ℹ️  [BuildFrontend] 未找到 package.json ($(FrontendDir))，跳过前端构建" Importance="high" />
@@ -189,24 +205,20 @@
     <Message Condition="Exists('$(FrontendDir)\package.json') And '$(PublishDir)' != ''"
              Text="📦 [BuildFrontend] 发布构建 (PublishDir=$(PublishDir))：强制重新构建前端" Importance="high" />
 
-    <!-- ── 普通构建 + dist 已存在：跳过（开发热重载）── -->
-    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(PublishDir)' == '' And Exists('$(FrontendDir)\dist\index.html')"
-             Text="✅ [BuildFrontend] 前端已构建 (dist\index.html 存在)，普通构建跳过（发布时自动重建）" Importance="high" />
-
-    <!-- ── 普通构建 + dist 不存在：首次构建 ── -->
-    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(PublishDir)' == '' And !Exists('$(FrontendDir)\dist\index.html')"
-             Text="🌐 [BuildFrontend] 检测到前端尚未构建，开始 npm install + npm run build..." Importance="high" />
+    <!-- ── 普通构建 + dist 已存在 + 源码比 dist 旧：真正跳过（没有前端改动）→ 进到这里说明 Inputs 比 Outputs 新 ── -->
+    <Message Condition="Exists('$(FrontendDir)\package.json') And '$(PublishDir)' == ''"
+             Text="🚀 [BuildFrontend] 检测到前端源码有更新（比 dist/index.html 新），重新 npm run build..." Importance="high" />
 
     <!-- ── npm install（仅 node_modules 不存在时）── -->
-    <Exec Condition="Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\node_modules') And ('$(PublishDir)' != '' Or !Exists('$(FrontendDir)\dist\index.html'))"
+    <Exec Condition="Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\node_modules')"
           Command="$(NpmCmd) install --prefix &quot;$(FrontendDir)&quot;"
           WorkingDirectory="$(FrontendDir)"
           ContinueOnError="false"
           StandardOutputImportance="high"
           StandardErrorImportance="high" />
 
-    <!-- ── npm run build（发布时强制 / 普通构建时 dist 不存在）── -->
-    <Exec Condition="Exists('$(FrontendDir)\package.json') And ('$(PublishDir)' != '' Or !Exists('$(FrontendDir)\dist\index.html'))"
+    <!-- ── npm run build（进入此 Target 即说明：发布 / dist 缺失 / 源码有更新）── -->
+    <Exec Condition="Exists('$(FrontendDir)\package.json')"
           Command="$(NpmCmd) run build --prefix &quot;$(FrontendDir)&quot;"
           WorkingDirectory="$(FrontendDir)"
           ContinueOnError="false"
@@ -214,7 +226,7 @@
           StandardErrorImportance="high" />
 
     <!-- ── 构建后验证：dist\index.html 仍不存在则报错中断 ── -->
-    <Error Condition="Exists('$(FrontendDir)\package.json') And ('$(PublishDir)' != '' Or !Exists('$(FrontendDir)\dist\index.html')) And !Exists('$(FrontendDir)\dist\index.html')"
+    <Error Condition="Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')"
            Text="❌ [BuildFrontend] 前端构建后仍未找到 dist\index.html。请检查 npm run build 输出。" />
   </Target>
 
