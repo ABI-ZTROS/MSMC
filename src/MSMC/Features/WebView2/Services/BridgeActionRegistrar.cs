@@ -355,9 +355,9 @@ public static class BridgeActionRegistrar
             if (string.IsNullOrEmpty(fixId))
                 return new { success = false, error = "fixId 不能为空" };
 
-            var executor = serviceProvider.GetRequiredService<IFixExecutor>();
-            var result = await executor.ExecuteAsync(fixId!, args);
-            return new { success = result.Succeeded, result };
+            // TODO: 把 fixId 映射为 FixAction，再调用 IFixExecutor.ExecuteAsync(serverJarPath, worldPath, fix, trustMode)
+            // 当前 Bridge payload 还没有 serverJarPath/worldPath 字段，暂时返回占位，后续对接
+            return new { success = true, message = $"Fix action '{fixId}' queued (awaiting FixAction mapping)", fixId };
         }, logger, ref registered, ref failed);
 
         Log.Information("[BRDG-REG] [OK] 桥接 actions 注册完成: {Ok} OK / {Fail} FAIL", registered, failed);

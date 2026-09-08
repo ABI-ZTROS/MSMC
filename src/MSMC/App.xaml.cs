@@ -19,6 +19,7 @@ using io.NET.ZTR_OS.Features.Startup.Services.Privilege;
 using io.NET.ZTR_OS.Features.ServerDetection.Services;
 using io.NET.ZTR_OS.Features.SystemMonitoring.Services;
 using io.NET.ZTR_OS.Features.Troubleshooting.Services;
+using io.NET.ZTR_OS.Features.Troubleshooting.Services.DeepSeek;
 using io.NET.ZTR_OS.Features.Troubleshooting.Services.DeepSeek.Tools;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Services;
 using io.NET.ZTR_OS.Features.WebView2.Services;
