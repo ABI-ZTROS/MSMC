@@ -142,21 +142,69 @@ export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.El
     setAiOpen(false)
     setCurrentStep(0)
 
-    // ═══ 【主动引导】打开教程时检查 AI 配置状态 ═══
-    // 如果 AI 未配置 DeepSeek API Key，自动打开 AI 抽屉 →
-    // AIDrawer 挂载后自动触发 troubleshooting.aiInit →
-    // 后端 IsConfigured=false 返回 needsConfig=true → 渲染配置卡
-    // 用户粘贴 Key 保存后自动重试诊断。这就是"主动引导配置"。
-    const bridge = (window as unknown as {
-      __msmc_bridge__?: { invoke?: <T = unknown>(action: string, payload?: unknown) => Promise<T> }
-    }).__msmc_bridge__
-    if (bridge?.invoke) {
-      bridge.invoke<{ configured?: boolean }>('diagnostic.getAiStatus')
-        .then(resp => {
-          if (resp && resp.configured === false) setAiOpen(true)
-        })
-        .catch(() => { /* 查询失败不阻塞教程 */ })
+    // ═══ 【主动引导 - v2 带重试版】打开教程时检查 AI 配置状态 ═══
+    // v1 缺陷: if (bridge?.invoke) 静默跳过 —— bridge 未 ready 时整个引导链崩了
+    // v2 修复: 等 bridge 最多 5s（每 100ms 轮询一次），任何结果都上报 FE-DIAG
+    //   - bridge 未 ready 或 invoke 失败 → 不阻塞教程，但把错误上报到 C#
+    //   - 后端返回 configured=false → 自动打开 AI 抽屉
+    //   - 后端返回 configured=true  → 不打开（用户已配 Key）
+    const MAX_WAIT_MS = 5000
+    const POLL_MS = 100
+    const START = Date.now()
+    let cancelled = false
+
+    function logDiag(msg: string): void {
+      try {
+        const bridge = (window as unknown as {
+          __msmc_bridge__?: { invoke?: (a: string, p: unknown) => Promise<unknown> }
+        }).__msmc_bridge__
+        bridge?.invoke?.('log:write', {
+          level: 'Information',
+          message: `[FE-DIAG][AI-GUIDE] ${msg}`,
+        }).catch(() => {})
+      } catch {}
+      try { console.log('[AI-GUIDE]', msg) } catch {}
     }
+
+    async function tryGetAiStatus(attempt: number): Promise<void> {
+      const bridge = (window as unknown as {
+        __msmc_bridge__?: { invoke?: (a: string, p: unknown) => Promise<unknown> }
+      }).__msmc_bridge__
+
+      if (cancelled) return
+
+      if (!bridge?.invoke) {
+        const elapsed = Date.now() - START
+        if (elapsed >= MAX_WAIT_MS) {
+          logDiag(`bridge 未在 ${MAX_WAIT_MS}ms 内就绪，放弃引导（attempt=${attempt}）`)
+          return
+        }
+        if (attempt === 1 || attempt % 5 === 0) {
+          logDiag(`bridge 未就绪，等待中... (attempt=${attempt}, elapsed=${elapsed}ms)`)
+        }
+        setTimeout(() => tryGetAiStatus(attempt + 1), POLL_MS)
+        return
+      }
+
+      try {
+        logDiag(`bridge 就绪，调用 diagnostic.getAiStatus (attempt=${attempt})`)
+        const resp = (await bridge.invoke('diagnostic.getAiStatus', null)) as { configured?: boolean; hasKey?: boolean } | undefined
+        logDiag(`getAiStatus 响应: configured=${resp?.configured}, hasKey=${resp?.hasKey}`)
+        if (!cancelled && resp && resp.configured === false) {
+          logDiag(`AI 未配置 Key → 自动打开 AI 抽屉`)
+          setAiOpen(true)
+        } else if (resp?.configured === true) {
+          logDiag(`AI 已配置 Key，不自动打开抽屉`)
+        } else {
+          logDiag(`响应异常，不自动打开: ${JSON.stringify(resp)}`)
+        }
+      } catch (err: unknown) {
+        logDiag(`getAiStatus 抛异常: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+
+    tryGetAiStatus(1)
+    return () => { cancelled = true }
   }, [open])
 
   if (!open) return null
