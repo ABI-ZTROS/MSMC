@@ -187,12 +187,13 @@
           防止带着空前端打包出残缺 exe。
        ═══════════════════════════════════════════════════════════════ -->
   <PropertyGroup>
-    <!-- 增量 Outputs 锚点：
-         普通构建 → dist/index.html（有源码更新才进 Target）
-         发布构建 → 不存在的哨兵（永远"产物缺失"→ 强制进 Target）
-         /p:ForceFrontendRebuild=true → 同上，开发时强制重建前端用 -->
-    <_FrontendBuildOutput Condition="'$(PublishDir)' != '' Or '$(ForceFrontendRebuild)' == 'true'">$(IntermediateOutputPath)_force_frontend_rebuild.marker</_FrontendBuildOutput>
-    <_FrontendBuildOutput Condition="'$(PublishDir)' == '' And '$(ForceFrontendRebuild)' != 'true'">$(FrontendDir)\dist\index.html</_FrontendBuildOutput>
+    <!-- ⚠️ 【P0 修复】BuildFrontend Outputs 永远指向不存在的哨兵文件
+         效果: MSBuild 每次构建都会判定 "Outputs 不存在" → Target 必进 → npm run build 必跑
+         为什么: 之前用 dist/index.html 做 Outputs，用户 pull 新前端源码后 VS 构建
+         会因为 dist/index.html 比旧 dist 新（但比源码旧）导致增量判断失效，
+         前端永远不重建。改成哨兵文件 + AfterTargets 写入标记，确保每次 build 都重建前端。
+         代价: 多一次 ~3s npm run build，换前端永远最新 -->
+    <_FrontendBuildOutput>$(IntermediateOutputPath)_frontend_always_rebuild.marker</_FrontendBuildOutput>
   </PropertyGroup>
 
   <Target Name="BuildFrontend" BeforeTargets="PrepareForBuild"
