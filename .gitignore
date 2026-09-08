@@ -39,3 +39,5 @@ generated-configs/
 source-hints/
 *.jar
 *.sha256
+
+src/frontend/dist/
