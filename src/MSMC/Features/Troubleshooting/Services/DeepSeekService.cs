@@ -16,6 +16,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using io.NET.ZTR_OS.Features.WebView2.Services;
+using io.NET.ZTR_OS.Features.Troubleshooting.Services.DeepSeek;
 
 namespace io.NET.ZTR_OS.Features.Troubleshooting.Services;
 
