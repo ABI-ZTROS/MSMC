@@ -240,9 +240,9 @@
     <Error Condition="Exists('$(FrontendDir)\package.json') And !Exists('$(FrontendDir)\dist\index.html')"
            Text="❌ [BuildFrontend] 前端构建后仍未找到 dist\index.html。请检查 npm run build 输出。" />
 
-    <!-- 写 marker，让同一次 MSBuild 内不会重复进此 Target（但下次 build 还会进，因为 marker 在 obj 里会被清理） -->
+    <!-- 写 marker，让同一次 MSBuild 内不会重复进此 Target（marker 在 obj 里下次 build 会被清理） -->
     <WriteLinesToFile Condition="Exists('$(FrontendDir)\package.json') And Exists('$(FrontendDir)\dist\index.html')"
-                      File="$(_FrontendBuildOutput)" Lines="build-at:$(System.DateTime.Now)" Overwrite="true" />
+                      File="$(_FrontendBuildOutput)" Lines="frontend-built" Overwrite="true" />
   </Target>
 
   <!-- 当 package.json 和 dist 都不存在时给出明确警告，而不是静默让用户看到桥接测试页 -->
