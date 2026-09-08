@@ -8,6 +8,7 @@
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using MahApps.Metro.IconPacks;
 using io.NET.ZTR_OS.Features.UserAgreement.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -455,12 +456,14 @@ public partial class UserAgreementWindow : Window
         var transforms = new List<TranslateTransform>();
 
         var iconTransform = new TranslateTransform();
-        var icon = new System.Windows.Controls.TextBlock
+        var icon = new PackIconFontAwesome6
         {
-            Text = "[ERR]",
-            FontSize = 36,
+            Kind = PackIconFontAwesome6Kind.TriangleExclamationSolid,
+            Width = 36,
+            Height = 36,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 16, 0),
+            Foreground = Brushes.OrangeRed,
             RenderTransform = iconTransform
         };
         transforms.Add(iconTransform);
