@@ -333,8 +333,17 @@
       LogicalName="$(AssemblyName).wwwroot.zip" />
   </ItemGroup>
 
-  <!-- 复制 wwwroot 文件夹到输出目录（开发模式热重载备用）
-       【修复】同样移除顶级 Condition，在内部做动态存在性判断，避免中文路径下静态评估失败。 -->
+  <!--
+  ⚠️【已废弃】CopyFrontendToOutput —— 导致 CI BuildFrontend 两次构建间 ItemGroup 引用失效
+  作用: 把 dist/ 下所有文件复制到 bin/wwwroot/ 供开发时热重载使用
+  问题: BuildFrontend 先 Delete+RemoveDir 清空 dist 再 npm run build ——
+        CopyFrontendToOutput 的 ItemGroup 已经静态评估了 dist 里的文件列表，
+        第二次 BuildFrontend 重建后 vite 产出的 hash 文件名不同 → MSB3030 "找不到文件"
+  替代: PackFrontendToZip 把 dist 打成 wwwroot.zip 作为 EmbeddedResource 嵌入程序集，
+        运行时解压到临时目录。开发时 F5 运行也从 EmbeddedResource 加载，
+        不需要额外的 wwwroot 文件夹热重载机制。
+  -->
+  <!--
   <Target Name="CopyFrontendToOutput" BeforeTargets="BeforeBuild" DependsOnTargets="BuildFrontend">
     <ItemGroup Condition="Exists('$(FrontendDir)\dist\index.html')">
       <None
@@ -343,5 +352,6 @@
         Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
     </ItemGroup>
   </Target>
+  -->
 
 </Project>
