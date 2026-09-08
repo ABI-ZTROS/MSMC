@@ -306,83 +306,124 @@ public static class BridgeActionRegistrar
         // 让 DeepSeek 自主选择工具（联网/读日志/下载核心）诊断服务器
         registered += SafeRegister(bridge, "troubleshooting.aiInit", async payload =>
         {
-            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
-            int? tutorialStep = args.TryGetProperty("tutorialStep", out var ts) && ts.ValueKind == JsonValueKind.Number
-                ? ts.GetInt32() : null;
-            string? serverPath = args.TryGetProperty("selectedServerPath", out var sp) && sp.ValueKind == JsonValueKind.String
-                ? sp.GetString() : null;
-            string? userQuestion = args.TryGetProperty("userQuestion", out var uq) && uq.ValueKind == JsonValueKind.String
-                ? uq.GetString() : null;
-
-            var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
-            Log.Information("[DIAG-AI] aiInit 调用: IsConfigured={Configured}, TutorialStep={Step}, ServerPath={Path}",
-                ai.IsConfigured, tutorialStep, serverPath ?? "(null)");
-
-            if (!ai.IsConfigured)
-                return new { success = false, error = "尚未配置 DeepSeek API Key", needsConfig = true };
-
-            var prompt = BuildAiUserPrompt(tutorialStep, serverPath, userQuestion);
-            Log.Information("[DIAG-AI] aiInit 开始 Function Calling 诊断...");
-            var analysis = await ai.AnalyzeWithToolsAsync(prompt);
-            if (analysis is null)
+            // 【极端保底 P0】顶层 try-catch：任何异常（DI 容器异常/IsConfigured getter 异常/
+            // ToolRegistry 构造异常/任何未知异常）都返回 needsConfig=true
+            // 确保用户永远不会卡在 loading，永远能看到配置卡
+            try
             {
-                // AI 返回 null —— 逐级排查：
-                if (!ai.IsConfigured)
-                    return new { success = false, error = "API Key 已失效或被清除，请重新配置", needsConfig = true };
+                var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+                int? tutorialStep = args.TryGetProperty("tutorialStep", out var ts) && ts.ValueKind == JsonValueKind.Number
+                    ? ts.GetInt32() : null;
+                string? serverPath = args.TryGetProperty("selectedServerPath", out var sp) && sp.ValueKind == JsonValueKind.String
+                    ? sp.GetString() : null;
+                string? userQuestion = args.TryGetProperty("userQuestion", out var uq) && uq.ValueKind == JsonValueKind.String
+                    ? uq.GetString() : null;
 
-                // IsConfigured=true 但 AI 失败 —— 调 TestKeyValidity 区分 Key 无效 vs 网络异常
-                Log.Information("[DIAG-AI] aiInit AI 返回 null → 调用 TestKeyValidityAsync 区分原因");
-                var validity = await ai.TestKeyValidityAsync();
-                if (!validity.IsValid && validity.StatusCode is 401 or 403)
+                var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
+
+                // 【最关键路径】先查 IsConfigured，不需要任何 HTTP 调用
+                // 因果链：IsConfigured 是同步读本地 DPAPI 文件，不应该异常；
+                // 如果真异常了，catch 块保底返回 needsConfig=true
+                bool configured;
+                try
                 {
-                    Log.Warning("[DIAG-AI] aiInit → Key 无效 (HTTP {Status})", validity.StatusCode);
-                    return new { success = false, error = $"API Key 已过期或无效（HTTP {validity.StatusCode}），请重新配置", needsConfig = true };
+                    configured = ai.IsConfigured;
+                    Log.Information("[DIAG-AI] aiInit 调用: IsConfigured={Configured}, TutorialStep={Step}, ServerPath={Path}",
+                        configured, tutorialStep, serverPath ?? "(null)");
                 }
-                if (!validity.IsValid && validity.StatusCode is null)
+                catch (Exception ex)
                 {
-                    Log.Warning("[DIAG-AI] aiInit → 网络异常");
-                    return new { success = false, error = "AI 调用失败 — 网络异常，请检查网络后重试" };
+                    Log.Error(ex, "[DIAG-AI] aiInit IsConfigured 查询异常 → 保底 needsConfig=true");
+                    return new { success = false, error = $"AI 服务状态查询异常: {ex.Message}", needsConfig = true };
                 }
-                // 429 限流 / 5xx 服务端错误 / Key 有效但 Function Calling 内部异常
-                Log.Warning("[DIAG-AI] aiInit → Key 有效但 AI 调用失败 (Status={Status})", validity.StatusCode);
-                return new { success = false, error = "AI 调用暂时失败 — 可能是限流或服务端问题，请稍后重试" };
+
+                if (!configured)
+                    return new { success = false, error = "尚未配置 DeepSeek API Key", needsConfig = true };
+
+                // 只有 IsConfigured=true 才走到这里，开始耗时的 AI 调用
+                var prompt = BuildAiUserPrompt(tutorialStep, serverPath, userQuestion);
+                Log.Information("[DIAG-AI] aiInit 开始 Function Calling 诊断...");
+                var analysis = await ai.AnalyzeWithToolsAsync(prompt);
+                if (analysis is null)
+                {
+                    // AI 返回 null —— 逐级排查：
+                    if (!ai.IsConfigured)
+                        return new { success = false, error = "API Key 已失效或被清除，请重新配置", needsConfig = true };
+
+                    // IsConfigured=true 但 AI 失败 —— 调 TestKeyValidity 区分 Key 无效 vs 网络异常
+                    Log.Information("[DIAG-AI] aiInit AI 返回 null → 调用 TestKeyValidityAsync 区分原因");
+                    var validity = await ai.TestKeyValidityAsync();
+                    if (!validity.IsValid && validity.StatusCode is 401 or 403)
+                    {
+                        Log.Warning("[DIAG-AI] aiInit → Key 无效 (HTTP {Status})", validity.StatusCode);
+                        return new { success = false, error = $"API Key 已过期或无效（HTTP {validity.StatusCode}），请重新配置", needsConfig = true };
+                    }
+                    if (!validity.IsValid && validity.StatusCode is null)
+                    {
+                        Log.Warning("[DIAG-AI] aiInit → 网络异常");
+                        return new { success = false, error = "AI 调用失败 — 网络异常，请检查网络后重试" };
+                    }
+                    Log.Warning("[DIAG-AI] aiInit → Key 有效但 AI 调用失败 (Status={Status})", validity.StatusCode);
+                    return new { success = false, error = "AI 调用暂时失败 — 可能是限流或服务端问题，请稍后重试" };
+                }
+                Log.Information("[DIAG-AI] aiInit 成功返回分析结果");
+                return new { success = true, analysis };
             }
-            Log.Information("[DIAG-AI] aiInit 成功返回分析结果");
-            return new { success = true, analysis };
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[DIAG-AI] aiInit 顶层异常 → 保底 needsConfig=true");
+                return new { success = false, error = $"AI 服务异常: {ex.Message}，请配置 API Key 后重试", needsConfig = true };
+            }
         }, logger, ref registered, ref failed);
 
         registered += SafeRegister(bridge, "troubleshooting.aiSend", async payload =>
         {
-            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
-            string message = args.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String
-                ? m.GetString() ?? string.Empty : string.Empty;
-            if (string.IsNullOrWhiteSpace(message))
-                return new { success = false, error = "message 不能为空" };
-
-            var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
-            Log.Information("[DIAG-AI] aiSend 调用: IsConfigured={Configured}, MessageLen={Len}",
-                ai.IsConfigured, message.Length);
-
-            if (!ai.IsConfigured)
-                return new { success = false, error = "尚未配置 DeepSeek API Key", needsConfig = true };
-
-            // 追加对话 —— 当前简化为新开一轮，后续可扩展为多轮历史保持
-            var analysis = await ai.AnalyzeWithToolsAsync(message);
-            if (analysis is null)
+            // 同样的极端保底
+            try
             {
-                // AI 返回 null —— 逐级排查：
-                if (!ai.IsConfigured)
-                    return new { success = false, error = "API Key 已失效或被清除，请重新配置", needsConfig = true };
+                var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+                string message = args.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String
+                    ? m.GetString() ?? string.Empty : string.Empty;
+                if (string.IsNullOrWhiteSpace(message))
+                    return new { success = false, error = "message 不能为空" };
 
-                // IsConfigured=true 但 AI 失败 —— 调 TestKeyValidity 区分 Key 无效 vs 网络异常
-                var validity = await ai.TestKeyValidityAsync();
-                if (!validity.IsValid && validity.StatusCode is 401 or 403)
-                    return new { success = false, error = $"API Key 已过期或无效（HTTP {validity.StatusCode}），请重新配置", needsConfig = true };
-                if (!validity.IsValid && validity.StatusCode is null)
-                    return new { success = false, error = "AI 调用失败 — 网络异常，请检查网络后重试" };
-                return new { success = false, error = "AI 调用暂时失败 — 可能是限流或服务端问题，请稍后重试" };
+                var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
+                bool configured;
+                try
+                {
+                    configured = ai.IsConfigured;
+                    Log.Information("[DIAG-AI] aiSend 调用: IsConfigured={Configured}, MessageLen={Len}",
+                        configured, message.Length);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "[DIAG-AI] aiSend IsConfigured 查询异常 → 保底 needsConfig=true");
+                    return new { success = false, error = $"AI 服务状态查询异常: {ex.Message}", needsConfig = true };
+                }
+
+                if (!configured)
+                    return new { success = false, error = "尚未配置 DeepSeek API Key", needsConfig = true };
+
+                var analysis = await ai.AnalyzeWithToolsAsync(message);
+                if (analysis is null)
+                {
+                    if (!ai.IsConfigured)
+                        return new { success = false, error = "API Key 已失效或被清除，请重新配置", needsConfig = true };
+
+                    var validity = await ai.TestKeyValidityAsync();
+                    if (!validity.IsValid && validity.StatusCode is 401 or 403)
+                        return new { success = false, error = $"API Key 已过期或无效（HTTP {validity.StatusCode}），请重新配置", needsConfig = true };
+                    if (!validity.IsValid && validity.StatusCode is null)
+                        return new { success = false, error = "AI 调用失败 — 网络异常，请检查网络后重试" };
+                    return new { success = false, error = "AI 调用暂时失败 — 可能是限流或服务端问题，请稍后重试" };
+                }
+                return new { success = true, analysis };
             }
-            return new { success = true, analysis };
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[DIAG-AI] aiSend 顶层异常 → 保底 needsConfig=true");
+                return new { success = false, error = $"AI 服务异常: {ex.Message}，请配置 API Key 后重试", needsConfig = true };
+            }
         }, logger, ref registered, ref failed);
 
         registered += SafeRegister(bridge, "troubleshooting.aiStop", _ =>
