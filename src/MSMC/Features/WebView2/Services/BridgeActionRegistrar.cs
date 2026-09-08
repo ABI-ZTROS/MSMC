@@ -273,7 +273,7 @@ public static class BridgeActionRegistrar
         ref int registered,
         ref int failed)
     {
-        Log.Information("[AI-BRIDGE] ──▶ 开始注册 AI bridge handlers（共 7 个: getAiStatus / setApiKey / askAI / aiInit / aiSend / aiStop / confirmFix）...");
+        Log.Information("[AI-GUIDE][BRDG-REG] ──▶ 开始注册 AI bridge handlers（共 7 个: getAiStatus / setApiKey / askAI / aiInit / aiSend / aiStop / confirmFix）...");
 
         // 查询 AI 配置状态（是否已配 Key）
         registered += SafeRegister(bridge, "diagnostic.getAiStatus", _ =>
@@ -281,7 +281,7 @@ public static class BridgeActionRegistrar
             var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
             bool configured = ai.IsConfigured;
             string? key = ai.GetApiKey();
-            Log.Information("[DIAG-AI] getAiStatus 被调用: configured={Configured}, hasKey={HasKey}",
+            Log.Information("[AI-GUIDE][C#-HANDLER] diagnostic.getAiStatus 被调用: configured={Configured}, hasKey={HasKey}",
                 configured, !string.IsNullOrEmpty(key));
             return Task.FromResult<object?>(new { configured, hasKey = !string.IsNullOrEmpty(key) });
         }, logger, ref registered, ref failed);
@@ -351,7 +351,7 @@ public static class BridgeActionRegistrar
                 try
                 {
                     configured = ai.IsConfigured;
-                    Log.Information("[DIAG-AI] aiInit 调用: IsConfigured={Configured}, TutorialStep={Step}, ServerPath={Path}",
+                    Log.Information("[AI-GUIDE][C#-HANDLER] troubleshooting.aiInit 调用: IsConfigured={Configured}, TutorialStep={Step}, ServerPath={Path}",
                         configured, tutorialStep, serverPath ?? "(null)");
                 }
                 catch (Exception ex)
@@ -428,7 +428,7 @@ public static class BridgeActionRegistrar
                 try
                 {
                     configured = ai.IsConfigured;
-                    Log.Information("[DIAG-AI] aiSend 调用: IsConfigured={Configured}, MessageLen={Len}",
+                    Log.Information("[AI-GUIDE][C#-HANDLER] troubleshooting.aiSend 调用: IsConfigured={Configured}, MessageLen={Len}",
                         configured, message.Length);
                 }
                 catch (Exception ex)

@@ -50,10 +50,25 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
   const [question, setQuestion] = useState("");
   const logIdRef = useRef(0);
 
+
+  // ── 全链路 AI 引导日志辅助（统一前缀 [AI-GUIDE]）
+  function logDiag(msg: string): void {
+    try { console.log('[AI-GUIDE][AIDrawer]', msg) } catch {}
+    try {
+      const bridge = (window as unknown as { __msmc_bridge__?: BridgeLike }).__msmc_bridge__
+      bridge?.invoke?.('log:write', {
+        level: 'Information',
+        message: `[AI-GUIDE][AIDrawer] ${msg}`,
+      }).catch(() => {})
+    } catch {}
+  }
+
   // 触发一次 Function Calling 诊断
   function runDiagnostic(userQuestion?: string) {
+    logDiag(`runDiagnostic 入口, isFollowUp=${typeof userQuestion === "string" && userQuestion.length > 0}, questionLen=${userQuestion?.length ?? 0}`)
     const bridge = (window as unknown as { __msmc_bridge__?: BridgeLike }).__msmc_bridge__;
     if (!bridge) {
+      logDiag("❌ bridge 不可用 — 放弃诊断")
       setError("Bridge 不可用（WebView2 可能还没初始化）");
       setSending(false);
       return;
@@ -68,29 +83,37 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
     // 优先用 invoke（后端 SafeRegister 是同步 response 模式），
     // 如果没有 invoke 就退化用 sendEvent + 依赖 aiDone/aiError event
     if (typeof bridge.invoke === "function") {
+      logDiag(`🟢 调用 bridge.invoke("${action}", ${JSON.stringify(payload)})`) 
       bridge.invoke<Record<string, unknown>>(action, payload)
         .then(resp => {
           const success = Boolean(resp?.success);
           const err = typeof resp?.error === "string" ? resp.error : null;
           const ana = resp?.analysis as unknown as DeepSeekAnalysis | undefined;
           const needsCfg = Boolean(resp?.needsConfig);
+          logDiag(`📥 ${action} 响应: success=${success}, needsConfig=${needsCfg}, error=${err ?? "(none)"}, hasAnalysis=${!!ana}`)
 
           if (needsCfg) {
+            logDiag("🔑 needsConfig=true → 渲染配置卡（用户粘贴 API Key）")
             setNeedsConfig(true);
             setError(null);
             setAnalysis(null);
           } else if (success && ana) {
+            logDiag("✅ 有 analysis → 渲染 AI 分析结果")
             setAnalysis(ana);
             setError(null);
             setNeedsConfig(false);
           } else if (err) {
+            logDiag(`❌ 返回 error → ${err}`)
             setError(err);
           } else {
+            logDiag("❌ AI 返回空结果")
             setError("AI 返回空结果");
           }
         })
         .catch((e: unknown) => {
-          setError(e instanceof Error ? e.message : String(e));
+          const msg = e instanceof Error ? e.message : String(e)
+          logDiag(`❌ invoke 抛异常 → ${msg}`)
+          setError(msg);
         })
         .finally(() => {
           setSending(false);
@@ -104,6 +127,8 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
   useEffect(() => {
     if (!open) return;
 
+    logDiag(`🗂️  AIDrawer 抽屉打开 — useEffect 触发, tutorialStep=${tutorialStep ?? "(none)"}, serverPath=${serverPath ?? "(none)"}`)
+
     // Reset state
     setToolLogs([]);
     setAnalysis(null);
@@ -111,6 +136,7 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
     setNeedsConfig(false);
     setSending(true);
     logIdRef.current = 0;
+    logDiag("✅ State 重置完成 — 准备调 runDiagnostic")
 
     const bridge = (window as unknown as { __msmc_bridge__?: BridgeLike }).__msmc_bridge__;
     let offFns: Array<() => void> = [];

@@ -2369,47 +2369,64 @@ public partial class MainWindow : Window
         RegisterConfigApis();
         RegisterSettingsApis();
 
+        // ═══ 【全链路 AI 引导日志追踪】统一前缀 [AI-GUIDE] ═══
+        // 日志链:
+        // [AI-GUIDE] RegisterBridgeApis 入口
+        // [AI-GUIDE] SubscribeToEvents 注册 app:ready 监听
+        // [AI-GUIDE] 收到 app:ready → 检测 IsConfigured
+        // [AI-GUIDE] 未配置 → SendEventAsync("ai:guide")
+        // 前端收到 → [FE-DIAG][AI-GUIDE-DASH]
+        // 教程打开 → [FE-DIAG][AI-GUIDE] bridge 就绪 → 调 diagnostic.getAiStatus
+        // 后端 handler → [BRDG-REG] [OK] diagnostic.getAiStatus
+        //           → [AI-GUIDE] getAiStatus 被调用 → 返回 configured=false
+        // 前端收到 → [FE-DIAG][AI-GUIDE] getAiStatus 响应 → 打开 AI 抽屉
+        // AIDrawer 挂载 → aiInit → [DIAG-AI] aiInit → needsConfig=true → 渲染配置卡
+        Log.Information("[AI-GUIDE] RegisterBridgeApis 入口 — 开始注册 AI 引导相关 handler");
+
         // 订阅来自 JS 的事件
         _bridgeService.SubscribeToEvents(async (action, payload) =>
         {
-            Log.Debug("[MSG] 收到 JS 事件: {Action} = {Payload}", action, payload);
+            // 把所有 JS → C# 的事件都打 [AI-GUIDE] 前缀，方便用户 grep
+            Log.Information("[AI-GUIDE] [JS→C#] 收到前端事件: {Action}, payload={Payload}",
+                action, payload?.ToString()?.Substring(0, Math.Min(200, (payload?.ToString()?.Length ?? 0))) ?? "(null)");
 
             // ═══ 【后端主动 AI 引导兜底】前端 isReady 后主动检测 AI 配置 ═══
-            // 即使前端 TutorialOverlay 引导逻辑因为 bridge 时序竞争跳过了，
-            // C# 收到 app:ready 事件（前端肯定发的）后主动检测 IsConfigured，
-            // 未配置就推 ai:guide 用户事件 → 前端监听后弹出教程 + AI 抽屉
-            // 这条链不依赖任何前端自行发起的请求，彻底绕开时序问题
             if (action == "app:ready")
             {
                 try
                 {
-                    Log.Information("[AI-GUIDE-BE] 收到 app:ready，检查 AI 配置状态...");
+                    Log.Information("[AI-GUIDE] 收到 app:ready — 触发 C# 主动引导检查");
+
+                    Log.Information("[AI-GUIDE] GetRequiredService<IDeepSeekService>...");
                     var ai = App.Services.GetRequiredService<IDeepSeekService>();
+
+                    Log.Information("[AI-GUIDE] 调 IsConfigured...");
                     bool configured = ai.IsConfigured;
-                    Log.Information("[AI-GUIDE-BE] AI 配置检查结果: configured={Configured}", configured);
+                    Log.Information("[AI-GUIDE] IsConfigured 返回: {Configured}", configured);
 
                     if (!configured)
                     {
-                        Log.Information("[AI-GUIDE-BE] ⚠️  AI 未配置 Key，主动推送引导事件给前端");
+                        Log.Information("[AI-GUIDE] ⚠️  AI 未配置 Key — 主动推送 ai:guide 事件给前端");
                         await _bridgeService.SendEventAsync("ai:guide", new
                         {
                             reason = "startup",
                             message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
                         });
-                        Log.Information("[AI-GUIDE-BE] ✅ ai:guide 事件已推送");
+                        Log.Information("[AI-GUIDE] ✅ SendEventAsync(ai:guide) 完成 — 等待前端弹出教程");
                     }
                     else
                     {
-                        Log.Information("[AI-GUIDE-BE] AI 已配置 Key，跳过主动引导");
+                        Log.Information("[AI-GUIDE] ✅ AI 已配置 Key — 跳过主动引导");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "[AI-GUIDE-BE] 后端主动引导检查异常（不影响主流程）");
+                    Log.Error(ex, "[AI-GUIDE] ❌ 后端主动引导检查异常 — 不影响主流程");
                 }
             }
         });
 
+        Log.Information("[AI-GUIDE] ✅ SubscribeToEvents 注册完成 — app:ready 监听已就绪");
         Log.Information("[OK] 桥接 API 注册完成");
     }
 
