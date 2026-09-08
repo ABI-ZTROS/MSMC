@@ -35,7 +35,7 @@ public sealed class FunctionCallingEngine
     };
 
     private readonly ToolRegistry _registry;
-    private readonly ILogger<FunctionCallingEngine> _log;
+    private readonly ILogger _log;
     private readonly string _apiKey;
     private readonly IWebView2BridgeService? _bridge;
 
@@ -60,7 +60,7 @@ public sealed class FunctionCallingEngine
 
     public FunctionCallingEngine(
         ToolRegistry registry,
-        ILogger<FunctionCallingEngine> log,
+        ILogger log,
         string apiKey,
         IWebView2BridgeService? bridge = null)
     {
