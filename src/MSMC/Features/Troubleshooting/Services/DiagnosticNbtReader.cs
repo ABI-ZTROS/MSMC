@@ -28,6 +28,13 @@ public sealed record NbtTag(NbtTagType Type, string? Name, object? Value)
 
 public static class DiagnosticNbtReader
 {
+    // ─── 健壮性上限（防损坏/恶意存档拖垮解析） ───
+    private const int MaxListCount = 100_000;        // 单 List 元素数上限
+    private const int MaxCompoundCount = 100_000;    // 单 Compound 键数上限
+    private const int MaxStringLength = 32_767;      // NBT 规范字符串长度上限（short 范围）
+    private const int MaxArrayLength = 10_000_000;   // Byte/Int/Long 数组元素上限（10M）
+    private const int MaxDepth = 128;                // 嵌套深度上限（防栈溢出）
+
     // ─── 入口 ───
 
     /// <summary>从 .dat 文件（GZIP 压缩）根节点开始解析</summary>
@@ -47,6 +54,7 @@ public static class DiagnosticNbtReader
     /// <summary>从任意流解析 Zlib 压缩的 NBT（.mca 区块内部）</summary>
     public static NbtTag? ParseZlib(byte[] zlibData)
     {
+        if (zlibData.Length < 6) return null; // ZLIB = 2-byte header + DEFLATE + 4-byte Adler32
         // ZLIB = 2-byte header + DEFLATE + 4-byte Adler32
         using var ms = new MemoryStream(zlibData, 2, zlibData.Length - 6); // 跳过 header 和 Adler32
         using var deflate = new DeflateStream(ms, CompressionMode.Decompress);
@@ -54,14 +62,17 @@ public static class DiagnosticNbtReader
     }
 
     /// <summary>解析原始（未压缩）NBT 流</summary>
-    public static NbtTag? ParseNbt(Stream stream)
+    public static NbtTag? ParseNbt(Stream stream) => ParseNbt(stream, 0);
+
+    private static NbtTag? ParseNbt(Stream stream, int depth)
     {
+        if (depth > MaxDepth) throw new InvalidDataException($"NBT 嵌套深度超限（>{MaxDepth}）");
         var br = new BigEndianBinaryReader(stream);
         byte typeByte = br.ReadByte();
         if (typeByte == 0) return null; // TAG_End
         var type = (NbtTagType)typeByte;
         string? name = ReadStringSafe(br);
-        return ReadTag(br, type, name);
+        return ReadTag(br, type, name, depth);
     }
 
     // ─── 路径查询 ───
@@ -91,7 +102,7 @@ public static class DiagnosticNbtReader
 
     // ─── 内部解析 ───
 
-    private static NbtTag? ReadTag(BigEndianBinaryReader br, NbtTagType type, string? name)
+    private static NbtTag? ReadTag(BigEndianBinaryReader br, NbtTagType type, string? name, int depth)
     {
         return type switch
         {
@@ -102,30 +113,32 @@ public static class DiagnosticNbtReader
             NbtTagType.Long => new NbtTag(type, name, (long)br.ReadBEInt64()),
             NbtTagType.Float => new NbtTag(type, name, BitConverter.Int32BitsToSingle(br.ReadBEInt32())),
             NbtTagType.Double => new NbtTag(type, name, BitConverter.Int64BitsToDouble(br.ReadBEInt64())),
-            NbtTagType.ByteArray => new NbtTag(type, name, br.ReadBytes(br.ReadBEInt32())),
+            NbtTagType.ByteArray => new NbtTag(type, name, ReadByteArray(br)),
             NbtTagType.String => new NbtTag(type, name, ReadStringSafe(br)),
-            NbtTagType.List => ReadList(br, name),
-            NbtTagType.Compound => ReadCompound(br, name),
+            NbtTagType.List => ReadList(br, name, depth),
+            NbtTagType.Compound => ReadCompound(br, name, depth),
             NbtTagType.IntArray => ReadIntArray(br, name),
             NbtTagType.LongArray => ReadLongArray(br, name),
             _ => null
         };
     }
 
-    private static NbtTag ReadList(BigEndianBinaryReader br, string? name)
+    private static NbtTag ReadList(BigEndianBinaryReader br, string? name, int depth)
     {
         byte elemType = br.ReadByte();
         int count = br.ReadBEInt32();
-        var items = new List<NbtTag>(count);
+        if (count < 0 || count > MaxListCount)
+            throw new InvalidDataException($"NBT List 元素数异常: {count}");
+        var items = new List<NbtTag>(Math.Min(count, 1024));
         for (int i = 0; i < count; i++)
         {
-            var tag = ReadTag(br, (NbtTagType)elemType, null);
+            var tag = ReadTag(br, (NbtTagType)elemType, null, depth + 1);
             if (tag != null) items.Add(tag);
         }
         return new NbtTag(NbtTagType.List, name, new NbtList((NbtTagType)elemType, items));
     }
 
-    private static NbtTag ReadCompound(BigEndianBinaryReader br, string? name)
+    private static NbtTag ReadCompound(BigEndianBinaryReader br, string? name, int depth)
     {
         var dict = new Dictionary<string, NbtTag>();
         while (true)
@@ -134,16 +147,30 @@ public static class DiagnosticNbtReader
             if (typeByte == 0) break; // TAG_End
             var type = (NbtTagType)typeByte;
             string? childName = ReadStringSafe(br);
-            var child = ReadTag(br, type, childName);
-            if (child != null && childName != null)
+            // 名字读取失败说明流已损坏，继续读只会死循环，直接终止
+            if (childName == null) break;
+            var child = ReadTag(br, type, childName, depth + 1);
+            if (child != null)
+            {
                 dict[childName] = child;
+                if (dict.Count > MaxCompoundCount)
+                    throw new InvalidDataException($"NBT Compound 键数超限（>{MaxCompoundCount}）");
+            }
         }
         return new NbtTag(NbtTagType.Compound, name, dict);
+    }
+
+    private static byte[] ReadByteArray(BigEndianBinaryReader br)
+    {
+        int n = br.ReadBEInt32();
+        if (n < 0 || n > MaxArrayLength) throw new InvalidDataException($"NBT ByteArray 长度异常: {n}");
+        return br.ReadBytes(n);
     }
 
     private static NbtTag ReadIntArray(BigEndianBinaryReader br, string? name)
     {
         int count = br.ReadBEInt32();
+        if (count < 0 || count > MaxArrayLength) throw new InvalidDataException($"NBT IntArray 长度异常: {count}");
         var arr = new int[count];
         for (int i = 0; i < count; i++) arr[i] = br.ReadBEInt32();
         return new NbtTag(NbtTagType.IntArray, name, arr);
@@ -152,6 +179,7 @@ public static class DiagnosticNbtReader
     private static NbtTag ReadLongArray(BigEndianBinaryReader br, string? name)
     {
         int count = br.ReadBEInt32();
+        if (count < 0 || count > MaxArrayLength) throw new InvalidDataException($"NBT LongArray 长度异常: {count}");
         var arr = new long[count];
         for (int i = 0; i < count; i++) arr[i] = br.ReadBEInt64();
         return new NbtTag(NbtTagType.LongArray, name, arr);
@@ -163,6 +191,7 @@ public static class DiagnosticNbtReader
         {
             int len = br.ReadBEInt16();
             if (len <= 0) return string.Empty;
+            if (len > MaxStringLength) throw new InvalidDataException($"NBT String 长度超限: {len}");
             var bytes = br.ReadBytes(len);
             return Encoding.UTF8.GetString(bytes);
         }

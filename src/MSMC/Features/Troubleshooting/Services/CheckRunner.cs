@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// CheckRunner.cs — P0 10 个系统/配置检查点实现
+// CheckRunner.cs — P0 12 个系统/配置检查点实现
 // 设计约束: 诚实返回链(P4) — 失败返回 CheckResult 不吞异常；不返回 null
 // -----------------------------------------------------------------------------
 using System;
@@ -11,6 +11,8 @@ using System.Linq;
 using System.Management;
 using System.Net.NetworkInformation;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
 using Serilog;
 
 namespace io.NET.ZTR_OS.Features.Troubleshooting.Services;
@@ -33,7 +35,7 @@ public class CheckRunner : ICheckRunner
     {
         var results = new List<CheckResult>();
 
-        // 10 个检查点，每个独立 try-catch，失败也返回 CheckResult
+        // 12 个检查点，每个独立 try-catch，失败也返回 CheckResult
         results.Add(SafeRun("java.version", () => CheckJavaVersion(serverJarPath, server)));
         results.Add(SafeRun("java.heap.size", () => CheckJavaHeap(serverJarPath, server)));
         results.Add(SafeRun("process.priority", () => CheckProcessPriority(server)));
@@ -157,12 +159,18 @@ public class CheckRunner : ICheckRunner
     /// <summary>Minecraft 版本 → 最低 Java 版本</summary>
     private static string? InferFromMcVersion(string mcVer)
     {
-        // 1.20.5+ 需要 Java 21；1.17-1.20.4 需要 Java 17；1.12-1.16 需要 Java 8
+        // 1.20.5+ → Java 21；1.17-1.20.4 → Java 17；1.12-1.16 → Java 8；1.8-1.11 → Java 8
         var parts = mcVer.Split('.');
         if (parts.Length < 2) return null;
         if (!int.TryParse(parts[1], out int minor)) return null;
 
-        if (minor >= 20) return "21";
+        if (minor > 20) return "21";
+        if (minor == 20)
+        {
+            // 1.20.0–1.20.4 只需要 Java 17，1.20.5 起才要求 Java 21
+            if (parts.Length >= 3 && int.TryParse(parts[2], out int patch) && patch >= 5) return "21";
+            return "17";
+        }
         if (minor >= 17) return "17";
         return "8";
     }
@@ -180,7 +188,6 @@ public class CheckRunner : ICheckRunner
     {
         try
         {
-            var gc = GC.GetGCMemoryInfo();
             // 从 Environment 猜
             string? javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
             if (!string.IsNullOrEmpty(javaHome))
@@ -224,27 +231,30 @@ public class CheckRunner : ICheckRunner
     {
         long? heapXmx = ParseHeapFromLaunchScript(jarPath);
         long physicalMb = server.TotalMemoryMb ?? GetPhysicalMemoryMb();
+        if (physicalMb <= 0) physicalMb = 8192; // 防御：拿不到物理内存时按 8GB 估
 
         if (heapXmx == null)
             return new CheckResult("java.heap.size", Severity.Info, "Java",
                 "未检测到 -Xmx 参数", "建议在启动脚本中显式设置 -Xmx2G~-Xmx4G", false, null, null);
 
-        double heapPct = (double)heapXmx.Value / physicalMb * 100;
+        // heapXmx 是字节；先换算成 MB 再算占比，避免单位错乱（此前 /1024 当 MB 实为 KB）
+        double heapMb = heapXmx.Value / (1024.0 * 1024.0);
+        double heapPct = heapMb / physicalMb * 100;
         if (heapPct > 80)
             return new CheckResult("java.heap.size", Severity.Warning, "Java",
                 "Java 堆占物理内存比例过高",
-                $"-Xmx={heapXmx.Value / 1024}MB ({heapPct:F0}%)，建议 ≤ 70% 避免 OOM",
-                false, null, new { HeapMb = heapXmx / 1024, PhysicalMb = physicalMb });
+                $"-Xmx={heapMb:F0}MB ({heapPct:F0}%)，建议 ≤ 70% 避免 OOM",
+                false, null, new { HeapMb = (long)heapMb, PhysicalMb = physicalMb });
 
         if (heapPct < 25)
             return new CheckResult("java.heap.size", Severity.Warning, "Java",
                 "Java 堆可能过小",
-                $"-Xmx={heapXmx.Value / 1024}MB ({heapPct:F0}%)，建议 ≥ 物理内存 25%",
-                false, null, new { HeapMb = heapXmx / 1024, PhysicalMb = physicalMb });
+                $"-Xmx={heapMb:F0}MB ({heapPct:F0}%)，建议 ≥ 物理内存 25%",
+                false, null, new { HeapMb = (long)heapMb, PhysicalMb = physicalMb });
 
         return new CheckResult("java.heap.size", Severity.Ok, "Java",
             "Java 堆大小合理",
-            $"-Xmx={heapXmx.Value / 1024}MB ({heapPct:F0}% 物理内存)", false, null, null);
+            $"-Xmx={heapMb:F0}MB ({heapPct:F0}% 物理内存)", false, null, new { HeapMb = (long)heapMb, PhysicalMb = physicalMb });
     }
 
     private static long? ParseHeapFromLaunchScript(string jarPath)
@@ -318,21 +328,141 @@ public class CheckRunner : ICheckRunner
 
     // ═══════════════════════════════════════════════════════════
     // Check 4/5: T1 QoS / T3 Tuning
+    // 真实实现：读取进程的电源节流状态（GetProcessInformation）与
+    // I/O / 内存优先级，判断调度是否被系统限制。
     // ═══════════════════════════════════════════════════════════
 
     private CheckResult CheckT1Qos(ServerInfo server)
     {
-        // P0 简化：不依赖 ICpuPowerService（条件注入 + P9 门卫）
-        // 只看进程有没有开 SetProcessInformation PROCESS_POWER_THROTTLING
-        return new CheckResult("process.t1.qos", Severity.Info, "Process",
-            "T1 QoS 调度检查", "需启用「电源管理」功能后生效", false, null, null);
+        if (server.ProcessId == null)
+            return new CheckResult("process.t1.qos", Severity.Info, "Process",
+                "服务器未运行", "无法检查 T1 QoS 调度", false, null, null);
+
+        try
+        {
+            using var proc = Process.GetProcessById(server.ProcessId.Value);
+
+            // 查询电源节流（PROCESS_POWER_THROTTLING_STATE, class=8）
+            bool throttled = false;
+            try
+            {
+                var state = new ProcessPowerThrottlingState();
+                if (GetProcessInformation(proc.Handle, ProcessInfoClassPowerThrottling,
+                        ref state, Marshal.SizeOf<ProcessPowerThrottlingState>()))
+                {
+                    // ControlMask 位0=执行节流开关；StateMask 位0=节流已开启
+                    throttled = (state.ControlMask & 1) != 0 && (state.StateMask & 1) != 0;
+                }
+            }
+            catch { /* 非 Windows 或权限不足，忽略 */ }
+
+            var priority = proc.PriorityClass;
+
+            if (throttled)
+                return new CheckResult("process.t1.qos", Severity.Warning, "Process",
+                    "进程被电源节流调度",
+                    "系统对服务器进程开启了执行节流（Power Throttling），tick 稳定性可能受影响",
+                    true, null, new { Throttled = true, Priority = priority.ToString() });
+
+            if (priority >= ProcessPriorityClass.AboveNormal)
+                return new CheckResult("process.t1.qos", Severity.Ok, "Process",
+                    "T1 QoS 调度正常",
+                    $"优先级 {priority}，未受电源节流", false, null, new { Throttled = false, Priority = priority.ToString() });
+
+            return new CheckResult("process.t1.qos", Severity.Warning, "Process",
+                "进程优先级偏低",
+                $"当前优先级 {priority}，建议 AboveNormal 或 High",
+                false, null, new { Throttled = false, Priority = priority.ToString() });
+        }
+        catch (Exception ex)
+        {
+            return new CheckResult("process.t1.qos", Severity.Warning, "Process",
+                "无法检查 T1 QoS", ex.Message, false, null, null);
+        }
     }
 
     private CheckResult CheckT3Tuning(ServerInfo server)
     {
-        return new CheckResult("process.t3.tuning", Severity.Info, "Process",
-            "T3 最大权限调度检查", "需启用「电源管理」功能后生效", false, null, null);
+        if (server.ProcessId == null)
+            return new CheckResult("process.t3.tuning", Severity.Info, "Process",
+                "服务器未运行", "无法检查 T3 最大权限调度", false, null, null);
+
+        try
+        {
+            using var proc = Process.GetProcessById(server.ProcessId.Value);
+
+            // I/O 优先级（0=VeryLow,1=Low,2=Normal,3=High,4=Critical）
+            int ioPriority = -1;
+            try { ioPriority = (int)GetProcessIoPriority(proc.Handle); }
+            catch { }
+
+            // 内存优先级（PROCESS_MEMORY_PRIORITY, class=10，0~5，默认 5=Normal）
+            uint memPriority = 5;
+            try
+            {
+                var mem = new ProcessMemoryPriority();
+                if (GetProcessInformation(proc.Handle, ProcessInfoClassMemoryPriority,
+                        ref mem, Marshal.SizeOf<ProcessMemoryPriority>()))
+                {
+                    memPriority = mem.Priority;
+                }
+            }
+            catch { }
+
+            bool ioOk = ioPriority >= 2;   // Normal 及以上
+            bool memOk = memPriority >= 4; // 高于 VeryLow 的默认即可，5=Normal 最佳
+
+            if (!ioOk || !memOk)
+                return new CheckResult("process.t3.tuning", Severity.Warning, "Process",
+                    "进程 I/O / 内存优先级偏低",
+                    $"I/O 优先级 {(ioPriority < 0 ? "未知" : ioPriority)}，内存优先级 {memPriority}（建议 I/O ≥ Normal，内存 ≥ 4）",
+                    false, null, new { IoPriority = ioPriority, MemoryPriority = (int)memPriority });
+
+            return new CheckResult("process.t3.tuning", Severity.Ok, "Process",
+                "T3 最大权限调度正常",
+                $"I/O 优先级 {ioPriority}，内存优先级 {memPriority}", false, null,
+                new { IoPriority = ioPriority, MemoryPriority = (int)memPriority });
+        }
+        catch (Exception ex)
+        {
+            return new CheckResult("process.t3.tuning", Severity.Warning, "Process",
+                "无法检查 T3 调度", ex.Message, false, null, null);
+        }
     }
+
+    // ── Windows P/Invoke：进程电源节流 / 内存优先级 / I/O 优先级查询 ──
+
+    private const int ProcessInfoClassPowerThrottling = 8;
+    private const int ProcessInfoClassMemoryPriority = 10;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ProcessPowerThrottlingState
+    {
+        public uint Version;
+        public uint ControlMask;
+        public uint StateMask;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ProcessMemoryPriority
+    {
+        public uint Priority;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetProcessInformation(
+        IntPtr hProcess, int processInformationClass,
+        ref ProcessPowerThrottlingState processInformation, int processInformationSize);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetProcessInformation(
+        IntPtr hProcess, int processInformationClass,
+        ref ProcessMemoryPriority processInformation, int processInformationSize);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetProcessIoPriority(IntPtr hProcess);
 
     // ═══════════════════════════════════════════════════════════
     // Check 6: port.availability
@@ -430,34 +560,75 @@ public class CheckRunner : ICheckRunner
 
         try
         {
-            // netsh advfirewall firewall show rule name=all
+            // 查询入站规则全量（只读查询不需要管理员，去掉之前的 Verb=runas 必败路径）
             using var proc = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = "netsh", Arguments = "advfirewall firewall show rule name=all",
-                    RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true,
-                    Verb = "runas" // 管理员
+                    FileName = "netsh",
+                    Arguments = "advfirewall firewall show rule name=all dir=in",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
                 }
             };
             proc.Start();
             string output = proc.StandardOutput.ReadToEnd();
             proc.WaitForExit(5000);
 
-            bool hasRule = output.Contains($"LocalPort={port}") && output.Contains("Enabled: Yes");
-            if (hasRule)
+            // netsh 输出按「----」分隔成规则块，每块包含端口/本地端口 + 已启用/Enabled 字段。
+            // 同时兼容中英文系统输出。
+            bool hasRule = false;
+            bool enabledRule = false;
+            foreach (var block in output.Split(new[] { "-------------------" }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string? portLine = block.Split('\n', '\r')
+                    .FirstOrDefault(l => l.Contains("LocalPort", StringComparison.OrdinalIgnoreCase)
+                                      || l.Contains("本地端口", StringComparison.Ordinal));
+                if (portLine == null) continue;
+
+                // 提取端口值：LocalPort:  25565 或 本地端口: 25565（可能带范围 25565-25566）
+                var value = portLine.Split(':', 2).Skip(1).FirstOrDefault()?.Trim();
+                if (string.IsNullOrEmpty(value)) continue;
+
+                var portParts = value.Split('-');
+                if (!int.TryParse(portParts[0].Trim(), out int lo)) continue;
+                int hi = portParts.Length > 1 && int.TryParse(portParts[1].Trim(), out var h) ? h : lo;
+                if (port.Value < lo || port.Value > hi) continue;
+
+                hasRule = true;
+                // 该规则块里「已启用」行
+                string enableLine = block.Split('\n', '\r')
+                    .FirstOrDefault(l => l.Contains("Enabled", StringComparison.OrdinalIgnoreCase)
+                                      || l.Contains("已启用", StringComparison.Ordinal)) ?? string.Empty;
+                if (enableLine.Contains("Yes", StringComparison.OrdinalIgnoreCase)
+                    || enableLine.Contains("是", StringComparison.Ordinal))
+                {
+                    enabledRule = true;
+                    break;
+                }
+            }
+
+            if (hasRule && enabledRule)
                 return new CheckResult("port.firewall", Severity.Ok, "Network",
                     "防火墙规则已配置", $"端口 {port} 有入站放行规则", false, null, port);
-            else
+
+            if (hasRule)
                 return new CheckResult("port.firewall", Severity.Warning, "Network",
-                    "防火墙可能拦截连接",
-                    $"未检测到端口 {port} 的入站放行规则，外部玩家可能无法连接",
+                    "端口规则存在但未启用",
+                    $"端口 {port} 的入站规则未启用，外部玩家可能无法连接",
                     true, null, port);
+
+            return new CheckResult("port.firewall", Severity.Warning, "Network",
+                "防火墙可能拦截连接",
+                $"未检测到端口 {port} 的入站放行规则，外部玩家可能无法连接",
+                true, null, port);
         }
         catch (Exception ex)
         {
             return new CheckResult("port.firewall", Severity.Info, "Network",
-                "防火墙检查需要管理员权限", ex.Message, false, null, null);
+                "防火墙检查不可用", ex.Message, false, null, null);
         }
     }
 
@@ -567,23 +738,11 @@ public class CheckRunner : ICheckRunner
                 return new CheckResult("log.startup.failure", Severity.Info, "Log",
                     "没有 latest.log", null, false, null, null);
 
-            // 读末尾 2000 行（P7 内存有界）
+            // 读末尾 2000 行（P7 内存有界 — 流式倒读）
+            // 注：OOM / CHUNK_GENERATION 由 log.outmemory / log.chunk.generation
+            // 专门检查负责，这里只做通用启动失败信号检测，避免两处重复判断给出矛盾结论。
             var lines = ReadTailLines(latest, 2000);
             var errorCount = lines.Count(l => l.Contains("ERROR") || l.Contains("Exception"));
-            var oom = lines.Any(l => l.Contains("OutOfMemoryError"));
-            var chunkErr = lines.Count(l => l.Contains("Could not pass event CHUNK_GENERATION"));
-
-            if (oom)
-                return new CheckResult("log.startup.failure", Severity.Critical, "Log",
-                    "检测到 OOM",
-                    "latest.log 包含 java.lang.OutOfMemoryError，建议增大 -Xmx 或清理世界",
-                    true, null, new { Oom = true });
-
-            if (chunkErr > 10)
-                return new CheckResult("log.startup.failure", Severity.Warning, "Log",
-                    "区块生成事件高频异常",
-                    $"CHUNK_GENERATION 异常 {chunkErr} 次，可能是世界损坏或插件冲突",
-                    false, null, new { ChunkErr = chunkErr });
 
             if (errorCount > 5)
                 return new CheckResult("log.startup.failure", Severity.Warning, "Log",
@@ -601,18 +760,45 @@ public class CheckRunner : ICheckRunner
         }
     }
 
-    /// <summary>读文件最后 N 行（P7 内存有界 — 流式倒读）</summary>
+    /// <summary>流式倒读文件最后 N 行（P7 内存有界：每次只读固定大小的尾部窗口）</summary>
     private static List<string> ReadTailLines(string path, int n)
     {
-        // 简化实现：读全部然后取最后 N 行
-        // （大文件场景 P2 再做真正的流式倒读）
+        var result = new List<string>();
         try
         {
-            var all = File.ReadAllLines(path);
-            int skip = Math.Max(0, all.Length - n);
-            return all.Skip(skip).ToList();
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            const int chunkSize = 32 * 1024;
+            long pos = fs.Length;
+            var buf = new byte[chunkSize];
+            var tail = new StringBuilder();
+            int newlines = 0;
+
+            while (pos > 0 && newlines <= n)
+            {
+                long start = Math.Max(0, pos - chunkSize);
+                int len = (int)(pos - start);
+                fs.Position = start;
+                fs.ReadExactly(buf, 0, len);
+                pos = start;
+
+                for (int i = 0; i < len; i++)
+                {
+                    if (buf[i] == (byte)'\n') newlines++;
+                }
+                tail.Insert(0, Encoding.UTF8.GetString(buf, 0, len));
+                if (newlines > n) break;
+            }
+
+            var text = tail.ToString().TrimEnd('\r', '\n');
+            if (text.Length == 0) return result;
+
+            var parts = text.Split('\n');
+            int skip = Math.Max(0, parts.Length - n);
+            for (int i = skip; i < parts.Length; i++)
+                result.Add(parts[i].TrimEnd('\r'));
         }
-        catch { return new List<string>(); }
+        catch { /* 读失败返回空列表 */ }
+        return result;
     }
 
     // ═══════════════════════════════════════════════════════════

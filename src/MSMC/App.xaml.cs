@@ -794,6 +794,7 @@ public partial class App : Application
                     await Register<ICheckRunner, CheckRunner>(56, "[DIAG]", "CheckRunner", "12 个系统/配置/日志检查点");
                     await Register<IDiagnosticArchiveAnalyzer, DiagnosticArchiveAnalyzer>(56, "[DIAG]", "DiagnosticArchiveAnalyzer", "存档 NBT/Region 分析器");
                     await Register<IFixExecutor, FixExecutor>(56, "[DIAG]", "FixExecutor", "7 个 FixAction 执行器");
+                    await Register<IDeepSeekService, DeepSeekService>(56, "[DIAG]", "DeepSeekService", "DeepSeek AI 诊断分析（Key 可选）");
 
                     // ════════════ 自动更新 (P2) ════════════
                     await Step(57, "正在注册自动更新模块...", "[UPDATE] === 自动更新 (P2) ===");

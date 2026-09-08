@@ -202,8 +202,10 @@ public static class BridgeActionRegistrar
                 "server.kill" => "终止服务器进程",
                 _ => fixId
             };
-            var step = new FixStep(label, fixId, false, true, @params);
-            var fix = new FixAction(fixId, label, false, null, 0.8, string.Empty, new List<FixStep> { step });
+            // 会改动/删除存档或终止进程的修复必须标记 Dangerous，触发前端确认 + 前置备份
+            bool dangerous = fixId is "region.clean.entities" or "player.reset.damage" or "server.kill" or "port.kill.process";
+            var step = new FixStep(label, fixId, dangerous, true, @params);
+            var fix = new FixAction(fixId, label, dangerous, null, 0.8, string.Empty, new List<FixStep> { step });
 
             var engine = serviceProvider.GetRequiredService<IDiagnosticEngine>();
             return await engine.ExecuteFixAsync(jarPath, string.IsNullOrEmpty(worldPath) ? null : worldPath, fix, trustMode);
@@ -216,12 +218,14 @@ public static class BridgeActionRegistrar
             return Task.FromResult<object?>(new { success = true, message = "P0 简化: 仅返回成功标记" });
         }, logger, ref registered, ref failed);
 
-        // exportReport: 真实现 — 写 Markdown / JSON 到 %AppData%/MSMC/diagnostic/
+        // exportReport: 真实现 — 把前端传回的 DiagnosticReport 完整序列化为 Markdown / JSON
         registered += SafeRegister(bridge, "diagnostic.exportReport", payload =>
         {
             var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
             string format = args.TryGetProperty("format", out var f1) ? f1.GetString() ?? "markdown" : "markdown";
             string? customPath = args.TryGetProperty("path", out var p1) ? p1.GetString() : null;
+            var report = args.TryGetProperty("report", out var r1) && r1.ValueKind == JsonValueKind.Object
+                ? r1 : (JsonElement?)null;
             try
             {
                 var dir = customPath ?? Path.Combine(
@@ -230,9 +234,19 @@ public static class BridgeActionRegistrar
                 Directory.CreateDirectory(dir);
                 var fileName = $"diagnostic-report-{DateTime.Now:yyyyMMdd-HHmmss}.{format}";
                 var fullPath = Path.Combine(dir, fileName);
-                var content = format == "json"
-                    ? JsonSerializer.Serialize(new { generatedAt = DateTime.Now, msmcNote = "P0 导出占位：完整 DiagnosticReport 将在 P1 接入" }, new JsonSerializerOptions { WriteIndented = true })
-                    : $"# MSMC 诊断报告\n\n生成时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\nMSMC 版本: (unknown)\n\n> 完整报告导出将在 P1 接入 DiagnosticReport 数据流\n";
+                string content;
+                if (report.HasValue)
+                {
+                    content = format == "json"
+                        ? JsonSerializer.Serialize(report.Value, new JsonSerializerOptions { WriteIndented = true })
+                        : BuildMarkdown(report.Value);
+                }
+                else
+                {
+                    content = format == "json"
+                        ? JsonSerializer.Serialize(new { generatedAt = DateTime.Now, note = "未提供报告数据，请从前端传入 report" }, new JsonSerializerOptions { WriteIndented = true })
+                        : $"# MSMC 诊断报告\n\n生成时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n\n> 未提供报告数据，请从前端传入 report\n";
+                }
                 File.WriteAllText(fullPath, content);
                 Log.Information("[DIAG] exportReport 成功: {Path} ({Size} bytes)", fullPath, content.Length);
                 return Task.FromResult<object?>(new { path = fullPath, size = content.Length });
@@ -244,8 +258,130 @@ public static class BridgeActionRegistrar
             }
         }, logger, ref registered, ref failed);
 
+        // ════════════ DeepSeek AI 分析 actions ════════════
+
+        // 查询 AI 配置状态（是否已配 Key）
+        registered += SafeRegister(bridge, "diagnostic.getAiStatus", _ =>
+        {
+            var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
+            return Task.FromResult<object?>(new { configured = ai.IsConfigured, hasKey = !string.IsNullOrEmpty(ai.GetApiKey()) });
+        }, logger, ref registered, ref failed);
+
+        // 设置 / 清除 API Key（DPAPI 加密存储）
+        registered += SafeRegister(bridge, "diagnostic.setApiKey", payload =>
+        {
+            var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
+            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+            var key = args.TryGetProperty("apiKey", out var k) ? k.GetString() ?? string.Empty : string.Empty;
+            var (ok, err) = ai.SetApiKey(key);
+            return Task.FromResult<object?>(new { success = ok, configured = ok && !string.IsNullOrEmpty(key), error = err });
+        }, logger, ref registered, ref failed);
+
+        // 对已生成的报告做 AI 追问 / 重新分析
+        registered += SafeRegister(bridge, "diagnostic.askAI", async payload =>
+        {
+            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+            string question = args.TryGetProperty("question", out var q) ? q.GetString() ?? string.Empty : string.Empty;
+            var reportElement = args.TryGetProperty("report", out var r) && r.ValueKind == JsonValueKind.Object
+                ? r : (JsonElement?)null;
+
+            var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
+            if (!ai.IsConfigured)
+                return new { success = false, error = "尚未配置 DeepSeek API Key" };
+            if (reportElement is null)
+                return new { success = false, error = "缺少报告数据" };
+
+            // 把前端传回的 JSON 报告还原为 DiagnosticReport 交给 AI
+            var report = JsonSerializer.Deserialize<DiagnosticReport>(
+                reportElement.Value.GetRawText(), BridgeJsonOptions);
+            if (report is null)
+                return new { success = false, error = "报告数据无法解析" };
+
+            var analysis = await ai.AnalyzeReportAsync(report, string.IsNullOrEmpty(question) ? null : question);
+            if (analysis is null)
+                return new { success = false, error = "AI 分析失败（检查网络或 API Key）" };
+            return new { success = true, analysis };
+        }, logger, ref registered, ref failed);
+
         Log.Information("[BRDG-REG] [OK] 桥接 actions 注册完成: {Ok} OK / {Fail} FAIL", registered, failed);
     }
+
+    /// <summary>把前端回传的 DiagnosticReport JSON 转成 Markdown 报告</summary>
+    private static string BuildMarkdown(JsonElement report)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("# MSMC 诊断报告");
+        sb.AppendLine();
+        if (report.TryGetProperty("generatedAt", out var g)) sb.AppendLine($"生成时间: {g}");
+        if (report.TryGetProperty("msmcVersion", out var v)) sb.AppendLine($"MSMC 版本: {v}");
+        if (report.TryGetProperty("serverJarPath", out var j)) sb.AppendLine($"服务器 JAR: {j}");
+        if (report.TryGetProperty("worldPath", out var w) && w.ValueKind == JsonValueKind.String)
+            sb.AppendLine($"世界目录: {w.GetString()}");
+        sb.AppendLine();
+
+        if (report.TryGetProperty("summary", out var sm) && sm.TryGetProperty("totalChecks", out var tc))
+        {
+            sb.AppendLine("## 体检汇总");
+            sb.AppendLine();
+            sb.AppendLine("| 总检查 | ✅ | ⚠️ | ❌ | 🔴 | 可自动修复 | 耗时(ms) |");
+            sb.AppendLine("|---|---|---|---|---|---|---|");
+            sb.AppendLine($"| {tc} | {GetProp(sm, "okCount")} | {GetProp(sm, "warningCount")} | {GetProp(sm, "errorCount")} | {GetProp(sm, "criticalCount")} | {GetProp(sm, "autoFixableCount")} | {GetProp(sm, "scanDurationMs")} |");
+            sb.AppendLine();
+        }
+
+        if (report.TryGetProperty("issues", out var issues) && issues.ValueKind == JsonValueKind.Array)
+        {
+            sb.AppendLine("## 发现的问题");
+            sb.AppendLine();
+            foreach (var issue in issues.EnumerateArray())
+            {
+                sb.AppendLine($"- **[{GetProp(issue, "severity")}] {GetProp(issue, "title")}**（{GetProp(issue, "category")}）");
+                sb.AppendLine($"  - {GetProp(issue, "detail")}");
+                if (issue.TryGetProperty("hint", out var h) && h.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(h.GetString()))
+                    sb.AppendLine($"  - 提示: {h}");
+                if (issue.TryGetProperty("suggestion", out var sug) && sug.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(sug.GetString()))
+                    sb.AppendLine($"  - 建议: {sug}");
+            }
+            sb.AppendLine();
+        }
+
+        if (report.TryGetProperty("aiAnalysis", out var ai) && ai.ValueKind == JsonValueKind.Object)
+        {
+            sb.AppendLine("## AI 分析");
+            sb.AppendLine();
+            if (ai.TryGetProperty("summary", out var aSum)) sb.AppendLine($"> {aSum}");
+            if (ai.TryGetProperty("keyFindings", out var kf) && kf.ValueKind == JsonValueKind.Array)
+            {
+                sb.AppendLine();
+                sb.AppendLine("### 关键发现");
+                foreach (var k in kf.EnumerateArray())
+                    sb.AppendLine($"- {k}");
+            }
+        }
+        sb.AppendLine();
+        sb.AppendLine("---");
+        sb.AppendLine("*由 MSMC 疑难解答模块生成*");
+        return sb.ToString();
+    }
+
+    /// <summary>把 JsonElement 的值转成适合 Markdown 的字符串（含嵌套对象/数组）</summary>
+    private static string GetProp(JsonElement e, string name)
+    {
+        if (!e.TryGetProperty(name, out var v)) return string.Empty;
+        return v.ValueKind switch
+        {
+            JsonValueKind.String => v.GetString() ?? string.Empty,
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            JsonValueKind.Null or JsonValueKind.Undefined => string.Empty,
+            _ => v.GetRawText(),
+        };
+    }
+
+    private static readonly JsonSerializerOptions BridgeJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
 
     /// <summary>
     /// 安全注册单个 action handler —— 执行链的兜底，单个 handler 失败不影响其他

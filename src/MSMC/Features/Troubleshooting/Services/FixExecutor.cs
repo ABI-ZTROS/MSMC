@@ -112,7 +112,7 @@ public class FixExecutor : IFixExecutor
         {
             try
             {
-                if (IsMatch(p, jarName))
+                if (IsMatch(p, jarName) || IsJavaProcessMatchingJar(p.Id, jarName))
                     return Task.FromResult(true);
             }
             catch { }
@@ -137,6 +137,24 @@ public class FixExecutor : IFixExecutor
             var cmdLine = p.StartInfo.Arguments;
             if (!string.IsNullOrEmpty(cmdLine) && cmdLine.Contains(jarName, StringComparison.OrdinalIgnoreCase))
                 return true;
+        }
+        catch { }
+        return false;
+    }
+
+    /// <summary>用 WMI 命令行兜底匹配：java -jar 控制台进程通常没有窗口标题</summary>
+    private static bool IsJavaProcessMatchingJar(int pid, string jarName)
+    {
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {pid}");
+            foreach (var obj in searcher.Get())
+            {
+                var cmd = obj["CommandLine"] as string;
+                if (!string.IsNullOrEmpty(cmd) && cmd.Contains(jarName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
         }
         catch { }
         return false;
@@ -279,10 +297,17 @@ public class FixExecutor : IFixExecutor
             foreach (var scriptFile in DiscoverStartScripts(parent))
             {
                 var content = File.ReadAllText(scriptFile);
-                // 替换第一处出现的 java.exe 路径
+
+                // 先备份原脚本（唯一名），替换出错可回滚
+                var backup = $"{scriptFile}.bak-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
+                File.Copy(scriptFile, backup);
+
+                // 只替换「行首缩进后紧跟 java/java.exe 可执行名（可带引号包裹的路径前缀）」的写法，
+                // 不动 set JAVA= 变量赋值、不动注释/文本中间出现的 java。
+                // 统一替换为带引号的完整路径，避免引号内路径替换出语法错误。
                 var newContent = Regex.Replace(content,
-                    @"^([^\r\n]*?)(?:[^\s""\\/]*java(?:\.exe)?)",
-                    m => m.Groups[1].Value + javaPath,
+                    @"^(\s*)(?:""[^""]*?[\\/])?(?:java|java\.exe)""?",
+                    m => m.Groups[1].Value + "\"" + javaPath + "\"",
                     RegexOptions.Multiline);
 
                 if (newContent != content)
@@ -290,11 +315,16 @@ public class FixExecutor : IFixExecutor
                     File.WriteAllText(scriptFile, newContent);
                     updated++;
                 }
+                else
+                {
+                    // 无 java 路径可替换时清理刚建的备份，避免残留
+                    try { if (File.Exists(backup)) File.Delete(backup); } catch { }
+                }
             }
 
             results.Add(new FixStepResult(
-                updated > 0 ? $"已更新 {updated} 个启动脚本" : "启动脚本无 java 路径，跳过",
-                "command", updated > 0, updated > 0 ? "Java 路径已替换" : "无需修改"));
+                updated > 0 ? $"已更新 {updated} 个启动脚本（已备份原脚本）" : "启动脚本无 java 路径，跳过",
+                "command", updated > 0, updated > 0 ? $"Java 路径已替换为 {javaPath}" : "无需修改"));
         }
         catch (Exception ex)
         {
@@ -318,10 +348,9 @@ public class FixExecutor : IFixExecutor
             foreach (var mcaFile in Directory.GetFiles(regionDir, "*.mca"))
             {
                 ct.ThrowIfCancellationRequested();
-                var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-                var backup = mcaFile + $".bak-{timestamp}";
-                if (!File.Exists(backup)) File.Move(mcaFile, backup);
-                else File.Delete(mcaFile);
+                // 唯一备份名（时间戳 + GUID）：绝不复用/删除原文件，防止同秒重跑丢档
+                var backup = $"{mcaFile}.bak-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
+                File.Move(mcaFile, backup);
                 cleaned++;
 
                 if (cleaned <= 5 || cleaned % 50 == 0)
@@ -351,28 +380,26 @@ public class FixExecutor : IFixExecutor
             return;
         }
 
-        int cleaned = 0;
+        // 红线原则：不返回假成功。NBT damage 重置（写回存档树）尚未实现，
+        // 因此这里只做全量备份并诚实标记失败，避免用户误以为修复已生效。
+        int backedUp = 0;
         try
         {
             foreach (var datFile in Directory.GetFiles(playerDir, "*.dat"))
             {
                 ct.ThrowIfCancellationRequested();
-                var backup = datFile + $".bak-{DateTime.Now:yyyyMMdd-HHmmss}";
-                if (!File.Exists(backup)) File.Copy(datFile, backup);
-                // 目前策略：备份后保持原文件不动
-                // 真正的 ItemCompoundTag.damage=0 重置需要修改 NBT 树，留后续增强
-                cleaned++;
-
-                if (cleaned <= 5 || cleaned % 50 == 0)
-                    results.Add(new FixStepResult(
-                        $"备份 {Path.GetFileName(datFile)}",
-                        "cleanup_player", true, "已备份。NBT damage 重置待后续增强"));
+                var backup = $"{datFile}.bak-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
+                if (!File.Exists(backup))
+                {
+                    File.Copy(datFile, backup);
+                    backedUp++;
+                }
             }
 
-            if (cleaned > 5)
-                results.Add(new FixStepResult(
-                    $"共备份 {cleaned} 个玩家存档",
-                    "cleanup_player", true, "完成"));
+            results.Add(new FixStepResult(
+                backedUp > 0 ? $"已备份 {backedUp} 个玩家存档" : "无玩家存档可备份",
+                "cleanup_player", false,
+                "玩家物品 damage 重置（写回 NBT）尚未实现；已备份全部 .dat，可后续手动处理"));
         }
         catch (Exception ex)
         {
@@ -390,7 +417,7 @@ public class FixExecutor : IFixExecutor
         {
             try
             {
-                if (IsMatch(p, jarName))
+                if (IsMatch(p, jarName) || IsJavaProcessMatchingJar(p.Id, jarName))
                 {
                     _log.Information("[FIX] Kill PID={Pid} for {Jar}", p.Id, jarName);
                     p.Kill();

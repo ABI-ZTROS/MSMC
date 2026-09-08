@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Management;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
@@ -19,17 +21,20 @@ public class DiagnosticEngine : IDiagnosticEngine
     private readonly ICheckRunner _checkRunner;
     private readonly IDiagnosticArchiveAnalyzer _archiveAnalyzer;
     private readonly IFixExecutor _fixExecutor;
+    private readonly IDeepSeekService _deepSeek;
     private readonly ILogger _log;
 
     public DiagnosticEngine(
         ICheckRunner checkRunner,
         IDiagnosticArchiveAnalyzer archiveAnalyzer,
         IFixExecutor fixExecutor,
+        IDeepSeekService deepSeek,
         ILogger log)
     {
         _checkRunner = checkRunner;
         _archiveAnalyzer = archiveAnalyzer;
         _fixExecutor = fixExecutor;
+        _deepSeek = deepSeek;
         _log = log;
     }
 
@@ -50,7 +55,8 @@ public class DiagnosticEngine : IDiagnosticEngine
             sw.Stop();
 
             _log.Information("[TROUBLESHOOT] [Quick] 完成: {N} checks, {Ms}ms", checks.Count, sw.ElapsedMilliseconds);
-            return BuildReport(serverJarPath, worldPath, checks, new List<PlayerStat>(), sw.ElapsedMilliseconds, true, null);
+            var report = BuildReport(serverJarPath, worldPath, checks, new List<PlayerStat>(), sw.ElapsedMilliseconds, true, null);
+            return await AttachAiAnalysisAsync(report, null, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -102,7 +108,8 @@ public class DiagnosticEngine : IDiagnosticEngine
             var topPlayers = _archiveAnalyzer.GetTopPlayers(10);
 
             _log.Information("[TROUBLESHOOT] [Deep] ✅ 完成: {Total} checks, {Ms}ms", allChecks.Count, sw.ElapsedMilliseconds);
-            return BuildReport(serverJarPath, worldPath, allChecks, topPlayers, sw.ElapsedMilliseconds, true, null);
+            var report = BuildReport(serverJarPath, worldPath, allChecks, topPlayers, sw.ElapsedMilliseconds, true, null);
+            return await AttachAiAnalysisAsync(report, null, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -112,9 +119,27 @@ public class DiagnosticEngine : IDiagnosticEngine
         }
     }
 
-    // ── 预留：增量体检 ──
-    public Task<DiagnosticReport> RunChecksAsync(string serverJarPath, string? worldPath, IEnumerable<string> checkIds, CancellationToken ct = default)
-        => Task.FromResult(BuildReport(serverJarPath, worldPath, new List<CheckResult>(), new List<PlayerStat>(), 0, false, "P2 未实现"));
+    // ── 增量体检：按 checkIds 过滤运行；空集合 = 全部 ──
+    public async Task<DiagnosticReport> RunChecksAsync(string serverJarPath, string? worldPath, IEnumerable<string> checkIds, CancellationToken ct = default)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var server = InferServerInfo(serverJarPath);
+            var allowed = new HashSet<string>(checkIds, StringComparer.OrdinalIgnoreCase);
+            var checks = _checkRunner.RunAll(serverJarPath, worldPath, server)
+                .Where(c => allowed.Count == 0 || allowed.Contains(c.CheckId))
+                .ToList();
+            sw.Stop();
+            return BuildReport(serverJarPath, worldPath, checks, new List<PlayerStat>(), sw.ElapsedMilliseconds, true, null);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            sw.Stop();
+            _log.Error(ex, "[TROUBLESHOOT] [Checks] 顶层异常");
+            return BuildReport(serverJarPath, worldPath, new List<CheckResult>(), new List<PlayerStat>(), sw.ElapsedMilliseconds, false, ex.Message);
+        }
+    }
 
     // ── 修复执行（委托 FixExecutor）──
 
@@ -126,6 +151,32 @@ public class DiagnosticEngine : IDiagnosticEngine
 
     public Task<bool> KillServerAsync(string serverJarPath)
         => _fixExecutor.KillServerAsync(serverJarPath);
+
+    // ── AI 后处理：已配置 Key 时附加分析；失败不阻断报告 ──
+
+    private async Task<DiagnosticReport> AttachAiAnalysisAsync(DiagnosticReport report, string? question, CancellationToken ct)
+    {
+        if (!_deepSeek.IsConfigured) return report;
+        try
+        {
+            var analysis = await _deepSeek.AnalyzeReportAsync(report, question, ct);
+            if (analysis == null) return report;
+            return report with
+            {
+                AiAnalysis = analysis,
+                DeepSeekRawResponse = analysis.RawJson,
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _log.Warning(ex, "[TROUBLESHOOT] AI 后处理失败（不影响报告）");
+            return report;
+        }
+    }
 
     // ═══════════════════════════════════════════════════════════
     // 报告构建 + 辅助方法（原代码保留）
@@ -156,7 +207,7 @@ public class DiagnosticEngine : IDiagnosticEngine
                 Hint: InferHint(c),
                 Suggestion: InferSuggestion(c),
                 Fix: c.SuggestedFix,
-                Context: c.RawData is Dictionary<string, object?> d ? d : new Dictionary<string, object?>()))
+                Context: ToContextDict(c.RawData)))
             .ToList();
 
         return new DiagnosticReport(
@@ -173,6 +224,23 @@ public class DiagnosticEngine : IDiagnosticEngine
             DeepSeekRawResponse: null,
             Succeeded: succeeded,
             ErrorMessage: error);
+    }
+
+    /// <summary>把 CheckResult.RawData（任意对象）规整成前端可用的字典：已是字典直接用，否则序列化转换</summary>
+    private static Dictionary<string, object?> ToContextDict(object? raw)
+    {
+        if (raw is Dictionary<string, object?> d) return d;
+        if (raw == null) return new Dictionary<string, object?>();
+        try
+        {
+            var json = JsonSerializer.Serialize(raw);
+            return JsonSerializer.Deserialize<Dictionary<string, object?>>(json)
+                   ?? new Dictionary<string, object?>();
+        }
+        catch
+        {
+            return new Dictionary<string, object?>();
+        }
     }
 
     private static CheckResult FailedCheck(string checkId, Exception ex)
@@ -199,6 +267,30 @@ public class DiagnosticEngine : IDiagnosticEngine
                 {
                     pid = p.Id;
                     break;
+                }
+            }
+            catch { }
+        }
+
+        // WMI 命令行兜底：java -jar 控制台进程通常没有窗口标题
+        if (pid == null)
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'java.exe' OR Name = 'javaw.exe'");
+                foreach (var obj in searcher.Get())
+                {
+                    try
+                    {
+                        var cmd = obj["CommandLine"] as string;
+                        if (!string.IsNullOrEmpty(cmd) && cmd.Contains(jarName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            pid = Convert.ToInt32(obj["ProcessId"]);
+                            break;
+                        }
+                    }
+                    catch { }
                 }
             }
             catch { }
