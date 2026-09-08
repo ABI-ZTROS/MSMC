@@ -1,5 +1,5 @@
 import ReactDOM from 'react-dom/client'
-import { StartupPage } from './pages/StartupPage'
+import StartupPage from './pages/StartupPage'
 import './styles/globals.css'
 ;(window as any).__msmcStartupScriptLoaded = true
 

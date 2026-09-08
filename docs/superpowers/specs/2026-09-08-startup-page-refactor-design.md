@@ -33,7 +33,7 @@
 | HUD 角标 | 砍 FPS/CPU/MEM 模拟 → 留真实 FPS 监测 + 版本号 + session id |
 | 转场节奏 | 成功态停留 2s + 庆祝动画 → 淡出 → 切入主窗口 |
 | 动画曲线 | 贝塞尔曲线（`cubic-bezier(0.4, 0, 0.2, 1)` 或类似） |
-| 品牌主色 | 芙宁娜水蓝色（待确认具体色值，候选：`#5DC8E8` Pneuma 浅蓝 / `#4A90D9` Ousia 深蓝） |
+| 品牌主色 | 正常=芙宁娜水蓝 `#5DC8E8` / 警告=日落黄 `#e8964a` / 故障=血红双调 `#c0392b`(组件) + `#e74c3c`(文字) |
 | ASCII LOGO | 用户单独安排 → 本轮保留 |
 | 失败态 | 自动展开日志面板 + 关键错误高亮卡片 + 急救按钮组（重开 / 打开疑难解答 / 复制日志） |
 | 代码结构 | 彻底拆 + 保证能跑通 |
@@ -42,22 +42,79 @@
 
 ## 2. 视觉设计
 
-### 品牌色板（候选）
+### 状态色板（三态系统 + WCAG 对比度已验证）
+
+> **背景基底**：`#081420`（极深水蓝黑，替换当前 `#020617` 纯黑）
+> **WCAG 2.1 AA 阈值**：正常文字 ≥ 4.5:1，大文字/UI组件 ≥ 3:1
+
+#### 核心状态色
+
+| 状态 | 角色 | 色值 | 亮度 L | vs 背景对比度 | AA 正常 | AA 大/UI | 用途 |
+|------|------|------|--------|------------|---------|---------|------|
+| **正常** | 主色 | `#5DC8E8` | 0.4946 | **9.63:1** | ✅ AAA | ✅ AAA | 进度条填充、呼吸光晕、ASCII LOGO 强调描边 |
+| **正常** | 深色 | `#4A90D9` | 0.2641 | **5.55:1** | ✅ AA | ✅ AA | 进度条填充次色（渐变尾）、border |
+| **警告** | 主色 | `#e8964a` | 0.3946 | **7.86:1** | ✅ AAA | ✅ AAA | 进度条、状态文字、日志 WARN tag |
+| **故障** | UI组件 | `#c0392b` | 0.1431 | **3.41:1** | ❌ 仅 UI | ✅ LARGE | 进度条填充、急救按钮背景（非文字） |
+| **故障** | 文字色 | `#e74c3c` | 0.2248 | **4.86:1** | ✅ AA | ✅ AA | 故障状态文字、ERROR 日志 tag、错误卡片边框 |
+| **成功** | 主色 | `#34d399` | 0.4962 | **9.66:1** | ✅ AAA | ✅ AAA | 完成态进度条、对勾 ✓ 图标 |
+
+#### 文字色
+
+| 角色 | 色值 | 亮度 L | vs 背景对比度 | AA 正常 | 用途 |
+|------|------|--------|------------|---------|------|
+| 主文字 | `#e2e8f0` | 0.8017 | **15.06:1** | ✅ AAA | HUD session/phase、状态文字、日志内容 |
+| 次要文字 | `#94a3b8` | 0.3595 | **7.24:1** | ✅ AAA | 日志 tag label、版本号前缀、小提示 |
+
+#### 关键陷阱修复（已计算）
+
+**⚠️ 血红在暗背景上不够亮**
+- `#c0392b` 只有 3.41:1，**不能当小字体用**
+- 解决方案：故障态用双红色——`#c0392b` 当进度条/按钮背景（UI组件只需 3:1），`#e74c3c` 当 ERROR 文字/标签（4.86:1 ✅）
+
+**⚠️ 进度条上不能叠白字**
+- 白字 `#e2e8f0` 在水蓝 `#5DC8E8` 上只有 **1.93:1**，完全不可读
+- 解决方案：百分比数字放在进度条**外部右侧**（不叠在填充区域上）
+
+#### 完整 CSS 变量
 
 ```css
 :root {
-  /* 主色：芙宁娜水蓝 — 待用户确认具体值 */
-  --startup-primary: #5DC8E8;        /* Pneuma 浅蓝（推荐默认） */
-  --startup-primary-deep: #4A90D9;    /* Ousia 深蓝 */
-  --startup-success: #34d399;         /* 绿色，成功态对勾 */
-  --startup-error: #f87171;           /* 红色，失败态 */
-  --startup-bg: #081420;              /* 极深水蓝黑背景（替换 #020617） */
-  --startup-text: #e2e8f0;            /* 主文字 */
-  --startup-text-dim: #94a3b8;        /* 次要文字 */
+  /* === 状态主色（三态系统） === */
+  --startup-primary-normal: #5DC8E8;     /* 芙宁娜水蓝 — 正常态 */
+  --startup-primary-normal-deep: #4A90D9; /* 水蓝渐变尾 */
+  --startup-primary-warn: #e8964a;       /* 日落黄 — 警告态（柔和不刺眼） */
+  --startup-primary-error: #c0392b;      /* 血红 — 故障态 UI 组件 */
+  --startup-primary-error-text: #e74c3c; /* 血红 — 故障态文字色（4.86:1 AA） */
+  --startup-primary-success: #34d399;    /* 绿色 — 成功态 */
+
+  /* === 背景 === */
+  --startup-bg: #081420;                 /* 极深水蓝黑 */
+  --startup-bg-gradient-glow: rgba(93, 200, 232, 0.08);
+
+  /* === 文字 === */
+  --startup-text: #e2e8f0;               /* 主文字（15.06:1 AAA） */
+  --startup-text-dim: #94a3b8;           /* 次要文字（7.24:1 AAA） */
+
+  /* === 运行时切换：根据 phase 动态切换 --startup-current === */
+  --startup-current: var(--startup-primary-normal);
 }
+
+/* phase 切换时更新当前主色 */
+.phase-boot   { --startup-current: var(--startup-primary-normal); }
+.phase-warn   { --startup-current: var(--startup-primary-warn); }
+.phase-error  { --startup-current: var(--startup-primary-error); }
+.phase-success{ --startup-current: var(--startup-primary-success); }
 ```
 
-> **TODO**: `--startup-primary` 最终值待用户确认。若用户偏好血红（与疑难解答页统一），改为 `#c0392b`。
+#### 状态机 → 配色映射
+
+```
+phase 'boot'     → current = #5DC8E8  水蓝呼吸光晕 + 水蓝进度条
+phase 'running'  → current = #5DC8E8  同上（运行中也是正常态）
+phase 'warn'     → current = #e8964a  日落黄 + 背景光晕切暖色
+phase 'error'    → current = #c0392b  血红进度条 + 错误卡片 + #e74c3c 文字
+phase 'success'  → current = #34d399  绿进度条 + ✓ 对勾
+```
 
 ### 背景层（1 层替代 7 层）
 
@@ -67,17 +124,18 @@
 ```
 
 ```css
-/* 背景：极深水蓝黑 + 中心柔化光晕 */
+/* 背景：极深水蓝黑 + 中心柔化光晕（颜色跟随 --startup-current 动态切换） */
 .background {
   background: radial-gradient(
     ellipse at center,
-    rgba(93, 200, 232, 0.08) 0%,
-    rgba(8, 20, 32, 1) 70%
+    color-mix(in srgb, var(--startup-current) 8%, transparent) 0%,
+    var(--startup-bg) 70%
   );
   animation: breathe 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* 呼吸光晕（透明度缓动，零位置变化，性能友好） */
+/* 呼吸光晕：透明度缓动，零位置变化，性能友好 */
+/* 光晕颜色跟随 phase 主色——故障态就呼吸血红晕，警告态呼吸日落黄 */
 @keyframes breathe {
   0%, 100% { opacity: 0.85; }
   50%      { opacity: 1; }
@@ -95,15 +153,16 @@
 │              ░░░░░░░░░░░░░░                          │
 │                                                      │
 │         ┌────────────────────────┐                   │
-│         │  ═══════════════░░░░░░ │  68%              │ ← 横条进度条（贝塞尔缓动）
-│         └────────────────────────┘                   │
+│         │  ═══════════════░░░░░░ │  68%              │ ← 横条进度条（百分比在条外！）
+│         └────────────────────────┘                   │     避免白字在亮色填充上不可读
 │                                                      │
 │              正在初始化服务...                         │ ← 状态文字（bridge 下发）
-│                                                      │
-│  ┌────────────────────────────────────────────────┐ │
+│                 (颜色跟随 phase!)                      │     boot=#5DC8E8
+│                                                          warn=#e8964a
+│  ┌────────────────────────────────────────────────┐ │    error=#e74c3c
 │  │ [BOOT] React 视图挂载完成                       │ │
 │  │ [BRIDGE] 桥接握手完成，版本 1.2.0               │ │ ← 日志面板（常驻 + 自动滚动）
-│  │ [INFO] 正在加载 DI 容器...                      │ │     tag 染色
+│  │ [INFO] 正在加载 DI 容器...                      │ │     tag 染色跟随 phase
 │  │ [OK] 42/42 注册完成                             │ │     保留最近 200 条
 │  │ ...                                             │ │
 │  └────────────────────────────────────────────────┘ │
@@ -112,11 +171,12 @@
 
 ### 横条进度条设计
 
-- 尺寸：280px × 6px（圆角 3px）
-- 背景：`rgba(93,200,232,0.15)`
-- 填充：`linear-gradient(90deg, var(--startup-primary), var(--startup-primary-deep))`
-- 缓动：`transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1)`
-- 成功态：填充颜色变 `#34d399`，条上方弹出 ✓ 对勾（2s 停留 → 淡出）
+- **尺寸**：280px × 6px（圆角 3px）
+- **背景**：`color-mix(in srgb, var(--startup-current) 15%, transparent)`  —— 半透明当前主色
+- **填充**：`linear-gradient(90deg, var(--startup-current), var(--startup-primary-normal-deep))` —— 动态跟随 phase
+- **缓动**：`transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1)`（贝塞尔曲线）
+- **百分比位置**：进度条**外部右侧**（24px gap，不叠在填充上）→ 避免白字在亮色上只有 1.93:1 对比度的陷阱
+- **成功态**：填充颜色切 `--startup-primary-success`，条上方弹出 ✓ 对勾（2s 停留 → 淡出）
 
 ### 完成态庆祝动画
 
@@ -298,9 +358,9 @@ export function useStartupBridge(): StartupBridgeState {
 
 ---
 
-## 7. 待确认事项（P0 blocker）
+## 7. 待确认事项
 
-| 项 | 候选 | 决策 |
-|----|------|------|
-| 主色 hex | `#5DC8E8` / `#4A90D9` / 血红 `#c0392b` / 跟随主题 | 待用户拍板 |
-| ASCII LOGO 内容 | 保留当前 / 用户提供新的 | 用户单独安排 |
+| 项 | 状态 |
+|----|------|
+| 主色 hex（三态） | ✅ 已确认：正常=`#5DC8E8` / 警告=`#e8964a` / 故障=`#c0392b`(组件)+`#e74c3c`(文字) / 成功=`#34d399` |
+| ASCII LOGO 内容 | ⏳ 用户单独安排 — 本轮保留现有 ASCII LOGO，后续替换 |

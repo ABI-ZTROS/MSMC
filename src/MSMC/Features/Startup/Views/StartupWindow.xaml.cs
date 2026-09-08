@@ -513,6 +513,26 @@ public partial class StartupWindow : Window
                     }
                 });
                 break;
+
+            case "startup:restart":
+                Log.Information("[Startup-WV2] 前端请求重启启动流程");
+                _dispatcher.InvokeAsync(() =>
+                {
+                    // 重新发送 init + 初始进度，让前端 phase 重置
+                    SendInitEvent();
+                    SendEvent("startup:progress", new { percent = 0, status = "正在重启..." });
+                });
+                break;
+
+            case "startup:openTroubleshooting":
+                Log.Information("[Startup-WV2] 前端请求打开疑难解答，关闭启动窗口");
+                _dispatcher.InvokeAsync(Close);
+                break;
+
+            case "startup:copyLog":
+                // 前端自己用 navigator.clipboard 处理，后端留空
+                Log.Debug("[Startup-WV2] 前端请求复制日志（前端自行处理）");
+                break;
         }
     }
 
