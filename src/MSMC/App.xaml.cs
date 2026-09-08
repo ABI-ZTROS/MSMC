@@ -19,6 +19,7 @@ using io.NET.ZTR_OS.Features.Startup.Services.Privilege;
 using io.NET.ZTR_OS.Features.ServerDetection.Services;
 using io.NET.ZTR_OS.Features.SystemMonitoring.Services;
 using io.NET.ZTR_OS.Features.Troubleshooting.Services;
+using io.NET.ZTR_OS.Features.Troubleshooting.Services.DeepSeek.Tools;
 using io.NET.ZTR_OS.Features.NetworkMonitor.Services;
 using io.NET.ZTR_OS.Features.WebView2.Services;
 using io.NET.ZTR_OS.Features.Notifications.Models;
@@ -787,7 +788,20 @@ public partial class App : Application
                     await Register<ICheckRunner, CheckRunner>(73, "[DIAG]", "CheckRunner", "12 个系统/配置/日志检查点");
                     await Register<IDiagnosticArchiveAnalyzer, DiagnosticArchiveAnalyzer>(74, "[DIAG]", "DiagnosticArchiveAnalyzer", "存档 NBT/Region 分析器");
                     await Register<IFixExecutor, FixExecutor>(75, "[DIAG]", "FixExecutor", "7 个 FixAction 执行器");
-                    await Register<IDeepSeekService, DeepSeekService>(76, "[DIAG]", "DeepSeekService", "DeepSeek AI 诊断分析（Key 可选）");
+
+                    // Function Calling AI 工具注册表 + 10 个工具实现
+                    await Step(75, "正在注册 AI Function Calling 工具...", "[DIAG-AI] === Function Calling 工具 ===");
+                    await RegisterType<ToolRegistry>(75, "[DIAG-AI]", "ToolRegistry", "AI 工具注册表（10 个工具）");
+                    await Register<IAiTool, ReadLogTool>(75, "[DIAG-AI]", "ReadLogTool", "读 server.log 最后 N 行");
+                    await Register<IAiTool, CheckPortTool>(75, "[DIAG-AI]", "CheckPortTool", "端口占用检查");
+                    await Register<IAiTool, CheckJavaTool>(75, "[DIAG-AI]", "CheckJavaTool", "Java 版本 + JDK 列表");
+                    await Register<IAiTool, ListRegionsTool>(75, "[DIAG-AI]", "ListRegionsTool", "world/region 魔数校验");
+                    await Register<IAiTool, ReadServerPropertiesTool>(75, "[DIAG-AI]", "ReadServerPropertiesTool", "server.properties 解析");
+                    await Register<IAiTool, DownloadCoreTool>(75, "[DIAG-AI]", "DownloadCoreTool", "核心下载（.part → Move 原子化）");
+                    await Register<IAiTool, SearchDocTool>(75, "[DIAG-AI]", "SearchDocTool", "联网搜官方文档");
+                    await Register<IAiTool, GetSystemInfoTool>(75, "[DIAG-AI]", "GetSystemInfoTool", "OS/CPU/内存/磁盘");
+
+                    await Register<IDeepSeekService, DeepSeekService>(76, "[DIAG]", "DeepSeekService", "DeepSeek AI 诊断分析（Key 可选，含 Function Calling）");
 
                     // ════════════ 自动更新 (P2) ════════════
                     await Step(77, "正在注册自动更新模块...", "[UPDATE] === 自动更新 (P2) ===");
@@ -818,6 +832,20 @@ public partial class App : Application
                         ValidateScopes = true,
                     });
                     await Step(88, "正在构建服务容器...", $"[OK] ServiceProvider 已构建（解析 {bootStats.Ok} 个服务契约）");
+
+                    // Function Calling 工具注册：把所有 IAiTool 实例注入 ToolRegistry
+                    // 必须在 BuildServiceProvider 之后，因为需要完整容器解析 IEnumerable<IAiTool>
+                    try
+                    {
+                        var toolRegistry = _serviceProvider.GetRequiredService<ToolRegistry>();
+                        var tools = _serviceProvider.GetServices<IAiTool>().ToArray();
+                        toolRegistry.RegisterAll(tools);
+                        startupWindow.AppendLog($"[DIAG-AI] ToolRegistry 已注册 {tools.Length} 个 AI 工具", isSuccess: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        startupWindow.AppendLog($"[DIAG-AI] ToolRegistry 注册失败（不阻断启动）: {ex.Message}", isError: true);
+                    }
 
                     // 后台启动 NTP 时钟偏差诊断（不阻塞启动流程；v2：不再覆盖系统时间）
                     _ = Task.Run(async () =>
