@@ -162,9 +162,9 @@ public static class BridgeActionRegistrar
             string jarPath = args.TryGetProperty("serverJarPath", out var j1) ? j1.GetString() ?? "" : "";
             string worldPath = args.TryGetProperty("worldPath", out var w1) ? w1.GetString() ?? "" : "";
             var engine = serviceProvider.GetRequiredService<IDiagnosticEngine>();
-            await engine.KillServerAsync(jarPath);
+            bool killSucceeded = await engine.KillServerAsync(jarPath);
             var report = await engine.RunDeepAsync(jarPath, worldPath);
-            return new { success = report.Succeeded, report, error = report.ErrorMessage };
+            return new { success = report.Succeeded, report, error = report.ErrorMessage, killSucceeded };
         }, logger, ref registered, ref failed);
 
         registered += SafeRegister(bridge, "diagnostic.executeFix", async payload =>
@@ -204,7 +204,20 @@ public static class BridgeActionRegistrar
             };
             // 会改动/删除存档或终止进程的修复必须标记 Dangerous，触发前端确认 + 前置备份
             bool dangerous = fixId is "region.clean.entities" or "player.reset.damage" or "server.kill" or "port.kill.process";
-            var step = new FixStep(label, fixId, dangerous, true, @params);
+            // ActionType 用语义类型（backup/command/config_edit/kill_process/cleanup_*）而非 fixId：
+            // FixExecutor DryRun 会把它原样放进 FixResult.StepResults，前端据此展示步骤类型
+            var actionType = fixId switch
+            {
+                "backup.world" => "backup",
+                "server.kill" => "kill_process",
+                "port.kill.process" => "kill_process",
+                "config.edit.server-properties" => "config_edit",
+                "java.switch.version" => "command",
+                "region.clean.entities" => "cleanup_region",
+                "player.reset.damage" => "cleanup_player",
+                _ => fixId
+            };
+            var step = new FixStep(label, actionType, dangerous, true, @params);
             var fix = new FixAction(fixId, label, dangerous, null, 0.8, string.Empty, new List<FixStep> { step });
 
             var engine = serviceProvider.GetRequiredService<IDiagnosticEngine>();

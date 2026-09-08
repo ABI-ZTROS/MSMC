@@ -257,10 +257,14 @@ public class FixExecutor : IFixExecutor
 
             if (changed)
             {
+                // 覆盖写前先做唯一名备份，改错可回滚（config.edit 不在 Dangerous 列表，
+                // 且 server.properties 在 world 父目录，前置世界备份也覆盖不到它）
+                var backup = $"{propFile}.bak-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
+                File.Copy(propFile, backup);
                 File.WriteAllLines(propFile, lines);
                 results.Add(new FixStepResult("更新 server.properties",
                     "config_edit", true,
-                    $"max-players={maxPlayers}, server-port={serverPort}, view-distance={viewDistance}"));
+                    $"max-players={maxPlayers}, server-port={serverPort}, view-distance={viewDistance}（已备份 {Path.GetFileName(backup)}）"));
             }
             else
             {

@@ -48,11 +48,6 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
     private WpfWebView2? _webView;
 
     /// <summary>
-    /// UI 线程调度器（用于跨线程操作 WPF 控件）
-    /// </summary>
-    private System.Windows.Threading.Dispatcher? _uiDispatcher;
-
-    /// <summary>
     /// 请求处理程序字典（JS → C#）
     /// </summary>
     private readonly ConcurrentDictionary<string, RequestHandler> _requestHandlers = new();
@@ -96,10 +91,6 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         }
 
         _webView = webView ?? throw new ArgumentNullException(nameof(webView));
-
-        // 保存 UI 线程调度器（WebView2 回调在后台线程，需要封送回 UI 线程操作 WPF 控件）
-        _uiDispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
-        Log.Information("[NOTE] UI 线程调度器已捕获");
 
         Log.Information("[BRDG] WebView2 桥接服务初始化中...");
 
@@ -750,29 +741,12 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                     Log.Information("[WV2-REQ] [FIND] 找到处理程序: {Action}", message.Action);
 
                     object? result;
-                    // 封送到 UI 线程执行（防止跨线程访问 WPF 控件导致的外部异常）
-                    if (_uiDispatcher != null && !_uiDispatcher.CheckAccess())
-                    {
-                        Log.Debug("[WV2-REQ] [REFRESH] 封送到 UI 线程执行: {Action}", message.Action);
-                        var tcs = new TaskCompletionSource<object?>();
-                        _ = _uiDispatcher.BeginInvoke(async () =>
-                        {
-                            try
-                            {
-                                var r = await handler(message.Payload);
-                                tcs.SetResult(r);
-                            }
-                            catch (Exception ex)
-                            {
-                                tcs.SetException(ex);
-                            }
-                        }, System.Windows.Threading.DispatcherPriority.Normal);
-                        result = await tcs.Task;
-                    }
-                    else
-                    {
-                        result = await handler(message.Payload);
-                    }
+                    // 统一在线程池执行 handler：诊断深扫描 / 世界目录备份 / 市场下载等重 IO
+                    // 的同步段不能在 UI 线程跑（否则界面会冻结数秒~数十秒）。
+                    // 已确认全部注册 handler 均为纯后端逻辑（无 WPF 控件/Dispatcher 依赖），
+                    // 切到线程池安全；await Task.Run 解包 handler 返回的 Task。
+                    Log.Debug("[WV2-REQ] [POOL] 线程池执行 handler: {Action}", message.Action);
+                    result = await Task.Run(() => handler(message.Payload));
 
                     response.Payload = result;
                     response.Success = true;

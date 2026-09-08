@@ -25,7 +25,10 @@ public interface IDiagnosticArchiveAnalyzer
 
 public class DiagnosticArchiveAnalyzer : IDiagnosticArchiveAnalyzer
 {
+    // 财富榜快照：AnalyzePlayerDat 收集到局部列表后「整体替换」，GetTopPlayers 加锁读，
+    // 避免并发 Deep 扫描时争夺（实例是单例）
     private readonly List<PlayerStat> _topPlayers = new();
+    private readonly object _topPlayersLock = new();
 
     // ─── MC Wiki 物品价值表（钻石块 = 1 基准）───
     // 价值换算公式: 钻石 = 2 / 铁 = 2/8 ≈ 0.25 / 金 = 2/32 ≈ 0.0625 ...
@@ -54,7 +57,7 @@ public class DiagnosticArchiveAnalyzer : IDiagnosticArchiveAnalyzer
         }
 
         var playerDats = Directory.GetFiles(playersDir, "*.dat");
-        _topPlayers.Clear();
+        var batch = new List<PlayerStat>();
 
         foreach (var datFile in playerDats)
         {
@@ -63,7 +66,7 @@ public class DiagnosticArchiveAnalyzer : IDiagnosticArchiveAnalyzer
                 var player = AnalyzeSinglePlayer(datFile);
                 if (player != null)
                 {
-                    _topPlayers.Add(player);
+                    batch.Add(player);
 
                     if (player.AnomalyCount > 0)
                     {
@@ -84,14 +87,19 @@ public class DiagnosticArchiveAnalyzer : IDiagnosticArchiveAnalyzer
             }
         }
 
-        _topPlayers.Sort((a, b) => b.WealthScore.CompareTo(a.WealthScore));
-
-        if (_topPlayers.Count > 0)
+        batch.Sort((a, b) => b.WealthScore.CompareTo(a.WealthScore));
+        lock (_topPlayersLock)
         {
-            var top3 = _topPlayers.Take(3).Select(p => $"{p.Name}={p.WealthScore:F1}").ToList();
+            _topPlayers.Clear();
+            _topPlayers.AddRange(batch);
+        }
+
+        if (batch.Count > 0)
+        {
+            var top3 = batch.Take(3).Select(p => $"{p.Name}={p.WealthScore:F1}").ToList();
             results.Add(new CheckResult("archive.player.wealth", Severity.Info, "Player",
-                $"财富 Top 榜（共 {_topPlayers.Count} 名玩家）",
-                $"Top 3: {string.Join(", ", top3)}", false, null, _topPlayers.Take(10)));
+                $"财富 Top 榜（共 {batch.Count} 名玩家）",
+                $"Top 3: {string.Join(", ", top3)}", false, null, batch.Take(10)));
         }
 
         return results;
@@ -181,7 +189,11 @@ public class DiagnosticArchiveAnalyzer : IDiagnosticArchiveAnalyzer
         catch { return null; }
     }
 
-    public List<PlayerStat> GetTopPlayers(int n = 10) => _topPlayers.Take(n).ToList();
+    public List<PlayerStat> GetTopPlayers(int n = 10)
+    {
+        lock (_topPlayersLock)
+            return _topPlayers.Take(n).ToList();
+    }
 
     // ═══════════════════════════════════════════════════════════
     // Region 扫描
