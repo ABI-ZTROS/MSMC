@@ -106,7 +106,9 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             // 用户环境下 file:// + ES Module 会触发 Chromium 内部 CORS 拦截：
             // 所有 modulepreload / script / stylesheet 都在 8ms 内同时报 "Script error."
             // 这是 Chromium file:// origin= null 被视为跨域。
-            // 加这 4 个 flag 把 file:// 的限制打开。
+            // 加这 3 个 flag 把 file:// 的限制打开。
+            // 注意（P12 安全）：不启用 --disable-web-security —— 全局关闭同源策略会放大 XSS 影响面；
+            // 主界面经 WebResourceRequested 拦截器以 http://虚拟主机模式加载，无需 file:// 跨域兜底。
             // ──────────────────────────────────────────────────────────────
             var wv2Opts = new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions()
             {
@@ -115,7 +117,6 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
                     "--allow-file-access-from-files",
                     "--allow-file-access",
                     "--disable-features=SplitCacheByNetworkIsolationKey,DivideUserContextByNetworkIsolationKey",
-                    "--disable-web-security",
                 }),
                 Language = System.Globalization.CultureInfo.CurrentUICulture.Name,
             };
@@ -430,6 +431,17 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
         if (string.IsNullOrEmpty(relativePath) || relativePath == "/")
             relativePath = "/index.html";
 
+        // ── P12 安全：路径穿越清洗 —— 拒绝任何含 ".." 段的请求
+        //    攻击面：WebView2 前端来源不可信时可通过 /../ 越界读取磁盘任意文件（FolderResourceProvider 场景）。
+        //    同时覆盖 URL 编码形态 %2e%2e（不区分大小写），防编码绕过。
+        if (IsPathTraversal(relativePath))
+        {
+            Log.Warning("[WV2-SEC] 拒绝路径穿越请求: {Path}", relativePath);
+            args.Response = _webView!.CoreWebView2.Environment.CreateWebResourceResponse(
+                null, 403, "Forbidden", string.Empty);
+            return;
+        }
+
         var ctx = args.ResourceContext.ToString();
         // 【DIAG-请求层】每个请求打印 Resource Context（Script/Stylesheet/Image/All 等），
         //    便于判断：Sidebar 图标消失时 JS chunk 的 Context 是 Script，CSS 是 Stylesheet
@@ -537,6 +549,30 @@ public class WebView2BridgeService : IWebView2BridgeService, IDisposable
             Log.Error("[WV2-NAV] [ERR] 页面导航失败: IsSuccess={Success}, WebErrorStatus={Status}",
                 e.IsSuccess, e.WebErrorStatus);
         }
+    }
+
+    /// <summary>
+    /// 路径穿越检测 —— 拒绝任何包含 ".." 段（或 URL 编码 %2e%2e 形态）的相对路径
+    /// </summary>
+    /// <param name="relativePath">已剥去 query/fragment 的相对路径（如 /assets/app.js）</param>
+    /// <returns>包含穿越段返回 true</returns>
+    private static bool IsPathTraversal(string relativePath)
+    {
+        if (string.IsNullOrEmpty(relativePath))
+            return false;
+
+        // ① 先做 URL 解码归一（%2e%2e 大小写均可），再查 .. 段
+        var decoded = Uri.UnescapeDataString(relativePath);
+        if (decoded.IndexOf("..", StringComparison.Ordinal) >= 0)
+            return true;
+
+        // ② 即使解码后无 ..，也防转义分隔符（\ 与 /）拼接出的相对引用
+        foreach (var segment in decoded.Split('/', '\\'))
+        {
+            if (segment == "..")
+                return true;
+        }
+        return false;
     }
 
     /// <summary>

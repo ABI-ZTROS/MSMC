@@ -420,6 +420,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ConfigPage.Dispose();
         MonitorPage.Dispose();
         NetworkPage.Dispose();
+        SettingsPage.Dispose();
 
         GC.SuppressFinalize(this);
         Log.Information("[OK] MainViewModel 资源释放完成");

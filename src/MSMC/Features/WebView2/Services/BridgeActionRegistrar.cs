@@ -11,8 +11,6 @@ using System.IO;
 using System.Text.Json;
 using io.NET.ZTR_OS.Features.ContentMarket.Models;
 using io.NET.ZTR_OS.Features.ContentMarket.Services;
-using io.NET.ZTR_OS.Features.Notifications.Models;
-using io.NET.ZTR_OS.Features.Notifications.Services;
 using io.NET.ZTR_OS.Features.Scheduler.Models;
 using io.NET.ZTR_OS.Features.Scheduler.Services;
 using io.NET.ZTR_OS.Features.Troubleshooting.Services;
@@ -41,27 +39,11 @@ public static class BridgeActionRegistrar
         int failed = 0;
 
         // ════════════ 通知模块 actions ════════════
-        registered += SafeRegister(bridge, "notify.dispatch", async payload =>
-        {
-            var notifService = serviceProvider.GetRequiredService<INotificationService>();
-            var evt = JsonSerializer.Deserialize<NotificationEvent>(payload ?? "{}");
-            if (evt == null) throw new InvalidOperationException("Invalid notification event payload");
-            Log.Information("[BRDG-REG] [NOTIFY] notify.dispatch: {EventType} ({EventId})", evt.EventType, evt.Id);
-            return await notifService.DispatchAsync(evt);
-        }, logger, ref registered, ref failed);
-
-        registered += SafeRegister(bridge, "notify.test", async payload =>
-        {
-            var notifService = serviceProvider.GetRequiredService<INotificationService>();
-            Log.Information("[BRDG-REG] [NOTIFY] notify.test: manual test dispatch");
-            var evt = new NotificationEvent
-            {
-                EventType = NotificationEventType.ManualTest,
-                Title = "手动测试通知",
-                Message = payload ?? "这是一条测试通知"
-            };
-            return await notifService.DispatchAsync(evt);
-        }, logger, ref registered, ref failed);
+        // 注意：notify.dispatch / notify.test 的强实现位于 MainWindow.RegisterBridgeApis()
+        // （BridgeJsonOptions 大小写不敏感 + 参数校验 + 完整返回结构）。
+        // 这里【绝不重复注册】——RegisterAll 在 RegisterBridgeApis 之后执行，
+        // 弱实现会覆盖强实现，导致前端 camelCase payload 反序列化失败（EventType 落默认值）。
+        // 此前已出现过该覆盖问题，此为因果链(P5)防线：单处注册，杜绝漂移。
 
         // ════════════ 调度模块 actions ════════════
         registered += SafeRegister(bridge, "scheduler.list", _ =>
@@ -224,11 +206,12 @@ public static class BridgeActionRegistrar
             return await engine.ExecuteFixAsync(jarPath, string.IsNullOrEmpty(worldPath) ? null : worldPath, fix, trustMode);
         }, logger, ref registered, ref failed);
 
-        // cancelFix: 目前 P0 简化为仅记录日志并返回 — 真正的 step-by-step 取消需跨请求 CTS 池（P1）
+        // cancelFix: P4 诚实返回 — 跨请求 CTS 取消（P1）尚未实现，明确返回失败而非假成功，
+        // 避免前端误以为 step-by-step 修复已被取消
         registered += SafeRegister(bridge, "diagnostic.cancelFix", payload =>
         {
-            Log.Information("[DIAG] cancelFix 收到（P0 简化，目前仅返回 success=true）");
-            return Task.FromResult<object?>(new { success = true, message = "P0 简化: 仅返回成功标记" });
+            Log.Information("[DIAG] cancelFix 收到（跨请求取消尚未实现）");
+            return Task.FromResult<object?>(new { success = false, error = "跨请求取消尚不支持（P1 实现），本次修复不受影响" });
         }, logger, ref registered, ref failed);
 
         // exportReport: 真实现 — 把前端传回的 DiagnosticReport 完整序列化为 Markdown / JSON

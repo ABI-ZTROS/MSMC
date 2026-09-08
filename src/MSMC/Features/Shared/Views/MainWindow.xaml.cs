@@ -713,6 +713,8 @@ public partial class MainWindow : Window
             {
                 return Task.FromResult<object?>(new
                 {
+                    // P4 诚实返回：未采样时 ready=false，前端据此刻画"等待中"，避免把 0 当真实指标
+                    ready = false,
                     // v2: 直接 DateTimeOffset.UtcNow（不再经过 NTP 偏移）
                     timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     cpuUsagePercent = 0.0,
@@ -734,10 +736,12 @@ public partial class MainWindow : Window
                 });
             }
 
-            // v2: metrics.Timestamp 是本地北京时间(UTC+8)，转 UTC 再取 Unix 毫秒
-            var timestampUtc = DateTime.SpecifyKind(metrics.Timestamp.AddHours(-8), DateTimeKind.Utc);
+            // v2: metrics.Timestamp 是本机时间（Kind=Unspecified），按 Local 转 Unix 毫秒——
+            //      不再硬编码 -8（原写法在非东八区机器上历史轴偏差 = 本机时区与 UTC+8 的差值）
+            var timestampUtc = DateTime.SpecifyKind(metrics.Timestamp, DateTimeKind.Local);
             return Task.FromResult<object?>(new
             {
+                ready = true,
                 timestamp = new DateTimeOffset(timestampUtc).ToUnixTimeMilliseconds(),
                 cpuUsagePercent = metrics.CpuUsagePercent,
                 memoryUsagePercent = metrics.MemoryUsagePercent,
@@ -773,9 +777,9 @@ public partial class MainWindow : Window
                     var down = MetricsDownsampler.LoadRecentDaysDownsampled(persistence, days: 1);
                     return down.Select(p => new
                     {
-                        // v2: 北京时间(UTC+8) → UTC → UnixMs
+                        // v2: BucketStart 是本机时间，按 Local 转 UnixMs——不再硬编码 -8
                         timestamp = new DateTimeOffset(
-                                DateTime.SpecifyKind(p.BucketStart.AddHours(-8), DateTimeKind.Utc))
+                                DateTime.SpecifyKind(p.BucketStart, DateTimeKind.Local))
                             .ToUnixTimeMilliseconds(),
                         cpuUsagePercent = p.CpuPercent,
                         memoryUsagePercent = p.MemoryPercent,
@@ -812,9 +816,9 @@ public partial class MainWindow : Window
                     var down = MetricsDownsampler.LoadRecentDaysDownsampled(persistence, days);
                     var points = down.Select(p => new
                     {
-                        // v2: 北京时间(UTC+8) → UTC → UnixMs
+                        // v2: BucketStart 是本机时间，按 Local 转 UnixMs——不再硬编码 -8
                         timestamp = new DateTimeOffset(
-                                DateTime.SpecifyKind(p.BucketStart.AddHours(-8), DateTimeKind.Utc))
+                                DateTime.SpecifyKind(p.BucketStart, DateTimeKind.Local))
                             .ToUnixTimeMilliseconds(),
                         cpuUsagePercent = p.CpuPercent,
                         memoryUsagePercent = p.MemoryPercent,
@@ -2884,6 +2888,7 @@ public partial class MainWindow : Window
         });
 
         // 更新配置项的值
+        // P4 诚实返回链：key/value 缺失或未命中条目 → 显式失败，绝不静默假成功
         _bridgeService.RegisterRequestHandler("config:updateValue", payload =>
         {
             try
@@ -2894,14 +2899,16 @@ public partial class MainWindow : Window
                 var key = root.TryGetProperty("key", out var k) ? k.GetString() : null;
                 var value = root.TryGetProperty("value", out var v) ? v.GetString() : null;
 
-                if (cfg != null && key != null && value != null)
-                {
-                    var entry = cfg.ConfigEntries.FirstOrDefault(e => e.Key == key);
-                    if (entry != null)
-                    {
-                        entry.Value = value;
-                    }
-                }
+                if (cfg == null)
+                    return Task.FromResult<object?>(new { success = false, error = "配置编辑器未就绪" });
+                if (string.IsNullOrEmpty(key) || value == null)
+                    return Task.FromResult<object?>(new { success = false, error = "缺少 key 或 value" });
+
+                var entry = cfg.ConfigEntries.FirstOrDefault(e => e.Key == key);
+                if (entry == null)
+                    return Task.FromResult<object?>(new { success = false, error = $"未找到配置项: {key}" });
+
+                entry.Value = value;
                 return Task.FromResult<object?>(new { success = true });
             }
             catch (Exception ex)
@@ -2956,7 +2963,9 @@ public partial class MainWindow : Window
         {
             try
             {
-                cfg?.ResetChangesCommand.Execute(null);
+                if (cfg == null)
+                    return Task.FromResult<object?>(new { success = false, error = "配置编辑器未就绪" });
+                cfg.ResetChangesCommand.Execute(null);
                 return Task.FromResult<object?>(new { success = true });
             }
             catch (Exception ex)
@@ -2971,7 +2980,9 @@ public partial class MainWindow : Window
         {
             try
             {
-                cfg?.UndoCommand.Execute(null);
+                if (cfg == null)
+                    return Task.FromResult<object?>(new { success = false, error = "配置编辑器未就绪" });
+                cfg.UndoCommand.Execute(null);
                 return Task.FromResult<object?>(new { success = true });
             }
             catch (Exception ex)
@@ -2986,7 +2997,9 @@ public partial class MainWindow : Window
         {
             try
             {
-                cfg?.RedoCommand?.Execute(null);
+                if (cfg == null)
+                    return Task.FromResult<object?>(new { success = false, error = "配置编辑器未就绪" });
+                cfg.RedoCommand?.Execute(null);
                 return Task.FromResult<object?>(new { success = true });
             }
             catch (Exception ex)

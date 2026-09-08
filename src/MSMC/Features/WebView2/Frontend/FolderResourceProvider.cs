@@ -63,6 +63,14 @@ public class FolderResourceProvider : IFrontendResourceProvider
         if (string.IsNullOrEmpty(rp))
             rp = "index.html";
 
+        // ── P12 安全：路径穿越清洗 —— 磁盘映射场景必须拒绝任何 ".." 段（含 URL 编码 %2e%2e）
+        //    否则前端不可信来源可通过 /../../ 越界读取磁盘任意文件。
+        if (IsPathTraversal(rp))
+        {
+            Log.Warning("[WV2-SEC] 拒绝路径穿越请求（FolderResourceProvider）: {RelativePath}", relativePath);
+            return Task.FromResult<Stream?>(null);
+        }
+
         var fullPath = Path.Combine(_basePath, rp);
 
         if (File.Exists(fullPath))
@@ -94,5 +102,25 @@ public class FolderResourceProvider : IFrontendResourceProvider
             ".ttf" => "font/ttf",
             _ => "application/octet-stream",
         };
+    }
+
+    /// <summary>
+    /// 路径穿越检测 —— 拒绝任何包含 ".." 段（或 URL 编码 %2e%2e 形态）的相对路径
+    /// </summary>
+    private static bool IsPathTraversal(string relativePath)
+    {
+        if (string.IsNullOrEmpty(relativePath))
+            return false;
+
+        var decoded = Uri.UnescapeDataString(relativePath);
+        if (decoded.IndexOf("..", StringComparison.Ordinal) >= 0)
+            return true;
+
+        foreach (var segment in decoded.Split('/', '\\'))
+        {
+            if (segment == "..")
+                return true;
+        }
+        return false;
     }
 }

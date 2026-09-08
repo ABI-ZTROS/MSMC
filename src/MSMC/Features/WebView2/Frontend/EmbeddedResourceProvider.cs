@@ -129,6 +129,13 @@ public class EmbeddedResourceProvider : IFrontendResourceProvider
         if (string.IsNullOrEmpty(rp))
             rp = "index.html";
 
+        // ── P12 安全：路径穿越清洗 —— 拒绝任何含 ".." 段（含 URL 编码 %2e%2e 形态）的请求
+        if (IsPathTraversal(rp))
+        {
+            Log.Warning("[WV2-SEC] 拒绝路径穿越请求（EmbeddedResourceProvider）: {RelativePath}", relativePath);
+            return Task.FromResult<Stream?>(null);
+        }
+
         var key = $"/{rp}";
 
         // 直接查找（_entryMap 已用 StringComparer.OrdinalIgnoreCase）
@@ -183,6 +190,26 @@ public class EmbeddedResourceProvider : IFrontendResourceProvider
         return _mimeMap.TryGetValue(ext, out var mimeType)
             ? mimeType
             : "application/octet-stream";
+    }
+
+    /// <summary>
+    /// 路径穿越检测 —— 拒绝任何包含 ".." 段（或 URL 编码 %2e%2e 形态）的相对路径
+    /// </summary>
+    private static bool IsPathTraversal(string relativePath)
+    {
+        if (string.IsNullOrEmpty(relativePath))
+            return false;
+
+        var decoded = Uri.UnescapeDataString(relativePath);
+        if (decoded.IndexOf("..", StringComparison.Ordinal) >= 0)
+            return true;
+
+        foreach (var segment in decoded.Split('/', '\\'))
+        {
+            if (segment == "..")
+                return true;
+        }
+        return false;
     }
 
     private static ConcurrentDictionary<string, string> CreateMimeMap()

@@ -28,7 +28,7 @@ namespace io.NET.ZTR_OS.Features.Settings.ViewModels;
 /// 提供主题预设一键切换、应用与保存、重置默认值、通知测试等命令。
 /// 颜色值以 Color 结构存储，同时提供十六进制字符串属性与 SolidColorBrush 画刷属性供不同绑定场景使用。
 /// </remarks>
-public partial class SettingsViewModel : ObservableObject
+public partial class SettingsViewModel : ObservableObject, IDisposable
 {
     /// <summary>主题服务</summary>
     private readonly IThemeService _themeService;
@@ -1167,6 +1167,24 @@ public partial class SettingsViewModel : ObservableObject
         {
             NewJavaPath = dialog.FolderName;
         }
+    }
+
+    /// <summary>
+    /// 释放设置视图模型占用的资源
+    /// </summary>
+    /// <remarks>
+    /// 当前设置页无计时器/事件订阅/取消令牌等托管资源（示例：待添加的异步取消令牌），
+    /// 预留 IDisposable 契约以便与 MainViewModel 其他子页面生命周期对称、
+    /// 并为将来新增后台资源提供统一的释放入口。幂等设计：重复调用安全。
+    /// </remarks>
+    private bool _disposed;
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        Log.Information("[CLEAN] SettingsViewModel 释放资源中...");
+        GC.SuppressFinalize(this);
     }
 }
 

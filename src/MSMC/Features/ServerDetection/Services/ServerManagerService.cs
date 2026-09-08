@@ -667,7 +667,11 @@ public class ServerManagerService : IServerManagerService
 
         var startInfo = new ProcessStartInfo
         {
-            FileName = scriptPath,
+            // 修复：UseShellExecute=false 直接启动 .bat/.cmd 在 .NET 中不支持
+            // （Win32Exception ERROR_BAD_EXE_FORMAT，导致脚本分支永远失败）。
+            // 必须经 cmd.exe /c 解释执行，才能拿到真实子进程树与窗口句柄。
+            FileName = "cmd.exe",
+            Arguments = $"/c \"{scriptPath}\"",
             WorkingDirectory = batDir,
             UseShellExecute = false,
             CreateNoWindow = false,
@@ -1453,15 +1457,23 @@ public class ServerManagerService : IServerManagerService
             using var process = Process.GetProcessById(processId);
             if (process.HasExited) return null;
 
-            // 使用 TotalProcessorTime 计算需要两次采样
-            // 此处简单返回 WorkingSet64 占总内存的比例作为参考
-            var totalMemory = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
-            if (totalMemory > 0)
-            {
-                return Math.Round((double)process.WorkingSet64 / totalMemory * 100, 2);
-            }
+            // P4 诚实返回：原实现把「工作集/总内存」当 CPU 使用率返回（名称与语义不符，误导前端）。
+            // 改为真实 CPU 采样：两次 TotalProcessorTime 间隔 200ms 差分，并按逻辑核数归一化到 0-100。
+            // 该方法当前无调用方；同步 Sleep 不阻塞任何 UI 路径（桥接 handler 已线程池化）。
+            var startCpu = process.TotalProcessorTime;
+            Thread.Sleep(200);
+            process.Refresh();
+            if (process.HasExited) return null;
+            var endCpu = process.TotalProcessorTime;
 
-            return null;
+            const double elapsedMs = 200.0;
+            var cpuMs = (endCpu - startCpu).TotalMilliseconds;
+            if (cpuMs < 0) return null;
+
+            var logicalCores = Environment.ProcessorCount;
+            if (logicalCores <= 0) logicalCores = 1;
+            var pct = cpuMs / elapsedMs / logicalCores * 100.0;
+            return Math.Round(Math.Min(100.0, Math.Max(0.0, pct)), 2);
         }
         catch (ArgumentException)
         {

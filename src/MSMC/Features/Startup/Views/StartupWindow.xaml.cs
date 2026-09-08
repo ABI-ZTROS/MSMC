@@ -98,12 +98,13 @@ public partial class StartupWindow : Window
             // 因为用户环境下 file:// + ES Module 会触发 Chromium 内部 CORS 拦截：
             // 所有 modulepreload / script / stylesheet 都在 8ms 内同时报 "Script error."
             // 这是 Chromium file:// origin= null 被视为跨域。
-            // 加这 4 个 flag 把 file:// 的限制打开：
+            // 加这 3 个 flag 把 file:// 的限制打开：
             //   1) --allow-file-access-from-files: file:// 页面可读取其他 file:// 文件
             //   2) --allow-file-access: 老内核兼容
             //   3) --disable-features=SplitCacheByNetworkIsolationKey: 关掉按 NIK 分 cache，
             //      这条和 NIK 有关，是 Chromium M110+ 后 file:// 下出现 CORS 问题的常见根因
-            //   4) --disable-web-security: 桌面应用兜底，就算 CORS 检查也放过
+            // 注意（P12 安全）: 不启用 --disable-web-security —— 全局关闭同源策略会放大 XSS 影响面；
+            // 实际前端经 WebResourceRequested 拦截器以 http://虚拟主机模式加载，不走 file:// 跨域兜底。
             // ──────────────────────────────────────────────────────────────
             var wv2Opts = new CoreWebView2EnvironmentOptions()
             {
@@ -112,7 +113,6 @@ public partial class StartupWindow : Window
                     "--allow-file-access-from-files",
                     "--allow-file-access",
                     "--disable-features=SplitCacheByNetworkIsolationKey,DivideUserContextByNetworkIsolationKey",
-                    "--disable-web-security",
                 }),
                 Language = System.Globalization.CultureInfo.CurrentUICulture.Name,
             };
@@ -359,6 +359,15 @@ public partial class StartupWindow : Window
         if (string.IsNullOrEmpty(relativePath) || relativePath == "/")
             relativePath = "/startup.html";
 
+        // ── P12 安全：路径穿越清洗 —— 拒绝任何含 ".." 段的请求（含 URL 编码 %2e%2e 形态）
+        if (IsPathTraversal(relativePath))
+        {
+            Log.Warning("[WV2-SEC] 拒绝路径穿越请求: {Path}", relativePath);
+            args.Response = StartupWebView.CoreWebView2.Environment.CreateWebResourceResponse(
+                null, 403, "Forbidden", string.Empty);
+            return;
+        }
+
         try
         {
             using var resourceStream = await provider.GetResourceAsync(relativePath);
@@ -398,6 +407,26 @@ public partial class StartupWindow : Window
             args.Response = StartupWebView.CoreWebView2.Environment.CreateWebResourceResponse(
                 null, 500, "Internal Server Error", "Content-Type: text/plain");
         }
+    }
+
+    /// <summary>
+    /// 路径穿越检测 —— 拒绝任何包含 ".." 段（或 URL 编码 %2e%2e 形态）的相对路径
+    /// </summary>
+    private static bool IsPathTraversal(string relativePath)
+    {
+        if (string.IsNullOrEmpty(relativePath))
+            return false;
+
+        var decoded = Uri.UnescapeDataString(relativePath);
+        if (decoded.IndexOf("..", StringComparison.Ordinal) >= 0)
+            return true;
+
+        foreach (var segment in decoded.Split('/', '\\'))
+        {
+            if (segment == "..")
+                return true;
+        }
+        return false;
     }
 
     private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)

@@ -966,6 +966,10 @@ public partial class App : Application
                         catch (Exception schedEx) { ForceLog($"[BOOT-5] [WARN] Scheduler.Start 失败（不致命）: {schedEx.Message}"); }
                     });
 
+                    // 启动历史告警服务（此前仅注册不 Start → 阈值告警永不触发，现接线启动）
+                    try { _serviceProvider.GetRequiredService<HistoryAlertService>().Start(); }
+                    catch (Exception alertEx) { ForceLog($"[BOOT-5] [WARN] HistoryAlertService.Start 失败（不致命）: {alertEx.Message}"); }
+
                     startupWindow.MarkCompleted();
 
                     // 短暂延迟让用户看到"启动完成"

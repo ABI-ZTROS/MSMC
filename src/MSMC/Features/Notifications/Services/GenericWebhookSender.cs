@@ -29,12 +29,13 @@ public class GenericWebhookSender
     };
 
     private readonly ILogger<GenericWebhookSender> _logger;
-    private readonly NotificationChannelConfig _config;
+    // 配置改为每次发送时从持久化服务读取最新（注入快照会让用户改 URL/Header/重试参数后不生效）
+    private readonly INotificationConfigService _configService;
 
-    public GenericWebhookSender(ILogger<GenericWebhookSender> logger, NotificationChannelConfig config)
+    public GenericWebhookSender(ILogger<GenericWebhookSender> logger, INotificationConfigService configService)
     {
         _logger = logger;
-        _config = config;
+        _configService = configService;
     }
 
     /// <summary>
@@ -42,16 +43,18 @@ public class GenericWebhookSender
     /// </summary>
     public async Task<bool> SendAsync(NotificationEvent evt, CancellationToken ct = default)
     {
-        if (!_config.GenericWebhook.Enabled || string.IsNullOrEmpty(_config.GenericWebhook.Url))
+        var config = _configService.Load();
+        var channel = config.GenericWebhook;
+        if (!channel.Enabled || string.IsNullOrEmpty(channel.Url))
         {
             _logger.LogDebug("[GenericWebhook] Channel not enabled or URL not configured");
             return false;
         }
 
         _logger.LogInformation("[GenericWebhook] Sending event {EventType} to {Url}", 
-            evt.EventType, _config.GenericWebhook.Url);
+            evt.EventType, channel.Url);
 
-        int maxAttempts = _config.RetryMaxAttempts;
+        int maxAttempts = config.RetryMaxAttempts;
         
         for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
@@ -62,12 +65,12 @@ public class GenericWebhookSender
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 
                 // 添加自定义 Header
-                if (!string.IsNullOrEmpty(_config.GenericWebhook.AuthorizationHeader))
+                if (!string.IsNullOrEmpty(channel.AuthorizationHeader))
                 {
-                    content.Headers.TryAddWithoutValidation("Authorization", _config.GenericWebhook.AuthorizationHeader);
+                    content.Headers.TryAddWithoutValidation("Authorization", channel.AuthorizationHeader);
                 }
 
-                var response = await _httpClient.PostAsync(_config.GenericWebhook.Url, content, ct);
+                var response = await _httpClient.PostAsync(channel.Url, content, ct);
                 
                 if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                 {
@@ -96,7 +99,7 @@ public class GenericWebhookSender
             }
             catch (HttpRequestException ex) when (attempt < maxAttempts)
             {
-                int delay = (int)Math.Pow(2, attempt) * _config.RetryBaseDelayMs;
+                int delay = (int)Math.Pow(2, attempt) * config.RetryBaseDelayMs;
                 _logger.LogWarning(ex, "[GenericWebhook] Request failed (attempt {Attempt}), retrying in {Delay}ms", 
                     attempt, delay);
                 await Task.Delay(delay, ct);

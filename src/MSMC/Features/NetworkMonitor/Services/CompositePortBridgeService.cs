@@ -21,17 +21,42 @@ using Serilog;
 /// <para><see cref="GetAllBridgeRules"/> 合并两个引擎的规则列表，UI 看到完整规则集。</para>
 /// <para>防火墙规则随 netsh 引擎自动管理（用户勾选时添加）。</para>
 /// </remarks>
-public sealed class CompositePortBridgeService : IPortBridgeService
+public sealed class CompositePortBridgeService : IPortBridgeService, IDisposable
 {
     private readonly ITcpForwarder _tcpForwarder;
     private readonly NetshPortBridgeService _netsh;
     private readonly object _errorLock = new();
     private string _lastError = string.Empty;
+    private bool _disposed;
 
     public CompositePortBridgeService(ITcpForwarder tcpForwarder, NetshPortBridgeService netsh)
     {
         _tcpForwarder = tcpForwarder;
         _netsh = netsh;
+    }
+
+    /// <summary>
+    /// 释放桥接服务资源 —— 显式停止用户态 TcpForwarder 残留会话
+    /// </summary>
+    /// <remarks>
+    /// 防止应用退出时 TcpForwarder 监听 socket 残留占用端口。幂等设计：重复调用安全。
+    /// （TcpForwarderService 自身已实现 IDisposable，此处显式归属到外观层保证清理时机可控。）
+    /// </remarks>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        Log.Information("[CLEAN] CompositePortBridgeService 释放资源中...");
+        try
+        {
+            (_tcpForwarder as IDisposable)?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[WARN] TcpForwarder 释放异常（已忽略）");
+        }
+        GC.SuppressFinalize(this);
     }
 
     public string LastError

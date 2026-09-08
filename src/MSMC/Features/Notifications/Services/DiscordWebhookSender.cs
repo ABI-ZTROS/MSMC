@@ -28,12 +28,13 @@ public class DiscordWebhookSender : IDiscordWebhookSender
     };
 
     private readonly ILogger<DiscordWebhookSender> _logger;
-    private readonly NotificationChannelConfig _config;
+    // 配置改为每次发送时从持久化服务读取最新（注入快照会让用户改 URL/重试参数后不生效）
+    private readonly INotificationConfigService _configService;
 
-    public DiscordWebhookSender(ILogger<DiscordWebhookSender> logger, NotificationChannelConfig config)
+    public DiscordWebhookSender(ILogger<DiscordWebhookSender> logger, INotificationConfigService configService)
     {
         _logger = logger;
-        _config = config;
+        _configService = configService;
     }
 
     /// <summary>
@@ -41,14 +42,15 @@ public class DiscordWebhookSender : IDiscordWebhookSender
     /// </summary>
     public async Task<bool> SendEmbedAsync(string webhookUrl, EmbeddedMessage embed, CancellationToken ct = default)
     {
-        int maxAttempts = _config.RetryMaxAttempts;
+        var config = _configService.Load();
+        int maxAttempts = config.RetryMaxAttempts;
         for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
             try
             {
                 var payload = new
                 {
-                    username = _config.Discord.BotName,
+                    username = config.Discord.BotName,
                     embeds = new[] { embed }
                 };
                 var json = JsonSerializer.Serialize(payload);
@@ -79,7 +81,7 @@ public class DiscordWebhookSender : IDiscordWebhookSender
             }
             catch (HttpRequestException ex) when (attempt < maxAttempts)
             {
-                int delay = (int)Math.Pow(2, attempt) * _config.RetryBaseDelayMs;
+                int delay = (int)Math.Pow(2, attempt) * config.RetryBaseDelayMs;
                 _logger.LogWarning(ex, "[Discord] HTTP failure (Attempt {Attempt}), retrying in {Delay}ms", attempt, delay);
                 await Task.Delay(delay, ct);
             }

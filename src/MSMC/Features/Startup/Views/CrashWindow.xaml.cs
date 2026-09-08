@@ -90,7 +90,6 @@ public partial class CrashWindow : Window
                     "--allow-file-access-from-files",
                     "--allow-file-access",
                     "--disable-features=SplitCacheByNetworkIsolationKey,DivideUserContextByNetworkIsolationKey",
-                    "--disable-web-security",
                 }),
                 Language = System.Globalization.CultureInfo.CurrentUICulture.Name,
             };
@@ -251,6 +250,15 @@ public partial class CrashWindow : Window
         if (string.IsNullOrEmpty(relativePath) || relativePath == "/")
             relativePath = "/crash.html";
 
+        // ── P12 安全：路径穿越清洗 —— 拒绝任何含 ".." 段的请求（含 URL 编码 %2e%2e 形态）
+        if (IsPathTraversal(relativePath))
+        {
+            Log.Warning("[WV2-SEC] 拒绝路径穿越请求: {Path}", relativePath);
+            args.Response = CrashWebView.CoreWebView2.Environment.CreateWebResourceResponse(
+                null, 403, "Forbidden", string.Empty);
+            return;
+        }
+
         try
         {
             using var resourceStream = await provider.GetResourceAsync(relativePath);
@@ -290,6 +298,26 @@ public partial class CrashWindow : Window
             args.Response = CrashWebView.CoreWebView2.Environment.CreateWebResourceResponse(
                 null, 500, "Internal Server Error", "Content-Type: text/plain\r\n");
         }
+    }
+
+    /// <summary>
+    /// 路径穿越检测 —— 拒绝任何包含 ".." 段（或 URL 编码 %2e%2e 形态）的相对路径
+    /// </summary>
+    private static bool IsPathTraversal(string relativePath)
+    {
+        if (string.IsNullOrEmpty(relativePath))
+            return false;
+
+        var decoded = Uri.UnescapeDataString(relativePath);
+        if (decoded.IndexOf("..", StringComparison.Ordinal) >= 0)
+            return true;
+
+        foreach (var segment in decoded.Split('/', '\\'))
+        {
+            if (segment == "..")
+                return true;
+        }
+        return false;
     }
 
     private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
