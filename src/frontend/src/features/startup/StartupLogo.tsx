@@ -1,4 +1,4 @@
-import logoImg from '../../assets/logo/final/msmc-logo-final.jpg';
+import logoImg from '../../assets/logo/final/msmc-logo-square.png';
 
 /**
  * MSMC 二次元少女 Logo
