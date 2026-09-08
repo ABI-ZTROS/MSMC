@@ -12,6 +12,9 @@
                                               PrimaryColor="Blue"
                                               SecondaryColor="Pink" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
+                <!-- [ICONPACKS] MahApps IconPacks —— PackIconFontAwesome6 / PackIconMaterial 渲染必需 -->
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro.IconPacks.FontAwesome6;component/Themes/Generic.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro.IconPacks.Material;component/Themes/Generic.xaml" />
                 <!-- [THEME] 自定义资源字典 —— 深度定制的笔刷、导航样式、卡片样式 -->
                 <ResourceDictionary Source="/Features/Shared/Themes/AppResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
