@@ -39,7 +39,7 @@ export default function StartupPage() {
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: '#081420',
+        backgroundColor: bridge.backgroundColor,
         opacity: fadingOut ? 0 : 1,
         transition: 'opacity 500ms cubic-bezier(0.4, 0, 1, 1)',
         overflow: 'hidden',

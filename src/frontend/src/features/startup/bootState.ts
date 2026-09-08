@@ -1,4 +1,6 @@
 // Phase 状态机：驱动配色切换
+// 三态配色（用户约定）：水蓝(boot/running/success) → 日落黄(warn) → 血红(error)
+// success 是启动完成态，与 running 同属"正常"范畴，沿用水蓝
 export type BootPhase = 'boot' | 'running' | 'warn' | 'error' | 'success';
 
 export interface BootPhaseConfig {
@@ -11,7 +13,7 @@ export const BOOT_PHASE_CONFIG: Record<BootPhase, BootPhaseConfig> = {
   running: { cssClass: 'phase-running', bgGlow: '#5DC8E8' },
   warn:    { cssClass: 'phase-warn',    bgGlow: '#e8964a' },
   error:   { cssClass: 'phase-error',   bgGlow: '#c0392b' },
-  success: { cssClass: 'phase-success', bgGlow: '#34d399' },
+  success: { cssClass: 'phase-success', bgGlow: '#5DC8E8' },   // 完成态同 running 水蓝
 };
 
 export interface LogEntry {
@@ -24,6 +26,13 @@ export interface LogEntry {
 export interface InitPayload {
   version: string;
   primaryColor: string;
+  backgroundColor?: string;
+}
+
+export interface ThemeChangedPayload {
+  primaryColor: string;
+  isDarkMode: boolean;
+  backgroundColor?: string;
 }
 
 export interface ProgressPayload {

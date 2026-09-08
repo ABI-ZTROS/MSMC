@@ -92,7 +92,6 @@ public partial class StartupWindow : Window
         try
         {
             StartupWebView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(0xFF, 0x02, 0x06, 0x17);
-
             // ──────────────────────────────────────────────────────────────
             // 【关键】显式创建 CoreWebView2Environment，带上允许 file:// 访问的 flags
             // 因为用户环境下 file:// + ES Module 会触发 Chromium 内部 CORS 拦截：
@@ -147,7 +146,9 @@ public partial class StartupWindow : Window
         catch (Exception ex)
         {
             Log.Error(ex, "[Startup-WV2-ERR] [ERR] WebView2 初始化失败");
-            _ = LoadFallbackPageAsync(ex.Message);
+            _ = LoadFallbackPageAsync(ex.Message).ContinueWith(t =>
+                Log.Warning(t.Exception, "[Startup-WV2-ERR] [ERR] 兜底页加载也失败了")
+            , TaskContinuationOptions.OnlyOnFaulted);
         }
     }
 
@@ -164,7 +165,8 @@ public partial class StartupWindow : Window
         if (!provider.IsAvailable)
         {
             Log.Warning("[Startup-WV2-LOAD] [WARN] 前端资源提供器不可用，使用兜底页面");
-            _ = LoadFallbackPageAsync("前端资源未找到");
+            _ = LoadFallbackPageAsync("前端资源未找到").ContinueWith(t =>
+                { if (!t.Result) Log.Error("[Startup-WV2-LOAD] [ERR] 兜底页也加载失败（前端资源完全不可用）"); });
             return;
         }
 
@@ -253,7 +255,8 @@ public partial class StartupWindow : Window
             if (StartupWebView.CoreWebView2 == null)
             {
                 Log.Warning("[Startup-WV2-LOAD] [WARN] StartupWebView.CoreWebView2 订阅前已为 null，跳过订阅直接走兜底");
-                _ = LoadFallbackPageAsync("WebView2 已释放");
+                _ = LoadFallbackPageAsync("WebView2 已释放").ContinueWith(t =>
+                    { if (!t.Result) Log.Error("[Startup-WV2-LOAD] [ERR] CoreWebView2 null 兜底页也失败"); });
                 return;
             }
 
@@ -273,19 +276,22 @@ public partial class StartupWindow : Window
                 {
                     StartupWebView.CoreWebView2.NavigationCompleted -= OnCompleted;
                 }
-                _ = LoadFallbackPageAsync("启动页加载超时");
+                _ = LoadFallbackPageAsync("启动页加载超时").ContinueWith(t =>
+                    { if (!t.Result) Log.Error("[Startup-WV2-LOAD] [ERR] 启动页超时+兜底页也失败"); });
                 return;
             }
 
             if (!tcs.Task.Result)
             {
-                _ = LoadFallbackPageAsync("启动页加载失败");
+                _ = LoadFallbackPageAsync("启动页加载失败").ContinueWith(t =>
+                    { if (!t.Result) Log.Error("[Startup-WV2-LOAD] [ERR] 启动页导航失败+兜底页也失败"); });
             }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[Startup-WV2-LOAD-ERR] [ERR] 加载启动页失败");
-            _ = LoadFallbackPageAsync(ex.Message);
+            _ = LoadFallbackPageAsync(ex.Message).ContinueWith(t =>
+                { if (!t.Result) Log.Error("[Startup-WV2-LOAD] [ERR] 启动页异常+兜底页也失败"); });
         }
     }
 
@@ -530,8 +536,10 @@ public partial class StartupWindow : Window
                 break;
 
             case "startup:copyLog":
-                // 前端自己用 navigator.clipboard 处理，后端留空
-                Log.Debug("[Startup-WV2] 前端请求复制日志（前端自行处理）");
+                // 前端自己用 navigator.clipboard 处理，但如果因浏览器安全策略（非用户手势）失败，
+                // 前端自己也会 catch 住。这里留空壳但至少打一条 DEBUG，便于未来排查。
+                // （如果将来需要 C# 端 fallback，可以在此用 System.Windows.Forms.Clipboard 写入）
+                Log.Debug("[Startup-WV2] 前端请求复制日志（前端 navigator.clipboard 自行处理）");
                 break;
         }
     }
@@ -553,10 +561,13 @@ public partial class StartupWindow : Window
     {
         if (_frontendLoaded && _webViewInitialized)
         {
+            // 背景色：深色主题用深蓝黑 (#081420)，浅色主题用近白 (#f5f7fa)，保证用户切换主题时启动页也跟随
+            string backgroundColor = _themeService.IsDarkMode ? "#081420" : "#f5f7fa";
             SendEvent("startup:themeChanged", new
             {
                 primaryColor = _themeService.PrimaryColor.ToString(),
                 isDarkMode = _themeService.IsDarkMode,
+                backgroundColor,
             });
         }
     }
@@ -868,8 +879,7 @@ public partial class StartupWindow : Window
     /// <summary>
     /// 加载兜底启动页（WebView2 前端资源不可用时的最后防线）
     /// 【修复 FTL 多层防御链】
-    /// 0. 方法签名从 async void 改为 async Task，外部调用用 _ = LoadFallbackPageAsync(...) 忽略返回值
-    ///    （仍然是 fire-and-forget 但允许内层 await）。
+    /// 0. 方法签名 async Task<bool>，返回值表示兜底页是否真的显示成功，诚实返回链（P4）。
     /// 1. 若 CoreWebView2 未初始化：
     ///    - 第一层：尝试 StartupWebView.Source = new Uri("about:blank")，
     ///      WPF WebView2 控件设置 Source 属性时会自动触发 CoreWebView2 初始化，
@@ -882,7 +892,8 @@ public partial class StartupWindow : Window
     ///    如果仍然 InvalidOperationException，就退化为 Source = "data:text/html,..."（
     ///    Data URI 也是官方推荐的直传 HTML 方式，和 NavigateToString 效果一致但更宽松）。
     /// </summary>
-    private async Task LoadFallbackPageAsync(string errorMessage)
+    /// <returns>true = 兜底页已成功显示，false = 彻底放弃</returns>
+    private async Task<bool> LoadFallbackPageAsync(string errorMessage)
     {
         try
         {
@@ -890,7 +901,7 @@ public partial class StartupWindow : Window
             if (StartupWebView == null)
             {
                 Log.Warning("[Startup-Fallback] [WARN] StartupWebView 控件已为 null，放弃加载兜底页");
-                return;
+                return false;
             }
 
             // 1) 【关键修复 line 827 InvalidOperationException】如果 CoreWebView2 还没彻底初始化，
@@ -944,7 +955,7 @@ public partial class StartupWindow : Window
                 catch (Exception initEx)
                 {
                     Log.Error(initEx, "[Startup-Fallback] [ERR] Source=about:blank + EnsureCoreWebView2Async 组合失败，已彻底放弃初始化 CoreWebView2，兜底页也不会显示（没有可用的 WebView2 Core）");
-                    return;
+                    return false;
                 }
 
                 // 2) 之后再捕获本地变量 cwv，逐句设置；单句失败 WARNING 继续
@@ -1025,7 +1036,14 @@ public partial class StartupWindow : Window
         {
             // 最后一层保险：任何未预料异常都吞掉写日志，绝对不能冒泡到 UI Dispatcher 变成 FTL。
             Log.Error(ex, "[Startup-Fallback] [ERR] 兜底页整体执行失败，已放弃（不应影响后续主窗口）");
+            return false;
         }
+
+        // try 块正常走完 = 兜底页 HTML 已经 NavigateToString 或 Data URI 设置成功
+        // （NavigateToString / Source 设置都是 fire-and-forget，导航本身会异步完成；
+        // 但我们这里"已触发"即视为成功——真正显示失败的话 WebView2 会自己在 NavigationCompleted 报错）
+        Log.Information("[Startup-Fallback] [OK] 兜底页加载流程已完成触发");
+        return true;
     }
 
     /// <summary>

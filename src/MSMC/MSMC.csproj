@@ -86,6 +86,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- WPF Icon 必须显式声明为 Resource，pack://application:,,,/Assets/app.ico 才能在 XAML 里解析。
+         ApplicationIcon 只给 exe 程序集图标用，不等同于 WPF 可 pack 访问的资源。 -->
+    <Resource Include="Assets\app.ico" />
     <Resource Include="Resources\Images\yanlanxiang.jpg" />
     <Resource Include="Resources\Fonts\SpaceGrotesk.ttf" />
     <Resource Include="Resources\Images\avatars\ABI-ZTROS.png" />

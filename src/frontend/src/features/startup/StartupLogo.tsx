@@ -1,8 +1,8 @@
-import logoImg from '../../assets/logo/final/msmc-logo-square.png';
+import logoImg from '../../assets/logo/final/msmc-logo-256.jpg';
 
 /**
  * MSMC 二次元少女 Logo
- * v8: 微侧 45° 朝右、冰蓝色眼睛、三态渐变头发、银色圆框眼镜、黑色头戴式耳机、闭唇微笑
+ * 使用 256px JPG (21KB) — 正好适配启动页 200px 显示尺寸，比 2MB 的 square.png 加载快 100 倍
  */
 export function StartupLogo() {
   return (

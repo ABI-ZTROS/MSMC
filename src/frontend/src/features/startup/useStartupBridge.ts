@@ -8,6 +8,7 @@ export interface StartupBridgeState {
   logs: LogEntry[];
   version: string;
   primaryColor: string;
+  backgroundColor: string;
   isCompleted: boolean;
   isFailed: boolean;
 }
@@ -31,6 +32,12 @@ export function useStartupBridge(): StartupBridgeState & StartupBridgeActions {
   const [isFailed, setIsFailed] = useState(false);
 
   const logIdCounter = useRef(0);
+  // 用 ref 持有最新 phase，避免 handleMessage 的 useCallback 依赖 phase 导致每次
+  // phase 切换都重建 handler → 重新 addEventListener/removeEventListener 的抖动
+  const phaseRef = useRef<BootPhase>('boot');
+  phaseRef.current = phase;
+
+  const [backgroundColor, setBackgroundColor] = useState('#081420');
 
   const sendEvent = useCallback((action: string, payload: unknown = {}) => {
     const bridge = (window as any).__msmc_bridge__;
@@ -63,6 +70,7 @@ export function useStartupBridge(): StartupBridgeState & StartupBridgeActions {
           const payload = data.payload as InitPayload;
           setVersion(payload.version ? `v${payload.version}` : 'v0.0.0');
           setPrimaryColor(payload.primaryColor || '#5DC8E8');
+          if (payload.backgroundColor) setBackgroundColor(payload.backgroundColor);
           break;
         }
 
@@ -71,7 +79,7 @@ export function useStartupBridge(): StartupBridgeState & StartupBridgeActions {
           const pct = Math.max(0, Math.min(100, payload.percent));
           setProgress(pct);
           setStatusText(payload.status || '');
-          if (pct > 0 && phase === 'boot') {
+          if (pct > 0 && phaseRef.current === 'boot') {
             setPhase('running');
           }
           break;
@@ -88,7 +96,7 @@ export function useStartupBridge(): StartupBridgeState & StartupBridgeActions {
 
           addLog(payload.message || '', type);
 
-          if (type === 'error' && phase !== 'error') {
+          if (type === 'error' && phaseRef.current !== 'error') {
             setPhase('warn');
           }
           break;
@@ -114,13 +122,16 @@ export function useStartupBridge(): StartupBridgeState & StartupBridgeActions {
           if (data.payload?.primaryColor) {
             setPrimaryColor(data.payload.primaryColor);
           }
+          if (data.payload?.backgroundColor) {
+            setBackgroundColor(data.payload.backgroundColor);
+          }
           break;
         }
       }
     } catch (err) {
       console.error('[StartupBridge] 解析事件失败:', err, rawEvent);
     }
-  }, [addLog, phase]);
+  }, [addLog]);
 
   useEffect(() => {
     const handler = (event: any) => handleMessage(event);
@@ -183,6 +194,7 @@ export function useStartupBridge(): StartupBridgeState & StartupBridgeActions {
     logs,
     version,
     primaryColor,
+    backgroundColor,
     isCompleted,
     isFailed,
     restart,
