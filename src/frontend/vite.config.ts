@@ -2,8 +2,25 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { viteObfuscateFile } from 'vite-plugin-obfuscator'
 import path from 'path'
+import { execSync } from 'child_process'
+
+// ── 前端版本水印：git short SHA + UTC 时间戳（Vite define 在打包时替换 __FE_BUILD__）
+// 用户在 C# 日志里搜 [FE-VERSION] 就能确认 exe 里嵌的 dist 是不是最新的
+function getFeBuildStamp(): string {
+  try {
+    const sha = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + 'Z'
+    return `commit:${sha} time:${ts}`
+  } catch {
+    return 'commit:NO-GIT time:OFFLINE'
+  }
+}
 
 export default defineConfig({
+  // ── 版本水印常量，main.tsx 里用这个输出到 C# 日志
+  define: {
+    __FE_BUILD__: JSON.stringify(getFeBuildStamp()),
+  },
   // 【关键】file:// 协议下绝对路径(/assets/...)会解析到磁盘根目录(I:\assets\..)
   // 必须用相对路径 './'，打包后 HTML 里的引用都变成 ./assets/...
   // 才能在 file:///I:/.../dist/index.html 时正确定位到同目录下的 assets/

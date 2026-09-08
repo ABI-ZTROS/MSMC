@@ -2,8 +2,28 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './styles/globals.css'
 
+// ── 前端版本水印：打包时 Vite 会把 __FE_BUILD__ 替换为 commit hash + timestamp
+// 用户在 C# 日志里搜索 [FE-VERSION] 就能确认当前跑的 dist 是不是最新
+declare const __FE_BUILD__: string
+const FE_VERSION = (typeof __FE_BUILD__ !== 'undefined' ? __FE_BUILD__ : 'DEV-UNSET')
+console.log('[FE-VERSION] ' + FE_VERSION)
+
 // 通知诊断脚本：主入口已成功加载
 ;(window as any).__msmcMainScriptLoaded = true
+;(window as any).__msmcFeVersion = FE_VERSION
+
+// 异步上报版本到 C#（桥接可能还没初始化，用 setTimeout 等 300ms）
+setTimeout(() => {
+  try {
+    const bridge = (window as any).__msmc_bridge__
+    if (bridge && typeof bridge.invoke === 'function') {
+      bridge.invoke('log:write', {
+        level: 'Information',
+        message: `[FE-VERSION] ${FE_VERSION}`,
+      }).catch(() => {})
+    }
+  } catch {}
+}, 300)
 
 // 上报错误到 C# 日志（通过桥接 API）
 function reportToCsharp(level: string, message: string, stack?: string): void {
