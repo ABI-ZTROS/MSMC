@@ -43,6 +43,9 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
   const [toolLogs, setToolLogs] = useState<ToolLogEntry[]>([]);
   const [analysis, setAnalysis] = useState<DeepSeekAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [needsConfig, setNeedsConfig] = useState(false);
+  const [pendingApiKey, setPendingApiKey] = useState("");
+  const [savingKey, setSavingKey] = useState(false);
   const [sending, setSending] = useState(false);
   const [question, setQuestion] = useState("");
   const logIdRef = useRef(0);
@@ -70,10 +73,16 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
           const success = Boolean(resp?.success);
           const err = typeof resp?.error === "string" ? resp.error : null;
           const ana = resp?.analysis as unknown as DeepSeekAnalysis | undefined;
+          const needsCfg = Boolean(resp?.needsConfig);
 
-          if (success && ana) {
+          if (needsCfg) {
+            setNeedsConfig(true);
+            setError(null);
+            setAnalysis(null);
+          } else if (success && ana) {
             setAnalysis(ana);
             setError(null);
+            setNeedsConfig(false);
           } else if (err) {
             setError(err);
           } else {
@@ -99,6 +108,7 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
     setToolLogs([]);
     setAnalysis(null);
     setError(null);
+    setNeedsConfig(false);
     setSending(true);
     logIdRef.current = 0;
 
@@ -222,6 +232,44 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
     }
   }
 
+  async function handleSaveApiKeyAndRetry() {
+    const key = pendingApiKey.trim();
+    if (!key) { setError("API Key 不能为空"); return; }
+    setSavingKey(true);
+    setError(null);
+
+    const bridge = (window as unknown as { __msmc_bridge__?: BridgeLike }).__msmc_bridge__;
+    if (!bridge || typeof bridge.invoke !== "function") {
+      setError("Bridge 不可用，无法保存 API Key");
+      setSavingKey(false);
+      return;
+    }
+
+    try {
+      const resp = await bridge.invoke<Record<string, unknown>>(
+        "diagnostic.setApiKey", { apiKey: key });
+      const ok = Boolean(resp?.success);
+      const errMsg = typeof resp?.error === "string" ? resp.error : null;
+
+      if (!ok) {
+        setError(errMsg ?? "保存 API Key 失败");
+        setSavingKey(false);
+        return;
+      }
+
+      // 保存成功 → 清 state → 重新跑诊断
+      setNeedsConfig(false);
+      setPendingApiKey("");
+      setSending(true);
+      setError(null);
+      runDiagnostic();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingKey(false);
+    }
+  }
+
   if (!open) return null;
 
   return (
@@ -230,6 +278,36 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
         <span>🤖 MSMC AI 诊断</span>
         <button onClick={onClose} style={styles.closeBtn} title="关闭 AI 抽屉">×</button>
       </div>
+
+      {needsConfig && (
+        <div style={styles.configCard}>
+          <div style={styles.configIcon}>🔑</div>
+          <div style={styles.configTitle}>需要配置 DeepSeek API Key</div>
+          <div style={styles.configDesc}>
+            MSMC 使用 DeepSeek Function Calling 自主调用联网搜索、读日志、下载核心等工具帮你诊断。
+            请前往 <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noreferrer" style={styles.linkStyle}>platform.deepseek.com/api_keys</a> 创建 API Key，粘贴到下方。
+          </div>
+          <input
+            type="password"
+            autoComplete="off"
+            value={pendingApiKey}
+            onChange={e => setPendingApiKey(e.target.value)}
+            placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+            style={styles.configInput}
+            onKeyDown={e => e.key === "Enter" && handleSaveApiKeyAndRetry()}
+          />
+          <button
+            style={{ ...styles.confirmBtn, opacity: savingKey ? 0.6 : 1, cursor: savingKey ? "wait" : "pointer" }}
+            onClick={handleSaveApiKeyAndRetry}
+            disabled={savingKey}
+          >
+            {savingKey ? "保存中..." : "保存并开始诊断"}
+          </button>
+          <div style={styles.configHint}>
+            🔒 API Key 仅保存在本机（%APPDATA%/MSMC），不会上传。
+          </div>
+        </div>
+      )}
 
       <div style={styles.section}>
         <div style={styles.sectionTitle}>工具执行日志</div>
@@ -409,5 +487,31 @@ const styles: Record<string, React.CSSProperties> = {
     outline: "none",
     boxSizing: "border-box",
     fontSize: 14
-  }
+  },
+  configCard: {
+    margin: 16,
+    padding: 20,
+    background: "linear-gradient(135deg, #0d1b2a 0%, #1a2b3c 100%)",
+    borderRadius: 10,
+    border: "1px solid #1e3a5f",
+    textAlign: "center" as const
+  },
+  configIcon: { fontSize: 32, marginBottom: 8 },
+  configTitle: { fontSize: 16, fontWeight: 600, color: "#5DC8E8", marginBottom: 8 },
+  configDesc: { fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 14, textAlign: "left" as const },
+  linkStyle: { color: "#5DC8E8", textDecoration: "underline" },
+  configInput: {
+    width: "100%",
+    padding: "10px 14px",
+    background: "#020617",
+    border: "1px solid #1e3a5f",
+    borderRadius: 6,
+    color: "#e2e8f0",
+    outline: "none",
+    boxSizing: "border-box",
+    fontSize: 13,
+    fontFamily: "Consolas, monospace",
+    marginBottom: 10
+  },
+  configHint: { fontSize: 11, color: "#555", marginTop: 10 }
 };

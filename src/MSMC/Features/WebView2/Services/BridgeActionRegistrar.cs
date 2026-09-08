@@ -313,7 +313,7 @@ public static class BridgeActionRegistrar
 
             var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
             if (!ai.IsConfigured)
-                return new { success = false, error = "尚未配置 DeepSeek API Key" };
+                return new { success = false, error = "尚未配置 DeepSeek API Key", needsConfig = true };
 
             var prompt = BuildAiUserPrompt(tutorialStep, serverPath, userQuestion);
             var analysis = await ai.AnalyzeWithToolsAsync(prompt);
@@ -332,7 +332,7 @@ public static class BridgeActionRegistrar
 
             var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
             if (!ai.IsConfigured)
-                return new { success = false, error = "尚未配置 DeepSeek API Key" };
+                return new { success = false, error = "尚未配置 DeepSeek API Key", needsConfig = true };
 
             // 追加对话 —— 当前简化为新开一轮，后续可扩展为多轮历史保持
             var analysis = await ai.AnalyzeWithToolsAsync(message);

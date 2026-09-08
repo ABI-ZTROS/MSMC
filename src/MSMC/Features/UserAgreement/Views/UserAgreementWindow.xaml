@@ -130,10 +130,17 @@
 
                 <Border Style="{StaticResource WarningBoxStyle}">
                     <StackPanel>
-                        <TextBlock Text="[WARN] 重要声明：本软件不是开源软件"
-                                   FontSize="14"
-                                   FontWeight="Bold"
-                                   Foreground="{DynamicResource WarningRedAccentBrush}" />
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconFontAwesome6 Kind="TriangleExclamationSolid"
+                                                            Width="18" Height="18"
+                                                            VerticalAlignment="Center"
+                                                            Margin="0,0,8,0"
+                                                            Foreground="{DynamicResource WarningRedAccentBrush}" />
+                            <TextBlock Text="重要声明：本软件不是开源软件"
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource WarningRedAccentBrush}" />
+                        </StackPanel>
                         <TextBlock Text="尽管本软件的源代码在 GitHub 等平台公开可见，但这绝不意味着本软件遵循任何开源协议。"
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextBrush}"
@@ -274,10 +281,17 @@
                 <TextBlock Style="{StaticResource SubSectionTitleStyle}" Text="4.1 禁止盗版与二改收费" />
                 <Border Style="{StaticResource WarningBoxStyle}">
                     <StackPanel>
-                        <TextBlock Text="[ERR] 作者严正声明：对盗版和二改收费零容忍"
-                                   FontSize="13"
-                                   FontWeight="Bold"
-                                   Foreground="{DynamicResource WarningRedHighlightBrush}" />
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconFontAwesome6 Kind="TriangleExclamationSolid"
+                                                            Width="16" Height="16"
+                                                            VerticalAlignment="Center"
+                                                            Margin="0,0,8,0"
+                                                            Foreground="{DynamicResource WarningRedHighlightBrush}" />
+                            <TextBlock Text="作者严正声明：对盗版和二改收费零容忍"
+                                       FontSize="13"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource WarningRedHighlightBrush}" />
+                        </StackPanel>
                         <TextBlock Text="以下行为均属严重侵权，必将追究到底："
                                    FontSize="12"
                                    Foreground="{DynamicResource WarningRedTextBrush}"
