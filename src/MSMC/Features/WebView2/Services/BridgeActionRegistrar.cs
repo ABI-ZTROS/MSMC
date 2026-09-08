@@ -340,9 +340,35 @@ public static class BridgeActionRegistrar
                 if (!configured)
                     return new { success = false, error = "尚未配置 DeepSeek API Key", needsConfig = true };
 
-                // 只有 IsConfigured=true 才走到这里，开始耗时的 AI 调用
+                // ════════════════════════════════════════════════════════════
+                // 【快速连通性预检查 P0】在进 FunctionCallingEngine 之前
+                // 先调 TestKeyValidityAsync（10s 超时，只发 max_tokens=1 的最小请求）
+                // 因果链修复：之前直接进 FunctionCallingEngine → HttpClient 60s 超时
+                // 但前端 bridge.invoke 只等 30s 就先 timeout 了 → 用户看到 "Request timeout"
+                // 现在先快速检测：Key 有效？网络通？10s 内必返回
+                // ════════════════════════════════════════════════════════════
+                Log.Information("[DIAG-AI] aiInit IsConfigured=true → 快速 TestKeyValidity 预检查...");
+                var validity = await ai.TestKeyValidityAsync();
+                if (!validity.IsValid && validity.StatusCode is 401 or 403)
+                {
+                    Log.Warning("[DIAG-AI] aiInit 预检查 → Key 无效 (HTTP {Status})", validity.StatusCode);
+                    return new { success = false, error = $"API Key 已过期或无效（HTTP {validity.StatusCode}），请重新配置", needsConfig = true };
+                }
+                if (!validity.IsValid && validity.StatusCode is null)
+                {
+                    Log.Warning("[DIAG-AI] aiInit 预检查 → 网络异常（StatusCode=null）");
+                    return new { success = false, error = "无法连接 DeepSeek API — 请检查网络后重试（或配置代理）" };
+                }
+                if (validity.StatusCode is 429)
+                {
+                    Log.Warning("[DIAG-AI] aiInit 预检查 → 限流 (429)");
+                    return new { success = false, error = "API 调用频率过高，请稍后再试" };
+                }
+                // 200 OK 或其他非 4xx → Key 有效且网络通，继续 Function Calling
+                Log.Information("[DIAG-AI] aiInit 预检查通过 → 开始 Function Calling 诊断");
+
+                // 只有 IsConfigured=true + 连通性确认 才走到这里
                 var prompt = BuildAiUserPrompt(tutorialStep, serverPath, userQuestion);
-                Log.Information("[DIAG-AI] aiInit 开始 Function Calling 诊断...");
                 var analysis = await ai.AnalyzeWithToolsAsync(prompt);
                 if (analysis is null)
                 {
@@ -403,6 +429,15 @@ public static class BridgeActionRegistrar
 
                 if (!configured)
                     return new { success = false, error = "尚未配置 DeepSeek API Key", needsConfig = true };
+
+                // 同样的快速预检查 — aiSend 也需要 10s 内返回
+                var validity = await ai.TestKeyValidityAsync();
+                if (!validity.IsValid && validity.StatusCode is 401 or 403)
+                    return new { success = false, error = $"API Key 已过期或无效（HTTP {validity.StatusCode}），请重新配置", needsConfig = true };
+                if (!validity.IsValid && validity.StatusCode is null)
+                    return new { success = false, error = "无法连接 DeepSeek API — 请检查网络后重试（或配置代理）" };
+                if (validity.StatusCode is 429)
+                    return new { success = false, error = "API 调用频率过高，请稍后再试" };
 
                 var analysis = await ai.AnalyzeWithToolsAsync(message);
                 if (analysis is null)

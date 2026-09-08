@@ -27,7 +27,7 @@ public sealed class FunctionCallingEngine
     private const string ApiUrl = "https://api.deepseek.com/chat/completions";
     private const string Model = "deepseek-chat";
     private const int MaxRounds = 10;
-    private const int TotalTimeoutSeconds = 60;
+    private const int TotalTimeoutSeconds = 25;  // 从 60 降到 25 — 比前端 bridge.invoke 30s 短
 
     private static readonly HttpClient Http = new()
     {

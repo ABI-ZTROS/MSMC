@@ -83,7 +83,13 @@ public sealed class DeepSeekService : IDeepSeekService
 
     private static readonly HttpClient Http = new()
     {
-        Timeout = TimeSpan.FromSeconds(60),
+        Timeout = TimeSpan.FromSeconds(25),  // 总超时：25s（比前端 bridge.invoke 30s 短，确保后端先返回）
+    };
+
+    // 快速连通性预检查专用 —— 10 秒就够了（不等到 25s）
+    private static readonly HttpClient QuickCheckHttp = new()
+    {
+        Timeout = TimeSpan.FromSeconds(10),
     };
 
     private readonly ILogger _log;
@@ -229,7 +235,11 @@ public sealed class DeepSeekService : IDeepSeekService
                 }),
                 Encoding.UTF8, "application/json");
 
-            var resp = await Http.SendAsync(req, ct).ConfigureAwait(false);
+            // 【关键】用 10s 短超时的 QuickCheckHttp，不要等到 25s
+            // 因果链：10s 内必返回（网络通 → 立即；不通 → OperationCanceledException）
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            var resp = await QuickCheckHttp.SendAsync(req, cts.Token).ConfigureAwait(false);
             var statusCode = (int)resp.StatusCode;
 
             if (resp.IsSuccessStatusCode)
