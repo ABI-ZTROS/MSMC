@@ -37,6 +37,14 @@ public interface IDeepSeekService
     string? GetApiKey();
 
     (bool Success, string? Error) SetApiKey(string key);
+
+    /// <summary>
+    /// 轻量检测 API Key 是否真的有效 —— 发一个最小请求看 HTTP 状态码
+    /// 返回 (isValid, httpStatusCode?)
+    /// 因果链: BridgeActionRegistrar 在 AI 返回 null 但 IsConfigured=true 时调此方法，
+    /// 区分"Key 过期/无效"（needsConfig=true）和"网络异常/服务端错误"（通用错误）
+    /// </summary>
+    Task<(bool IsValid, int? StatusCode, string? ErrorMessage)> TestKeyValidityAsync(CancellationToken ct = default);
 }
 
 public sealed class DeepSeekService : IDeepSeekService
@@ -195,6 +203,63 @@ public sealed class DeepSeekService : IDeepSeekService
         {
             _log.LogWarning(ex, "[DIAG-AI] 保存 API Key 失败");
             return (false, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 轻量有效性检测 —— 发一个最小的 chat completion 请求，看 HTTP 状态码
+    /// 401/403 → Key 无效；429 → 限流（Key 有效但用多了）；网络异常 → StatusCode=null
+    /// </summary>
+    public async Task<(bool IsValid, int? StatusCode, string? ErrorMessage)> TestKeyValidityAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var key = GetApiKey();
+            if (string.IsNullOrEmpty(key))
+                return (false, null, "API Key 为空");
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
+            req.Content = new StringContent(
+                JsonSerializer.Serialize(new
+                {
+                    model = Model,
+                    messages = new[] { new { role = "user", content = "hi" } },
+                    max_tokens = 1,
+                }),
+                Encoding.UTF8, "application/json");
+
+            var resp = await Http.SendAsync(req, ct).ConfigureAwait(false);
+            var statusCode = (int)resp.StatusCode;
+
+            if (resp.IsSuccessStatusCode)
+            {
+                _log.LogInformation("[DIAG-AI] TestKeyValidity → Key 有效 (HTTP {Status})", statusCode);
+                return (true, statusCode, null);
+            }
+
+            // 读一下错误 body，方便诊断
+            string? body = null;
+            try { body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false); } catch { }
+
+            // 401/403 → Key 过期/无效/权限不足
+            // 429 → 限流（Key 还是有效的，只是用多了）
+            // 其他 → 服务端问题
+            bool keyProblem = statusCode is 401 or 403;
+            _log.LogWarning("[DIAG-AI] TestKeyValidity → HTTP {Status}, Key无效={KeyProblem}, Body={Body}",
+                statusCode, keyProblem, body?[..Math.Min(body.Length, 200)] ?? "(null)");
+
+            return (keyProblem, statusCode, body);
+        }
+        catch (HttpRequestException hx)
+        {
+            _log.LogWarning(hx, "[DIAG-AI] TestKeyValidity → 网络异常");
+            return (false, null, $"网络异常: {hx.Message}");
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "[DIAG-AI] TestKeyValidity → 未预期异常");
+            return (false, null, ex.Message);
         }
     }
 
