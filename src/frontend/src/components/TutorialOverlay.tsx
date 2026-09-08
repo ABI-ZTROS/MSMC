@@ -138,9 +138,24 @@ export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.El
 
   // 每次打开教程时重置状态
   useEffect(() => {
-    if (open) {
-      setAiOpen(false)
-      setCurrentStep(0)
+    if (!open) return
+    setAiOpen(false)
+    setCurrentStep(0)
+
+    // ═══ 【主动引导】打开教程时检查 AI 配置状态 ═══
+    // 如果 AI 未配置 DeepSeek API Key，自动打开 AI 抽屉 →
+    // AIDrawer 挂载后自动触发 troubleshooting.aiInit →
+    // 后端 IsConfigured=false 返回 needsConfig=true → 渲染配置卡
+    // 用户粘贴 Key 保存后自动重试诊断。这就是"主动引导配置"。
+    const bridge = (window as unknown as {
+      __msmc_bridge__?: { invoke?: <T = unknown>(action: string, payload?: unknown) => Promise<T> }
+    }).__msmc_bridge__
+    if (bridge?.invoke) {
+      bridge.invoke<{ configured?: boolean }>('diagnostic.getAiStatus')
+        .then(resp => {
+          if (resp && resp.configured === false) setAiOpen(true)
+        })
+        .catch(() => { /* 查询失败不阻塞教程 */ })
     }
   }, [open])
 
