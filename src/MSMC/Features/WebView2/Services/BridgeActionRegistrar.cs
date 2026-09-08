@@ -273,6 +273,8 @@ public static class BridgeActionRegistrar
         ref int registered,
         ref int failed)
     {
+        Log.Information("[AI-BRIDGE] ──▶ 开始注册 AI bridge handlers（共 7 个: getAiStatus / setApiKey / askAI / aiInit / aiSend / aiStop / confirmFix）...");
+
         // 查询 AI 配置状态（是否已配 Key）
         registered += SafeRegister(bridge, "diagnostic.getAiStatus", _ =>
         {
