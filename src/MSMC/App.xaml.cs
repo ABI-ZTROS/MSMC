@@ -347,16 +347,9 @@ public partial class App : Application
         // 【第二层异常防护】DispatcherUnhandledException 必须在这里就挂
         // （因为 WPF Dispatcher 实例是在 App 实例构造后、OnStartup 之前才创建的，
         //  所以 DispatcherUnhandledException 不能放 .cctor 里挂）
-        DispatcherUnhandledException += (_, e2) =>
-        {
-            ForceLog($"[FATAL] DispatcherUnhandledException: {e2.Exception}");
-            try { Log.Fatal(e2.Exception, "[FATAL] UI 线程未处理异常 DispatcherUnhandledException"); } catch { }
-            try { WriteForceCrashDump(e2.Exception); } catch { }
-            // 先不 Handled，让 ShowCrashReport 弹框；如果弹框失败就标记 Handled 防进程裸崩
-            try { ShowCrashReport(e2.Exception); e2.Handled = true; }
-            catch { e2.Handled = true; }
-        };
-        ForceLog("[BOOT-1]    DispatcherUnhandledException 已挂载");
+        // 注意：只挂一次即可 —— SetupGlobalExceptionHandling()（下方调用）里已含完整实现，
+        // 若这里再挂一处会导致 UI 线程异常时 CrashWindow 弹两次。
+        ForceLog("[BOOT-1]    DispatcherUnhandledException 将在 SetupGlobalExceptionHandling() 中挂载");
 
         ForceLog("[BOOT-2] [LOG] 开始初始化 Serilog...");
 
@@ -680,25 +673,25 @@ public partial class App : Application
                     await RegisterType<NetworkTrafficService>(26, "[NET]", "NetworkTrafficService", "网卡流量统计");
 
                     // ════════════ 权限模块 ════════════
-                    await Step(28, "正在注册权限服务...", "[SEC] === 权限模块 ===");
-                    await RegisterType<AdminPrivilegeService>(29, "[SEC]", "AdminPrivilegeService", "UAC 提权仲裁");
-                    await Register<IPrivilegeService, PrivilegeService>(30, "[SEC]", "PrivilegeService", "权限查询门面");
+                    await Step(27, "正在注册权限服务...", "[SEC] === 权限模块 ===");
+                    await RegisterType<AdminPrivilegeService>(28, "[SEC]", "AdminPrivilegeService", "UAC 提权仲裁");
+                    await Register<IPrivilegeService, PrivilegeService>(29, "[SEC]", "PrivilegeService", "权限查询门面");
 
                     // ════════════ 配置管理模块 ════════════
-                    await Step(32, "正在注册配置管理服务...", "[CFG] === 配置管理模块 ===");
-                    await Register<IConfigManager, ConfigManager>(33, "[CFG]", "ConfigManager", "配置文件读写");
-                    await RegisterType<ConfigDescriptorRegistry>(34, "[CFG]", "ConfigDescriptorRegistry", "中文描述注册表");
+                    await Step(30, "正在注册配置管理服务...", "[CFG] === 配置管理模块 ===");
+                    await Register<IConfigManager, ConfigManager>(31, "[CFG]", "ConfigManager", "配置文件读写");
+                    await RegisterType<ConfigDescriptorRegistry>(32, "[CFG]", "ConfigDescriptorRegistry", "中文描述注册表");
 
                     // ════════════ 系统监控模块 ════════════
-                    await Step(36, "正在注册系统监控服务...", "[METRIC] === 系统监控模块 ===");
-                    await Register<ISystemMonitor, SystemMonitor>(37, "[METRIC]", "SystemMonitor", "聚合监控入口");
-                    await RegisterType<DiskSpaceMonitor>(38, "[METRIC]", "DiskSpaceMonitor", "磁盘占用");
-                    await RegisterType<MemoryMonitor>(39, "[METRIC]", "MemoryMonitor", "内存监控");
-                    await RegisterType<ThreadAnalyzer>(40, "[METRIC]", "ThreadAnalyzer", "线程状态分析");
-                    await RegisterType<CpuIdentifier>(41, "[METRIC]", "CpuIdentifier", "CPU 拓扑识别");
-                    await Register<IMetricsPersistenceService, MetricsPersistenceService>(42, "[METRIC]", "MetricsPersistenceService", "指标历史持久化");
-                    await Register<IProcessManagerService, ProcessManagerService>(43, "[METRIC]", "ProcessManagerService", "进程亲和性管理");
-                    await Register<IProcessSupervisorService, ProcessSupervisorService>(44, "[METRIC]", "ProcessSupervisorService", "Job进程监管/崩溃重启/睡眠防止");
+                    await Step(33, "正在注册系统监控服务...", "[METRIC] === 系统监控模块 ===");
+                    await Register<ISystemMonitor, SystemMonitor>(34, "[METRIC]", "SystemMonitor", "聚合监控入口");
+                    await RegisterType<DiskSpaceMonitor>(35, "[METRIC]", "DiskSpaceMonitor", "磁盘占用");
+                    await RegisterType<MemoryMonitor>(36, "[METRIC]", "MemoryMonitor", "内存监控");
+                    await RegisterType<ThreadAnalyzer>(37, "[METRIC]", "ThreadAnalyzer", "线程状态分析");
+                    await RegisterType<CpuIdentifier>(38, "[METRIC]", "CpuIdentifier", "CPU 拓扑识别");
+                    await Register<IMetricsPersistenceService, MetricsPersistenceService>(39, "[METRIC]", "MetricsPersistenceService", "指标历史持久化");
+                    await Register<IProcessManagerService, ProcessManagerService>(40, "[METRIC]", "ProcessManagerService", "进程亲和性管理");
+                    await Register<IProcessSupervisorService, ProcessSupervisorService>(41, "[METRIC]", "ProcessSupervisorService", "Job进程监管/崩溃重启/睡眠防止");
 
                     // 电源管理模块默认关闭（实验性能力）—— 启用后才注册 CpuPowerService
                     // 此处提前读取 app-config.json 的 EnablePowerManagement 字段
@@ -706,7 +699,7 @@ public partial class App : Application
                     var powerMgmtEnabled = ReadEnablePowerManagementEarly();
                     if (powerMgmtEnabled)
                     {
-                        await Register<ICpuPowerService, CpuPowerService>(45, "[METRIC]", "CpuPowerService", "CPU电源/QoS档位/睿频管控");
+                        await Register<ICpuPowerService, CpuPowerService>(42, "[METRIC]", "CpuPowerService", "CPU电源/QoS档位/睿频管控");
                         Log.Information("[BOOT] 电源管理模块已启用，CpuPowerService 已注册");
                     }
                     else
@@ -715,7 +708,7 @@ public partial class App : Application
                     }
 
                     // ════════════ 原生窗口效果模块 ════════════
-                    await Step(44, "正在注册原生窗口效果服务...", "[WINFX] === 原生窗口效果模块 ===");
+                    await Step(43, "正在注册原生窗口效果服务...", "[WINFX] === 原生窗口效果模块 ===");
                     await Register<IWindowEffectsService, WindowEffectsService>(44, "[WINFX]", "WindowEffectsService", "DWM/Mica/深色标题栏/圆角");
 
                     // ════════════ 主题与基础服务 ════════════
@@ -732,13 +725,13 @@ public partial class App : Application
 
                     // ════════════ 通知模块 (P0+P1) ════════════
                     await Step(53, "正在注册通知模块...", "[NOTIFY] === 通知模块 (P0+P1) ===");
-                    await Register<IDiscordWebhookSender, DiscordWebhookSender>(53, "[NOTIFY]", "DiscordWebhookSender", "Discord Webhook 发送（指数退避+429）");
-                    await RegisterInstance<NotificationChannelConfig>(53, "[NOTIFY]", "NotificationChannelConfig", "通知通道配置（从持久化加载）", sp =>
+                    await Register<IDiscordWebhookSender, DiscordWebhookSender>(54, "[NOTIFY]", "DiscordWebhookSender", "Discord Webhook 发送（指数退避+429）");
+                    await RegisterInstance<NotificationChannelConfig>(55, "[NOTIFY]", "NotificationChannelConfig", "通知通道配置（从持久化加载）", sp =>
                     {
                         var svc = sp.GetRequiredService<INotificationConfigService>();
                         return svc.Load();  // 首次启动无持久化文件时返回 new NotificationChannelConfig()（WindowsToast.Enabled=true 默认可用）
                     });
-                    await RegisterInstance<INotificationConfigService>(53, "[NOTIFY]", "NotificationConfigService", "通知配置持久化", sp =>
+                    await RegisterInstance<INotificationConfigService>(56, "[NOTIFY]", "NotificationConfigService", "通知配置持久化", sp =>
                     {
                         var configPath = Path.Combine(
                             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -747,13 +740,13 @@ public partial class App : Application
                             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<NotificationConfigService>>(),
                             configPath);
                     });
-                    await RegisterType<GenericWebhookSender>(53, "[NOTIFY]", "GenericWebhookSender", "通用 Webhook 发送");
-                    await RegisterType<EmailNotificationService>(53, "[NOTIFY]", "EmailNotificationService", "SMTP 邮件通知");
-                    await Register<INotificationService, NotificationService>(54, "[NOTIFY]", "NotificationService", "通知路由调度（通道隔离+失败兜底）");
+                    await RegisterType<GenericWebhookSender>(57, "[NOTIFY]", "GenericWebhookSender", "通用 Webhook 发送");
+                    await RegisterType<EmailNotificationService>(58, "[NOTIFY]", "EmailNotificationService", "SMTP 邮件通知");
+                    await Register<INotificationService, NotificationService>(59, "[NOTIFY]", "NotificationService", "通知路由调度（通道隔离+失败兜底）");
 
                     // ════════════ 调度模块 (P0+P1) ════════════
-                    await Step(54, "正在注册调度模块...", "[SCHED] === 调度模块 (P0+P1) ===");
-                    await RegisterInstance<ISchedulerStorageService>(54, "[SCHED]", "SchedulerStorageService", "调度任务持久化", sp =>
+                    await Step(60, "正在注册调度模块...", "[SCHED] === 调度模块 (P0+P1) ===");
+                    await RegisterInstance<ISchedulerStorageService>(61, "[SCHED]", "SchedulerStorageService", "调度任务持久化", sp =>
                     {
                         var storagePath = Path.Combine(
                             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -762,18 +755,18 @@ public partial class App : Application
                             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SchedulerStorageService>>(),
                             storagePath);
                     });
-                    await Register<ISchedulerService, SchedulerService>(54, "[SCHED]", "SchedulerService", "计划任务调度（防重入+失败阈值自动禁用）");
+                    await Register<ISchedulerService, SchedulerService>(62, "[SCHED]", "SchedulerService", "计划任务调度（防重入+失败阈值自动禁用）");
 
                     // ════════════ 插件市场模块 (P0) ════════════
-                    await Step(55, "正在注册插件市场模块...", "[MARKET] === 插件市场模块 (P0) ===");
+                    await Step(63, "正在注册插件市场模块...", "[MARKET] === 插件市场模块 (P0) ===");
                     // 注册三个 Provider 为具体类型
-                    await RegisterType<ModrinthProvider>(55, "[MARKET]", "ModrinthProvider", "Modrinth API（通用 Mod/Plugin 搜索）");
-                    await RegisterType<HangarProvider>(55, "[MARKET]", "HangarProvider", "PaperMC Hangar（Paper/Purpur/Folia 官方插件源）");
-                    await RegisterType<SpigetProvider>(55, "[MARKET]", "SpigetProvider", "SpigotMC Spiget（Spigot 资源站）");
+                    await RegisterType<ModrinthProvider>(64, "[MARKET]", "ModrinthProvider", "Modrinth API（通用 Mod/Plugin 搜索）");
+                    await RegisterType<HangarProvider>(65, "[MARKET]", "HangarProvider", "PaperMC Hangar（Paper/Purpur/Folia 官方插件源）");
+                    await RegisterType<SpigetProvider>(66, "[MARKET]", "SpigetProvider", "SpigotMC Spiget（Spigot 资源站）");
                     // 注册 IMarketProvider fallback（取 Modrinth）
                     services.AddSingleton<IMarketProvider>(sp => sp.GetRequiredService<ModrinthProvider>());
                     // 注册 Provider 聚合 Factory
-                    await RegisterInstance<MarketProviderFactory>(55, "[MARKET]", "MarketProviderFactory", "多源并行搜索聚合",
+                    await RegisterInstance<MarketProviderFactory>(67, "[MARKET]", "MarketProviderFactory", "多源并行搜索聚合",
                         sp => new MarketProviderFactory(
                             new IMarketProvider[]
                             {
@@ -782,37 +775,43 @@ public partial class App : Application
                                 sp.GetRequiredService<SpigetProvider>(),
                             },
                             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<MarketProviderFactory>>()));
-                    await RegisterType<PluginManagerService>(55, "[MARKET]", "PluginManagerService", "插件管理（原子写入+SHA1校验+安全备份）");
+                    await RegisterType<PluginManagerService>(68, "[MARKET]", "PluginManagerService", "插件管理（原子写入+SHA1校验+安全备份）");
 
                     // ════════════ 系统监控与告警 (P2) ════════════
-                    await Step(56, "正在注册系统监控模块...", "[MONITOR] === 系统监控与告警 (P2) ===");
-                    await RegisterType<HistoryAlertService>(56, "[MONITOR]", "HistoryAlertService", "历史数据告警（CPU/内存/磁盘阈值）");
+                    await Step(69, "正在注册系统监控模块...", "[MONITOR] === 系统监控与告警 (P2) ===");
+                    await RegisterType<HistoryAlertService>(70, "[MONITOR]", "HistoryAlertService", "历史数据告警（CPU/内存/磁盘阈值）");
 
                     // ════════════ 疑难解答 (P0) ════════════
-                    await Step(56, "正在注册疑难解答服务...", "[DIAG] === 疑难解答 (P0) ===");
-                    await Register<IDiagnosticEngine, DiagnosticEngine>(56, "[DIAG]", "DiagnosticEngine", "全链路诊断引擎协调器");
-                    await Register<ICheckRunner, CheckRunner>(56, "[DIAG]", "CheckRunner", "12 个系统/配置/日志检查点");
-                    await Register<IDiagnosticArchiveAnalyzer, DiagnosticArchiveAnalyzer>(56, "[DIAG]", "DiagnosticArchiveAnalyzer", "存档 NBT/Region 分析器");
-                    await Register<IFixExecutor, FixExecutor>(56, "[DIAG]", "FixExecutor", "7 个 FixAction 执行器");
-                    await Register<IDeepSeekService, DeepSeekService>(56, "[DIAG]", "DeepSeekService", "DeepSeek AI 诊断分析（Key 可选）");
+                    await Step(71, "正在注册疑难解答服务...", "[DIAG] === 疑难解答 (P0) ===");
+                    await Register<IDiagnosticEngine, DiagnosticEngine>(72, "[DIAG]", "DiagnosticEngine", "全链路诊断引擎协调器");
+                    await Register<ICheckRunner, CheckRunner>(73, "[DIAG]", "CheckRunner", "12 个系统/配置/日志检查点");
+                    await Register<IDiagnosticArchiveAnalyzer, DiagnosticArchiveAnalyzer>(74, "[DIAG]", "DiagnosticArchiveAnalyzer", "存档 NBT/Region 分析器");
+                    await Register<IFixExecutor, FixExecutor>(75, "[DIAG]", "FixExecutor", "7 个 FixAction 执行器");
+                    await Register<IDeepSeekService, DeepSeekService>(76, "[DIAG]", "DeepSeekService", "DeepSeek AI 诊断分析（Key 可选）");
 
                     // ════════════ 自动更新 (P2) ════════════
-                    await Step(57, "正在注册自动更新模块...", "[UPDATE] === 自动更新 (P2) ===");
-                    await RegisterType<AutoUpdateService>(57, "[UPDATE]", "AutoUpdateService", "自动更新（版本检查+哈希校验+下载）");
+                    await Step(77, "正在注册自动更新模块...", "[UPDATE] === 自动更新 (P2) ===");
+                    await RegisterType<AutoUpdateService>(78, "[UPDATE]", "AutoUpdateService", "自动更新（版本检查+哈希校验+下载）");
 
                     // ════════════ ViewModel ════════════
-                    await Step(55, "正在注册 ViewModel...", "[VM] === ViewModel 装配 ===");
-                    await RegisterType<ServerDetectionViewModel>(56, "[VM]", "ServerDetectionViewModel", "服务器检测页 VM");
-                    await RegisterType<ConfigEditorViewModel>(57, "[VM]", "ConfigEditorViewModel", "配置编辑器 VM");
-                    await RegisterType<SystemMonitorViewModel>(58, "[VM]", "SystemMonitorViewModel", "系统监控 VM");
-                    await RegisterType<NetworkMonitorViewModel>(59, "[VM]", "NetworkMonitorViewModel", "网络监控 VM");
-                    await RegisterType<SettingsViewModel>(60, "[VM]", "SettingsViewModel", "设置页 VM");
-                    await RegisterType<MainViewModel>(61, "[VM]", "MainViewModel", "主窗口 VM");
+                    await Step(79, "正在注册 ViewModel...", "[VM] === ViewModel 装配 ===");
+                    await RegisterType<ServerDetectionViewModel>(80, "[VM]", "ServerDetectionViewModel", "服务器检测页 VM");
+                    await RegisterType<ConfigEditorViewModel>(81, "[VM]", "ConfigEditorViewModel", "配置编辑器 VM");
+                    await RegisterType<SystemMonitorViewModel>(82, "[VM]", "SystemMonitorViewModel", "系统监控 VM");
+                    await RegisterType<NetworkMonitorViewModel>(83, "[VM]", "NetworkMonitorViewModel", "网络监控 VM");
+                    await RegisterType<SettingsViewModel>(84, "[VM]", "SettingsViewModel", "设置页 VM");
+                    await RegisterType<MainViewModel>(85, "[VM]", "MainViewModel", "主窗口 VM");
 
-                    await Step(64, "正在构建服务容器...", "[BUILD] 验证服务契约...");
-                    await Step(65, "正在构建服务容器...", $"[BUILD] 拓扑统计: {bootStats.Ok} OK / {bootStats.Fail} FAIL / 共 {bootStats.Ok + bootStats.Fail} 项");
-                    _serviceProvider = services.BuildServiceProvider();
-                    await Step(66, "正在构建服务容器...", $"[OK] ServiceProvider 已构建（解析 {bootStats.Ok} 个服务契约）");
+                    await Step(86, "正在构建服务容器...", "[BUILD] 验证服务契约...");
+                    await Step(87, "正在构建服务容器...", $"[BUILD] 拓扑统计: {bootStats.Ok} OK / {bootStats.Fail} FAIL / 共 {bootStats.Ok + bootStats.Fail} 项");
+                    // ValidateOnBuild=true：构建时即校验所有注册的构造器可解析，把 DI 图错误
+                    // 提前暴露（此前延后到 GetRequiredService<MainViewModel> 才爆）
+                    _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+                    {
+                        ValidateOnBuild = true,
+                        ValidateScopes = true,
+                    });
+                    await Step(88, "正在构建服务容器...", $"[OK] ServiceProvider 已构建（解析 {bootStats.Ok} 个服务契约）");
 
                     // 后台启动 NTP 时钟偏差诊断（不阻塞启动流程；v2：不再覆盖系统时间）
                     _ = Task.Run(async () =>
@@ -886,7 +885,7 @@ public partial class App : Application
                     await startupWindow.Dispatcher.InvokeAsync(ConfigureRenderOptimizations);
 
                     // 检查管理员权限
-                    await Step(72, "正在检查管理员权限...", "[SEC] 检查管理员权限...");
+                    await Step(90, "正在检查管理员权限...", "[SEC] 检查管理员权限...");
                     var privilegeService = _serviceProvider.GetRequiredService<IPrivilegeService>();
                     if (!privilegeService.IsRunningAsAdmin && privilegeService.IsWindows)
                     {
@@ -912,7 +911,7 @@ public partial class App : Application
                     }
 
                     // 加载全局配置
-                    await Step(80, "正在加载全局配置...", "[FS] 加载全局配置...");
+                    await Step(92, "正在加载全局配置...", "[FS] 加载全局配置...");
                     _serviceProvider.GetRequiredService<IAppConfigService>().Load();
                     AnimationSettings.ThemeService = _serviceProvider.GetRequiredService<IThemeService>();
 
@@ -924,7 +923,7 @@ public partial class App : Application
                     });
 
                     // 创建主窗口
-                    await Step(92, "正在创建主窗口...", "[UI] 正在创建主窗口...");
+                    await Step(95, "正在创建主窗口...", "[UI] 正在创建主窗口...");
                     ForceLog("[BOOT-5] [UI] 准备 new MainWindow + MainViewModel...");
                     MainWindow? mainWindow = null;
                     await startupWindow.Dispatcher.InvokeAsync(() =>
@@ -946,7 +945,7 @@ public partial class App : Application
                     });
 
                     // 启动内存优化服务
-                    await Step(96, "正在启动内存优化服务...", "[CLEAN] 启动内存优化服务...");
+                    await Step(97, "正在启动内存优化服务...", "[CLEAN] 启动内存优化服务...");
                     await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
                         try { _serviceProvider.GetRequiredService<MemoryOptimizerService>().Start(); }
@@ -954,7 +953,7 @@ public partial class App : Application
                     });
 
                     // 启动调度器服务
-                    await Step(97, "正在启动调度器...", "[SCHED] 启动计划任务调度器...");
+                    await Step(98, "正在启动调度器...", "[SCHED] 启动计划任务调度器...");
                     await startupWindow.Dispatcher.InvokeAsync(() =>
                     {
                         try { _serviceProvider.GetRequiredService<ISchedulerService>().Start(); }
@@ -1017,9 +1016,10 @@ public partial class App : Application
                             return;
                         }
 
-                        // 主窗口 Show 成功了，才能关启动窗口
+                        // 主窗口 Show 成功了，才能关启动窗口；先放行 Closing 拦截
                         try
                         {
+                            startupWindow.AllowClose = true;
                             startupWindow.Close();
                             ForceLog("[BOOT-6] [OK] StartupWindow.Close() 成功");
                         }
@@ -1146,12 +1146,15 @@ public partial class App : Application
     /// </summary>
     private void SetupGlobalExceptionHandling()
     {
-        // 第一层：UI 线程 Dispatcher 未处理异常
+        // 第一层：UI 线程 Dispatcher 未处理异常（唯一订阅点，勿重复挂载）
         DispatcherUnhandledException += (sender, e) =>
         {
-            Log.Fatal(e.Exception, "[FATAL] UI 线程未处理异常");
-            e.Handled = true;
-            ShowCrashReport(e.Exception);
+            ForceLog($"[FATAL] DispatcherUnhandledException: {e.Exception}");
+            try { Log.Fatal(e.Exception, "[FATAL] UI 线程未处理异常"); } catch { }
+            try { WriteForceCrashDump(e.Exception); } catch { }
+            // 先不 Handled，让 ShowCrashReport 弹框；如果弹框失败就标记 Handled 防进程裸崩
+            try { ShowCrashReport(e.Exception); e.Handled = true; }
+            catch { e.Handled = true; }
         };
 
         // 第二层：非 UI 线程未处理异常（最后防线，可能终止进程）

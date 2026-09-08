@@ -30,6 +30,13 @@ public partial class StartupWindow : Window
     private bool _frontendLoaded;
     private readonly Queue<Action> _pendingOperations = new();
 
+    /// <summary>
+    /// 是否允许关闭。启动流程完成前保持 false，拦截用户手动关闭
+    /// （OnExplicitShutdown 模式下误关会导致无窗口"假死"，主窗口最终才弹出）；
+    /// App 切主窗口前会把此值设为 true 放行。
+    /// </summary>
+    public bool AllowClose { get; set; }
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -61,8 +68,21 @@ public partial class StartupWindow : Window
         _themeService.ThemeChanged += OnThemeChanged;
 
         Loaded += StartupWindow_Loaded;
+        Closing += StartupWindow_Closing;
 
         Log.Information("[UI] StartupWindow (WebView2) 已创建");
+    }
+
+    private void StartupWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        // 启动流程未完成且非失败态：禁止用户手动关闭（X 按钮 / startup:close），
+        // 防止 OnExplicitShutdown 下"无可见窗口但进程还在跑"的假死状态。
+        // App 完成主窗口切换后置 AllowClose=true，此处自动放行。
+        if (!AllowClose && !IsCompleted && !IsFailed)
+        {
+            Log.Information("[Startup-WV2] [GUARD] 启动尚未完成，拦截手动关闭请求");
+            e.Cancel = true;
+        }
     }
 
     private async void StartupWindow_Loaded(object sender, RoutedEventArgs e)
@@ -901,6 +921,16 @@ public partial class StartupWindow : Window
 
                     try { cwv.WebMessageReceived += OnWebMessageReceived; }
                     catch (Exception subEx) { Log.Warning(subEx, "[Startup-Fallback] [WARN] 订阅 WebMessageReceived 失败（不致命，继续）"); }
+
+                    // 补挂导航完成：否则 _frontendLoaded 永远 false → _pendingOperations 永不
+                    // flush，启动日志/进度全部丢失。-= 再 += 保证幂等（正常路径可能已挂过）。
+
+                    try
+                    {
+                        cwv.NavigationCompleted -= OnNavigationCompleted;
+                        cwv.NavigationCompleted += OnNavigationCompleted;
+                    }
+                    catch (Exception navEx) { Log.Warning(navEx, "[Startup-Fallback] [WARN] 订阅 NavigationCompleted 失败（不致命，继续）"); }
 
                     try { cwv.Settings.AreDevToolsEnabled = false; }
                     catch (Exception devEx) { Log.Warning(devEx, "[Startup-Fallback] [WARN] 关闭 DevTools 失败（不致命，继续）"); }
