@@ -9,6 +9,7 @@ import {
   FaServer,
 } from 'react-icons/fa6'
 import { Reveal } from '@/components/ui/Reveal'
+import { TutorialOverlay } from '@/components/TutorialOverlay'
 import { IconByName } from '@/utils/icons'
 import { useToastStore } from '@/stores/toastStore'
 import {
@@ -629,6 +630,7 @@ export function DashboardPage(): JSX.Element {
   // Bug1: operationMessage 自动消失定时器 ref
   const operationMsgTimerRef = useRef<number | null>(null)
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(false)
+  const [tutorialOpen, setTutorialOpen] = useState(false)
 
   // JVM 参数相关 state
   const [jvmDefinitions, setJvmDefinitions] = useState<JvmArgumentDefinition[]>([])
@@ -1189,6 +1191,18 @@ export function DashboardPage(): JSX.Element {
         }}
       >
         {/* 左侧：操作按钮 */}
+        <button
+          onClick={() => setTutorialOpen(true)}
+          className="md-btn md-btn-primary"
+          title="我不会开服 —— 新手全流程教程"
+          style={{
+            background: 'linear-gradient(135deg, var(--md-primary-hue-mid), var(--md-accent-hue-mid, var(--md-primary)))',
+          }}
+        >
+          <span style={{ fontSize: 14 }}>🤓</span>
+          <span style={{ fontWeight: 700 }}>我不会开服</span>
+        </button>
+
         <button
           onClick={handleRefresh}
           disabled={isBusy}
@@ -2451,6 +2465,9 @@ export function DashboardPage(): JSX.Element {
           </span>
         </div>
       )}
+
+      {/* ═══ 「我不会开服」新手教程叠加层 ═══ */}
+      <TutorialOverlay open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
     </div>
   )
 }
