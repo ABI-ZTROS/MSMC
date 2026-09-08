@@ -791,7 +791,13 @@ public partial class App : Application
 
                     // ════════════ 自动更新 (P2) ════════════
                     await Step(77, "正在注册自动更新模块...", "[UPDATE] === 自动更新 (P2) ===");
-                    await RegisterType<AutoUpdateService>(78, "[UPDATE]", "AutoUpdateService", "自动更新（版本检查+哈希校验+下载）");
+                    // AutoUpdateService 构造需要 (ILogger, string 当前版本, string 更新目录)：
+                    // 用 factory 提供，避免 RegisterType 在 ValidateOnBuild 时因 string 无 DI 注册而抛异常（启动崩溃）
+                    await RegisterInstance<AutoUpdateService>(78, "[UPDATE]", "AutoUpdateService", "自动更新（版本检查+哈希校验+下载）", sp =>
+                        new AutoUpdateService(
+                            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<AutoUpdateService>>(),
+                            System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0",
+                            Path.Combine(AppContext.BaseDirectory, "updates")));
 
                     // ════════════ ViewModel ════════════
                     await Step(79, "正在注册 ViewModel...", "[VM] === ViewModel 装配 ===");

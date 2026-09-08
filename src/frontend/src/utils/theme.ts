@@ -10,27 +10,33 @@ import {
 } from '@/utils/color'
 
 function applyPrimaryScale(baseHex: string, prefix: string, style: CSSStyleDeclaration): void {
-  const scale = generate9StepScale(baseHex)
+  const scale = generate9StepScale(baseHex) // 9 个元素(0–8)，50 最浅 → 800 最深
   const names = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900']
   scale.forEach((color, i) => {
-    style.setProperty(`${prefix}-${names[i]}`, color)
+    if (i < names.length) style.setProperty(`${prefix}-${names[i]}`, color)
   })
+  // 900 级：色阶最深档兜底（generate9StepScale 最深即 scale[scale.length-1]），
+  // 避免 names 10 项 vs scale 9 元素导致 --md-*-900 缺失回退 :root 默认值
+  style.setProperty(`${prefix}-900`, scale[scale.length - 1])
   style.setProperty(prefix, scale[5])
   style.setProperty(`${prefix}-foreground`, pickTextColor(scale[5]))
 }
 
 function applySurfaceScale(baseHex: string, style: CSSStyleDeclaration): void {
-  const scale = generate9StepScale(baseHex)
-  style.setProperty('--md-paper', scale[9])
-  style.setProperty('--md-deep-background', darkenOklch(scale[9], 0.15))
-  style.setProperty('--md-card-background', scale[8])
-  style.setProperty('--md-card-hover', lightenOklch(scale[8], 0.06))
-  style.setProperty('--md-terminal-background', darkenOklch(scale[8], 0.1))
-  style.setProperty('--md-loading-overlay', rgba(scale[8], 0.8))
-  style.setProperty('--md-surface-0', scale[9])
-  style.setProperty('--md-surface-1', scale[8])
-  style.setProperty('--md-surface-2', scale[7])
-  style.setProperty('--md-surface-3', scale[6])
+  // 【修复】generate9StepScale 只返回 9 个元素(索引 0–8)，原代码访问 scale[9] / darkenOklch(scale[9])
+  // 越界得到 undefined → setProperty 写入无效值 → body 背景回退 :root(theme.css) 硬编码默认色，
+  // 表现为「用户改背景色永远不生效」。
+  // 改为：背景色精确使用用户选择的 hex（所见即所得），表面层级由它亮/暗派生。
+  style.setProperty('--md-paper', baseHex)
+  style.setProperty('--md-deep-background', darkenOklch(baseHex, 0.15))
+  style.setProperty('--md-card-background', lightenOklch(baseHex, 0.08))
+  style.setProperty('--md-card-hover', lightenOklch(baseHex, 0.16))
+  style.setProperty('--md-terminal-background', darkenOklch(baseHex, 0.04))
+  style.setProperty('--md-loading-overlay', rgba(lightenOklch(baseHex, 0.08), 0.8))
+  style.setProperty('--md-surface-0', baseHex)
+  style.setProperty('--md-surface-1', lightenOklch(baseHex, 0.08))
+  style.setProperty('--md-surface-2', lightenOklch(baseHex, 0.16))
+  style.setProperty('--md-surface-3', lightenOklch(baseHex, 0.24))
 }
 
 function applyTextScale(baseHex: string, style: CSSStyleDeclaration): void {
@@ -60,7 +66,7 @@ function applyAccentColorScale(accentHex: string, style: CSSStyleDeclaration): v
   style.setProperty('--md-accent-600', scale[6])
   style.setProperty('--md-accent-700', scale[7])
   style.setProperty('--md-accent-800', scale[8])
-  style.setProperty('--md-accent-900', scale[9])
+  style.setProperty('--md-accent-900', scale[scale.length - 1])
 }
 
 function applyLegacyAliases(primaryHex: string, style: CSSStyleDeclaration): void {

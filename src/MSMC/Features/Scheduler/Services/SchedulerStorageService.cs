@@ -101,8 +101,14 @@ public class SchedulerStorageService : ISchedulerStorageService
                 Directory.CreateDirectory(dir);
             }
 
-            // 清理运行时状态（不持久化 NextRunTime 等计算值，启动时重新计算）
-            foreach (var task in taskList)
+            // 深拷贝（JSON 往返）后在副本上清理运行时字段——绝不污染调用方内存对象。
+            // 原实现直接 task.NextRunTime = null 修改内存同引用：SchedulerService 刚
+            // CalculateNextRunTime 出的 NextRunTime 被抹掉，ScanAndExecute 永不命中，
+            // 添加/更新后的任务永远不到点自动执行（仅 RunNow 有效）。
+            var snapshotJson = JsonSerializer.Serialize(taskList, _jsonOptions);
+            var snapshot = JsonSerializer.Deserialize<List<ScheduledTask>>(snapshotJson, _jsonOptions)
+                           ?? new List<ScheduledTask>();
+            foreach (var task in snapshot)
             {
                 task.NextRunTime = null;
                 task.LastRunTime = null;
@@ -113,7 +119,7 @@ public class SchedulerStorageService : ISchedulerStorageService
             _saveGate.Wait();
             try
             {
-                var json = JsonSerializer.Serialize(taskList, _jsonOptions);
+                var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
                 var tempPath = _storagePath + ".tmp";
 
                 File.WriteAllText(tempPath, json);
@@ -154,7 +160,11 @@ public class SchedulerStorageService : ISchedulerStorageService
                 Directory.CreateDirectory(dir);
             }
 
-            foreach (var task in taskList)
+            // 深拷贝（JSON 往返）后在副本上清理运行时字段——不污染调用方内存对象（同 SaveAll 修复）
+            var snapshotJson = JsonSerializer.Serialize(taskList, _jsonOptions);
+            var snapshot = JsonSerializer.Deserialize<List<ScheduledTask>>(snapshotJson, _jsonOptions)
+                           ?? new List<ScheduledTask>();
+            foreach (var task in snapshot)
             {
                 task.NextRunTime = null;
                 task.LastRunTime = null;
@@ -167,7 +177,7 @@ public class SchedulerStorageService : ISchedulerStorageService
             await _saveGate.WaitAsync(ct);
             try
             {
-                var json = JsonSerializer.Serialize(taskList, _jsonOptions);
+                var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
                 var tempPath = _storagePath + ".tmp";
 
                 await File.WriteAllTextAsync(tempPath, json, ct);
