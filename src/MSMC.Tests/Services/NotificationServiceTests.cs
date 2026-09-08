@@ -54,11 +54,12 @@ public class NotificationServiceTests
         var emailService = new EmailNotificationService(mockEmailLogger.Object, config);
 
         var mockGenericLogger = new Mock<ILogger<GenericWebhookSender>>();
-        var genericWebhookSender = new GenericWebhookSender(mockGenericLogger.Object, config);
 
-        // Mock INotificationConfigService — NotificationService 每次 DispatchAsync 都调用 Load()
+        // Mock INotificationConfigService — 先创建供 GenericWebhookSender 与 NotificationService 共用
         var mockConfigSvc = new Mock<INotificationConfigService>();
         mockConfigSvc.Setup(s => s.Load()).Returns(config);
+
+        var genericWebhookSender = new GenericWebhookSender(mockGenericLogger.Object, mockConfigSvc.Object);
 
         return new NotificationService(
             logger.Object,
