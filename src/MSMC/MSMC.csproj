@@ -25,8 +25,10 @@
     <AnalysisMode>All</AnalysisMode>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    NU1603;<!-- 暂时关闭 XML 文档注释要求（WPF 项目不需要公开 API 文档） -->
+    <!-- 暂时关闭 XML 文档注释要求（WPF 项目不需要公开 API 文档） -->
     <NoWarn>
+      <!-- NuGet 包版本漂移（Logging 9.0.20 依赖 Options >= 9.0.20 但 NuGet 源只有 10.0.0，显式引用 Options 9.0.0 已解决 -->
+      NU1603;
       <!-- 编译器警告 -->
       CS1591;CS1573;CS1712;CS8618;CS8601;CS8602;CS8604;CS8625;CS8765;CS8767;CS9264;CS1998;
       <!-- 分析器规则：WPF 项目不适合的规则 -->
