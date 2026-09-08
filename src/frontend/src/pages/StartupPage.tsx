@@ -64,7 +64,7 @@ export default function StartupPage() {
           zIndex: 10,
         }}
       >
-        <StartupLogo phase={bridge.phase} />
+        <StartupLogo />
 
         <StartupProgressBar
           progress={bridge.progress}

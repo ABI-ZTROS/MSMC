@@ -1,40 +1,24 @@
-import type { BootPhase } from './bootState';
-import { BOOT_PHASE_CONFIG } from './bootState';
-
-interface Props {
-  phase: BootPhase;
-  lines?: string[];
-}
+import logoImg from '../../assets/logo/final/msmc-logo-final.jpg';
 
 /**
- * ASCII LOGO 组件
- * 后续用户会单独提供新内容，这里只是骨架
+ * MSMC 二次元少女 Logo
+ * v8: 微侧 45° 朝右、冰蓝色眼睛、三态渐变头发、银色圆框眼镜、黑色头戴式耳机、闭唇微笑
  */
-const DEFAULT_LOGO: string[] = [
-  '  __  __  ____   _____  ____',
-  ' |  \\/  |/ ___| / ____|/ ___|',
-  ' | \\  / | |     | |    | |',
-  ' | |\\/| | |     | |    | |___',
-  ' | |  | | |___  | |____ \\___ \\',
-  ' |_|  |_|\\____| \\_____|____/',
-];
-
-export function StartupLogo({ phase, lines = DEFAULT_LOGO }: Props) {
-  const config = BOOT_PHASE_CONFIG[phase];
-
+export function StartupLogo() {
   return (
-    <div style={{
-      fontFamily: '"SF Mono", "Consolas", monospace',
-      fontSize: 14,
-      lineHeight: 1.2,
-      textAlign: 'center',
-      whiteSpace: 'pre',
-      userSelect: 'none',
-      color: config.bgGlow,
-      opacity: 0.85,
-      letterSpacing: 1,
-    }}>
-      {lines.join('\n')}
-    </div>
+    <img
+      src={logoImg}
+      alt="MSMC Logo"
+      style={{
+        width: 200,
+        height: 200,
+        objectFit: 'contain',
+        userSelect: 'none',
+        // 微呼吸动效（跟背景呼吸同节奏，6s）
+        animation: 'startupBreathe 6s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        pointerEvents: 'none',
+      }}
+      draggable={false}
+    />
   );
 }
