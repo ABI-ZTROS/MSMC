@@ -37,7 +37,7 @@ interface DeepSeekAnalysis {
   suggestedQuestions?: string[];
 }
 
-type BridgeLike = Pick<MsmcBridge, "sendEvent" | "on">;
+type BridgeLike = Pick<MsmcBridge, "sendEvent" | "on" | "invoke" | "invokeWithTimeout">;
 
 export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
   const [toolLogs, setToolLogs] = useState<ToolLogEntry[]>([]);
@@ -46,6 +46,51 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
   const [sending, setSending] = useState(false);
   const [question, setQuestion] = useState("");
   const logIdRef = useRef(0);
+
+  // 触发一次 Function Calling 诊断
+  function runDiagnostic(userQuestion?: string) {
+    const bridge = (window as unknown as { __msmc_bridge__?: BridgeLike }).__msmc_bridge__;
+    if (!bridge) {
+      setError("Bridge 不可用（WebView2 可能还没初始化）");
+      setSending(false);
+      return;
+    }
+
+    const isFollowUp = typeof userQuestion === "string" && userQuestion.length > 0;
+    const action = isFollowUp ? "troubleshooting.aiSend" : "troubleshooting.aiInit";
+    const payload = isFollowUp
+      ? { message: userQuestion }
+      : { tutorialStep, selectedServerPath: serverPath ?? undefined };
+
+    // 优先用 invoke（后端 SafeRegister 是同步 response 模式），
+    // 如果没有 invoke 就退化用 sendEvent + 依赖 aiDone/aiError event
+    if (typeof bridge.invoke === "function") {
+      bridge.invoke<Record<string, unknown>>(action, payload)
+        .then(resp => {
+          const success = Boolean(resp?.success);
+          const err = typeof resp?.error === "string" ? resp.error : null;
+          const ana = resp?.analysis as unknown as DeepSeekAnalysis | undefined;
+
+          if (success && ana) {
+            setAnalysis(ana);
+            setError(null);
+          } else if (err) {
+            setError(err);
+          } else {
+            setError("AI 返回空结果");
+          }
+        })
+        .catch((e: unknown) => {
+          setError(e instanceof Error ? e.message : String(e));
+        })
+        .finally(() => {
+          setSending(false);
+        });
+    } else {
+      bridge.sendEvent(action, payload);
+      // 等 aiDone/aiError event 来收尾
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +106,7 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
     let offFns: Array<() => void> = [];
 
     if (bridge?.on) {
-      // 事件监听：4 种 Bridge event
+      // 事件监听：工具执行过程（FunctionCallingEngine 主动推的流式日志）
       offFns.push(bridge.on("troubleshooting.aiToolExec", (payload) => {
         const d = (payload as Record<string, unknown>) ?? {};
         setToolLogs(prev => [...prev, {
@@ -85,12 +130,12 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
             : l));
       }));
 
+      // 兜底：如果后端也推 aiDone/aiError event（除了 invoke 返回之外），也能接住
       offFns.push(bridge.on("troubleshooting.aiDone", (payload) => {
         const resp = (payload as Record<string, unknown>) ?? {};
         if (resp.analysis) {
           setAnalysis(resp.analysis as unknown as DeepSeekAnalysis);
         } else {
-          // 兼容直接塞 summary/keyFindings 的扁平格式
           setAnalysis(resp as unknown as DeepSeekAnalysis);
         }
         setSending(false);
@@ -140,15 +185,12 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
       offFns.push(() => window.removeEventListener("msmc-bridge-event", handler));
     }
 
-    // 发送 aiInit —— 后端收到后会直接触发 Function Calling
-    bridge?.sendEvent?.("troubleshooting.aiInit", {
-      tutorialStep,
-      selectedServerPath: serverPath ?? undefined,
-    });
+    // 启动 Function Calling 诊断
+    runDiagnostic();
 
     return () => {
       offFns.forEach(off => { try { off() } catch { /* ignore */ } });
-      bridge?.sendEvent?.("troubleshooting.aiStop", {});
+      // 不发 aiStop——因为 runDiagnostic 是一次性 invoke，后端没有持续 CTS 需要取消
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -156,17 +198,28 @@ export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
   function handleSendQuestion() {
     const q = question.trim();
     if (!q) return;
-    const bridge = (window as unknown as { __msmc_bridge__?: BridgeLike }).__msmc_bridge__;
-    bridge?.sendEvent?.("troubleshooting.aiSend", { message: q });
+    setSending(true);
+    setError(null);
+    setAnalysis(null);
+    runDiagnostic(q);
     setQuestion("");
   }
 
   function handleConfirmFix(fixId: string) {
     const bridge = (window as unknown as { __msmc_bridge__?: BridgeLike }).__msmc_bridge__;
-    bridge?.sendEvent?.("troubleshooting.confirmFix", {
-      fixId,
-      payload: { serverPath },
-    });
+    if (typeof bridge?.invoke === "function") {
+      bridge.invoke<Record<string, unknown>>("troubleshooting.confirmFix", {
+        fixId,
+        payload: { serverPath },
+      }).then(() => {
+        // 可以在这里刷新分析结果或显示成功提示
+      }).catch(() => { /* ignore */ });
+    } else {
+      bridge?.sendEvent?.("troubleshooting.confirmFix", {
+        fixId,
+        payload: { serverPath },
+      });
+    }
   }
 
   if (!open) return null;
