@@ -299,7 +299,82 @@ public static class BridgeActionRegistrar
             return new { success = true, analysis };
         }, logger, ref registered, ref failed);
 
+        // ════════════ Function Calling AI 诊断 actions ════════════
+        // 让 DeepSeek 自主选择工具（联网/读日志/下载核心）诊断服务器
+        registered += SafeRegister(bridge, "troubleshooting.aiInit", async payload =>
+        {
+            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+            int? tutorialStep = args.TryGetProperty("tutorialStep", out var ts) && ts.ValueKind == JsonValueKind.Number
+                ? ts.GetInt32() : null;
+            string? serverPath = args.TryGetProperty("selectedServerPath", out var sp) && sp.ValueKind == JsonValueKind.String
+                ? sp.GetString() : null;
+            string? userQuestion = args.TryGetProperty("userQuestion", out var uq) && uq.ValueKind == JsonValueKind.String
+                ? uq.GetString() : null;
+
+            var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
+            if (!ai.IsConfigured)
+                return new { success = false, error = "尚未配置 DeepSeek API Key" };
+
+            var prompt = BuildAiUserPrompt(tutorialStep, serverPath, userQuestion);
+            var analysis = await ai.AnalyzeWithToolsAsync(prompt);
+            if (analysis is null)
+                return new { success = false, error = "AI Function Calling 失败（检查网络或 API Key）" };
+            return new { success = true, analysis };
+        }, logger, ref registered, ref failed);
+
+        registered += SafeRegister(bridge, "troubleshooting.aiSend", async payload =>
+        {
+            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+            string message = args.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String
+                ? m.GetString() ?? string.Empty : string.Empty;
+            if (string.IsNullOrWhiteSpace(message))
+                return new { success = false, error = "message 不能为空" };
+
+            var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
+            if (!ai.IsConfigured)
+                return new { success = false, error = "尚未配置 DeepSeek API Key" };
+
+            // 追加对话 —— 当前简化为新开一轮，后续可扩展为多轮历史保持
+            var analysis = await ai.AnalyzeWithToolsAsync(message);
+            if (analysis is null)
+                return new { success = false, error = "AI Function Calling 失败" };
+            return new { success = true, analysis };
+        }, logger, ref registered, ref failed);
+
+        registered += SafeRegister(bridge, "troubleshooting.aiStop", _ =>
+        {
+            // CancellationToken 由外部管理，这里只返回确认
+            return Task.FromResult<object?>(new { success = true });
+        }, logger, ref registered, ref failed);
+
+        registered += SafeRegister(bridge, "troubleshooting.confirmFix", async payload =>
+        {
+            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+            string? fixId = args.TryGetProperty("fixId", out var f) && f.ValueKind == JsonValueKind.String
+                ? f.GetString() : null;
+            if (string.IsNullOrEmpty(fixId))
+                return new { success = false, error = "fixId 不能为空" };
+
+            var executor = serviceProvider.GetRequiredService<IFixExecutor>();
+            var result = await executor.ExecuteAsync(fixId!, args);
+            return new { success = result.Succeeded, result };
+        }, logger, ref registered, ref failed);
+
         Log.Information("[BRDG-REG] [OK] 桥接 actions 注册完成: {Ok} OK / {Fail} FAIL", registered, failed);
+    }
+
+    /// <summary>Function Calling AI 用户 prompt 组装（教程上下文 + 用户追问）</summary>
+    private static string BuildAiUserPrompt(int? tutorialStep, string? serverPath, string? userQuestion)
+    {
+        var parts = new List<string>();
+        if (tutorialStep.HasValue)
+            parts.Add($"[教程上下文] 用户在第 {tutorialStep.Value} 步");
+        if (!string.IsNullOrEmpty(serverPath))
+            parts.Add($"[服务器路径] {serverPath}");
+        if (!string.IsNullOrEmpty(userQuestion))
+            parts.Add($"[用户追问] {userQuestion}");
+        parts.Add("请自主选择工具诊断。如果用户不会开服，请帮他检查 Java、端口、核心类型，并从官方源下载合适的服务端核心。");
+        return string.Join("\n", parts);
     }
 
     /// <summary>把前端回传的 DiagnosticReport JSON 转成 Markdown 报告</summary>

@@ -15,6 +15,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using io.NET.ZTR_OS.Features.WebView2.Services;
 
 namespace io.NET.ZTR_OS.Features.Troubleshooting.Services;
 
@@ -25,6 +26,12 @@ public interface IDeepSeekService
 
     /// <summary>对报告做后处理 AI 分析；userQuestion 为空则输出默认诊断结论</summary>
     Task<DeepSeekAnalysis?> AnalyzeReportAsync(DiagnosticReport report, string? userQuestion, CancellationToken ct = default);
+
+    /// <summary>
+    /// Function Calling AI 诊断 —— 让 DeepSeek 自主选择工具（联网/读日志/下载核心）诊断
+    /// 用于「我不会开服」教程中途一键诊断，不再强制需要选中服务器
+    /// </summary>
+    Task<DeepSeekAnalysis?> AnalyzeWithToolsAsync(string userPrompt, CancellationToken ct = default);
 
     string? GetApiKey();
 
@@ -71,10 +78,18 @@ public sealed class DeepSeekService : IDeepSeekService
     };
 
     private readonly ILogger _log;
+    private readonly FunctionCallingEngine? _functionEngine;
 
-    public DeepSeekService(ILogger<DeepSeekService> log)
+    public DeepSeekService(
+        ILogger<DeepSeekService> log,
+        ToolRegistry registry,
+        IWebView2BridgeService? bridge = null)
     {
         _log = log;
+        var apiKey = GetApiKey();
+        _functionEngine = string.IsNullOrEmpty(apiKey)
+            ? null
+            : new FunctionCallingEngine(registry, log, apiKey, bridge);
     }
 
     private static string KeyFilePath => Path.Combine(
@@ -263,4 +278,15 @@ public sealed class DeepSeekService : IDeepSeekService
 
     private static string Truncate(string s, int max)
         => s.Length <= max ? s : s[..max] + "…";
+
+    /// <summary>Function Calling AI 诊断入口 —— 多轮工具自主选择</summary>
+    public async Task<DeepSeekAnalysis?> AnalyzeWithToolsAsync(string userPrompt, CancellationToken ct = default)
+    {
+        if (!IsConfigured || _functionEngine == null)
+        {
+            _log.LogWarning("[DIAG-AI] Function Calling 未配置（API Key 或工具）");
+            return null;
+        }
+        return await _functionEngine.RunAsync(userPrompt, ct).ConfigureAwait(false);
+    }
 }
