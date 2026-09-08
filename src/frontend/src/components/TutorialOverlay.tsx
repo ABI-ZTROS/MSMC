@@ -115,9 +115,11 @@ const STEPS: TutorialStep[] = [
 interface TutorialOverlayProps {
   open: boolean
   onClose: () => void
+  /** 外部强制打开 AI 抽屉（后端 ai:guide 事件触发时） */
+  forceAiOpen?: boolean
 }
 
-export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.Element | null {
+export function TutorialOverlay({ open, onClose, forceAiOpen }: TutorialOverlayProps): JSX.Element | null {
   // AI 抽屉状态 + 当前聚焦的教程步骤（传给 AI 上下文）
   const [aiOpen, setAiOpen] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
@@ -127,7 +129,6 @@ export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.El
     if (!open) return
     const handler = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        // 如果 AI 抽屉开着，先关 AI；再按一次 Esc 才关整个教程
         if (aiOpen) { setAiOpen(false); return }
         onClose()
       }
@@ -139,7 +140,8 @@ export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.El
   // 每次打开教程时重置状态
   useEffect(() => {
     if (!open) return
-    setAiOpen(false)
+    // 如果 forceAiOpen=true（后端主动引导触发），直接打开 AI 抽屉
+    setAiOpen(!!forceAiOpen)
     setCurrentStep(0)
 
     // ═══ 【主动引导 - v2 带重试版】打开教程时检查 AI 配置状态 ═══

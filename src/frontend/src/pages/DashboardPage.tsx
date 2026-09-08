@@ -631,6 +631,25 @@ export function DashboardPage(): JSX.Element {
   const operationMsgTimerRef = useRef<number | null>(null)
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(false)
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  // 后端主动引导：收到 ai:guide 事件时需要强制打开 AI 抽屉
+  const [aiForceOpen, setAiForceOpen] = useState(false)
+
+  // ═══ 【后端主动 AI 引导兜底】监听 ai:guide 事件 ═══
+  // C# 收到前端 app:ready 后检测 AI 未配置 → 推 ai:guide 事件
+  // 收到就弹教程 + 强制打开 AI 抽屉，彻底绕开前端时序竞争
+  useEffect(() => {
+    const cleanup = bridge.on('ai:guide', (data: unknown) => {
+      try { console.log('[FE-DIAG][AI-GUIDE-DASH] 收到后端 ai:guide 事件', data) } catch {}
+      setAiForceOpen(true)
+      setTutorialOpen(true)
+    })
+    return cleanup
+  }, [])
+
+  // TutorialOverlay 关闭时重置 force 标记，下次手动打开不强制开 AI 抽屉
+  useEffect(() => {
+    if (!tutorialOpen) setAiForceOpen(false)
+  }, [tutorialOpen])
 
   // JVM 参数相关 state
   const [jvmDefinitions, setJvmDefinitions] = useState<JvmArgumentDefinition[]>([])
@@ -2467,7 +2486,7 @@ export function DashboardPage(): JSX.Element {
       )}
 
       {/* ═══ 「我不会开服」新手教程叠加层 ═══ */}
-      <TutorialOverlay open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
+      <TutorialOverlay open={tutorialOpen} onClose={() => setTutorialOpen(false)} forceAiOpen={aiForceOpen} />
     </div>
   )
 }

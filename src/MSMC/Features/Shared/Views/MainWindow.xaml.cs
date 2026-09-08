@@ -2369,10 +2369,45 @@ public partial class MainWindow : Window
         RegisterConfigApis();
         RegisterSettingsApis();
 
-        // 订阅来自 JS 的事件（调试用）
-        _bridgeService.SubscribeToEvents((action, payload) =>
+        // 订阅来自 JS 的事件
+        _bridgeService.SubscribeToEvents(async (action, payload) =>
         {
             Log.Debug("[MSG] 收到 JS 事件: {Action} = {Payload}", action, payload);
+
+            // ═══ 【后端主动 AI 引导兜底】前端 isReady 后主动检测 AI 配置 ═══
+            // 即使前端 TutorialOverlay 引导逻辑因为 bridge 时序竞争跳过了，
+            // C# 收到 app:ready 事件（前端肯定发的）后主动检测 IsConfigured，
+            // 未配置就推 ai:guide 用户事件 → 前端监听后弹出教程 + AI 抽屉
+            // 这条链不依赖任何前端自行发起的请求，彻底绕开时序问题
+            if (action == "app:ready")
+            {
+                try
+                {
+                    Log.Information("[AI-GUIDE-BE] 收到 app:ready，检查 AI 配置状态...");
+                    var ai = App.Services.GetRequiredService<IDeepSeekService>();
+                    bool configured = ai.IsConfigured;
+                    Log.Information("[AI-GUIDE-BE] AI 配置检查结果: configured={Configured}", configured);
+
+                    if (!configured)
+                    {
+                        Log.Information("[AI-GUIDE-BE] ⚠️  AI 未配置 Key，主动推送引导事件给前端");
+                        await _bridgeService.SendEventAsync("ai:guide", new
+                        {
+                            reason = "startup",
+                            message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
+                        });
+                        Log.Information("[AI-GUIDE-BE] ✅ ai:guide 事件已推送");
+                    }
+                    else
+                    {
+                        Log.Information("[AI-GUIDE-BE] AI 已配置 Key，跳过主动引导");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "[AI-GUIDE-BE] 后端主动引导检查异常（不影响主流程）");
+                }
+            }
         });
 
         Log.Information("[OK] 桥接 API 注册完成");
