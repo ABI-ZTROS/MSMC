@@ -1,10 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { AIDrawer } from './AIDrawer'
 
 /**
  * TutorialOverlay — 「我不会开服」新手全流程教程
  * 叠加渲染在当前页面之上（不跳路由），完整覆盖：装 Java → 搞核心 → 导入 → 调内存 → 启动
  * → 开放端口 → 体检修复 → 监管兜底。
  *
+ * 梦幻联动：教程左 60% + AI 诊断抽屉右 40% 并排。每一步都可以一键"让 AI 帮我"。
  * 风格要求：小屁孩都看得懂——大白话 + 比喻 + emoji，强制穿插 😡😋😂😅🤔🧐🤣😱😨🔥🤓
  */
 
@@ -116,15 +118,31 @@ interface TutorialOverlayProps {
 }
 
 export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.Element | null {
+  // AI 抽屉状态 + 当前聚焦的教程步骤（传给 AI 上下文）
+  const [aiOpen, setAiOpen] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0)
+
   // Esc 键关闭（叠加层惯例）
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        // 如果 AI 抽屉开着，先关 AI；再按一次 Esc 才关整个教程
+        if (aiOpen) { setAiOpen(false); return }
+        onClose()
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [open, onClose])
+  }, [open, onClose, aiOpen])
+
+  // 每次打开教程时重置状态
+  useEffect(() => {
+    if (open) {
+      setAiOpen(false)
+      setCurrentStep(0)
+    }
+  }, [open])
 
   if (!open) return null
 
@@ -148,16 +166,18 @@ export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.El
       <div
         className="md-card md-card-elevated"
         style={{
-          width: 720,
+          width: aiOpen ? 1200 : 720,
           maxWidth: '100%',
+          height: '90vh',
           maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          transition: 'width 0.25s ease-out',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── 头部：标题 + 关闭 ── */}
+        {/* ── 头部：标题 + AI 开关 + 关闭 ── */}
         <div
           className="flex items-center flex-shrink-0"
           style={{
@@ -181,6 +201,24 @@ export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.El
               全程大白话，跟着点就完事了 😋 大概需要 8 分钟，比看一集动画片还快
             </div>
           </div>
+          {/* AI 诊断总开关 */}
+          <button
+            onClick={() => setAiOpen(v => !v)}
+            className="md-btn md-btn-flat"
+            style={{
+              fontSize: 12,
+              padding: '6px 12px',
+              background: aiOpen
+                ? 'color-mix(in srgb, var(--md-primary) 22%, transparent)'
+                : 'transparent',
+              border: '1px solid var(--md-card-subtle-border)',
+              color: aiOpen ? 'var(--md-primary-hue-mid)' : 'var(--md-body-light)',
+              whiteSpace: 'nowrap',
+            }}
+            title="让 AI 帮你诊断开服问题"
+          >
+            {aiOpen ? '🤖 AI 诊断已开启' : '🤖 让 AI 帮我'}
+          </button>
           <button
             onClick={onClose}
             className="md-btn md-btn-flat md-btn-icon"
@@ -191,8 +229,15 @@ export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.El
           </button>
         </div>
 
-        {/* ── 步骤列表（可滚动） ── */}
-        <div style={{ overflowY: 'auto', padding: '14px 18px 18px' }}>
+        {/* ── 主体：教程左 60% + AIDrawer 右 40% ── */}
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          {/* 教程左栏 */}
+          <div style={{
+            flex: aiOpen ? '0 0 60%' : '1 1 auto',
+            overflowY: 'auto',
+            padding: '14px 18px 18px',
+            transition: 'flex-basis 0.25s ease-out',
+          }}>
           {STEPS.map((step, idx) => (
             <div
               key={idx}
@@ -234,6 +279,7 @@ export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.El
                       {line}
                     </div>
                   ))}
+                  {/* 👉 行动提示 */}
                   {step.action && (
                     <div
                       style={{
@@ -249,6 +295,26 @@ export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.El
                       👉 {step.action}
                     </div>
                   )}
+                  {/* 🤖 梦幻联动：一键让 AI 诊断当前步骤 */}
+                  <button
+                    onClick={() => { setCurrentStep(idx); setAiOpen(true) }}
+                    style={{
+                      marginTop: 8,
+                      padding: '4px 10px',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      borderRadius: 'var(--md-radius-small)',
+                      background: currentStep === idx && aiOpen
+                        ? 'color-mix(in srgb, var(--md-primary) 25%, transparent)'
+                        : 'transparent',
+                      border: '1px dashed var(--md-primary-hue-mid, var(--md-primary))',
+                      color: 'var(--md-primary-hue-mid, var(--md-primary))',
+                      cursor: 'pointer',
+                    }}
+                    title={`AI 会针对「${step.title}」这一步给你诊断建议`}
+                  >
+                    🤖 这步不会？让 AI 帮我
+                  </button>
                 </div>
               </div>
             </div>
@@ -272,15 +338,36 @@ export function TutorialOverlay({ open, onClose }: TutorialOverlayProps): JSX.El
               <br />
               祝你的服务器天天有人来玩，永不断档 😋
             </div>
-            <button
-              onClick={onClose}
-              className="md-btn md-btn-primary"
-              style={{ marginTop: 14, minHeight: 34, padding: '6px 22px' }}
-            >
-              懂了，我去开服了！🚀
-            </button>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 14 }}>
+              <button
+                onClick={() => { setCurrentStep(STEPS.length - 1); setAiOpen(true) }}
+                className="md-btn md-btn-flat"
+                style={{ fontSize: 12, padding: '6px 16px', border: '1px dashed' }}
+              >
+                🤖 还不会？让 AI 全流程诊断
+              </button>
+              <button
+                onClick={onClose}
+                className="md-btn md-btn-primary"
+                style={{ minHeight: 34, padding: '6px 22px' }}
+              >
+                懂了，我去开服了！🚀
+              </button>
+            </div>
           </div>
+          </div>
+          {/* /教程左栏 */}
+
+          {/* AI 诊断右栏 */}
+          {aiOpen && (
+            <AIDrawer
+              open={aiOpen}
+              tutorialStep={currentStep}
+              onClose={() => setAiOpen(false)}
+            />
+          )}
         </div>
+        {/* /主体 flex */}
       </div>
     </div>
   )

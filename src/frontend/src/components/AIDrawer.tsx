@@ -1,0 +1,360 @@
+// -----------------------------------------------------------------------------
+// 文件名: AIDrawer.tsx
+// 功能: Function Calling AI 诊断右侧抽屉 —— 流式显示工具执行日志 + AI 分析结果 + 修复按钮
+// 位置: TutorialOverlay 左 60% + AIDrawer 右 40% 并排
+// -----------------------------------------------------------------------------
+import { useEffect, useRef, useState } from "react";
+import type { MsmcBridge } from "@/utils/bridge";
+
+interface Props {
+  open: boolean;
+  tutorialStep?: number;
+  serverPath?: string | null;
+  onClose?: () => void;
+}
+
+interface ToolLogEntry {
+  id: number;
+  toolName: string;
+  status: "started" | "done" | "failed";
+  elapsedMs?: number;
+  round: number;
+  error?: string;
+}
+
+interface RecommendedAction {
+  fixId: string;
+  label: string;
+  dangerous: boolean;
+  rationale?: string;
+}
+
+interface DeepSeekAnalysis {
+  summary: string;
+  keyFindings: string[];
+  recommendedActions: RecommendedAction[];
+  needMoreInfo: boolean;
+  suggestedQuestions?: string[];
+}
+
+type BridgeLike = Pick<MsmcBridge, "sendEvent" | "on">;
+
+export function AIDrawer({ open, tutorialStep, serverPath, onClose }: Props) {
+  const [toolLogs, setToolLogs] = useState<ToolLogEntry[]>([]);
+  const [analysis, setAnalysis] = useState<DeepSeekAnalysis | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [question, setQuestion] = useState("");
+  const logIdRef = useRef(0);
+
+  useEffect(() => {
+    if (!open) return;
+
+    // Reset state
+    setToolLogs([]);
+    setAnalysis(null);
+    setError(null);
+    setSending(true);
+    logIdRef.current = 0;
+
+    const bridge = (window as unknown as { __msmc_bridge__?: BridgeLike }).__msmc_bridge__;
+    let offFns: Array<() => void> = [];
+
+    if (bridge?.on) {
+      // 事件监听：4 种 Bridge event
+      offFns.push(bridge.on("troubleshooting.aiToolExec", (payload) => {
+        const d = (payload as Record<string, unknown>) ?? {};
+        setToolLogs(prev => [...prev, {
+          id: ++logIdRef.current,
+          toolName: String(d.toolName ?? "unknown"),
+          status: "started",
+          round: Number(d.round ?? 0),
+        }]);
+      }));
+
+      offFns.push(bridge.on("troubleshooting.aiStream", (payload) => {
+        const d = (payload as Record<string, unknown>) ?? {};
+        setToolLogs(prev => prev.map(l =>
+          l.toolName === String(d.toolName) && l.round === Number(d.round) && l.status === "started"
+            ? {
+                ...l,
+                status: (d.status as "done" | "failed") ?? "done",
+                elapsedMs: typeof d.elapsedMs === "number" ? d.elapsedMs : undefined,
+                error: typeof d.error === "string" ? d.error : undefined,
+              }
+            : l));
+      }));
+
+      offFns.push(bridge.on("troubleshooting.aiDone", (payload) => {
+        const resp = (payload as Record<string, unknown>) ?? {};
+        if (resp.analysis) {
+          setAnalysis(resp.analysis as unknown as DeepSeekAnalysis);
+        } else {
+          // 兼容直接塞 summary/keyFindings 的扁平格式
+          setAnalysis(resp as unknown as DeepSeekAnalysis);
+        }
+        setSending(false);
+      }));
+
+      offFns.push(bridge.on("troubleshooting.aiError", (payload) => {
+        const d = (payload as Record<string, unknown>) ?? {};
+        setError(String(d.message ?? "未知错误"));
+        setSending(false);
+      }));
+    } else {
+      // Fallback：DOM event 模式（某些 Bridge 版本会把 event 挂在 window 上）
+      const handler = (e: Event) => {
+        const detail = (e as CustomEvent).detail as Record<string, unknown> | undefined;
+        if (!detail) return;
+        const type = String(detail.eventType ?? "");
+        const data = (detail.data as Record<string, unknown>) ?? {};
+
+        if (type === "troubleshooting.aiToolExec") {
+          setToolLogs(prev => [...prev, {
+            id: ++logIdRef.current,
+            toolName: String(data.toolName ?? "unknown"),
+            status: "started",
+            round: Number(data.round ?? 0),
+          }]);
+        } else if (type === "troubleshooting.aiStream") {
+          setToolLogs(prev => prev.map(l =>
+            l.toolName === String(data.toolName) && l.round === Number(data.round) && l.status === "started"
+              ? {
+                  ...l,
+                  status: (data.status as "done" | "failed") ?? "done",
+                  elapsedMs: typeof data.elapsedMs === "number" ? data.elapsedMs : undefined,
+                  error: typeof data.error === "string" ? data.error : undefined,
+                }
+              : l));
+        } else if (type === "troubleshooting.aiDone") {
+          const resp = data as unknown as { success?: boolean; analysis?: DeepSeekAnalysis };
+          if (resp?.analysis) setAnalysis(resp.analysis);
+          else setAnalysis(data as unknown as DeepSeekAnalysis);
+          setSending(false);
+        } else if (type === "troubleshooting.aiError") {
+          setError(String(data.message ?? "未知错误"));
+          setSending(false);
+        }
+      };
+      window.addEventListener("msmc-bridge-event", handler);
+      offFns.push(() => window.removeEventListener("msmc-bridge-event", handler));
+    }
+
+    // 发送 aiInit —— 后端收到后会直接触发 Function Calling
+    bridge?.sendEvent?.("troubleshooting.aiInit", {
+      tutorialStep,
+      selectedServerPath: serverPath ?? undefined,
+    });
+
+    return () => {
+      offFns.forEach(off => { try { off() } catch { /* ignore */ } });
+      bridge?.sendEvent?.("troubleshooting.aiStop", {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  function handleSendQuestion() {
+    const q = question.trim();
+    if (!q) return;
+    const bridge = (window as unknown as { __msmc_bridge__?: BridgeLike }).__msmc_bridge__;
+    bridge?.sendEvent?.("troubleshooting.aiSend", { message: q });
+    setQuestion("");
+  }
+
+  function handleConfirmFix(fixId: string) {
+    const bridge = (window as unknown as { __msmc_bridge__?: BridgeLike }).__msmc_bridge__;
+    bridge?.sendEvent?.("troubleshooting.confirmFix", {
+      fixId,
+      payload: { serverPath },
+    });
+  }
+
+  if (!open) return null;
+
+  return (
+    <div style={styles.drawer}>
+      <div style={styles.header}>
+        <span>🤖 MSMC AI 诊断</span>
+        <button onClick={onClose} style={styles.closeBtn} title="关闭 AI 抽屉">×</button>
+      </div>
+
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>工具执行日志</div>
+        <div style={styles.logContainer}>
+          {toolLogs.map(l => (
+            <div key={l.id} style={{ color: l.status === "failed" ? "#e8964a" : l.status === "done" ? "#5DC8E8" : "#888" }}>
+              {l.status === "started" ? "🔄" : l.status === "failed" ? "❌" : "✅"}
+              {" "}round {l.round}: <code>{l.toolName}</code>
+              {l.elapsedMs != null ? ` (${l.elapsedMs}ms)` : ""}
+              {l.error ? <span style={{ color: "#c0392b", marginLeft: 8 }}>⚠ {l.error}</span> : null}
+            </div>
+          ))}
+          {sending && toolLogs.length === 0 && (
+            <div style={{ color: "#888", fontStyle: "italic" }}>正在启动 Function Calling 诊断...</div>
+          )}
+          {!sending && toolLogs.length === 0 && !analysis && !error && (
+            <div style={{ color: "#888", fontStyle: "italic" }}>AI 未执行任何工具（可能不需要）</div>
+          )}
+        </div>
+      </div>
+
+      {analysis && (
+        <>
+          <div style={styles.section}>
+            <div style={styles.sectionTitle}>💡 AI 诊断结论</div>
+            <div style={styles.summary}>{analysis.summary}</div>
+            {analysis.keyFindings.length > 0 && (
+              <ul style={{ paddingLeft: 20, marginTop: 8 }}>
+                {analysis.keyFindings.map((f, i) => (
+                  <li key={i} style={{ margin: "4px 0", color: "#e2e8f0" }}>{f}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {analysis.recommendedActions.length > 0 && (
+            <div style={styles.section}>
+              <div style={styles.sectionTitle}>🔧 修复建议（FixPanel）</div>
+              {analysis.recommendedActions.map((a, i) => (
+                <div key={i} style={styles.actionCard}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <strong>{a.label}</strong>
+                    <span style={{
+                      color: a.dangerous ? "#c0392b" : "#5DC8E8",
+                      fontSize: 11,
+                      padding: "2px 6px",
+                      background: a.dangerous ? "rgba(192,57,43,0.15)" : "rgba(93,200,232,0.15)",
+                      borderRadius: 4
+                    }}>{a.dangerous ? "⚠ 危险" : "安全"}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
+                    <code style={{ color: "#5DC8E8" }}>{a.fixId}</code>
+                    {a.rationale ? ` — ${a.rationale}` : ""}
+                  </div>
+                  <button
+                    style={styles.confirmBtn}
+                    onClick={() => handleConfirmFix(a.fixId)}
+                  >
+                    确认执行修复
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {analysis.needMoreInfo && analysis.suggestedQuestions && analysis.suggestedQuestions.length > 0 && (
+            <div style={styles.section}>
+              <div style={styles.sectionTitle}>🤔 AI 想了解更多</div>
+              {analysis.suggestedQuestions.map((q, i) => (
+                <div
+                  key={i}
+                  style={styles.suggestionChip}
+                  onClick={() => setQuestion(q)}
+                >{q}</div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {error && (
+        <div style={styles.error}>❌ {error}</div>
+      )}
+
+      <div style={styles.inputBar}>
+        <input
+          value={question}
+          onChange={e => setQuestion(e.target.value)}
+          placeholder="追问 AI..."
+          onKeyDown={e => e.key === "Enter" && handleSendQuestion()}
+          style={styles.input}
+        />
+      </div>
+    </div>
+  );
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  drawer: {
+    width: "40%",
+    height: "100%",
+    background: "#020617",
+    borderLeft: "1px solid #1e293b",
+    overflow: "auto",
+    display: "flex",
+    flexDirection: "column",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+  },
+  header: {
+    padding: "16px",
+    borderBottom: "1px solid #1e293b",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    color: "#e2e8f0",
+    fontSize: 14,
+    fontWeight: 600
+  },
+  closeBtn: {
+    background: "none",
+    border: "none",
+    color: "#888",
+    fontSize: 22,
+    cursor: "pointer",
+    lineHeight: 1
+  },
+  section: { padding: "12px 16px", borderBottom: "1px solid #1e293b" },
+  sectionTitle: { fontSize: 12, color: "#888", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 },
+  logContainer: { fontFamily: "Consolas, monospace", fontSize: 12, lineHeight: 2, maxHeight: 200, overflow: "auto" },
+  summary: { color: "#e2e8f0", marginTop: 4, lineHeight: 1.6 },
+  actionCard: {
+    margin: "8px 0",
+    padding: 12,
+    background: "#0d1b2a",
+    borderRadius: 6,
+    border: "1px solid #1e293b"
+  },
+  confirmBtn: {
+    marginTop: 8,
+    padding: "6px 16px",
+    background: "#5DC8E8",
+    color: "#020617",
+    border: "none",
+    borderRadius: 4,
+    cursor: "pointer",
+    fontWeight: 500
+  },
+  suggestionChip: {
+    margin: "4px 0",
+    padding: "6px 12px",
+    background: "#0d1b2a",
+    borderRadius: 16,
+    fontSize: 13,
+    color: "#5DC8E8",
+    cursor: "pointer",
+    border: "1px solid #1e293b"
+  },
+  error: {
+    padding: "12px 16px",
+    color: "#c0392b",
+    background: "rgba(192,57,43,0.1)",
+    margin: "8px 16px",
+    borderRadius: 6
+  },
+  inputBar: {
+    padding: "12px 16px",
+    borderTop: "1px solid #1e293b",
+    marginTop: "auto"
+  },
+  input: {
+    width: "100%",
+    padding: "8px 12px",
+    background: "#0d1b2a",
+    border: "1px solid #1e293b",
+    borderRadius: 6,
+    color: "#e2e8f0",
+    outline: "none",
+    boxSizing: "border-box",
+    fontSize: 14
+  }
+};
