@@ -189,9 +189,10 @@
   <PropertyGroup>
     <!-- 增量 Outputs 锚点：
          普通构建 → dist/index.html（有源码更新才进 Target）
-         发布构建 → 不存在的哨兵（永远"产物缺失"→ 强制进 Target） -->
-    <_FrontendBuildOutput Condition="'$(PublishDir)' != ''">$(IntermediateOutputPath)_force_frontend_rebuild.marker</_FrontendBuildOutput>
-    <_FrontendBuildOutput Condition="'$(PublishDir)' == ''">$(FrontendDir)\dist\index.html</_FrontendBuildOutput>
+         发布构建 → 不存在的哨兵（永远"产物缺失"→ 强制进 Target）
+         /p:ForceFrontendRebuild=true → 同上，开发时强制重建前端用 -->
+    <_FrontendBuildOutput Condition="'$(PublishDir)' != '' Or '$(ForceFrontendRebuild)' == 'true'">$(IntermediateOutputPath)_force_frontend_rebuild.marker</_FrontendBuildOutput>
+    <_FrontendBuildOutput Condition="'$(PublishDir)' == '' And '$(ForceFrontendRebuild)' != 'true'">$(FrontendDir)\dist\index.html</_FrontendBuildOutput>
   </PropertyGroup>
 
   <Target Name="BuildFrontend" BeforeTargets="PrepareForBuild"
