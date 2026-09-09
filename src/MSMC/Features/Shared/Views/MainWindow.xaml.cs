@@ -128,9 +128,10 @@ public partial class MainWindow : Window
 
         try
         {
-            _themeService?.ThemeChanged += OnThemeChanged;
+            if (_themeService != null)
+                _themeService.ThemeChanged += OnThemeChanged;
         }
-        catch { /* 空引用或事件注册失败不致命 */ }
+        catch { /* 事件注册失败不致命 */ }
 
         Loaded += MainWindow_Loaded;
         DataContextChanged += MainWindow_DataContextChanged;
