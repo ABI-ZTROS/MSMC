@@ -43,6 +43,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Extensions.Logging;
+using Serilog.Filters;
 
 namespace io.NET.ZTR_OS;
 
@@ -377,7 +378,16 @@ public partial class App : Application
             Directory.CreateDirectory(logDir);
             string mainLogPath = Path.Combine(logDir, "mcserverguard-.log");
             var debugLogPath = Path.Combine(logDir, "debug-.log");
+            var aiLogPath = Path.Combine(logDir, "ai-guide-.log");
             logFileName = mainLogPath;
+
+            // 正则匹配 AI 引导链所有关键日志标记
+            // [AI-GUIDE] —— C# 侧所有引导链日志
+            // [DIAG-AI] / [BRDG-REG] —— DeepSeek / Bridge 注册日志
+            // [FE-DIAG] / [FE-LOG] —— 前端上报的诊断日志
+            // [WV2-REQ] / [WV2-LOAD] —— WebView2 桥接请求/加载
+            const string AiLogFilterRegex =
+                @"\[(AI-GUIDE|DIAG-AI|FE-DIAG|FE-LOG|BRDG-REG|WV2-REQ|WV2-LOAD)\]";
 
             Log.Logger = new LoggerConfiguration()
                 // 全局阈值：Warning+ 才进主日志（大量 Debug/Information 被丢弃）
@@ -406,11 +416,32 @@ public partial class App : Application
                         fileSizeLimitBytes: 2 * 1024 * 1024,    // 2 MB
                         retainedFileCountLimit: 3,
                         outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}"))
+                // ═══ 【AI 专用日志 sink】Information+ 只收 AI/引导/桥接关键词 ═══
+                // 独立文件 → 用户一眼就能 grep 到 AI 引导链到底跑没跑，
+                // 不会被主日志里一堆 WindowFX/Scheduler/ServerDetection 淹没
+                .WriteTo.Logger(lc => lc
+                    .MinimumLevel.Information()
+                    .Filter.ByIncludingOnly(evt =>
+                        evt.MessageTemplate.Text.Contains("[AI-GUIDE]") ||
+                        evt.MessageTemplate.Text.Contains("[DIAG-AI]") ||
+                        evt.MessageTemplate.Text.Contains("[FE-DIAG]") ||
+                        evt.MessageTemplate.Text.Contains("[FE-LOG]") ||
+                        evt.MessageTemplate.Text.Contains("[BRDG-REG]") ||
+                        evt.MessageTemplate.Text.Contains("[WV2-REQ]") ||
+                        evt.MessageTemplate.Text.Contains("[WV2-LOAD]")
+                    )
+                    .WriteTo.File(
+                        path: aiLogPath,
+                        rollOnFileSizeLimit: true,
+                        fileSizeLimitBytes: 3 * 1024 * 1024,    // 3 MB（AI 日志不频繁，3MB 够翻）
+                        retainedFileCountLimit: 3,
+                        outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}"))
                 .CreateLogger();
 
-            ForceLog($"[BOOT-2] [OK] Serilog 已精简：主日志 Warning+ (5MB×5份) + 调试日志 Debug+ (2MB×3份)");
+            ForceLog($"[BOOT-2] [OK] Serilog 已精简：主日志 Warning+ (5MB×5份) + 调试日志 Debug+ (2MB×3份) + AI日志 Info+ (3MB×3份)");
             ForceLog($"[BOOT-2]    主日志: {mainLogPath}");
             ForceLog($"[BOOT-2]    调试日志: {debugLogPath}");
+            ForceLog($"[BOOT-2]    AI 日志: {aiLogPath} (filter={AiLogFilterRegex})");
         }
         catch (Exception serilogEx)
         {
