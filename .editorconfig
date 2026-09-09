@@ -5,9 +5,25 @@ root = true
 
 [*]
 charset = utf-8
-end_of_line = crlf
+# 前端 (JS/TS/CSS) 走 LF（Node/Prettier/ESLint 生态默认）
+# .NET (cs/xaml/csproj) 走 CRLF（Windows 原生风格）
+# 不要在这里设 end_of_line，让下面的分组各管各的
 insert_final_newline = true
 trim_trailing_whitespace = true
+
+# ═══ .NET 文件：CRLF（Windows 原生） ═══
+[*.{cs,xaml,csproj,sln,json,config,xml}]
+end_of_line = crlf
+
+# ═══ 前端文件：LF（Node/Prettier/ESLint 生态默认） ═══
+[*.{js,jsx,ts,tsx,css,scss,sass,less,html,svg,mjs,cjs}]
+end_of_line = lf
+indent_style = space
+indent_size = 2
+
+# ═══ Shell/配置：LF ═══
+[*.{sh,bash,yml,yaml,md,txt,gitignore,gitattributes}]
+end_of_line = lf
 
 # C# 文件
 [*.cs]
