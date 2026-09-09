@@ -70,22 +70,25 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        // ── FORCE-LOG 入口 100% 绕开 Serilog，证明 MainWindow ctor 真的执行了 ──
+        App.ForceLog("[MWC] ★★★ MainWindow 构造函数 ENTER ★★★");
+
         // 【兜底: Cannot find non-neutral culture 'en-us'】
         // 即使 static App() 已 OverrideMetadata 默认值, 这里也显式对本窗口根对象
         // SetValue(LanguageProperty), 以防初始化顺序在老 Windows 上不一致。
         io.NET.ZTR_OS.App.ApplySafeLanguage(this);
+        App.ForceLog("[MWC] ApplySafeLanguage ✓");
 
         Log.Information("[BUILD] MainWindow (WebView2) 正在初始化...");
         InitializeComponent();
+        App.ForceLog("[MWC] InitializeComponent ✓");
 
         // ═══ 【版本水印 + AI 配置检查】—— 放在 GetRequiredService 之前！ ═══
-        // 之前放在 GetRequiredService<IThemeService>/<IWebView2BridgeService> 之后，
-        // 如果那两个服务任何一个没注册 → 抛 InvalidOperationException → 水印永远不执行！
-        // 现在放在 InitializeComponent() 之后、任何 GetRequiredService 之前，
-        // 保证无论 DI 怎么样都能看到这几行水印 —— 区分新旧 exe 的铁证
+        App.ForceLog("[MWC] ★★★ [AI-GUIDE][BOOT] 水印前 — InitializeComponent 已过，进入水印区块");
         Log.Information("[AI-GUIDE][BOOT] ========================================================");
         Log.Information("[AI-GUIDE][BOOT] ✅ 新版本 AI 引导链已编译进 exe — commit: refactor-ai-guide-v1");
         Log.Information("[AI-GUIDE][BOOT] ========================================================");
+        App.ForceLog("[MWC] ★★★ [AI-GUIDE][BOOT] 水印 Log.Information 已打完 ★★★");
         
         try
         {
