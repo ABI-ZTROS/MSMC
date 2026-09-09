@@ -918,6 +918,24 @@ export interface DiagnosticPlayerStat {
   anomalyTypes: string[]
 }
 
+export interface DiagnosticAiFixAction {
+  fixId: string
+  label: string
+  dangerous: boolean
+  rationale?: string | null
+  severity?: number | null
+  steps: unknown[]
+}
+
+export interface DiagnosticAiAnalysis {
+  summary: string
+  keyFindings: string[]
+  recommendedActions: DiagnosticAiFixAction[]
+  needMoreInfo: boolean
+  suggestedQuestions?: string[] | null
+  rawJson: string
+}
+
 export interface DiagnosticReport {
   generatedAt: string
   msmcVersion: string
@@ -928,8 +946,8 @@ export interface DiagnosticReport {
   summary: DiagnosticSummary
   issues: DiagnosticIssue[]
   topPlayers: DiagnosticPlayerStat[]
-  aiAnalysis: null
-  deepSeekRawResponse: null
+  aiAnalysis: DiagnosticAiAnalysis | null
+  deepSeekRawResponse: string | null
   succeeded: boolean
   errorMessage?: string | null
 }

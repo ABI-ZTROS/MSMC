@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { FaWrench } from 'react-icons/fa6'
-import type { DiagnosticReport, DiagnosticIssue, KnownServerInfo } from '@/types/bridge'
-import { runDiagnostic, runDeepScan, checkServerRunning, killServerAndScan } from '@/utils/bridge'
+import type { DiagnosticReport, DiagnosticIssue, DiagnosticAiAnalysis, KnownServerInfo } from '@/types/bridge'
+import { runDiagnostic, runDeepScan, checkServerRunning, killServerAndScan, getAiStatus, setApiKey, askAI } from '@/utils/bridge'
 import { DiagnosticReportCard } from '@/components/DiagnosticReportCard'
 import { FixPanel } from '@/components/FixPanel'
 import { TreeNodeDialog } from '@/components/TreeNodeDialog'
@@ -20,6 +20,15 @@ export function TroubleshootingPage(): JSX.Element {
   const [showSymptomDialog, setShowSymptomDialog] = useState(false)
   const [highlightCheck, setHighlightCheck] = useState<string | null>(null)
 
+  // ── DeepSeek AI 配置与追问状态 ──
+  const [aiConfigured, setAiConfigured] = useState(false)
+  const [aiKeyInput, setAiKeyInput] = useState('')
+  const [aiSaving, setAiSaving] = useState(false)
+  const [aiMsg, setAiMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [aiAsking, setAiAsking] = useState(false)
+  const [aiAnalysis, setAiAnalysis] = useState<DiagnosticAiAnalysis | null>(null)
+  const [askInput, setAskInput] = useState('')
+
   useEffect(() => {
     const b = (window as any).__msmc_bridge__
     if (!b) return
@@ -31,14 +40,60 @@ export function TroubleshootingPage(): JSX.Element {
     }).catch(() => {})
   }, [])
 
+  // 挂载时查询 AI 配置状态（执行链：getAiStatus → C# IDeepSeekService）
+  useEffect(() => {
+    getAiStatus().then(s => setAiConfigured(s.configured)).catch(() => {})
+  }, [])
+
+  async function handleSaveApiKey(rawKey?: string) {
+    const key = (rawKey ?? aiKeyInput).trim()
+    setAiSaving(true)
+    setAiMsg(null)
+    try {
+      const r = await setApiKey(key)
+      if (r.success) {
+        setAiConfigured(r.configured)
+        setAiMsg({ ok: true, text: r.configured ? '✅ API Key 已保存（加密存储）' : '✅ 已清除 API Key' })
+        setAiKeyInput('')
+      } else {
+        setAiMsg({ ok: false, text: `❌ 保存失败：${r.error || '未知错误'}` })
+      }
+    } catch (e: any) {
+      setAiMsg({ ok: false, text: `❌ ${e?.message || String(e)}` })
+    } finally {
+      setAiSaving(false)
+    }
+  }
+
+  async function handleAskAI() {
+    if (!report) return
+    setAiAsking(true)
+    setAiMsg(null)
+    try {
+      const r = await askAI(report, askInput.trim())
+      if (r.success && r.analysis) {
+        setAiAnalysis(r.analysis)
+        setAskInput('')
+      } else {
+        setAiMsg({ ok: false, text: `❌ ${r.error || 'AI 分析失败（检查网络或 API Key）'}` })
+      }
+    } catch (e: any) {
+      setAiMsg({ ok: false, text: `❌ ${e?.message || String(e)}` })
+    } finally {
+      setAiAsking(false)
+    }
+  }
+
   const triggerQuickScan = useCallback(async (jarPath: string, _worldPath?: string) => {
     setStatus('scanning')
     setErrorMsg(null)
     setReport(null)
+    setAiAnalysis(null)
     try {
       const r = await runDiagnostic(jarPath)
       if (r.success && r.report) {
         setReport(r.report)
+        setAiAnalysis(r.report.aiAnalysis ?? null)
         setStatus('done')
       } else {
         setStatus('error')
@@ -185,6 +240,68 @@ export function TroubleshootingPage(): JSX.Element {
         </div>
       )}
 
+      {/* DeepSeek AI 配置入口（配置 = 使用 AI 的前置条件） */}
+      <div style={{
+        padding: 14, borderRadius: 10, marginBottom: 14,
+        background: ACCENT_BG, border: '1px solid ' + ACCENT_BORDER,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 15 }}>🤖</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: PRIMARY }}>DeepSeek AI 诊断助手</span>
+          <span style={{
+            fontSize: 11, padding: '1px 8px', borderRadius: 10,
+            background: aiConfigured ? 'rgba(39,174,96,0.15)' : 'rgba(192,57,43,0.12)',
+            color: aiConfigured ? '#27ae60' : PRIMARY,
+            fontWeight: 600,
+          }}>
+            {aiConfigured ? '已配置 ✓' : '未配置'}
+          </span>
+        </div>
+        <div style={{ fontSize: 11.5, opacity: 0.75, marginBottom: 10, lineHeight: 1.6 }}>
+          {aiConfigured
+            ? '已配置 API Key：跑完体检会自动附加 AI 诊断结论，也可以在下方向 AI 追问问题。'
+            : '想让 AI 帮你总结诊断结论？在下方粘贴你的 DeepSeek API Key 并保存（密钥加密存储在本地，不会上报）。没有 Key？去 platform.deepseek.com 注册并创建即可。'}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input
+            type="password"
+            value={aiKeyInput}
+            onChange={e => setAiKeyInput(e.target.value)}
+            placeholder={aiConfigured ? '输入新 Key 可覆盖，或留空后点击「清除」' : '粘贴你的 DeepSeek API Key'}
+            style={{
+              flex: 1, minWidth: 220, padding: '7px 10px', borderRadius: 6,
+              border: '1px solid ' + ACCENT_BORDER, background: 'var(--md-card-background)',
+              color: 'var(--md-body)', fontSize: 12.5,
+            }}
+          />
+          <button
+            onClick={() => handleSaveApiKey()}
+            disabled={aiSaving}
+            style={{
+              padding: '7px 14px', borderRadius: 6, border: 'none',
+              background: PRIMARY, color: '#fff', fontSize: 12.5, fontWeight: 600,
+              cursor: aiSaving ? 'not-allowed' : 'pointer', opacity: aiSaving ? 0.5 : 1,
+            }}
+          >{aiSaving ? '保存中...' : '保存 Key'}</button>
+          {aiConfigured && (
+            <button
+              onClick={() => handleSaveApiKey('')}
+              disabled={aiSaving}
+              style={{
+                padding: '7px 14px', borderRadius: 6,
+                border: '1px solid ' + ACCENT_BORDER, background: 'transparent',
+                color: PRIMARY, fontSize: 12.5, cursor: 'pointer',
+              }}
+            >清除</button>
+          )}
+        </div>
+        {aiMsg && (
+          <div style={{ marginTop: 8, fontSize: 11.5, color: aiMsg.ok ? '#27ae60' : PRIMARY }}>
+            {aiMsg.text}
+          </div>
+        )}
+      </div>
+
       {/* 结果展示 */}
       {report && (
         <>
@@ -228,6 +345,79 @@ export function TroubleshootingPage(): JSX.Element {
       {status === 'error' && (
         <div style={{ padding: 14, borderRadius: 8, background: PRIMARY, color: '#fff' }}>
           ❌ {errorMsg}
+        </div>
+      )}
+
+      {/* AI 诊断结论（报告自带 aiAnalysis 或追问结果） */}
+      {aiAnalysis && (
+        <div style={{ marginBottom: 18, padding: 14, borderRadius: 10, background: ACCENT_BG, border: '1px solid ' + ACCENT_BORDER }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 15 }}>🤖</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: PRIMARY }}>AI 诊断结论</span>
+          </div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.7, marginBottom: 10 }}>{aiAnalysis.summary}</div>
+          {aiAnalysis.keyFindings.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>关键发现：</div>
+              {aiAnalysis.keyFindings.map((f, i) => (
+                <div key={i} style={{ fontSize: 12, lineHeight: 1.6, paddingLeft: 14, position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 0, color: PRIMARY }}>•</span>{f}
+                </div>
+              ))}
+            </div>
+          )}
+          {aiAnalysis.recommendedActions.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>建议动作：</div>
+              {aiAnalysis.recommendedActions.map((a, i) => (
+                <div key={i} style={{ fontSize: 12, lineHeight: 1.6, paddingLeft: 14, position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 0, color: a.dangerous ? PRIMARY : '#27ae60' }}>{a.dangerous ? '⚠' : '✓'}</span>
+                  <span style={{ opacity: 0.92 }}>{a.label}</span>
+                  {a.rationale ? <span style={{ opacity: 0.6 }}>（{a.rationale}）</span> : null}
+                </div>
+              ))}
+            </div>
+          )}
+          {aiAnalysis.needMoreInfo && aiAnalysis.suggestedQuestions && aiAnalysis.suggestedQuestions.length > 0 && (
+            <div style={{ marginBottom: 10, padding: 8, borderRadius: 6, background: 'rgba(255,193,7,0.12)', border: '1px solid rgba(255,193,7,0.4)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>🧐 还需更多信息，建议补充：</div>
+              {aiAnalysis.suggestedQuestions.map((q, i) => (
+                <div key={i} style={{ fontSize: 12, lineHeight: 1.6 }}>· {q}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* AI 追问输入框（仅报告就绪且有 AI 时显示） */}
+      {report && (
+        <div style={{ marginBottom: 18, padding: 14, borderRadius: 10, background: ACCENT_BG, border: '1px solid ' + ACCENT_BORDER }}>
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>💬 向 AI 追问</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={askInput}
+              onChange={e => setAskInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && askInput.trim() && !aiAsking) handleAskAI() }}
+              placeholder={aiConfigured ? '例如：这个内存给的够吗？频繁崩溃是啥原因？' : '先在上方配置 DeepSeek API Key，才能向 AI 提问'}
+              disabled={!aiConfigured}
+              style={{
+                flex: 1, padding: '7px 10px', borderRadius: 6,
+                border: '1px solid ' + ACCENT_BORDER, background: 'var(--md-card-background)',
+                color: 'var(--md-body)', fontSize: 12.5,
+                opacity: aiConfigured ? 1 : 0.6,
+              }}
+            />
+            <button
+              onClick={handleAskAI}
+              disabled={!aiConfigured || aiAsking || !askInput.trim()}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: 'none',
+                background: PRIMARY, color: '#fff', fontSize: 12.5, fontWeight: 600,
+                cursor: !aiConfigured || aiAsking || !askInput.trim() ? 'not-allowed' : 'pointer',
+                opacity: !aiConfigured || aiAsking || !askInput.trim() ? 0.5 : 1,
+              }}
+            >{aiAsking ? 'AI 思考中...' : '提问'}</button>
+          </div>
         </div>
       )}
 

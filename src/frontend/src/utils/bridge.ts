@@ -1145,3 +1145,34 @@ export async function killServerAndScan(serverJarPath: string, worldPath: string
   if (!bridge) throw new Error('Bridge not ready')
   return await bridge.invoke('diagnostic.killServerAndScan', { serverJarPath, worldPath })
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// DeepSeek AI 诊断分析桥接封装
+// 因果链：前端配置/追问 → diagnostic.* 桥接 → IDeepSeekService
+//   （DPAPI 加密存 Key；报告喂 DeepSeek 输出结构化 JSON）
+// 返回链：C# 失败一律返回 { success: false, error }，绝不假成功
+// ─────────────────────────────────────────────────────────────────────
+
+/** 查询 AI 配置状态（configured=已配 Key / hasKey=磁盘上是否有 Key） */
+export async function getAiStatus(): Promise<{ configured: boolean; hasKey: boolean }> {
+  const b = (window as any).__msmc_bridge__
+  if (!b) throw new Error('Bridge not ready')
+  return await b.invoke('diagnostic.getAiStatus', {})
+}
+
+/** 保存 / 清除 DeepSeek API Key（传空字符串 = 清除）。成功与否由返回值如实反映 */
+export async function setApiKey(apiKey: string): Promise<{ success: boolean; configured: boolean; error?: string }> {
+  const b = (window as any).__msmc_bridge__
+  if (!b) throw new Error('Bridge not ready')
+  return await b.invoke('diagnostic.setApiKey', { apiKey })
+}
+
+/** 对已生成的报告做 AI 追问 / 重新分析 */
+export async function askAI(
+  report: import('@/types/bridge').DiagnosticReport,
+  question: string,
+): Promise<{ success: boolean; analysis?: import('@/types/bridge').DiagnosticAiAnalysis; error?: string }> {
+  const b = (window as any).__msmc_bridge__
+  if (!b) throw new Error('Bridge not ready')
+  return await b.invoke('diagnostic.askAI', { report, question })
+}
