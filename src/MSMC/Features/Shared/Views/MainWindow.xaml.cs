@@ -78,18 +78,11 @@ public partial class MainWindow : Window
         Log.Information("[BUILD] MainWindow (WebView2) 正在初始化...");
         InitializeComponent();
 
-        _themeService = App.Services.GetRequiredService<IThemeService>();
-        _bridgeService = App.Services.GetRequiredService<IWebView2BridgeService>();
-
-        _themeService.ThemeChanged += OnThemeChanged;
-
-        Loaded += MainWindow_Loaded;
-        DataContextChanged += MainWindow_DataContextChanged;
-        Closing += MainWindow_Closing;
-        StateChanged += MainWindow_StateChanged;
-
-        // ═══ 【版本水印 + AI 配置检查】构造函数里立刻做，任何时候都能看到 ═══
-        // 这是区分"旧 exe"和"新 exe"的关键证据 —— 日志里搜 [AI-GUIDE][BOOT] 就能确认
+        // ═══ 【版本水印 + AI 配置检查】—— 放在 GetRequiredService 之前！ ═══
+        // 之前放在 GetRequiredService<IThemeService>/<IWebView2BridgeService> 之后，
+        // 如果那两个服务任何一个没注册 → 抛 InvalidOperationException → 水印永远不执行！
+        // 现在放在 InitializeComponent() 之后、任何 GetRequiredService 之前，
+        // 保证无论 DI 怎么样都能看到这几行水印 —— 区分新旧 exe 的铁证
         Log.Information("[AI-GUIDE][BOOT] ========================================================");
         Log.Information("[AI-GUIDE][BOOT] ✅ 新版本 AI 引导链已编译进 exe — commit: refactor-ai-guide-v1");
         Log.Information("[AI-GUIDE][BOOT] ========================================================");
@@ -114,7 +107,37 @@ public partial class MainWindow : Window
             Log.Warning(ex, "[AI-GUIDE][BOOT] AI 配置检查异常 — 默认 needsConfig=true");
         }
 
-        Log.Information("[OK] MainWindow (WebView2) 初始化完成");
+        // ═══ DI 服务获取 —— 加 try-catch 防护，任何一个炸都不影响水印和引导链 ═══
+        try
+        {
+            _themeService = App.Services.GetRequiredService<IThemeService>();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MAIN] GetRequiredService<IThemeService> 失败 — 主题功能可能异常，但 AI 引导链继续");
+        }
+
+        try
+        {
+            _bridgeService = App.Services.GetRequiredService<IWebView2BridgeService>();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MAIN] GetRequiredService<IWebView2BridgeService> 失败 — WebView2 桥接可能受限");
+        }
+
+        try
+        {
+            _themeService?.ThemeChanged += OnThemeChanged;
+        }
+        catch { /* 空引用或事件注册失败不致命 */ }
+
+        Loaded += MainWindow_Loaded;
+        DataContextChanged += MainWindow_DataContextChanged;
+        Closing += MainWindow_Closing;
+        StateChanged += MainWindow_StateChanged;
+
+        Log.Information("[OK] MainWindow (WebView2) 初始化完成 — 进入 Loaded 事件");
     }
 
     // 窗口 Loaded 事件处理：延迟初始化 WebView2 和桥接服务
