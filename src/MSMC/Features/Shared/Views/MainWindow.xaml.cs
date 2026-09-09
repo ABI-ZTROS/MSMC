@@ -140,9 +140,7 @@ public partial class MainWindow : Window
                 // 即使 CoreWebView2 没初始化好，handler 注册本身不会炸（只是 SendEventAsync 会失效）
                 // 但构造函数里已经存了 _aiNeedsConfig，前端加载完后会主动调后端的 diagnostic.getAiStatus
                 // 后端 handler 独立于 WebView2 初始化，照样能返回结果
-                MessageBox.Show($"WebView2 初始化失败：{ex.Message}
-
-AI 引导功能可能受限，但后端 AI 配置检查仍可用。", 
+                MessageBox.Show($"WebView2 初始化失败：{ex.Message}\n\nAI 引导功能可能受限，但后端 AI 配置检查仍可用。", 
                     "部分功能异常", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
 
