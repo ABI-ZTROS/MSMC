@@ -218,6 +218,18 @@ public partial class MainWindow : Window
                 }
 
                 Log.Information("[UI-8] [OK] WebView2 初始化全部完成");
+
+                // ═══ 【AI 引导三保险】NavigationCompleted 后延迟 1s 再推一次 ai:guide ═══
+                // 因果链修复：之前主路径在前端 HTML 还没 navigate 就推 ai:guide → Chromium 丢了
+                // app:ready 兜底（新修复的）靠前端 bridge.invoke 成功后发 → 更稳但有 HTTP 往返延迟
+                // NavigationCompleted 是 WebView2 最可靠的"页面真 ready"信号 —— JS bridge 脚本已注入，
+                // 但前端 React useEffect 还没跑完（所以加 1s 等 DashboardPage 的 bridge.on 注册好）
+                // 三保险：① 主路径尝试（可能丢）→ ② NavigationCompleted 延迟 1s 推 → ③ app:ready 再推
+                if (_aiNeedsConfig && MainWebView?.CoreWebView2 != null)
+                {
+                    Log.Information("[AI-GUIDE][NAV-WAIT] ⏳ 订阅 NavigationCompleted，等前端页面真 ready 后再推 ai:guide...");
+                    MainWebView.CoreWebView2.NavigationCompleted += OnAiGuideNavigationCompleted;
+                }
             }
             catch (Exception ex)
             {
@@ -2468,7 +2480,12 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    Log.Information("[AI-GUIDE] 收到 app:ready — 触发 C# 主动引导检查");
+                    Log.Information("[AI-GUIDE] 收到 app:ready — 但前端 DashboardPage 可能还在 lazy load，等 1.5s 再推 ai:guide");
+
+                    // 延迟等待前端 DashboardPage mount 并 bridge.on('ai:guide') 注册好
+                    await Task.Delay(1500);
+
+                    Log.Information("[AI-GUIDE] 延迟结束，开始 C# 主动引导检查");
 
                     Log.Information("[AI-GUIDE] GetRequiredService<IDeepSeekService>...");
                     var ai = App.Services.GetRequiredService<IDeepSeekService>();
@@ -2482,7 +2499,7 @@ public partial class MainWindow : Window
                         Log.Information("[AI-GUIDE] ⚠️  AI 未配置 Key — 主动推送 ai:guide 事件给前端");
                         await _bridgeService.SendEventAsync("ai:guide", new
                         {
-                            reason = "startup",
+                            reason = "app-ready",
                             message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
                         });
                         Log.Information("[AI-GUIDE] ✅ SendEventAsync(ai:guide) 完成 — 等待前端弹出教程");
@@ -2501,6 +2518,51 @@ public partial class MainWindow : Window
 
         Log.Information("[AI-GUIDE] ✅ SubscribeToEvents 注册完成 — app:ready 监听已就绪");
         Log.Information("[OK] 桥接 API 注册完成");
+    }
+
+    /// <summary>
+    /// 【AI 引导三保险 #2】NavigationCompleted 后延迟 1s 推 ai:guide
+    /// 页面导航完成 → JS bridge 脚本已注入执行 → 前端 DOM ready → 等 1s React useEffect 注册好 bridge.on
+    /// 这样推的 ai:guide 一定能被 DashboardPage 的 ai:guide 监听器接住
+    /// </summary>
+    private void OnAiGuideNavigationCompleted(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
+    {
+        // 取消订阅，只在首次导航完成时触发一次（用户切换路由时 NavigationCompleted 还会再触发）
+        if (MainWebView?.CoreWebView2 != null)
+            MainWebView.CoreWebView2.NavigationCompleted -= OnAiGuideNavigationCompleted;
+
+        if (!e.IsSuccess)
+        {
+            Log.Warning("[AI-GUIDE][NAV] NavigationCompleted 失败 — 不推 ai:guide（app:ready 兜底可能也会失败，但别再添乱）");
+            return;
+        }
+
+        Log.Information("[AI-GUIDE][NAV] ✅ NavigationCompleted 成功 → 延迟 1s 推 ai:guide...");
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(1000);
+            try
+            {
+                // 再查一次（期间用户可能刚好配了 Key）
+                var aiSvc = App.Services.GetService<IDeepSeekService>();
+                if (aiSvc != null && aiSvc.IsConfigured)
+                {
+                    Log.Information("[AI-GUIDE][NAV] 用户已在等待期间配了 Key — 跳过推送");
+                    return;
+                }
+
+                await _bridgeService.SendEventAsync("ai:guide", new
+                {
+                    reason = "navigation-completed",
+                    message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
+                });
+                Log.Information("[AI-GUIDE][NAV] ✅ 延迟推送 ai:guide 完成（前端应该能收到了）");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "[AI-GUIDE][NAV] ❌ NavigationCompleted 延迟推送异常 — 等 app:ready 兜底");
+            }
+        });
     }
 
     /// <summary>

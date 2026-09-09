@@ -84,6 +84,23 @@ export function useBridgeInit(): void {
         }
 
         log('[OK] 应用初始化完成，isReady = true')
+
+        // ═══ 关键：通知 C# 前端已就绪，触发后端主动 AI 引导检查 ═══
+        // 因果链：前端 setReady(true) → RouterProvider 渲染 DashboardPage
+        //   → DashboardPage 里的 bridge.on('ai:guide') 注册好
+        //   → 现在发 app:ready 让 C# 检测 AI 配置并推 ai:guide
+        // 如果没有这个事件，C# 侧 SubscribeToEvents 里的 app:ready 监听
+        // 永远收不到消息 → AI 引导永不触发！
+        try {
+          bridge.sendEvent('app:ready', {
+            ts: Date.now(),
+            version: data.version,
+            isAdmin: data.isAdmin,
+          })
+          log('[AI-GUIDE] ✅ 已发送 app:ready 事件给 C#')
+        } catch (sendErr) {
+          log(`[AI-GUIDE] ⚠️ app:ready 发送失败: ${sendErr}`)
+        }
       } catch (e) {
         log(`[ERR] 获取就绪状态失败: ${e}`)
         // 失败后重试，最多 10 次
@@ -117,6 +134,16 @@ export function useBridgeInit(): void {
               }
 
               log(`[OK] 第 ${retries} 次重试成功`)
+              // 重试成功也发 app:ready —— C# 侧需要这个事件触发 AI 引导
+              try {
+                bridge.sendEvent('app:ready', {
+                  ts: Date.now(),
+                  version: data.version,
+                  isAdmin: data.isAdmin,
+                  retries: retries,
+                })
+                log('[AI-GUIDE] ✅ 重试成功后也发送 app:ready 事件')
+              } catch { /* ignore */ }
             })
             .catch(() => {
               retryTimer = window.setTimeout(retry, 500)
