@@ -159,43 +159,23 @@ public partial class MainWindow : Window
                     BridgeActionRegistrar.RegisterAll(bridge, App.Services, Log.Logger);
                     Log.Information("[UI-5.1] [OK] 三模块桥接 actions 注册完成 (NOTIFY + SCHED + MARKET)");
 
-                    // ═══ 【主动 AI 引导 — 主路径】注册完桥接后立刻检查并推送事件 ═══
-                    // 不再等 SubscribeToEvents 的 app:ready 监听 —— C# 自己先查了先推
-                    // SubscribeToEvents 里的 app:ready 作为兜底（如果前端还没 ready 就等它再发一次）
-                    Log.Information("[AI-GUIDE][MAIN] ──▶ 开始主路径 AI 引导检查");
+                    // ═══ 【主动 AI 引导 — 主路径】注册完桥接后立刻检查 AI 配置 ═══
+                    // ⚠️ 不再主动推送 ai:guide —— 这里前端 HTML 还没 navigate，CoreWebView2.ExecuteScriptAsync
+                    // 会因为页面未就绪而丢 postMessage（而且 Task.Run 会跨线程炸 WebView2 控件）。
+                    // 真正可靠的推送由两条路径兜底：
+                    //   保险 #2: OnAiGuideNavigationCompleted（页面真加载完后 UI 线程 await 1s 推送）
+                    //   保险 #3: SubscribeToEvents 的 app:ready（前端发 app:ready 后 UI 线程 await 1.5s 推送）
+                    // 这里只做检查 + 打日志，让用户一眼看到 AI 配置状态
+                    Log.Information("[AI-GUIDE][MAIN] ──▶ 主路径 AI 引导检查（只查不推，等 NavigationCompleted/app:ready 兜底）");
                     Log.Information("[AI-GUIDE][MAIN] _aiNeedsConfig={NeedsConfig}", _aiNeedsConfig);
                     
                     if (_aiNeedsConfig)
                     {
-                        try
-                        {
-                            Log.Information("[AI-GUIDE][MAIN] ⚠️  检测到 AI 未配置 Key — 主动推送 ai:guide 事件");
-                            // 用 Task.Run 避免阻塞 Dispatcher（SendEventAsync 可能需要等待 CoreWebView2）
-                            _ = Task.Run(async () =>
-                            {
-                                try
-                                {
-                                    await _bridgeService.SendEventAsync("ai:guide", new
-                                    {
-                                        reason = "startup",
-                                        message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
-                                    });
-                                    Log.Information("[AI-GUIDE][MAIN] ✅ SendEventAsync(ai:guide) 完成");
-                                }
-                                catch (Exception sendEx)
-                                {
-                                    Log.Warning(sendEx, "[AI-GUIDE][MAIN] ❌ SendEventAsync 异常 — 可能 CoreWebView2 还没 ready，等前端 app:ready 兜底再发");
-                                }
-                            });
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Warning(ex, "[AI-GUIDE][MAIN] ❌ 主路径 AI 引导异常 — 不影响主流程，app:ready 兜底会再发一次");
-                        }
+                        Log.Information("[AI-GUIDE][MAIN] ⚠️  AI 未配置 Key — 将在 NavigationCompleted 后由兜底路径推送 ai:guide");
                     }
                     else
                     {
-                        Log.Information("[AI-GUIDE][MAIN] ✅ AI 已配置 Key — 跳过主路径引导");
+                        Log.Information("[AI-GUIDE][MAIN] ✅ AI 已配置 Key — 跳过所有引导推送");
                     }
                 }
                 catch (Exception ex)
@@ -2524,8 +2504,11 @@ public partial class MainWindow : Window
     /// 【AI 引导三保险 #2】NavigationCompleted 后延迟 1s 推 ai:guide
     /// 页面导航完成 → JS bridge 脚本已注入执行 → 前端 DOM ready → 等 1s React useEffect 注册好 bridge.on
     /// 这样推的 ai:guide 一定能被 DashboardPage 的 ai:guide 监听器接住
+    /// ⚠️ 必须用 async void + await，不能用 Task.Run —— Task.Run 会丢 ThreadPool，
+    ///     ThreadPool 访问 MainWebView.CoreWebView2 会触发 WPF Dispatcher.VerifyAccess 跨线程异常！
+    ///     (NavigationCompleted 事件本身就在 UI 线程触发，await Task.Delay 后自动回到 UI 线程)
     /// </summary>
-    private void OnAiGuideNavigationCompleted(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
+    private async void OnAiGuideNavigationCompleted(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
     {
         // 取消订阅，只在首次导航完成时触发一次（用户切换路由时 NavigationCompleted 还会再触发）
         if (MainWebView?.CoreWebView2 != null)
@@ -2537,32 +2520,33 @@ public partial class MainWindow : Window
             return;
         }
 
-        Log.Information("[AI-GUIDE][NAV] ✅ NavigationCompleted 成功 → 延迟 1s 推 ai:guide...");
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(1000);
-            try
-            {
-                // 再查一次（期间用户可能刚好配了 Key）
-                var aiSvc = App.Services.GetService<IDeepSeekService>();
-                if (aiSvc != null && aiSvc.IsConfigured)
-                {
-                    Log.Information("[AI-GUIDE][NAV] 用户已在等待期间配了 Key — 跳过推送");
-                    return;
-                }
+        Log.Information("[AI-GUIDE][NAV] ✅ NavigationCompleted 成功 → 延迟 1s 推 ai:guide（UI 线程 await，不会跨线程炸）...");
 
-                await _bridgeService.SendEventAsync("ai:guide", new
-                {
-                    reason = "navigation-completed",
-                    message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
-                });
-                Log.Information("[AI-GUIDE][NAV] ✅ 延迟推送 ai:guide 完成（前端应该能收到了）");
-            }
-            catch (Exception ex)
+        try
+        {
+            // 在 UI 线程等待 —— await 完成后 SynchronizationContext 自动回 UI 线程
+            await Task.Delay(1000);
+
+            // 再查一次（期间用户可能刚好配了 Key）
+            var aiSvc = App.Services.GetService<IDeepSeekService>();
+            if (aiSvc != null && aiSvc.IsConfigured)
             {
-                Log.Warning(ex, "[AI-GUIDE][NAV] ❌ NavigationCompleted 延迟推送异常 — 等 app:ready 兜底");
+                Log.Information("[AI-GUIDE][NAV] 用户已在等待期间配了 Key — 跳过推送");
+                return;
             }
-        });
+
+            // ⚠️ 此时仍在 UI 线程，直接调 SendEventAsync 不会跨线程！
+            await _bridgeService.SendEventAsync("ai:guide", new
+            {
+                reason = "navigation-completed",
+                message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
+            });
+            Log.Information("[AI-GUIDE][NAV] ✅ 延迟推送 ai:guide 完成（前端应该能收到了）");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[AI-GUIDE][NAV] ❌ NavigationCompleted 延迟推送异常 — 等 app:ready 兜底");
+        }
     }
 
     /// <summary>
