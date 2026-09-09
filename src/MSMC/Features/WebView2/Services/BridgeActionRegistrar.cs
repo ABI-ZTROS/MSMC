@@ -289,11 +289,23 @@ public static class BridgeActionRegistrar
         // 设置 / 清除 API Key（DPAPI 加密存储）
         registered += SafeRegister(bridge, "diagnostic.setApiKey", payload =>
         {
-            var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
-            var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
-            var key = args.TryGetProperty("apiKey", out var k) ? k.GetString() ?? string.Empty : string.Empty;
-            var (ok, err) = ai.SetApiKey(key);
-            return Task.FromResult<object?>(new { success = ok, configured = ok && !string.IsNullOrEmpty(key), error = err });
+            Log.Information("[AI-GUIDE][C#-HANDLER] diagnostic.setApiKey 被调用, payload长度={Len}", payload?.Length ?? 0);
+            try
+            {
+                var ai = serviceProvider.GetRequiredService<IDeepSeekService>();
+                var args = JsonSerializer.Deserialize<JsonElement>(payload ?? "{}");
+                var key = args.TryGetProperty("apiKey", out var k) ? k.GetString() ?? string.Empty : string.Empty;
+                bool hasKey = !string.IsNullOrEmpty(key);
+                Log.Information("[AI-GUIDE][C#-HANDLER] diagnostic.setApiKey: hasKey={HasKey}, keyLength={Len}", hasKey, key.Length);
+                var (ok, err) = ai.SetApiKey(key);
+                Log.Information("[AI-GUIDE][C#-HANDLER] diagnostic.setApiKey 完成: ok={Ok}, err={Err}", ok, err ?? "(无)");
+                return Task.FromResult<object?>(new { success = ok, configured = ok && hasKey, error = err });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[AI-GUIDE][C#-HANDLER] diagnostic.setApiKey 抛异常!");
+                return Task.FromResult<object?>(new { success = false, configured = false, error = ex.Message });
+            }
         }, logger, ref registered, ref failed);
 
         // 对已生成的报告做 AI 追问 / 重新分析

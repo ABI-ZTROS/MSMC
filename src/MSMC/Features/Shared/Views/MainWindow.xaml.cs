@@ -178,13 +178,16 @@ public partial class MainWindow : Window
                 Log.Information("[UI-4] [BRDG] 注册桥接 API 处理程序...");
                 RegisterBridgeApis();
                 Log.Information("[UI-5] [OK] 桥接 API 注册完成");
+                App.ForceLog("[MWL] RegisterBridgeApis ✓");
 
                 // 注册三大 P0 模块的桥接 actions（通知/调度/市场）
                 try
                 {
                     var bridge = App.Services.GetRequiredService<IWebView2BridgeService>();
+                    App.ForceLog("[MWL] GetRequiredService<IWebView2BridgeService> ✓ — 即将调 BridgeActionRegistrar.RegisterAll");
                     BridgeActionRegistrar.RegisterAll(bridge, App.Services, Log.Logger);
                     Log.Information("[UI-5.1] [OK] 三模块桥接 actions 注册完成 (NOTIFY + SCHED + MARKET)");
+                    App.ForceLog("[MWL] ★★★ BridgeActionRegistrar.RegisterAll 完成 — AI handlers 应该已注册 ★★★");
 
                     // ═══ 【主动 AI 引导 — 主路径】注册完桥接后立刻检查 AI 配置 ═══
                     // ⚠️ 不再主动推送 ai:guide —— 这里前端 HTML 还没 navigate，CoreWebView2.ExecuteScriptAsync
