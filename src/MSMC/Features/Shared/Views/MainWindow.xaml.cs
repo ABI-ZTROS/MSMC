@@ -54,6 +54,9 @@ public partial class MainWindow : Window
 {
     private readonly IThemeService _themeService;
     private readonly IWebView2BridgeService _bridgeService;
+    
+    // AI 引导状态 —— 构造函数里就查好，避免 WebView2 初始化时序问题
+    private readonly bool _aiNeedsConfig;
 
     /// <summary>Bridge handler 统一 JSON 选项 —— 匹配前端 camelCase + enum 字符串</summary>
     private static readonly JsonSerializerOptions BridgeJsonOptions = new()
@@ -85,6 +88,32 @@ public partial class MainWindow : Window
         Closing += MainWindow_Closing;
         StateChanged += MainWindow_StateChanged;
 
+        // ═══ 【版本水印 + AI 配置检查】构造函数里立刻做，任何时候都能看到 ═══
+        // 这是区分"旧 exe"和"新 exe"的关键证据 —— 日志里搜 [AI-GUIDE][BOOT] 就能确认
+        Log.Information("[AI-GUIDE][BOOT] ========================================================");
+        Log.Information("[AI-GUIDE][BOOT] ✅ 新版本 AI 引导链已编译进 exe — commit: refactor-ai-guide-v1");
+        Log.Information("[AI-GUIDE][BOOT] ========================================================");
+        
+        try
+        {
+            var aiSvc = App.Services.GetService<IDeepSeekService>();
+            if (aiSvc != null)
+            {
+                _aiNeedsConfig = !aiSvc.IsConfigured;
+                Log.Information("[AI-GUIDE][BOOT] AI 配置状态同步检查完成 — _aiNeedsConfig={NeedsConfig}", _aiNeedsConfig);
+            }
+            else
+            {
+                _aiNeedsConfig = true;
+                Log.Warning("[AI-GUIDE][BOOT] IDeepSeekService 未注册 — 默认按 needsConfig=true 处理");
+            }
+        }
+        catch (Exception ex)
+        {
+            _aiNeedsConfig = true;
+            Log.Warning(ex, "[AI-GUIDE][BOOT] AI 配置检查异常 — 默认 needsConfig=true");
+        }
+
         Log.Information("[OK] MainWindow (WebView2) 初始化完成");
     }
 
@@ -105,9 +134,16 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[UI-ERR] [ERR] WebView2 桥接服务初始化失败");
-                MessageBox.Show($"WebView2 初始化失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
+                Log.Error(ex, "[UI-ERR] [ERR] WebView2 桥接服务初始化失败 — 降级继续走 AI 引导注册");
+                Log.Information("[AI-GUIDE][BOOT] ⚠️  InitializeAsync 失败，但 RegisterBridgeApis 仍会执行，AI 引导链继续工作");
+                // 不 return！降级继续 RegisterBridgeApis —— SubscribeToEvents 用的是 _bridgeService 字段，
+                // 即使 CoreWebView2 没初始化好，handler 注册本身不会炸（只是 SendEventAsync 会失效）
+                // 但构造函数里已经存了 _aiNeedsConfig，前端加载完后会主动调后端的 diagnostic.getAiStatus
+                // 后端 handler 独立于 WebView2 初始化，照样能返回结果
+                MessageBox.Show($"WebView2 初始化失败：{ex.Message}
+
+AI 引导功能可能受限，但后端 AI 配置检查仍可用。", 
+                    "部分功能异常", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
 
             // P1 修复：将 RegisterBridgeApis / TryLoadFrontendWithFallbackAsync 也包裹在 try-catch 中
@@ -124,6 +160,45 @@ public partial class MainWindow : Window
                     var bridge = App.Services.GetRequiredService<IWebView2BridgeService>();
                     BridgeActionRegistrar.RegisterAll(bridge, App.Services, Log.Logger);
                     Log.Information("[UI-5.1] [OK] 三模块桥接 actions 注册完成 (NOTIFY + SCHED + MARKET)");
+
+                    // ═══ 【主动 AI 引导 — 主路径】注册完桥接后立刻检查并推送事件 ═══
+                    // 不再等 SubscribeToEvents 的 app:ready 监听 —— C# 自己先查了先推
+                    // SubscribeToEvents 里的 app:ready 作为兜底（如果前端还没 ready 就等它再发一次）
+                    Log.Information("[AI-GUIDE][MAIN] ──▶ 开始主路径 AI 引导检查");
+                    Log.Information("[AI-GUIDE][MAIN] _aiNeedsConfig={NeedsConfig}", _aiNeedsConfig);
+                    
+                    if (_aiNeedsConfig)
+                    {
+                        try
+                        {
+                            Log.Information("[AI-GUIDE][MAIN] ⚠️  检测到 AI 未配置 Key — 主动推送 ai:guide 事件");
+                            // 用 Task.Run 避免阻塞 Dispatcher（SendEventAsync 可能需要等待 CoreWebView2）
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await _bridgeService.SendEventAsync("ai:guide", new
+                                    {
+                                        reason = "startup",
+                                        message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
+                                    });
+                                    Log.Information("[AI-GUIDE][MAIN] ✅ SendEventAsync(ai:guide) 完成");
+                                }
+                                catch (Exception sendEx)
+                                {
+                                    Log.Warning(sendEx, "[AI-GUIDE][MAIN] ❌ SendEventAsync 异常 — 可能 CoreWebView2 还没 ready，等前端 app:ready 兜底再发");
+                                }
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "[AI-GUIDE][MAIN] ❌ 主路径 AI 引导异常 — 不影响主流程，app:ready 兜底会再发一次");
+                        }
+                    }
+                    else
+                    {
+                        Log.Information("[AI-GUIDE][MAIN] ✅ AI 已配置 Key — 跳过主路径引导");
+                    }
                 }
                 catch (Exception ex)
                 {
