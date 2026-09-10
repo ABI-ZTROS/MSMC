@@ -171,6 +171,18 @@ public partial class MainWindow : Window
                     "部分功能异常", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
 
+            // ═══ 【关键时序修复】NavigationCompleted 订阅放在 InitializeAsync 之后、LoadFrontendAsync 之前 ═══
+            // 因果链：LoadFrontendAsync 内部会调 Navigate → NavigationCompleted 事件在 Navigate 过程中就触发！
+            // 如果等 LoadFrontendAsync 返回后再订阅（之前的代码），首次导航的 NavigationCompleted 已经触发完了 →
+            // OnAiGuideNavigationCompleted 首次启动时**永远不会被调用**！
+            // 现在：InitializeAsync 内部完成 EnsureCoreWebView2 → CoreWebView2 已就绪 → 注册 handler
+            // 然后 LoadFrontendAsync 内部 Navigate → NavigationCompleted 触发 → 我们的 handler 能收到！
+            if (_aiNeedsConfig && MainWebView?.CoreWebView2 != null)
+            {
+                Log.Information("[AI-GUIDE][NAV-SUB] ⏳ InitializeAsync 已完成，提前订阅 NavigationCompleted — 等 LoadFrontendAsync 里的 Navigate 触发");
+                MainWebView.CoreWebView2.NavigationCompleted += OnAiGuideNavigationCompleted;
+            }
+
             // P1 修复：将 RegisterBridgeApis / TryLoadFrontendWithFallbackAsync 也包裹在 try-catch 中
             // 原 async void lambda 中这两段缺乏异常保护，未处理异常会在 Dispatcher 上导致进程不稳定
             try
@@ -290,20 +302,12 @@ public partial class MainWindow : Window
                     }
                 }
 
-                // ═══ 【AI 引导三保险】NavigationCompleted 后延迟 1s 再推一次 ai:guide ═══
-                // 因果链修复：之前主路径在前端 HTML 还没 navigate 就推 ai:guide → Chromium 丢了
-                // app:ready 兜底（新修复的）靠前端 bridge.invoke 成功后发 → 更稳但有 HTTP 往返延迟
-                // NavigationCompleted 是 WebView2 最可靠的"页面真 ready"信号 —— JS bridge 脚本已注入，
-                // 但前端 React useEffect 还没跑完（所以加 1s 等 DashboardPage 的 bridge.on 注册好）
-                // 四保险（按可靠性排序）:
-                //   ① [最可靠] 第四保险（DIRECT）—— Loaded 里直接推，给足 React 时间 → 先注册
-                //   ② NavigationCompleted 延迟 1.5s 推 → 次可靠
-                //   ③ app:ready 延迟 1.5s 推 → 最稳但最后执行（因为等前端发消息）
-                if (_aiNeedsConfig && MainWebView?.CoreWebView2 != null)
-                {
-                    Log.Information("[AI-GUIDE][NAV-WAIT] ⏳ 订阅 NavigationCompleted，等前端页面真 ready 后再推 ai:guide...");
-                    MainWebView.CoreWebView2.NavigationCompleted += OnAiGuideNavigationCompleted;
-                }
+                // ═══ 【AI 引导保险说明】NavigationCompleted 订阅已在 InitializeAsync 之后（代码行 ~180）注册 ═══
+                // 不再在此处重复订阅 —— 否则首次导航完成后 handler 会被调用两次
+                // 三条推送路径的最终时序（按实际执行顺序）:
+                //   ① NavigationCompleted + 1.5s → 次可靠（首次导航 + 用户后续切换路由都会触发）
+                //   ② DIRECT 等前端加载完 + 2.5s → 最可靠（不依赖任何事件，兜底所有场景）
+                //   ③ app:ready + 1.5s → 最后执行（等前端 bridge.invoke 成功后才发）
             }
             catch (Exception ex)
             {
