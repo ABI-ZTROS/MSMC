@@ -176,36 +176,60 @@ public partial class MainWindow : Window
             try
             {
                 Log.Information("[UI-4] [BRDG] 注册桥接 API 处理程序...");
+                App.ForceLog("[MWL] ★★★ 进入桥接注册 try 块 ★★★");
                 RegisterBridgeApis();
                 Log.Information("[UI-5] [OK] 桥接 API 注册完成");
                 App.ForceLog("[MWL] RegisterBridgeApis ✓");
 
+                // ═══ 【独立于 RegisterBridgeApis 中断的终极保险】先拿到 bridge 实例 ═══
+                // 不管 RegisterBridgeApis 有没有被 _bridgeService==null 打断，
+                // 这里独立从 DI 拿一次 bridge —— 保证下面的 AI handler 注册一定能跑
+                IWebView2BridgeService? bridgeSafe = null;
+                try
+                {
+                    bridgeSafe = App.Services.GetService<IWebView2BridgeService>();
+                    App.ForceLog("[MWL] DI GetService<IWebView2BridgeService> = {Null}", bridgeSafe == null ? "null" : "OK");
+                }
+                catch (Exception ex)
+                {
+                    App.ForceLog($"[MWL] DI GetService 也失败了! {ex.Message}");
+                    Log.Error(ex, "[MWL] DI GetService<IWebView2BridgeService> 失败");
+                }
+
+                // ═══ AI handler 注册（最高优先级 —— 独立 try-catch，绝对不能跳过）═══
+                // 因果链修复：之前 RegisterBridgeApis 里 _bridgeService 为 null 就第一行炸了，
+                // 导致后面的 RegisterAll 和显式 RegisterAiHandlers 都跳过 → handler 不存在 → timeout！
+                // 现在 AI 注册放在最前面，用 safeGet 拿 bridge，就算 RegisterBridgeApis 全炸
+                // AI handler 也能注册 → getAiStatus/setApiKey 肯定能工作
+                if (bridgeSafe != null)
+                {
+                    try
+                    {
+                        int aiRegistered = 0, aiFailed = 0;
+                        BridgeActionRegistrar.RegisterAiHandlers(bridgeSafe, App.Services, Log.Logger, ref aiRegistered, ref aiFailed);
+                        App.ForceLog($"[MWL] ★★★ AI handlers 注册完成: ok={aiRegistered} failed={aiFailed} ★★★");
+                        Log.Information("[AI-GUIDE][MAIN] ✅ AI handler 独立注册成功: {Ok} OK / {Fail} FAIL", aiRegistered, aiFailed);
+                    }
+                    catch (Exception ex)
+                    {
+                        App.ForceLog($"[MWL] AI handler 注册异常! {ex}");
+                        Log.Error(ex, "[AI-GUIDE][MAIN] ❌ AI handler 注册异常（但不会中断）");
+                    }
+                }
+                else
+                {
+                    App.ForceLog("[MWL] ❌ bridgeSafe 是 null —— AI handler 完全无法注册!");
+                    Log.Error("[AI-GUIDE][MAIN] ❌ bridgeSafe 是 null —— AI handler 无法注册！");
+                }
+
                 // 注册三大 P0 模块的桥接 actions（通知/调度/市场）
                 try
                 {
-                    var bridge = App.Services.GetRequiredService<IWebView2BridgeService>();
-                    App.ForceLog("[MWL] GetRequiredService<IWebView2BridgeService> ✓ — 即将调 BridgeActionRegistrar.RegisterAll");
-                    BridgeActionRegistrar.RegisterAll(bridge, App.Services, Log.Logger);
-                    Log.Information("[UI-5.1] [OK] 三模块桥接 actions 注册完成 (NOTIFY + SCHED + MARKET)");
-                    App.ForceLog("[MWL] ★★★ BridgeActionRegistrar.RegisterAll 完成 — AI handlers 应该已注册 ★★★");
-
-                    // ═══ 【主动 AI 引导 — 主路径】注册完桥接后立刻检查 AI 配置 ═══
-                    // ⚠️ 不再主动推送 ai:guide —— 这里前端 HTML 还没 navigate，CoreWebView2.ExecuteScriptAsync
-                    // 会因为页面未就绪而丢 postMessage（而且 Task.Run 会跨线程炸 WebView2 控件）。
-                    // 真正可靠的推送由两条路径兜底：
-                    //   保险 #2: OnAiGuideNavigationCompleted（页面真加载完后 UI 线程 await 1s 推送）
-                    //   保险 #3: SubscribeToEvents 的 app:ready（前端发 app:ready 后 UI 线程 await 1.5s 推送）
-                    // 这里只做检查 + 打日志，让用户一眼看到 AI 配置状态
-                    Log.Information("[AI-GUIDE][MAIN] ──▶ 主路径 AI 引导检查（只查不推，等 NavigationCompleted/app:ready 兜底）");
-                    Log.Information("[AI-GUIDE][MAIN] _aiNeedsConfig={NeedsConfig}", _aiNeedsConfig);
-                    
-                    if (_aiNeedsConfig)
+                    if (bridgeSafe != null)
                     {
-                        Log.Information("[AI-GUIDE][MAIN] ⚠️  AI 未配置 Key — 将在 NavigationCompleted 后由兜底路径推送 ai:guide");
-                    }
-                    else
-                    {
-                        Log.Information("[AI-GUIDE][MAIN] ✅ AI 已配置 Key — 跳过所有引导推送");
+                        BridgeActionRegistrar.RegisterAll(bridgeSafe, App.Services, Log.Logger);
+                        Log.Information("[UI-5.1] [OK] 三模块桥接 actions 注册完成 (NOTIFY + SCHED + MARKET)");
+                        App.ForceLog("[MWL] ★★★ BridgeActionRegistrar.RegisterAll 完成 ★★★");
                     }
                 }
                 catch (Exception ex)
