@@ -4523,19 +4523,16 @@ public partial class MainWindow : Window
             }
         });
 
+        // ═════════════════════════════════════════════════════════════════════
+        // 【已移除】显式 RegisterAiHandlers —— 之前 AI handler 注册在这里
+        // 因果链修复：_bridgeService 字段为 null → RegisterBridgeApis 第一行就 NullReference → 整个方法中断
+        // 末尾这段永远不会执行 → AI handler 根本没注册 → 用户保存 Key timeout！
+        //
+        // 现在 AI handler 注册挪到 MainWindow_Loaded 里（独立于 RegisterBridgeApis），
+        // 用 GetService 获取 bridgeSafe（不抛异常），RegisterBridgeApis 就算全炸 AI handler 也能注册。
+        // RegisterAll 内部也会调 RegisterAiHandlers，作为最终覆盖。
+        // ═════════════════════════════════════════════════════════════════════
 
-        // ═══ 显式注册 AI handler —— 双保险：即使 BridgeActionRegistrar.RegisterAll 没被调用
-        // （比如 RegisterBridgeApis 后外部 try-catch 提前 return），AI handler 也在这里注册了
-        try
-        {
-            int aiRegistered = 0, aiFailed = 0;
-            BridgeActionRegistrar.RegisterAiHandlers(_bridgeService, App.Services, Log.Logger, ref aiRegistered, ref aiFailed);
-            Log.Information("[BRDG-REG-MW] [OK] MainWindow 显式注册 AI handlers: {Ok} OK / {Fail} FAIL", aiRegistered, aiFailed);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[BRDG-REG-MW] [ERR] MainWindow 注册 AI handlers 失败");
-        }
         Log.Information("[OK] 设置 API 注册完成");
     }
 
