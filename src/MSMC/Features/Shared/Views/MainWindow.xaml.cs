@@ -2625,34 +2625,39 @@ public partial class MainWindow : Window
             return;
         }
 
-        Log.Information("[AI-GUIDE][NAV] ✅ NavigationCompleted 成功 → 延迟 1.5s 推 ai:guide（UI 线程 await，不会跨线程炸）...");
+        Log.Information("[AI-GUIDE][NAV] ✅ NavigationCompleted 成功 → 延迟 1.5s 推 ai:guide（Dispatcher 强制 UI 线程）...");
 
-        try
+        // ⚠️ 和 app:ready 同样的防御性修复：
+        // WebView2 的 NavigationCompleted 事件虽然通常在 UI 线程触发，但 CoreWebView2 文档没 100% 保证。
+        // 保险起见用 Dispatcher.InvokeAsync 强制封送到 UI 线程，避免跨线程 PostWebMessageAsJson 异常。
+        await Dispatcher.InvokeAsync(async () =>
         {
-            // 在 UI 线程等待 —— await 完成后 SynchronizationContext 自动回 UI 线程
-            // 1.5s 给弱机足够的 React render 时间（比之前的 1s 更保守）
-            await Task.Delay(1500);
-
-            // 再查一次（期间用户可能刚好配了 Key）
-            var aiSvc = App.Services.GetService<IDeepSeekService>();
-            if (aiSvc != null && aiSvc.IsConfigured)
+            try
             {
-                Log.Information("[AI-GUIDE][NAV] 用户已在等待期间配了 Key — 跳过推送");
-                return;
+                // 在 UI 线程等待 —— 1.5s 给弱机足够的 React render 时间
+                await Task.Delay(1500);
+
+                // 再查一次（期间用户可能刚好配了 Key）
+                var aiSvc = App.Services.GetService<IDeepSeekService>();
+                if (aiSvc != null && aiSvc.IsConfigured)
+                {
+                    Log.Information("[AI-GUIDE][NAV] 用户已在等待期间配了 Key — 跳过推送");
+                    return;
+                }
+
+                // ⚠️ 此时仍在 UI 线程，直接调 SendEventAsync 不会跨线程！
+                await _bridgeService.SendEventAsync("ai:guide", new
+                {
+                    reason = "navigation-completed",
+                    message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
+                });
+                Log.Information("[AI-GUIDE][NAV] ✅ 延迟推送 ai:guide 完成（前端应该能收到了）");
             }
-
-            // ⚠️ 此时仍在 UI 线程，直接调 SendEventAsync 不会跨线程！
-            await _bridgeService.SendEventAsync("ai:guide", new
+            catch (Exception ex)
             {
-                reason = "navigation-completed",
-                message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
-            });
-            Log.Information("[AI-GUIDE][NAV] ✅ 延迟推送 ai:guide 完成（前端应该能收到了）");
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "[AI-GUIDE][NAV] ❌ NavigationCompleted 延迟推送异常 — 等 app:ready 兜底");
-        }
+                Log.Warning(ex, "[AI-GUIDE][NAV] ❌ NavigationCompleted 延迟推送异常 — 等 app:ready 兜底");
+            }
+        });
     }
 
     /// <summary>
