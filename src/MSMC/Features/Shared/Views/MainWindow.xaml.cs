@@ -253,12 +253,52 @@ public partial class MainWindow : Window
 
                 Log.Information("[UI-8] [OK] WebView2 初始化全部完成");
 
+                // ═══ 【AI 引导第四保险 —— 终极兜底】前端加载完成后直接推 ai:guide ═══
+                // 这条路径不依赖任何事件回调（NavigationCompleted / app:ready），
+                // 直接在 Loaded 里等待前端加载 + 给 React 充分时间 mount 后推事件。
+                // 这样就算三保险里前三条都丢了事件，这条也能最终把引导拉起来。
+                // 关键：此时仍在 UI 线程（async void 调用 Dispatcher.BeginInvoke(ApplicationIdle)
+                // → await 后回到 UI 线程），SendEventAsync 内部 PostWebMessageAsJson 安全。
+                if (_aiNeedsConfig && MainWebView?.CoreWebView2 != null && _bridgeService.IsInitialized)
+                {
+                    Log.Information("[AI-GUIDE][DIRECT] ⏳ 第四保险：前端已加载，等待 2.5s 让 React mount 完成后直接推 ai:guide...");
+                    // 弱机兜底：2.5s 给足 React bundle 执行 + 全组件树 render 的时间
+                    await Task.Delay(2500);
+
+                    // 再查一次 IsConfigured（用户可能在 2.5s 内刚好配了 Key）
+                    var aiSvc = App.Services.GetService<IDeepSeekService>();
+                    if (aiSvc != null && aiSvc.IsConfigured)
+                    {
+                        Log.Information("[AI-GUIDE][DIRECT] ✅ 用户已在等待期间配了 Key — 跳过推送");
+                    }
+                    else
+                    {
+                        try
+                        {
+                            // ⚠️ 此时仍在 UI 线程，直接调 SendEventAsync 不会跨线程！
+                            await _bridgeService.SendEventAsync("ai:guide", new
+                            {
+                                reason = "direct-boot",
+                                message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
+                            });
+                            Log.Information("[AI-GUIDE][DIRECT] ✅ 第四保险 ai:guide 推送完成！");
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "[AI-GUIDE][DIRECT] ❌ 第四保险推送异常 — 等 NavigationCompleted / app:ready 兜底");
+                        }
+                    }
+                }
+
                 // ═══ 【AI 引导三保险】NavigationCompleted 后延迟 1s 再推一次 ai:guide ═══
                 // 因果链修复：之前主路径在前端 HTML 还没 navigate 就推 ai:guide → Chromium 丢了
                 // app:ready 兜底（新修复的）靠前端 bridge.invoke 成功后发 → 更稳但有 HTTP 往返延迟
                 // NavigationCompleted 是 WebView2 最可靠的"页面真 ready"信号 —— JS bridge 脚本已注入，
                 // 但前端 React useEffect 还没跑完（所以加 1s 等 DashboardPage 的 bridge.on 注册好）
-                // 三保险：① 主路径尝试（可能丢）→ ② NavigationCompleted 延迟 1s 推 → ③ app:ready 再推
+                // 四保险（按可靠性排序）:
+                //   ① [最可靠] 第四保险（DIRECT）—— Loaded 里直接推，给足 React 时间 → 先注册
+                //   ② NavigationCompleted 延迟 1.5s 推 → 次可靠
+                //   ③ app:ready 延迟 1.5s 推 → 最稳但最后执行（因为等前端发消息）
                 if (_aiNeedsConfig && MainWebView?.CoreWebView2 != null)
                 {
                     Log.Information("[AI-GUIDE][NAV-WAIT] ⏳ 订阅 NavigationCompleted，等前端页面真 ready 后再推 ai:guide...");
@@ -2514,34 +2554,41 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    Log.Information("[AI-GUIDE] 收到 app:ready — 但前端 DashboardPage 可能还在 lazy load，等 1.5s 再推 ai:guide");
+                    Log.Information("[AI-GUIDE] 收到 app:ready — 等 1.5s 让前端 DashboardPage mount 好");
 
-                    // 延迟等待前端 DashboardPage mount 并 bridge.on('ai:guide') 注册好
-                    await Task.Delay(1500);
-
-                    Log.Information("[AI-GUIDE] 延迟结束，开始 C# 主动引导检查");
-
-                    Log.Information("[AI-GUIDE] GetRequiredService<IDeepSeekService>...");
-                    var ai = App.Services.GetRequiredService<IDeepSeekService>();
-
-                    Log.Information("[AI-GUIDE] 调 IsConfigured...");
-                    bool configured = ai.IsConfigured;
-                    Log.Information("[AI-GUIDE] IsConfigured 返回: {Configured}", configured);
-
-                    if (!configured)
+                    // ⚠️ 关键修复：WebMessageReceived 事件的触发线程不确定（可能是 WebView2 内部线程）
+                    // async void lambda 的 continuation 没有 Wpf Dispatcher → 会跑到 ThreadPool →
+                    // 调 PostWebMessageAsJson 会触发跨线程异常！
+                    // 所以这里用 Dispatcher.InvokeAsync 把后续逻辑强制封送到 UI 线程。
+                    await Dispatcher.InvokeAsync(async () =>
                     {
-                        Log.Information("[AI-GUIDE] ⚠️  AI 未配置 Key — 主动推送 ai:guide 事件给前端");
-                        await _bridgeService.SendEventAsync("ai:guide", new
+                        // 延迟等待前端 DashboardPage mount 并 bridge.on('ai:guide') 注册好
+                        await Task.Delay(1500);
+
+                        Log.Information("[AI-GUIDE] app:ready 延迟结束，开始 C# 主动引导检查（UI 线程）");
+
+                        Log.Information("[AI-GUIDE] GetRequiredService<IDeepSeekService>...");
+                        var ai = App.Services.GetRequiredService<IDeepSeekService>();
+
+                        Log.Information("[AI-GUIDE] 调 IsConfigured...");
+                        bool configured = ai.IsConfigured;
+                        Log.Information("[AI-GUIDE] IsConfigured 返回: {Configured}", configured);
+
+                        if (!configured)
                         {
-                            reason = "app-ready",
-                            message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
-                        });
-                        Log.Information("[AI-GUIDE] ✅ SendEventAsync(ai:guide) 完成 — 等待前端弹出教程");
-                    }
-                    else
-                    {
-                        Log.Information("[AI-GUIDE] ✅ AI 已配置 Key — 跳过主动引导");
-                    }
+                            Log.Information("[AI-GUIDE] ⚠️  AI 未配置 Key — 主动推送 ai:guide 事件给前端");
+                            await _bridgeService.SendEventAsync("ai:guide", new
+                            {
+                                reason = "app-ready",
+                                message = "检测到您尚未配置 DeepSeek API Key，AI 诊断功能需要它才能工作"
+                            });
+                            Log.Information("[AI-GUIDE] ✅ SendEventAsync(ai:guide) 完成 — 等待前端弹出教程");
+                        }
+                        else
+                        {
+                            Log.Information("[AI-GUIDE] ✅ AI 已配置 Key — 跳过主动引导");
+                        }
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -2574,12 +2621,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        Log.Information("[AI-GUIDE][NAV] ✅ NavigationCompleted 成功 → 延迟 1s 推 ai:guide（UI 线程 await，不会跨线程炸）...");
+        Log.Information("[AI-GUIDE][NAV] ✅ NavigationCompleted 成功 → 延迟 1.5s 推 ai:guide（UI 线程 await，不会跨线程炸）...");
 
         try
         {
             // 在 UI 线程等待 —— await 完成后 SynchronizationContext 自动回 UI 线程
-            await Task.Delay(1000);
+            // 1.5s 给弱机足够的 React render 时间（比之前的 1s 更保守）
+            await Task.Delay(1500);
 
             // 再查一次（期间用户可能刚好配了 Key）
             var aiSvc = App.Services.GetService<IDeepSeekService>();

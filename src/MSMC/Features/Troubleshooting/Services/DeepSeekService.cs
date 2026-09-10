@@ -97,6 +97,8 @@ public sealed class DeepSeekService : IDeepSeekService
     private readonly IWebView2BridgeService? _bridge;
     private FunctionCallingEngine? _functionEngineCache;
     private string? _cachedKey;  // 缓存对应的 API Key，用于检测 SetApiKey 后的变更
+    private bool? _cachedIsConfigured;  // 缓存 IsConfigured 结果，避免每次都文件 I/O + DPAPI 解密
+    private readonly object _cacheLock = new();  // 保护缓存的线程安全
 
     public DeepSeekService(
         ILogger<DeepSeekService> log,
@@ -142,19 +144,48 @@ public sealed class DeepSeekService : IDeepSeekService
     {
         get
         {
+            // 优先返回缓存值（线程安全）
+            lock (_cacheLock)
+            {
+                if (_cachedIsConfigured.HasValue)
+                {
+                    _log.LogDebug("[DIAG-AI] IsConfigured 缓存命中: {Configured}", _cachedIsConfigured.Value);
+                    return _cachedIsConfigured.Value;
+                }
+            }
+
             try
             {
                 var key = GetApiKey();
                 var configured = !string.IsNullOrEmpty(key);
-                _log.LogDebug("[DIAG-AI] IsConfigured 查询结果: {Configured} (Key 文件存在: {FileExists})",
+
+                lock (_cacheLock)
+                {
+                    _cachedIsConfigured = configured;
+                }
+
+                _log.LogInformation("[DIAG-AI] IsConfigured 计算结果: {Configured} (Key 文件存在: {FileExists})",
                     configured, File.Exists(KeyFilePath));
                 return configured;
             }
             catch (Exception ex)
             {
-                _log.LogWarning(ex, "[DIAG-AI] IsConfigured 查询异常，返回 false");
+                _log.LogWarning(ex, "[DIAG-AI] IsConfigured 查询异常，返回 false 并缓存");
+                lock (_cacheLock)
+                {
+                    _cachedIsConfigured = false;
+                }
                 return false;
             }
+        }
+    }
+
+    /// <summary>强制刷新 IsConfigured 缓存（SetApiKey 后立即调用）</summary>
+    private void InvalidateConfiguredCache()
+    {
+        lock (_cacheLock)
+        {
+            _cachedIsConfigured = null;
         }
     }
 
@@ -192,6 +223,7 @@ public sealed class DeepSeekService : IDeepSeekService
                 // 清除缓存，强制下次调用重建
                 _functionEngineCache = null;
                 _cachedKey = null;
+                InvalidateConfiguredCache();
                 return (true, null);
             }
 
@@ -202,12 +234,14 @@ public sealed class DeepSeekService : IDeepSeekService
             // 清除缓存 → 下次 AnalyzeWithToolsAsync 调用 GetOrCreateEngine 时检测 Key 变更并重建
             _functionEngineCache = null;
             _cachedKey = null;
+            InvalidateConfiguredCache();  // ← 同步刷新 IsConfigured 缓存！
             _log.LogInformation("[DIAG-AI] API Key 已保存并触发 FunctionCallingEngine 重建（Key 长度 {Len}）", trimmedKey.Length);
             return (true, null);
         }
         catch (Exception ex)
         {
             _log.LogWarning(ex, "[DIAG-AI] 保存 API Key 失败");
+            InvalidateConfiguredCache();  // 失败也清缓存，下次重新算
             return (false, ex.Message);
         }
     }

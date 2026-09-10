@@ -140,7 +140,18 @@ export function TutorialOverlay({ open, onClose, forceAiOpen }: TutorialOverlayP
     return () => window.removeEventListener('keydown', handler)
   }, [open, onClose, aiOpen])
 
-  // 每次打开教程时重置状态
+  // ═══【BUG FIX】forceAiOpen 独立 effect ═══
+  // 之前主 effect 依赖只有 [open]，如果用户手动打开了教程（open=true, forceAiOpen=false），
+  // 然后 C# 稍后才推 ai:guide → DashboardPage setAiForceOpen(true) → TutorialOverlay 收到新 prop
+  // 但因为 open 没变，主 effect 不会重跑 → aiOpen 还是 false → AI 抽屉没打开！
+  // 修复：独立 effect 监听 forceAiOpen 变化，只负责 setAiOpen
+  useEffect(() => {
+    if (open && forceAiOpen) {
+      setAiOpen(true)
+    }
+  }, [open, forceAiOpen])
+
+  // 每次打开教程时重置状态 + 主动查 AI 配置（只在 open 变化时触发）
   useEffect(() => {
     if (!open) return
     // 如果 forceAiOpen=true（后端主动引导触发），直接打开 AI 抽屉
