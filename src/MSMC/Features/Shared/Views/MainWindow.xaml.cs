@@ -188,7 +188,7 @@ public partial class MainWindow : Window
                 try
                 {
                     bridgeSafe = App.Services.GetService<IWebView2BridgeService>();
-                    App.ForceLog("[MWL] DI GetService<IWebView2BridgeService> = {Null}", bridgeSafe == null ? "null" : "OK");
+                    App.ForceLog($"[MWL] DI GetService<IWebView2BridgeService> = {(bridgeSafe == null ? "NULL!" : "OK")}");
                 }
                 catch (Exception ex)
                 {
