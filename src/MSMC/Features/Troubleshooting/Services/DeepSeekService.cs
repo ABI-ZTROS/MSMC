@@ -149,7 +149,8 @@ public sealed class DeepSeekService : IDeepSeekService
             {
                 if (_cachedIsConfigured.HasValue)
                 {
-                    _log.LogDebug("[DIAG-AI] IsConfigured 缓存命中: {Configured}", _cachedIsConfigured.Value);
+                    // Information 级别 —— 生产环境也能看到缓存命中，便于用户诊断"为什么一直是 true/false"
+                    _log.LogInformation("[DIAG-AI] IsConfigured → 缓存命中: {Configured}", _cachedIsConfigured.Value);
                     return _cachedIsConfigured.Value;
                 }
             }
@@ -164,7 +165,7 @@ public sealed class DeepSeekService : IDeepSeekService
                     _cachedIsConfigured = configured;
                 }
 
-                _log.LogInformation("[DIAG-AI] IsConfigured 计算结果: {Configured} (Key 文件存在: {FileExists})",
+                _log.LogInformation("[DIAG-AI] IsConfigured → 首次计算: {Configured} (Key 文件存在: {FileExists})",
                     configured, File.Exists(KeyFilePath));
                 return configured;
             }
